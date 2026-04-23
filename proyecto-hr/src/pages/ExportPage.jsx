@@ -4,7 +4,7 @@ export default function ExportPage() {
   const { token } = useAuth();
 
   const download = async (type) => {
-    const response = await fetch(`VITE_API_URL=http://localhost:3000/export/${type}`, {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/export/${type}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
