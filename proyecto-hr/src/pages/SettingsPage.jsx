@@ -12,21 +12,23 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch("http://localhost:3000/settings", {
+    fetch(`${import.meta.env.VITE_API_URL}/settings`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
       .then(async (res) => {
         const data = await res.json();
-        if (res.ok && data) setSettings((prev) => ({ ...prev, ...data }));
+        if (res.ok && data) {
+          setSettings((prev) => ({ ...prev, ...data }));
+        }
       })
       .catch(() => {});
   }, [token]);
 
   const save = async () => {
     try {
-      const res = await fetch("VITE_API_URL=http://localhost:3000/auth/login", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",

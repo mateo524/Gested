@@ -1,39 +1,49 @@
-import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
-export default function UsersPage() {
+export default function ExportPage() {
   const { token } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [message, setMessage] = useState("");
 
-  useEffect(() => {
-   fetch("VITE_API_URL=http://localhost:3000/auth/login", {
+  const download = async (type) => {
+    const response = await fetch(`${import.meta.env.VITE_API_URL}/export/${type}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.mensaje || "Error al cargar usuarios");
-        return data;
-      })
-      .then(setUsers)
-      .catch((err) => setMessage(err.message));
-  }, [token]);
+    });
+
+    if (!response.ok) {
+      alert("Error al exportar");
+      return;
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = type === "csv" ? "reporte.csv" : "reporte.xlsx";
+    a.click();
+
+    window.URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <h3 className="text-xl font-semibold mb-4">Usuarios</h3>
+      <h3 className="text-xl font-semibold mb-4">Exportaciones</h3>
 
-      {message && <p className="text-red-500 mb-4">{message}</p>}
+      <div className="flex gap-4">
+        <button
+          onClick={() => download("csv")}
+          className="bg-emerald-500 text-white px-5 py-3 rounded-2xl"
+        >
+          Exportar CSV
+        </button>
 
-      <div className="space-y-3">
-        {users.map((u) => (
-          <div key={u._id} className="border border-slate-200 rounded-2xl p-4">
-            <p className="font-semibold">{u.nombre}</p>
-            <p className="text-slate-500">{u.email}</p>
-          </div>
-        ))}
+        <button
+          onClick={() => download("excel")}
+          className="bg-slate-900 text-white px-5 py-3 rounded-2xl"
+        >
+          Exportar Excel
+        </button>
       </div>
     </div>
   );

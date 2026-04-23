@@ -13,7 +13,10 @@ export default function LoginPage() {
     try {
       setMessage("");
 
-      const response = await fetch("VITE_API_URL=http://localhost:3000/auth/login", {
+      const url = `${import.meta.env.VITE_API_URL}/auth/login`;
+      console.log("LOGIN URL:", url);
+
+      const response = await fetch(url, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -21,7 +24,18 @@ export default function LoginPage() {
         body: JSON.stringify(form),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+      console.log("LOGIN STATUS:", response.status);
+      console.log("LOGIN RESPONSE TEXT:", text);
+
+      let data = {};
+      try {
+        data = text ? JSON.parse(text) : {};
+      } catch {
+        throw new Error(
+          `El backend no devolvió JSON válido. Respuesta recibida: ${text || "vacía"}`
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.mensaje || "Error al iniciar sesión");
@@ -37,7 +51,7 @@ export default function LoginPage() {
     <div className="min-h-screen grid place-items-center bg-slate-100 px-6">
       <div className="w-full max-w-md bg-white rounded-3xl shadow-sm border border-slate-200 p-8">
         <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
-          PeopleOps Hub
+          Centro de operaciones de personal
         </p>
 
         <h1 className="text-4xl font-bold mt-3">Iniciar sesión</h1>
@@ -51,9 +65,7 @@ export default function LoginPage() {
             type="email"
             placeholder="Email"
             value={form.email}
-            onChange={(e) =>
-              setForm({ ...form, email: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
             className="w-full border border-slate-300 rounded-2xl px-4 py-3"
           />
 
@@ -61,9 +73,7 @@ export default function LoginPage() {
             type="password"
             placeholder="Contraseña"
             value={form.password}
-            onChange={(e) =>
-              setForm({ ...form, password: e.target.value })
-            }
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
             className="w-full border border-slate-300 rounded-2xl px-4 py-3"
           />
 
@@ -76,12 +86,12 @@ export default function LoginPage() {
         </div>
 
         {message && (
-          <p className="mt-4 text-red-500">{message}</p>
+          <p className="mt-4 text-red-500 whitespace-pre-wrap">{message}</p>
         )}
 
         <div className="mt-6 text-sm text-slate-500">
-          <p>Email: admin@demo.com</p>
-          <p>Password: 123456</p>
+          <p>Correo electrónico: admin@demo.com</p>
+          <p>Contraseña: 123456</p>
         </div>
       </div>
     </div>
