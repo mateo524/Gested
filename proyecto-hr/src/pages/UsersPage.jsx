@@ -7,7 +7,7 @@ export default function UsersPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-   fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+   fetch("VITE_API_URL=http://localhost:3000/auth/login", {
       headers: {
         Authorization: `Bearer ${token}`,
       },

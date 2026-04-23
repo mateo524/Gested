@@ -7,7 +7,7 @@ export default function AuditPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+    fetch("VITE_API_URL=http://localhost:3000/audit", {
       headers: {
         Authorization: `Bearer ${token}`,
       },
