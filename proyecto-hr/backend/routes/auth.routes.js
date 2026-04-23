@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
+import Company from "../models/Company.js";
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.post("/login", async (req, res) => {
     }
 
     const role = await Role.findById(user.roleId).lean();
+    const company = await Company.findById(user.companyId).lean();
     const safeUser = {
       _id: user._id,
       companyId: user.companyId,
@@ -33,7 +35,9 @@ router.post("/login", async (req, res) => {
       nombre: user.nombre,
       email: user.email,
       activo: user.activo,
+      isSuperAdmin: !!user.isSuperAdmin,
       roleName: role?.nombre || "Sin rol",
+      companyName: company?.nombre || "Sin empresa",
       permisos: role?.permisos || [],
     };
 
@@ -42,6 +46,7 @@ router.post("/login", async (req, res) => {
         userId: user._id,
         companyId: user.companyId,
         roleId: user.roleId,
+        isSuperAdmin: !!user.isSuperAdmin,
         permisos: safeUser.permisos,
         nombre: user.nombre,
       },
@@ -77,6 +82,7 @@ router.get("/me", async (req, res) => {
     }
 
     const role = await Role.findById(user.roleId).lean();
+    const company = await Company.findById(user.companyId).lean();
 
     res.json({
       _id: user._id,
@@ -85,7 +91,9 @@ router.get("/me", async (req, res) => {
       nombre: user.nombre,
       email: user.email,
       activo: user.activo,
+      isSuperAdmin: !!user.isSuperAdmin,
       roleName: role?.nombre || "Sin rol",
+      companyName: company?.nombre || "Sin empresa",
       permisos: role?.permisos || [],
     });
   } catch (error) {

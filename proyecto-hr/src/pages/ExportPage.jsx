@@ -1,12 +1,14 @@
 import { useAuth } from "../context/AuthContext";
+import { apiUrl } from "../lib/api";
 
 export default function ExportPage() {
-  const { token } = useAuth();
+  const { token, activeCompanyId } = useAuth();
 
   const download = async (type) => {
-    const response = await fetch(`${import.meta.env.VITE_API_URL}/export/${type}`, {
+    const response = await fetch(`${apiUrl}/export/${type}`, {
       headers: {
         Authorization: `Bearer ${token}`,
+        ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
       },
     });
 

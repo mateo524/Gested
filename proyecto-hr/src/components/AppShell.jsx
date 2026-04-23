@@ -1,10 +1,11 @@
 import { useAuth } from "../context/AuthContext";
 
 export default function AppShell({ view, setView, children }) {
-  const { user, logout, hasPermission } = useAuth();
+  const { user, logout, hasPermission, companies, activeCompanyId, setActiveCompanyId } = useAuth();
 
   const menuItems = [
     { key: "dashboard", label: "Dashboard", show: true },
+    { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "auditoria", label: "Auditoría", show: hasPermission("view_audit") },
@@ -34,6 +35,19 @@ export default function AppShell({ view, setView, children }) {
           </p>
 
           <div className="mt-8 space-y-2">
+            {hasPermission("manage_companies") && companies.length ? (
+              <select
+                className="mb-4 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white"
+                value={activeCompanyId}
+                onChange={(event) => setActiveCompanyId(event.target.value)}
+              >
+                {companies.map((company) => (
+                  <option key={company._id} value={company._id}>
+                    {company.nombre}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             {menuItems
               .filter((item) => item.show)
               .map((item) => (

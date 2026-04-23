@@ -5,11 +5,13 @@ import Role from "../models/Role.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
 router.get("/", auth, permit("manage_users"), async (req, res) => {
-  const users = await User.find({ companyId: req.user.companyId })
+  const { companyId } = await resolveCompanyScope(req);
+  const users = await User.find({ companyId, isSuperAdmin: false })
     .select("-passwordHash")
     .populate("roleId", "nombre permisos");
 
@@ -18,6 +20,7 @@ router.get("/", auth, permit("manage_users"), async (req, res) => {
 
 router.post("/", auth, permit("manage_users"), async (req, res) => {
   const { nombre, email, password, roleId, activo = true } = req.body;
+  const { companyId } = await resolveCompanyScope(req);
 
   if (!nombre || !email || !password || !roleId) {
     return res.status(400).json({ mensaje: "Faltan datos obligatorios del usuario" });
@@ -29,14 +32,14 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
     return res.status(409).json({ mensaje: "Ya existe un usuario con ese email" });
   }
 
-  const role = await Role.findOne({ _id: roleId, companyId: req.user.companyId });
-  if (!role) {
+  const role = await Role.findOne({ _id: roleId, companyId });
+  if (!role || String(role.companyId) !== String(companyId)) {
     return res.status(400).json({ mensaje: "El rol seleccionado no es válido" });
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
   const user = await User.create({
-    companyId: req.user.companyId,
+    companyId,
     nombre,
     email: normalizedEmail,
     passwordHash,
@@ -45,7 +48,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   });
 
   await logAudit({
-    companyId: req.user.companyId,
+    companyId,
     userId: req.user.userId,
     accion: "create",
     modulo: "users",
@@ -62,10 +65,12 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
 router.put("/:id", auth, permit("manage_users"), async (req, res) => {
   const { nombre, email, password, roleId, activo } = req.body;
   const update = {};
+  const { companyId } = await resolveCompanyScope(req);
 
   const user = await User.findOne({
     _id: req.params.id,
-    companyId: req.user.companyId,
+    companyId,
+    isSuperAdmin: false,
   });
 
   if (!user) {
@@ -90,7 +95,7 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
   }
 
   if (roleId) {
-    const role = await Role.findOne({ _id: roleId, companyId: req.user.companyId });
+    const role = await Role.findOne({ _id: roleId, companyId: user.companyId });
     if (!role) {
       return res.status(400).json({ mensaje: "El rol seleccionado no es válido" });
     }
@@ -109,7 +114,7 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     .populate("roleId", "nombre permisos");
 
   await logAudit({
-    companyId: req.user.companyId,
+    companyId: user.companyId,
     userId: req.user.userId,
     accion: "update",
     modulo: "users",
@@ -126,7 +131,8 @@ router.delete("/:id", auth, permit("manage_users"), async (req, res) => {
 
   const user = await User.findOneAndDelete({
     _id: req.params.id,
-    companyId: req.user.companyId,
+    companyId: (await resolveCompanyScope(req)).companyId,
+    isSuperAdmin: false,
   });
 
   if (!user) {
@@ -134,7 +140,7 @@ router.delete("/:id", auth, permit("manage_users"), async (req, res) => {
   }
 
   await logAudit({
-    companyId: req.user.companyId,
+    companyId: user.companyId,
     userId: req.user.userId,
     accion: "delete",
     modulo: "users",

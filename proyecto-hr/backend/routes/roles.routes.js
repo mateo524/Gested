@@ -4,12 +4,14 @@ import User from "../models/User.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
 router.get("/", auth, async (req, res) => {
-  const roles = await Role.find({ companyId: req.user.companyId }).lean();
-  const users = await User.find({ companyId: req.user.companyId }).select("roleId").lean();
+  const { companyId } = await resolveCompanyScope(req);
+  const roles = await Role.find({ companyId }).lean();
+  const users = await User.find({ companyId, isSuperAdmin: false }).select("roleId").lean();
 
   const enrichedRoles = roles.map((role) => ({
     ...role,
@@ -20,6 +22,7 @@ router.get("/", auth, async (req, res) => {
 });
 
 router.post("/", auth, permit("manage_roles"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
   const nombre = req.body.nombre?.trim();
   const permisos = req.body.permisos || [];
 
@@ -28,7 +31,7 @@ router.post("/", auth, permit("manage_roles"), async (req, res) => {
   }
 
   const existingRole = await Role.findOne({
-    companyId: req.user.companyId,
+    companyId,
     nombre,
   });
 
@@ -37,13 +40,13 @@ router.post("/", auth, permit("manage_roles"), async (req, res) => {
   }
 
   const role = await Role.create({
-    companyId: req.user.companyId,
+    companyId,
     nombre,
     permisos,
   });
 
   await logAudit({
-    companyId: req.user.companyId,
+    companyId,
     userId: req.user.userId,
     accion: "create",
     modulo: "roles",
@@ -56,10 +59,11 @@ router.post("/", auth, permit("manage_roles"), async (req, res) => {
 router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
   const nombre = req.body.nombre?.trim();
   const permisos = req.body.permisos || [];
+  const { companyId } = await resolveCompanyScope(req);
 
   const role = await Role.findOne({
     _id: req.params.id,
-    companyId: req.user.companyId,
+    companyId,
   });
 
   if (!role) {
@@ -68,7 +72,7 @@ router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
 
   if (nombre) {
     const duplicated = await Role.findOne({
-      companyId: req.user.companyId,
+      companyId: role.companyId,
       nombre,
       _id: { $ne: req.params.id },
     });
@@ -84,12 +88,12 @@ router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
   await role.save();
 
   const usersCount = await User.countDocuments({
-    companyId: req.user.companyId,
+    companyId: role.companyId,
     roleId: role._id,
   });
 
   await logAudit({
-    companyId: req.user.companyId,
+    companyId: role.companyId,
     userId: req.user.userId,
     accion: "update",
     modulo: "roles",
@@ -100,8 +104,9 @@ router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
 });
 
 router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
   const usersCount = await User.countDocuments({
-    companyId: req.user.companyId,
+    companyId,
     roleId: req.params.id,
   });
 
@@ -113,7 +118,7 @@ router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
 
   const role = await Role.findOneAndDelete({
     _id: req.params.id,
-    companyId: req.user.companyId,
+    companyId,
   });
 
   if (!role) {
@@ -121,7 +126,7 @@ router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
   }
 
   await logAudit({
-    companyId: req.user.companyId,
+    companyId,
     userId: req.user.userId,
     accion: "delete",
     modulo: "roles",
