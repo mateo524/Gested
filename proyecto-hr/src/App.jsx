@@ -4,10 +4,10 @@ import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
 import UsersPage from "./pages/UsersPage";
+import RolesPage from "./pages/RolesPage";
 import AuditPage from "./pages/AuditPage";
 import ExportPage from "./pages/ExportPage";
 import SettingsPage from "./pages/SettingsPage";
-import RolesPage from "./pages/RolesPage";
 
 function AppContent() {
   const { isAuthenticated } = useAuth();
