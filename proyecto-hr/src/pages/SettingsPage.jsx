@@ -26,7 +26,7 @@ export default function SettingsPage() {
 
   const save = async () => {
     try {
-      const res = await fetch("http://localhost:3000/settings", {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
