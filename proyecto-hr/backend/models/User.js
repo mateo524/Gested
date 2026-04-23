@@ -16,6 +16,7 @@ const UserSchema = new mongoose.Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     passwordHash: { type: String, required: true },
     activo: { type: Boolean, default: true },
+    isSuperAdmin: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

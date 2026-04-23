@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
+import CompaniesPage from "./pages/CompaniesPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
 import AuditPage from "./pages/AuditPage";
@@ -15,6 +16,7 @@ function AppContent() {
 
   const availableViews = [
     "dashboard",
+    hasPermission("manage_companies") ? "empresas" : null,
     hasPermission("manage_users") ? "usuarios" : null,
     hasPermission("manage_roles") ? "roles" : null,
     hasPermission("view_audit") ? "auditoria" : null,
@@ -35,6 +37,7 @@ function AppContent() {
   return (
     <AppShell view={view} setView={setView}>
       {view === "dashboard" && <DashboardPage />}
+      {view === "empresas" && <CompaniesPage />}
       {view === "usuarios" && <UsersPage />}
       {view === "roles" && <RolesPage />}
       {view === "auditoria" && <AuditPage />}

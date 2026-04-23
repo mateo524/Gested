@@ -5,6 +5,7 @@ import cors from "cors";
 
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
+import companiesRoutes from "./routes/companies.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import rolesRoutes from "./routes/roles.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
@@ -19,6 +20,7 @@ app.use(express.json());
 
 app.use("/auth", authRoutes);
 app.use("/dashboard", dashboardRoutes);
+app.use("/companies", companiesRoutes);
 app.use("/users", usersRoutes);
 app.use("/roles", rolesRoutes);
 app.use("/audit", auditRoutes);

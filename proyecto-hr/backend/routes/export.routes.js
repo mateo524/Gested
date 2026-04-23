@@ -5,6 +5,7 @@ import Record from "../models/Record.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
@@ -19,7 +20,8 @@ async function getActiveRecords(companyId) {
 }
 
 router.get("/csv", auth, permit("export_reports"), async (req, res) => {
-  const records = await getActiveRecords(req.user.companyId);
+  const { companyId } = await resolveCompanyScope(req);
+  const records = await getActiveRecords(companyId);
 
   const parser = new Parser({
     fields: ["nombreCompleto", "rol", "email"],
@@ -33,7 +35,8 @@ router.get("/csv", auth, permit("export_reports"), async (req, res) => {
 });
 
 router.get("/excel", auth, permit("export_reports"), async (req, res) => {
-  const records = await getActiveRecords(req.user.companyId);
+  const { companyId } = await resolveCompanyScope(req);
+  const records = await getActiveRecords(companyId);
 
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Reporte");

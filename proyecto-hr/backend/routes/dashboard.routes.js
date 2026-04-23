@@ -6,11 +6,12 @@ import AuditLog from "../models/AuditLog.js";
 import CompanySetting from "../models/CompanySetting.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Record from "../models/Record.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
 router.get("/summary", auth, async (req, res) => {
-  const companyId = req.user.companyId;
+  const { companyId, company } = await resolveCompanyScope(req);
 
   const [usersTotal, activeUsers, rolesTotal, auditEvents, activeFiles, recordsTotal, settings] =
     await Promise.all([
@@ -38,6 +39,7 @@ router.get("/summary", auth, async (req, res) => {
     latestAudit,
     company: {
       nombreVisible: settings?.nombreVisible || "Empresa Demo",
+      legalName: company?.nombre || "Empresa Demo",
       primaryColor: settings?.primaryColor || "#10b981",
     },
     security: {

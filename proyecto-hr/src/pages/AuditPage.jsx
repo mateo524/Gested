@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../lib/api";
 
 export default function AuditPage() {
   const { token } = useAuth();
@@ -7,18 +8,9 @@ export default function AuditPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/audit`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.mensaje || "Error al cargar auditoría");
-        return data;
-      })
+    apiFetch("/audit", { token })
       .then(setLogs)
-      .catch((err) => setMessage(err.message));
+      .catch((error) => setMessage(error.message));
   }, [token]);
 
   return (

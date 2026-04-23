@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../lib/api";
 
 export default function SettingsPage() {
   const { token } = useAuth();
@@ -12,38 +13,28 @@ export default function SettingsPage() {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`${import.meta.env.VITE_API_URL}/settings`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (res.ok && data) {
-          setSettings((prev) => ({ ...prev, ...data }));
-        }
+    apiFetch("/settings", { token })
+      .then((data) => {
+        if (data) setSettings((prev) => ({ ...prev, ...data }));
       })
       .catch(() => {});
   }, [token]);
 
   const save = async () => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/settings`, {
+      const data = await apiFetch("/settings", {
         method: "PUT",
+        token,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(settings),
       });
 
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.mensaje || "Error al guardar");
-
-      setMessage("✅ Parámetros guardados");
+      setSettings((prev) => ({ ...prev, ...(data.settings || {}) }));
+      setMessage("Parametros guardados");
     } catch (error) {
-      setMessage(`❌ ${error.message}`);
+      setMessage(error.message);
     }
   };
 
