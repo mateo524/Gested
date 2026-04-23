@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
@@ -10,8 +10,23 @@ import ExportPage from "./pages/ExportPage";
 import SettingsPage from "./pages/SettingsPage";
 
 function AppContent() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, hasPermission } = useAuth();
   const [view, setView] = useState("dashboard");
+
+  const availableViews = [
+    "dashboard",
+    hasPermission("manage_users") ? "usuarios" : null,
+    hasPermission("manage_roles") ? "roles" : null,
+    hasPermission("view_audit") ? "auditoria" : null,
+    hasPermission("export_reports") ? "exportaciones" : null,
+    hasPermission("manage_settings") ? "parametros" : null,
+  ].filter(Boolean);
+
+  useEffect(() => {
+    if (!availableViews.includes(view)) {
+      setView(availableViews[0] || "dashboard");
+    }
+  }, [view, availableViews.join("|")]);
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -22,9 +37,9 @@ function AppContent() {
       {view === "dashboard" && <DashboardPage />}
       {view === "usuarios" && <UsersPage />}
       {view === "roles" && <RolesPage />}
-      {view === "auditoría" && <AuditPage />}
+      {view === "auditoria" && <AuditPage />}
       {view === "exportaciones" && <ExportPage />}
-      {view === "parámetros" && <SettingsPage />}
+      {view === "parametros" && <SettingsPage />}
     </AppShell>
   );
 }

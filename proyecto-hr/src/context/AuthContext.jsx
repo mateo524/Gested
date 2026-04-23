@@ -1,4 +1,5 @@
-import { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { apiFetch } from "../lib/api";
 
 const AuthContext = createContext(null);
 
@@ -21,6 +22,17 @@ export function AuthProvider({ children }) {
     setToken("");
     setUser(null);
   };
+
+  useEffect(() => {
+    if (!token) return;
+
+    apiFetch("/auth/me", { token })
+      .then((nextUser) => {
+        localStorage.setItem("user", JSON.stringify(nextUser));
+        setUser(nextUser);
+      })
+      .catch(() => logout());
+  }, [token]);
 
   const value = useMemo(
     () => ({
