@@ -8,8 +8,16 @@ export default function AppShell({ view, setView, children }) {
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "auditoría", label: "Auditoría", show: hasPermission("view_audit") },
-    { key: "exportaciones", label: "Exportaciones", show: hasPermission("export_reports") },
-    { key: "parámetros", label: "Parámetros", show: hasPermission("manage_settings") },
+    {
+      key: "exportaciones",
+      label: "Exportaciones",
+      show: hasPermission("export_reports"),
+    },
+    {
+      key: "parámetros",
+      label: "Parámetros",
+      show: hasPermission("manage_settings"),
+    },
   ];
 
   return (
@@ -29,9 +37,9 @@ export default function AppShell({ view, setView, children }) {
                 <button
                   key={item.key}
                   onClick={() => setView(item.key)}
-                  className={`w-full text-left rounded-2xl px-4 py-3 ${
+                  className={`w-full text-left rounded-2xl px-4 py-3 transition ${
                     view === item.key
-                      ? "bg-emerald-500"
+                      ? "bg-emerald-500 text-white"
                       : "hover:bg-slate-800 text-slate-200"
                   }`}
                 >
@@ -46,7 +54,7 @@ export default function AppShell({ view, setView, children }) {
 
             <button
               onClick={logout}
-              className="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700"
+              className="mt-4 px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 transition"
             >
               Salir
             </button>
