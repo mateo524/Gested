@@ -12,7 +12,6 @@ async function run() {
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB conectado para seed");
 
-    // 1. Empresa
     let company = await Company.findOne({ nombre: "Empresa Demo" });
 
     if (!company) {
@@ -25,7 +24,6 @@ async function run() {
       console.log("Empresa ya existe");
     }
 
-    // 2. Rol admin
     let adminRole = await Role.findOne({
       companyId: company._id,
       nombre: "Admin",
@@ -48,7 +46,6 @@ async function run() {
       console.log("Rol Admin ya existe");
     }
 
-    // 3. Settings por empresa
     let settings = await CompanySetting.findOne({ companyId: company._id });
 
     if (!settings) {
@@ -63,28 +60,24 @@ async function run() {
       console.log("Settings ya existen");
     }
 
-    // 4. Usuario admin
     const email = "admin@demo.com";
     const password = "123456";
 
-    let user = await User.findOne({ email });
+    const deleted = await User.deleteOne({ email });
+    console.log("Usuarios borrados con ese email:", deleted.deletedCount);
 
-    if (!user) {
-      const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
-      user = await User.create({
-        companyId: company._id,
-        roleId: adminRole._id,
-        nombre: "Administrador General",
-        email,
-        passwordHash,
-        activo: true,
-      });
+    const user = await User.create({
+      companyId: company._id,
+      roleId: adminRole._id,
+      nombre: "Administrador General",
+      email,
+      passwordHash,
+      activo: true,
+    });
 
-      console.log("Usuario admin creado");
-    } else {
-      console.log("Usuario admin ya existe");
-    }
+    console.log("Usuario admin RECREADO:", user.email);
 
     console.log("=================================");
     console.log("LOGIN INICIAL");
