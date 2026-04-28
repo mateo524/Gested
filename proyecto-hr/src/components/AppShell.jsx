@@ -1,37 +1,44 @@
 import { useAuth } from "../context/AuthContext";
 
 export default function AppShell({ view, setView, children }) {
-  const { user, logout, hasPermission, companies, activeCompanyId, setActiveCompanyId } = useAuth();
+  const {
+    user,
+    logout,
+    hasPermission,
+    companies,
+    activeCompanyId,
+    setActiveCompanyId,
+  } = useAuth();
 
   const menuItems = [
-    { key: "dashboard", label: "Dashboard", show: true },
+    { key: "dashboard", label: "Panel", show: true },
     { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
-    { key: "auditoria", label: "Auditoría", show: hasPermission("view_audit") },
-    {
-      key: "exportaciones",
-      label: "Exportaciones",
-      show: hasPermission("export_reports"),
-    },
-    {
-      key: "parametros",
-      label: "Parámetros",
-      show: hasPermission("manage_settings"),
-    },
+    { key: "auditoria", label: "Auditoria", show: hasPermission("view_audit") },
+    { key: "exportaciones", label: "Exportaciones", show: hasPermission("export_reports") },
+    { key: "parametros", label: "Parametros", show: hasPermission("manage_settings") },
   ];
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,_#f8fafc,_#eef2ff)]">
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.14),_transparent_24%),linear-gradient(180deg,_#f7f1e7,_#f5f7fb)]">
       <div className="flex min-h-screen">
-        <aside className="w-72 bg-slate-950 p-6 text-white">
-          <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
-            Enterprise HR
-          </p>
+        <aside className="w-72 border-r border-black/5 bg-[#111111] p-6 text-white">
+          <div className="flex items-center gap-3">
+            <div className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-amber-200">
+              G
+            </div>
+            <div>
+              <p className="text-xs uppercase tracking-[0.26em] text-amber-200">
+                Gested
+              </p>
+              <p className="text-sm text-slate-400">Gestion de datos</p>
+            </div>
+          </div>
 
-          <h1 className="mt-2 text-2xl">PeopleOps Hub</h1>
-          <p className="mt-3 text-sm text-slate-400">
-            Accesos por rol, seguridad y operación diaria en una sola vista.
+          <h1 className="mt-8 text-2xl font-semibold">Centro de clientes</h1>
+          <p className="mt-3 text-sm leading-6 text-slate-400">
+            Informacion ordenada, accesos controlados y operacion clara para cada empresa.
           </p>
 
           <div className="mt-8 space-y-2">
@@ -48,6 +55,7 @@ export default function AppShell({ view, setView, children }) {
                 ))}
               </select>
             ) : null}
+
             {menuItems
               .filter((item) => item.show)
               .map((item) => (
@@ -69,6 +77,7 @@ export default function AppShell({ view, setView, children }) {
             <p className="text-sm text-slate-300">{user?.nombre}</p>
             <p className="text-xs text-slate-500">{user?.email}</p>
             <p className="mt-1 text-xs text-slate-500">{user?.roleName}</p>
+            <p className="mt-1 text-xs text-slate-500">{user?.companyName}</p>
 
             <button
               onClick={logout}
@@ -80,8 +89,11 @@ export default function AppShell({ view, setView, children }) {
         </aside>
 
         <div className="flex-1">
-          <header className="border-b border-slate-200 bg-white/80 px-8 py-5 backdrop-blur">
-            <h2 className="text-2xl font-semibold capitalize">{view}</h2>
+          <header className="border-b border-black/5 bg-white/80 px-8 py-5 backdrop-blur">
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Gested</p>
+            <h2 className="mt-2 text-2xl font-semibold capitalize text-slate-950">
+              {view}
+            </h2>
           </header>
 
           <main className="p-8">{children}</main>
