@@ -4,10 +4,18 @@ import { apiFetch } from "../lib/api";
 const AuthContext = createContext(null);
 const ACTIVE_COMPANY_KEY = "active_company_id";
 
+const defaultBranding = {
+  nombreVisible: "Gested",
+  logoUrl: "",
+  primaryColor: "#10b981",
+  maxUploadSizeMb: 10,
+};
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
   const [companies, setCompanies] = useState([]);
+  const [branding, setBranding] = useState(defaultBranding);
   const [activeCompanyId, setActiveCompanyIdState] = useState(
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
   );
@@ -28,6 +36,20 @@ export function AuthProvider({ children }) {
     localStorage.setItem("user", JSON.stringify(nextUser));
     setToken(nextToken);
     setUser(nextUser);
+  };
+
+  const fetchBranding = async (nextToken) => {
+    if (!nextToken) {
+      setBranding(defaultBranding);
+      return;
+    }
+
+    try {
+      const settings = await apiFetch("/settings", { token: nextToken });
+      setBranding({ ...defaultBranding, ...(settings || {}) });
+    } catch {
+      setBranding(defaultBranding);
+    }
   };
 
   const fetchCompanies = async (nextToken, nextUser) => {
@@ -56,12 +78,15 @@ export function AuthProvider({ children }) {
 
   const login = async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken, nextUser);
-    await fetchCompanies(nextToken, nextUser);
+    await Promise.all([fetchCompanies(nextToken, nextUser), fetchBranding(nextToken)]);
   };
 
   const updateSession = async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken || token, nextUser);
-    await fetchCompanies(nextToken || token, nextUser);
+    await Promise.all([
+      fetchCompanies(nextToken || token, nextUser),
+      fetchBranding(nextToken || token),
+    ]);
   };
 
   const logout = () => {
@@ -71,6 +96,7 @@ export function AuthProvider({ children }) {
     setToken("");
     setUser(null);
     setCompanies([]);
+    setBranding(defaultBranding);
     setActiveCompanyIdState("");
   };
 
@@ -81,10 +107,16 @@ export function AuthProvider({ children }) {
       .then(async (nextUser) => {
         localStorage.setItem("user", JSON.stringify(nextUser));
         setUser(nextUser);
-        await fetchCompanies(token, nextUser);
+        await Promise.all([fetchCompanies(token, nextUser), fetchBranding(token)]);
       })
       .catch(() => logout());
-  }, [token]);
+  }, [token, activeCompanyId]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--gested-primary", branding.primaryColor || "#10b981");
+    root.style.setProperty("--gested-primary-soft", `${branding.primaryColor || "#10b981"}22`);
+  }, [branding.primaryColor]);
 
   const activeCompany = companies.find((company) => company._id === activeCompanyId) || null;
 
@@ -93,17 +125,19 @@ export function AuthProvider({ children }) {
       token,
       user,
       companies,
+      branding,
       activeCompany,
       activeCompanyId,
       setActiveCompanyId,
       refreshCompanies: () => fetchCompanies(token, user),
+      refreshBranding: () => fetchBranding(token),
       login,
       updateSession,
       logout,
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
     }),
-    [token, user, companies, activeCompanyId]
+    [token, user, companies, branding, activeCompanyId]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

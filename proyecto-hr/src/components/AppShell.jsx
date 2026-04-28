@@ -1,11 +1,33 @@
 import { useAuth } from "../context/AuthContext";
 
+function LogoMark({ branding }) {
+  if (branding?.logoUrl) {
+    return (
+      <img
+        src={branding.logoUrl}
+        alt={branding.nombreVisible || "Gested"}
+        className="h-11 w-11 rounded-full border border-white/10 bg-white/5 object-cover"
+      />
+    );
+  }
+
+  return (
+    <div
+      className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-amber-200"
+      style={{ boxShadow: `0 0 0 1px ${branding?.primaryColor || "#10b981"}33 inset` }}
+    >
+      G
+    </div>
+  );
+}
+
 export default function AppShell({ view, setView, children }) {
   const {
     user,
     logout,
     hasPermission,
     companies,
+    branding,
     activeCompanyId,
     setActiveCompanyId,
   } = useAuth();
@@ -65,19 +87,22 @@ export default function AppShell({ view, setView, children }) {
   };
 
   const currentView = viewMeta[view] || viewMeta.dashboard;
+  const brandName = branding?.nombreVisible || "Gested";
+  const primaryColor = branding?.primaryColor || "#10b981";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.14),_transparent_24%),linear-gradient(180deg,_#f7f1e7,_#f5f7fb)]">
+    <div
+      className="min-h-screen"
+      style={{
+        background: `radial-gradient(circle at top left, ${primaryColor}22, transparent 24%), linear-gradient(180deg, #f7f1e7, #f5f7fb)`,
+      }}
+    >
       <div className="flex min-h-screen">
         <aside className="w-72 border-r border-black/5 bg-[#111111] p-6 text-white">
           <div className="flex items-center gap-3">
-            <div className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-amber-200">
-              G
-            </div>
+            <LogoMark branding={branding} />
             <div>
-              <p className="text-xs uppercase tracking-[0.26em] text-amber-200">
-                Gested
-              </p>
+              <p className="text-xs uppercase tracking-[0.26em] text-amber-200">{brandName}</p>
               <p className="text-sm text-slate-400">Gestion de datos</p>
             </div>
           </div>
@@ -109,10 +134,9 @@ export default function AppShell({ view, setView, children }) {
                   key={item.key}
                   onClick={() => setView(item.key)}
                   className={`w-full rounded-2xl px-4 py-3 text-left transition ${
-                    view === item.key
-                      ? "bg-emerald-500 text-white"
-                      : "text-slate-200 hover:bg-slate-800"
+                    view === item.key ? "text-white" : "text-slate-200 hover:bg-slate-800"
                   }`}
+                  style={view === item.key ? { backgroundColor: primaryColor } : {}}
                 >
                   {item.label}
                 </button>
