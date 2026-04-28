@@ -34,7 +34,9 @@ export default function AppShell({ view, setView, children }) {
 
   const menuItems = [
     { key: "dashboard", label: "Panel", show: true },
+    { key: "novedades", label: "Novedades", show: true },
     { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
+    { key: "archivo-central", label: "Archivo central", show: hasPermission("manage_companies") },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "auditoria", label: "Auditoria", show: hasPermission("view_audit") },
@@ -53,6 +55,16 @@ export default function AppShell({ view, setView, children }) {
       eyebrow: "Crecimiento",
       title: "Empresas cliente",
       description: "Alta, activacion y control de acceso para cada cuenta administrada por Gested.",
+    },
+    novedades: {
+      eyebrow: "Comunicacion",
+      title: "Novedades",
+      description: "Informacion compartida dentro de la app entre Gested y cada empresa.",
+    },
+    "archivo-central": {
+      eyebrow: "Supervision",
+      title: "Archivo central",
+      description: "Vista consolidada de archivos y contenido subido por todas las empresas.",
     },
     usuarios: {
       eyebrow: "Accesos",

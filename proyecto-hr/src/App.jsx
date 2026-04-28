@@ -9,9 +9,11 @@ const CompaniesPage = lazy(() => import("./pages/CompaniesPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
 const RolesPage = lazy(() => import("./pages/RolesPage"));
 const AuditPage = lazy(() => import("./pages/AuditPage"));
+const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
 const RecordsPage = lazy(() => import("./pages/RecordsPage"));
 const ExportPage = lazy(() => import("./pages/ExportPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
 
 function ViewLoader() {
   return (
@@ -29,7 +31,9 @@ function AppContent() {
     () =>
       [
         "dashboard",
+        "novedades",
         hasPermission("manage_companies") ? "empresas" : null,
+        hasPermission("manage_companies") ? "archivo-central" : null,
         hasPermission("manage_users") ? "usuarios" : null,
         hasPermission("manage_roles") ? "roles" : null,
         hasPermission("view_audit") ? "auditoria" : null,
@@ -58,7 +62,9 @@ function AppContent() {
     <AppShell view={view} setView={setView}>
       <Suspense fallback={<ViewLoader />}>
         {view === "dashboard" && <DashboardPage />}
+        {view === "novedades" && <AnnouncementsPage />}
         {view === "empresas" && <CompaniesPage />}
+        {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}
         {view === "roles" && <RolesPage />}
         {view === "auditoria" && <AuditPage />}
