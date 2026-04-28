@@ -20,6 +20,46 @@ export default function AppShell({ view, setView, children }) {
     { key: "parametros", label: "Parametros", show: hasPermission("manage_settings") },
   ];
 
+  const viewMeta = {
+    dashboard: {
+      eyebrow: "Vision general",
+      title: "Panel ejecutivo",
+      description: "Indicadores, trazabilidad y foco operativo para la empresa seleccionada.",
+    },
+    empresas: {
+      eyebrow: "Crecimiento",
+      title: "Empresas cliente",
+      description: "Alta, activacion y control de acceso para cada cuenta administrada por Gested.",
+    },
+    usuarios: {
+      eyebrow: "Accesos",
+      title: "Usuarios",
+      description: "Personas habilitadas para trabajar con datos y modulos dentro de cada empresa.",
+    },
+    roles: {
+      eyebrow: "Gobernanza",
+      title: "Roles y permisos",
+      description: "Definicion clara de quien puede ver, editar, exportar o administrar.",
+    },
+    auditoria: {
+      eyebrow: "Trazabilidad",
+      title: "Auditoria",
+      description: "Registro de movimientos y decisiones sensibles dentro del sistema.",
+    },
+    exportaciones: {
+      eyebrow: "Datos",
+      title: "Importacion y reportes",
+      description: "Carga de bases, lectura visual y exportacion de informacion lista para usar.",
+    },
+    parametros: {
+      eyebrow: "Configuracion",
+      title: "Parametros",
+      description: "Identidad visible, limites de carga y ajustes operativos por empresa.",
+    },
+  };
+
+  const currentView = viewMeta[view] || viewMeta.dashboard;
+
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(16,185,129,0.14),_transparent_24%),linear-gradient(180deg,_#f7f1e7,_#f5f7fb)]">
       <div className="flex min-h-screen">
@@ -90,10 +130,9 @@ export default function AppShell({ view, setView, children }) {
 
         <div className="flex-1">
           <header className="border-b border-black/5 bg-white/80 px-8 py-5 backdrop-blur">
-            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">Gested</p>
-            <h2 className="mt-2 text-2xl font-semibold capitalize text-slate-950">
-              {view}
-            </h2>
+            <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{currentView.eyebrow}</p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950">{currentView.title}</h2>
+            <p className="mt-2 max-w-3xl text-sm text-slate-500">{currentView.description}</p>
           </header>
 
           <main className="p-8">{children}</main>
