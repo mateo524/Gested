@@ -1,13 +1,13 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import Company from "../models/Company.js";
-import CompanySetting from "../models/CompanySetting.js";
 import Role from "../models/Role.js";
 import User from "../models/User.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { ensureCompanyStructure } from "../utils/bootstrap.js";
 import { logAudit } from "../utils/audit.js";
+import { generateTempPassword } from "../utils/password.js";
 
 const router = express.Router();
 
@@ -40,7 +40,7 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
   }
 
   const duplicatedCompany = await Company.findOne({
-    $or: [{ nombre }, { slug }],
+    $or: [{ nombre: nombre.trim() }, { slug: slug.trim() }],
   });
 
   if (duplicatedCompany) {
@@ -53,11 +53,12 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
   });
 
   let adminUser = null;
+  let generatedPassword = null;
 
   if (createAdmin) {
-    if (!adminNombre || !adminEmail || !adminPassword) {
+    if (!adminNombre || !adminEmail) {
       return res.status(400).json({
-        mensaje: "Para crear el admin de empresa faltan nombre, email o password",
+        mensaje: "Para crear el admin de empresa faltan nombre o email",
       });
     }
 
@@ -68,12 +69,14 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
       return res.status(409).json({ mensaje: "Ya existe un usuario con ese email" });
     }
 
+    generatedPassword = adminPassword?.trim() || generateTempPassword();
+
     adminUser = await User.create({
       companyId: company._id,
       roleId: adminRole._id,
-      nombre: adminNombre,
+      nombre: adminNombre.trim(),
       email: normalizedEmail,
-      passwordHash: await bcrypt.hash(adminPassword, 10),
+      passwordHash: await bcrypt.hash(generatedPassword, 10),
       activo: true,
       isSuperAdmin: false,
     });
@@ -95,6 +98,7 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
           _id: adminUser._id,
           nombre: adminUser.nombre,
           email: adminUser.email,
+          temporaryPassword: generatedPassword,
         }
       : null,
   });
