@@ -16,6 +16,7 @@ export default function AppShell({ view, setView, children }) {
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "auditoria", label: "Auditoria", show: hasPermission("view_audit") },
+    { key: "registros", label: "Registros", show: hasPermission("export_reports") },
     { key: "exportaciones", label: "Exportaciones", show: hasPermission("export_reports") },
     { key: "parametros", label: "Parametros", show: hasPermission("manage_settings") },
   ];
@@ -45,6 +46,11 @@ export default function AppShell({ view, setView, children }) {
       eyebrow: "Trazabilidad",
       title: "Auditoria",
       description: "Registro de movimientos y decisiones sensibles dentro del sistema.",
+    },
+    registros: {
+      eyebrow: "Datos",
+      title: "Registros importados",
+      description: "Lectura operativa de la informacion ya procesada para la empresa activa.",
     },
     exportaciones: {
       eyebrow: "Datos",
