@@ -10,30 +10,74 @@ import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
+function groupCount(items, key, fallback = "Sin dato") {
+  const map = new Map();
+
+  items.forEach((item) => {
+    const value = item?.[key] ? String(item[key]).trim() : fallback;
+    map.set(value || fallback, (map.get(value || fallback) || 0) + 1);
+  });
+
+  return [...map.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value);
+}
+
+function groupTimeline(items) {
+  const map = new Map();
+
+  items.forEach((item) => {
+    const date = new Date(item.createdAt);
+    const label = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+    map.set(label, (map.get(label) || 0) + 1);
+  });
+
+  return [...map.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => a.label.localeCompare(b.label));
+}
+
 router.get("/summary", auth, async (req, res) => {
   const { companyId, company } = await resolveCompanyScope(req);
 
-  const [usersTotal, activeUsers, rolesTotal, auditEvents, activeFiles, recordsTotal, settings] =
-    await Promise.all([
-      User.countDocuments({ companyId }),
-      User.countDocuments({ companyId, activo: true }),
-      Role.countDocuments({ companyId }),
-      AuditLog.countDocuments({ companyId }),
-      DatabaseFile.countDocuments({ companyId, activa: true }),
-      Record.countDocuments({ companyId }),
-      CompanySetting.findOne({ companyId }).lean(),
-    ]);
+  const [
+    usersTotal,
+    activeUsers,
+    rolesTotal,
+    auditEvents,
+    activeFiles,
+    totalFiles,
+    recordsTotal,
+    settings,
+    latestAudit,
+    recentRecords,
+    files,
+  ] = await Promise.all([
+    User.countDocuments({ companyId }),
+    User.countDocuments({ companyId, activo: true }),
+    Role.countDocuments({ companyId }),
+    AuditLog.countDocuments({ companyId }),
+    DatabaseFile.countDocuments({ companyId, activa: true }),
+    DatabaseFile.countDocuments({ companyId }),
+    Record.countDocuments({ companyId }),
+    CompanySetting.findOne({ companyId }).lean(),
+    AuditLog.find({ companyId }).sort({ createdAt: -1 }).limit(6).lean(),
+    Record.find({ companyId }).sort({ createdAt: -1 }).limit(2000).lean(),
+    DatabaseFile.find({ companyId }).sort({ fechaSubida: -1 }).limit(20).lean(),
+  ]);
 
-  const latestAudit = await AuditLog.find({ companyId })
-    .sort({ createdAt: -1 })
-    .limit(6)
-    .lean();
+  const roleDistribution = groupCount(recentRecords, "rol").slice(0, 8);
+  const importTimeline = groupTimeline(files.map((file) => ({ createdAt: file.fechaSubida })));
+  const fileRanking = files
+    .map((file) => ({ label: file.nombreVisible, value: file.registros || 0 }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 6);
 
   res.json({
     cards: [
       { label: "Usuarios activos", value: activeUsers, hint: `${usersTotal} usuarios totales` },
       { label: "Roles configurados", value: rolesTotal, hint: "Accesos por empresa" },
-      { label: "Archivos activos", value: activeFiles, hint: "Bases disponibles" },
+      { label: "Bases activas", value: activeFiles, hint: `${totalFiles} archivos historicos` },
       { label: "Registros importados", value: recordsTotal, hint: "Datos listos para explotar" },
     ],
     latestAudit,
@@ -46,6 +90,11 @@ router.get("/summary", auth, async (req, res) => {
       totalAuditEvents: auditEvents,
       tokenWindow: "8 horas",
       permissionsInSession: req.user.permisos?.length || 0,
+    },
+    charts: {
+      roleDistribution,
+      importTimeline,
+      fileRanking,
     },
   });
 });

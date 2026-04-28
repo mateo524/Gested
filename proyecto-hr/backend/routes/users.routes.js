@@ -6,14 +6,33 @@ import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
+import { generateTempPassword } from "../utils/password.js";
 
 const router = express.Router();
 
 router.get("/", auth, permit("manage_users"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
-  const users = await User.find({ companyId, isSuperAdmin: false })
+  const search = req.query.q?.trim();
+  const onlyActive =
+    req.query.activo === "true" ? true : req.query.activo === "false" ? false : null;
+
+  const filters = { companyId, isSuperAdmin: false };
+
+  if (typeof onlyActive === "boolean") {
+    filters.activo = onlyActive;
+  }
+
+  if (search) {
+    filters.$or = [
+      { nombre: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const users = await User.find(filters)
     .select("-passwordHash")
-    .populate("roleId", "nombre permisos");
+    .populate("roleId", "nombre permisos")
+    .sort({ nombre: 1 });
 
   res.json(users);
 });
@@ -22,7 +41,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   const { nombre, email, password, roleId, activo = true } = req.body;
   const { companyId } = await resolveCompanyScope(req);
 
-  if (!nombre || !email || !password || !roleId) {
+  if (!nombre || !email || !roleId) {
     return res.status(400).json({ mensaje: "Faltan datos obligatorios del usuario" });
   }
 
@@ -34,17 +53,21 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
 
   const role = await Role.findOne({ _id: roleId, companyId });
   if (!role || String(role.companyId) !== String(companyId)) {
-    return res.status(400).json({ mensaje: "El rol seleccionado no es válido" });
+    return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  const generatedPassword = password?.trim() || generateTempPassword();
+  const mustChangePassword = !password?.trim();
+
+  const passwordHash = await bcrypt.hash(generatedPassword, 10);
   const user = await User.create({
     companyId,
-    nombre,
+    nombre: nombre.trim(),
     email: normalizedEmail,
     passwordHash,
     roleId,
     activo,
+    mustChangePassword,
   });
 
   await logAudit({
@@ -59,7 +82,11 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
     .select("-passwordHash")
     .populate("roleId", "nombre permisos");
 
-  res.status(201).json({ mensaje: "Usuario creado", user: hydratedUser });
+  res.status(201).json({
+    mensaje: "Usuario creado",
+    user: hydratedUser,
+    temporaryPassword: mustChangePassword ? generatedPassword : null,
+  });
 });
 
 router.put("/:id", auth, permit("manage_users"), async (req, res) => {
@@ -77,7 +104,7 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     return res.status(404).json({ mensaje: "Usuario no encontrado" });
   }
 
-  if (nombre) update.nombre = nombre;
+  if (nombre) update.nombre = nombre.trim();
   if (typeof activo === "boolean") update.activo = activo;
 
   if (email) {
@@ -97,7 +124,7 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
   if (roleId) {
     const role = await Role.findOne({ _id: roleId, companyId: user.companyId });
     if (!role) {
-      return res.status(400).json({ mensaje: "El rol seleccionado no es válido" });
+      return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
     }
 
     update.roleId = roleId;
@@ -105,6 +132,7 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
 
   if (password) {
     update.passwordHash = await bcrypt.hash(password, 10);
+    update.mustChangePassword = false;
   }
 
   const updatedUser = await User.findByIdAndUpdate(req.params.id, update, {
@@ -126,12 +154,13 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
 
 router.delete("/:id", auth, permit("manage_users"), async (req, res) => {
   if (String(req.params.id) === String(req.user.userId)) {
-    return res.status(400).json({ mensaje: "No podés eliminar tu propio usuario" });
+    return res.status(400).json({ mensaje: "No puedes eliminar tu propio usuario" });
   }
 
+  const { companyId } = await resolveCompanyScope(req);
   const user = await User.findOneAndDelete({
     _id: req.params.id,
-    companyId: (await resolveCompanyScope(req)).companyId,
+    companyId,
     isSuperAdmin: false,
   });
 

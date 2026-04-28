@@ -6,9 +6,7 @@ const ACTIVE_COMPANY_KEY = "active_company_id";
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user") || "null")
-  );
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
   const [companies, setCompanies] = useState([]);
   const [activeCompanyId, setActiveCompanyIdState] = useState(
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
@@ -23,6 +21,13 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem(ACTIVE_COMPANY_KEY, companyId);
     setActiveCompanyIdState(companyId);
+  };
+
+  const applySession = (nextToken, nextUser) => {
+    localStorage.setItem("token", nextToken);
+    localStorage.setItem("user", JSON.stringify(nextUser));
+    setToken(nextToken);
+    setUser(nextUser);
   };
 
   const fetchCompanies = async (nextToken, nextUser) => {
@@ -49,12 +54,14 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const login = async ({ token, user }) => {
-    localStorage.setItem("token", token);
-    localStorage.setItem("user", JSON.stringify(user));
-    setToken(token);
-    setUser(user);
-    await fetchCompanies(token, user);
+  const login = async ({ token: nextToken, user: nextUser }) => {
+    applySession(nextToken, nextUser);
+    await fetchCompanies(nextToken, nextUser);
+  };
+
+  const updateSession = async ({ token: nextToken, user: nextUser }) => {
+    applySession(nextToken || token, nextUser);
+    await fetchCompanies(nextToken || token, nextUser);
   };
 
   const logout = () => {
@@ -79,8 +86,7 @@ export function AuthProvider({ children }) {
       .catch(() => logout());
   }, [token]);
 
-  const activeCompany =
-    companies.find((company) => company._id === activeCompanyId) || null;
+  const activeCompany = companies.find((company) => company._id === activeCompanyId) || null;
 
   const value = useMemo(
     () => ({
@@ -92,6 +98,7 @@ export function AuthProvider({ children }) {
       setActiveCompanyId,
       refreshCompanies: () => fetchCompanies(token, user),
       login,
+      updateSession,
       logout,
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
