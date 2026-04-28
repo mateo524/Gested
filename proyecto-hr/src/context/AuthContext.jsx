@@ -31,17 +31,21 @@ export function AuthProvider({ children }) {
       return;
     }
 
-    const companyList = await apiFetch("/companies", { token: nextToken });
-    setCompanies(companyList);
+    try {
+      const companyList = await apiFetch("/companies", { token: nextToken });
+      setCompanies(companyList);
 
-    const nextCompanyId =
-      localStorage.getItem(ACTIVE_COMPANY_KEY) ||
-      nextUser.companyId ||
-      companyList[0]?._id ||
-      "";
+      const nextCompanyId =
+        localStorage.getItem(ACTIVE_COMPANY_KEY) ||
+        nextUser.companyId ||
+        companyList[0]?._id ||
+        "";
 
-    if (nextCompanyId) {
-      setActiveCompanyId(nextCompanyId);
+      if (nextCompanyId) {
+        setActiveCompanyId(nextCompanyId);
+      }
+    } catch {
+      setCompanies([]);
     }
   };
 
