@@ -18,6 +18,7 @@ router.get("/", auth, permit("manage_companies"), async (req, res) => {
   res.json(
     companies.map((company) => ({
       ...company,
+      slug: company.slug || company.nombre.toLowerCase().replace(/\s+/g, "-"),
       usersCount: users.filter(
         (user) => String(user.companyId) === String(company._id) && !user.isSuperAdmin
       ).length,
