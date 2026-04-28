@@ -9,9 +9,10 @@ import RolesPage from "./pages/RolesPage";
 import AuditPage from "./pages/AuditPage";
 import ExportPage from "./pages/ExportPage";
 import SettingsPage from "./pages/SettingsPage";
+import ForcePasswordPage from "./pages/ForcePasswordPage";
 
 function AppContent() {
-  const { isAuthenticated, hasPermission } = useAuth();
+  const { isAuthenticated, hasPermission, user } = useAuth();
   const [view, setView] = useState("dashboard");
 
   const availableViews = [
@@ -32,6 +33,10 @@ function AppContent() {
 
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  if (user?.mustChangePassword) {
+    return <ForcePasswordPage />;
   }
 
   return (

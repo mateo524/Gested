@@ -80,6 +80,7 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
       passwordHash: await bcrypt.hash(generatedPassword, 10),
       activo: true,
       isSuperAdmin: false,
+      mustChangePassword: true,
     });
   }
 
@@ -118,6 +119,14 @@ router.put("/:id", auth, permit("manage_companies"), async (req, res) => {
   if (typeof activa === "boolean") company.activa = activa;
 
   await company.save();
+
+  await logAudit({
+    companyId: company._id,
+    userId: req.user.userId,
+    accion: "update",
+    modulo: "companies",
+    detalle: `Empresa actualizada: ${company.nombre} (${company.activa ? "activa" : "inactiva"})`,
+  });
 
   res.json({ mensaje: "Empresa actualizada", company });
 });

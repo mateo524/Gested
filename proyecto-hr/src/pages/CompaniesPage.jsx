@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -26,6 +26,18 @@ export default function CompaniesPage() {
   const [message, setMessage] = useState("");
   const [provisionedAccess, setProvisionedAccess] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const filteredCompanies = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return companies;
+
+    return companies.filter((company) =>
+      [company.nombre, company.slug]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [companies, query]);
 
   async function loadCompanies() {
     const data = await apiFetch("/companies", { token });
@@ -93,27 +105,42 @@ export default function CompaniesPage() {
     }
   }
 
+  const activeCount = companies.filter((company) => company.activa).length;
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-xs uppercase tracking-[0.22em] text-emerald-500">
-          Alta de clientes
-        </p>
-        <h3 className="mt-3 text-3xl font-semibold text-slate-950">
-          Crear empresa y acceso inicial
-        </h3>
+        <p className="text-xs uppercase tracking-[0.22em] text-emerald-500">Alta de clientes</p>
+        <h3 className="mt-3 text-3xl font-semibold text-slate-950">Crear empresa y acceso inicial</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
-          Gested puede dejar lista una empresa con su administrador inicial para que
-          entre, vea solo su informacion y opere dentro del alcance que le asignamos.
+          Gested puede dejar lista una empresa con su administrador inicial para que entre, vea
+          solo su informacion y opere dentro del alcance asignado. Si no defines password, se crea
+          una temporal y el sistema pedira cambio al primer ingreso.
         </p>
+      </section>
+
+      <section className="grid gap-6 md:grid-cols-3">
+        <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Empresas</p>
+          <h3 className="mt-4 text-4xl font-bold text-slate-950">{companies.length}</h3>
+          <p className="mt-2 text-sm text-slate-500">Cuentas dadas de alta en la plataforma.</p>
+        </article>
+        <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Activas</p>
+          <h3 className="mt-4 text-4xl font-bold text-slate-950">{activeCount}</h3>
+          <p className="mt-2 text-sm text-slate-500">Con acceso habilitado para operar.</p>
+        </article>
+        <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Aisladas</p>
+          <h3 className="mt-4 text-4xl font-bold text-slate-950">{companies.length}</h3>
+          <p className="mt-2 text-sm text-slate-500">Cada una con datos y permisos propios.</p>
+        </article>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h4 className="text-xl font-semibold">Nueva empresa</h4>
-          <p className="mt-1 text-slate-500">
-            Completa los datos del cliente y deja provisionado su acceso.
-          </p>
+          <p className="mt-1 text-slate-500">Completa los datos del cliente y deja provisionado su acceso.</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <input
@@ -138,26 +165,20 @@ export default function CompaniesPage() {
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
               placeholder="Nombre del admin de empresa"
               value={form.adminNombre}
-              onChange={(event) =>
-                setForm({ ...form, adminNombre: event.target.value })
-              }
+              onChange={(event) => setForm({ ...form, adminNombre: event.target.value })}
             />
             <input
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
               placeholder="Correo del administrador"
               value={form.adminEmail}
-              onChange={(event) =>
-                setForm({ ...form, adminEmail: event.target.value })
-              }
+              onChange={(event) => setForm({ ...form, adminEmail: event.target.value })}
             />
             <input
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
               type="password"
-              placeholder="Contrasena inicial (opcional)"
+              placeholder="Password inicial (opcional)"
               value={form.adminPassword}
-              onChange={(event) =>
-                setForm({ ...form, adminPassword: event.target.value })
-              }
+              onChange={(event) => setForm({ ...form, adminPassword: event.target.value })}
             />
 
             <button
@@ -173,9 +194,7 @@ export default function CompaniesPage() {
 
           {provisionedAccess ? (
             <div className="mt-6 rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">
-                Acceso generado
-              </p>
+              <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">Acceso generado</p>
               <div className="mt-3 space-y-2 text-sm text-slate-700">
                 <p>Empresa: {provisionedAccess.empresa}</p>
                 <p>Admin: {provisionedAccess.admin}</p>
@@ -187,13 +206,24 @@ export default function CompaniesPage() {
         </section>
 
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Empresas registradas</h4>
-          <p className="mt-1 text-slate-500">
-            Cada empresa mantiene aislados sus usuarios, roles, auditoria y contenido.
-          </p>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h4 className="text-xl font-semibold">Empresas registradas</h4>
+              <p className="mt-1 text-slate-500">
+                Cada empresa mantiene aislados sus usuarios, roles, trazabilidad y contenido.
+              </p>
+            </div>
+
+            <input
+              className="w-full max-w-xs rounded-2xl border border-slate-300 px-4 py-3"
+              placeholder="Buscar por empresa o slug"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </div>
 
           <div className="mt-6 space-y-4">
-            {companies.map((company) => (
+            {filteredCompanies.map((company) => (
               <article key={company._id} className="rounded-3xl border border-slate-200 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -201,18 +231,14 @@ export default function CompaniesPage() {
                       <p className="text-lg font-semibold">{company.nombre}</p>
                       <span
                         className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          company.activa
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-amber-50 text-amber-700"
+                          company.activa ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
                         }`}
                       >
                         {company.activa ? "Activa" : "Inactiva"}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-slate-500">Slug: {company.slug}</p>
-                    <p className="mt-1 text-sm text-slate-500">
-                      Usuarios asignados: {company.usersCount || 0}
-                    </p>
+                    <p className="mt-1 text-sm text-slate-500">Usuarios asignados: {company.usersCount || 0}</p>
                   </div>
 
                   <button

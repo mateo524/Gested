@@ -41,6 +41,10 @@ async function getActiveRecords(companyId) {
   }).lean();
 }
 
+async function getRecordsByFile(databaseId) {
+  return Record.find({ databaseId }).lean();
+}
+
 function groupCount(items, key, fallback = "Sin dato") {
   const map = new Map();
 
@@ -81,6 +85,10 @@ router.get("/overview", auth, permit("export_reports"), async (req, res) => {
   const roles = groupCount(records, "rol");
   const domains = groupDomains(records);
   const latestFile = files[0] || null;
+  const fileStats = files.map((file) => ({
+    ...file,
+    isActive: !!file.activa,
+  }));
 
   res.json({
     summary: {
@@ -92,7 +100,7 @@ router.get("/overview", auth, permit("export_reports"), async (req, res) => {
     },
     roles: roles.slice(0, 8),
     domains: domains.slice(0, 8),
-    files: files.slice(0, 8),
+    files: fileStats.slice(0, 12),
     recentRecords: records.slice(0, 12),
   });
 });
@@ -144,7 +152,7 @@ router.post(
 
     await logAudit({
       companyId,
-      userId: req.user.id,
+      userId: req.user.userId,
       accion: "importacion",
       modulo: "datos",
       detalle: `Se importo ${databaseFile.nombreVisible} con ${extracted.registros} registros`,
@@ -161,6 +169,80 @@ router.post(
     });
   }
 );
+
+router.put("/:id/status", auth, permit("export_reports"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const file = await DatabaseFile.findOne({ _id: req.params.id, companyId });
+
+  if (!file) {
+    return res.status(404).json({ mensaje: "Base no encontrada" });
+  }
+
+  file.activa = typeof req.body.activa === "boolean" ? req.body.activa : !file.activa;
+  await file.save();
+
+  await logAudit({
+    companyId,
+    userId: req.user.userId,
+    accion: "actualizacion",
+    modulo: "datos",
+    detalle: `${file.nombreVisible} quedo ${file.activa ? "activa" : "inactiva"} para analisis`,
+  });
+
+  res.json({ mensaje: "Estado de la base actualizado", file });
+});
+
+router.get("/compare", auth, permit("export_reports"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const leftId = req.query.left;
+  const rightId = req.query.right;
+
+  if (!leftId || !rightId) {
+    return res.status(400).json({ mensaje: "Selecciona dos bases para comparar" });
+  }
+
+  const [leftFile, rightFile] = await Promise.all([
+    DatabaseFile.findOne({ _id: leftId, companyId }).lean(),
+    DatabaseFile.findOne({ _id: rightId, companyId }).lean(),
+  ]);
+
+  if (!leftFile || !rightFile) {
+    return res.status(404).json({ mensaje: "No se encontraron las bases seleccionadas" });
+  }
+
+  const [leftRecords, rightRecords] = await Promise.all([
+    getRecordsByFile(leftFile._id),
+    getRecordsByFile(rightFile._id),
+  ]);
+
+  const leftEmails = new Set(leftRecords.map((item) => item.email).filter(Boolean));
+  const rightEmails = new Set(rightRecords.map((item) => item.email).filter(Boolean));
+  let sharedEmails = 0;
+
+  leftEmails.forEach((email) => {
+    if (rightEmails.has(email)) sharedEmails += 1;
+  });
+
+  res.json({
+    left: {
+      id: leftFile._id,
+      nombreVisible: leftFile.nombreVisible,
+      registros: leftRecords.length,
+      roles: groupCount(leftRecords, "rol").slice(0, 6),
+    },
+    right: {
+      id: rightFile._id,
+      nombreVisible: rightFile.nombreVisible,
+      registros: rightRecords.length,
+      roles: groupCount(rightRecords, "rol").slice(0, 6),
+    },
+    overlap: {
+      sharedEmails,
+      leftUniqueEmails: Math.max(leftEmails.size - sharedEmails, 0),
+      rightUniqueEmails: Math.max(rightEmails.size - sharedEmails, 0),
+    },
+  });
+});
 
 router.get("/csv", auth, permit("export_reports"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);

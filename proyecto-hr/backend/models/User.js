@@ -17,6 +17,7 @@ const UserSchema = new mongoose.Schema(
     passwordHash: { type: String, required: true },
     activo: { type: Boolean, default: true },
     isSuperAdmin: { type: Boolean, default: false },
+    mustChangePassword: { type: Boolean, default: false },
   },
   { timestamps: true }
 );
