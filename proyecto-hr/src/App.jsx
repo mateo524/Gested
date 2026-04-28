@@ -1,37 +1,50 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
-import DashboardPage from "./pages/DashboardPage";
-import CompaniesPage from "./pages/CompaniesPage";
-import UsersPage from "./pages/UsersPage";
-import RolesPage from "./pages/RolesPage";
-import AuditPage from "./pages/AuditPage";
-import ExportPage from "./pages/ExportPage";
-import SettingsPage from "./pages/SettingsPage";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
-import RecordsPage from "./pages/RecordsPage";
+
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const CompaniesPage = lazy(() => import("./pages/CompaniesPage"));
+const UsersPage = lazy(() => import("./pages/UsersPage"));
+const RolesPage = lazy(() => import("./pages/RolesPage"));
+const AuditPage = lazy(() => import("./pages/AuditPage"));
+const RecordsPage = lazy(() => import("./pages/RecordsPage"));
+const ExportPage = lazy(() => import("./pages/ExportPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+
+function ViewLoader() {
+  return (
+    <div className="rounded-[2rem] border border-slate-200 bg-white p-8 text-slate-500 shadow-sm">
+      Cargando modulo...
+    </div>
+  );
+}
 
 function AppContent() {
   const { isAuthenticated, hasPermission, user } = useAuth();
   const [view, setView] = useState("dashboard");
 
-  const availableViews = [
-    "dashboard",
-    hasPermission("manage_companies") ? "empresas" : null,
-    hasPermission("manage_users") ? "usuarios" : null,
-    hasPermission("manage_roles") ? "roles" : null,
-    hasPermission("view_audit") ? "auditoria" : null,
-    hasPermission("export_reports") ? "registros" : null,
-    hasPermission("export_reports") ? "exportaciones" : null,
-    hasPermission("manage_settings") ? "parametros" : null,
-  ].filter(Boolean);
+  const availableViews = useMemo(
+    () =>
+      [
+        "dashboard",
+        hasPermission("manage_companies") ? "empresas" : null,
+        hasPermission("manage_users") ? "usuarios" : null,
+        hasPermission("manage_roles") ? "roles" : null,
+        hasPermission("view_audit") ? "auditoria" : null,
+        hasPermission("export_reports") ? "registros" : null,
+        hasPermission("export_reports") ? "exportaciones" : null,
+        hasPermission("manage_settings") ? "parametros" : null,
+      ].filter(Boolean),
+    [hasPermission, user]
+  );
 
   useEffect(() => {
     if (!availableViews.includes(view)) {
       setView(availableViews[0] || "dashboard");
     }
-  }, [view, availableViews.join("|")]);
+  }, [view, availableViews]);
 
   if (!isAuthenticated) {
     return <LoginPage />;
@@ -43,14 +56,16 @@ function AppContent() {
 
   return (
     <AppShell view={view} setView={setView}>
-      {view === "dashboard" && <DashboardPage />}
-      {view === "empresas" && <CompaniesPage />}
-      {view === "usuarios" && <UsersPage />}
-      {view === "roles" && <RolesPage />}
-      {view === "auditoria" && <AuditPage />}
-      {view === "registros" && <RecordsPage />}
-      {view === "exportaciones" && <ExportPage />}
-      {view === "parametros" && <SettingsPage />}
+      <Suspense fallback={<ViewLoader />}>
+        {view === "dashboard" && <DashboardPage />}
+        {view === "empresas" && <CompaniesPage />}
+        {view === "usuarios" && <UsersPage />}
+        {view === "roles" && <RolesPage />}
+        {view === "auditoria" && <AuditPage />}
+        {view === "registros" && <RecordsPage />}
+        {view === "exportaciones" && <ExportPage />}
+        {view === "parametros" && <SettingsPage />}
+      </Suspense>
     </AppShell>
   );
 }

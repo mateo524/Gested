@@ -89,6 +89,77 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   });
 });
 
+router.post("/bulk", auth, permit("manage_users"), async (req, res) => {
+  const { action, userIds = [] } = req.body;
+  const { companyId } = await resolveCompanyScope(req);
+
+  if (!action || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ mensaje: "Debes indicar accion y usuarios" });
+  }
+
+  const users = await User.find({
+    _id: { $in: userIds },
+    companyId,
+    isSuperAdmin: false,
+  });
+
+  if (!users.length) {
+    return res.status(404).json({ mensaje: "No se encontraron usuarios para procesar" });
+  }
+
+  let temporaryPasswords = [];
+
+  if (action === "activate") {
+    await User.updateMany({ _id: { $in: users.map((user) => user._id) } }, { activo: true });
+  } else if (action === "deactivate") {
+    const ownId = String(req.user.userId);
+    if (users.some((user) => String(user._id) === ownId)) {
+      return res.status(400).json({ mensaje: "No puedes desactivar tu propio usuario" });
+    }
+
+    await User.updateMany({ _id: { $in: users.map((user) => user._id) } }, { activo: false });
+  } else if (action === "delete") {
+    const ownId = String(req.user.userId);
+    if (users.some((user) => String(user._id) === ownId)) {
+      return res.status(400).json({ mensaje: "No puedes eliminar tu propio usuario" });
+    }
+
+    await User.deleteMany({ _id: { $in: users.map((user) => user._id) } });
+  } else if (action === "reset_password") {
+    temporaryPasswords = await Promise.all(
+      users.map(async (user) => {
+        const tempPassword = generateTempPassword();
+        user.passwordHash = await bcrypt.hash(tempPassword, 10);
+        user.mustChangePassword = true;
+        await user.save();
+
+        return {
+          _id: user._id,
+          nombre: user.nombre,
+          email: user.email,
+          temporaryPassword: tempPassword,
+        };
+      })
+    );
+  } else {
+    return res.status(400).json({ mensaje: "Accion masiva no valida" });
+  }
+
+  await logAudit({
+    companyId,
+    userId: req.user.userId,
+    accion: "bulk",
+    modulo: "users",
+    detalle: `Accion masiva ${action} sobre ${users.length} usuario(s)`,
+  });
+
+  res.json({
+    mensaje: "Accion masiva aplicada",
+    processed: users.length,
+    temporaryPasswords,
+  });
+});
+
 router.put("/:id", auth, permit("manage_users"), async (req, res) => {
   const { nombre, email, password, roleId, activo } = req.body;
   const update = {};
