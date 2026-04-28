@@ -25,6 +25,27 @@ const DEFAULT_ADMIN = {
   companySlug: process.env.SEED_COMPANY_SLUG || "empresa-demo",
 };
 
+async function ensureRole({ companyId, nombre, permisos }) {
+  let role = await Role.findOne({ companyId, nombre });
+
+  if (!role) {
+    role = await Role.create({
+      companyId,
+      nombre,
+      permisos,
+    });
+    return role;
+  }
+
+  const mergedPermissions = Array.from(new Set([...(role.permisos || []), ...permisos]));
+  if (mergedPermissions.length !== role.permisos.length) {
+    role.permisos = mergedPermissions;
+    await role.save();
+  }
+
+  return role;
+}
+
 export async function ensureCompanyStructure({ companyName, companySlug }) {
   let company = await Company.findOne({ nombre: companyName });
 
@@ -35,27 +56,11 @@ export async function ensureCompanyStructure({ companyName, companySlug }) {
     });
   }
 
-  let adminRole = await Role.findOne({
+  const adminRole = await ensureRole({
     companyId: company._id,
     nombre: "Admin",
+    permisos: COMPANY_ADMIN_PERMISSIONS,
   });
-
-  if (!adminRole) {
-    adminRole = await Role.create({
-      companyId: company._id,
-      nombre: "Admin",
-      permisos: COMPANY_ADMIN_PERMISSIONS,
-    });
-  } else {
-    const mergedPermissions = Array.from(
-      new Set([...(adminRole.permisos || []), ...COMPANY_ADMIN_PERMISSIONS])
-    );
-
-    if (mergedPermissions.length !== adminRole.permisos.length) {
-      adminRole.permisos = mergedPermissions;
-      await adminRole.save();
-    }
-  }
 
   const settings = await CompanySetting.findOne({ companyId: company._id });
   if (!settings) {
@@ -76,11 +81,17 @@ export async function ensureInitialAccess() {
     companySlug: DEFAULT_ADMIN.companySlug,
   });
 
+  const superAdminRole = await ensureRole({
+    companyId: company._id,
+    nombre: "Super Admin",
+    permisos: SUPER_ADMIN_PERMISSIONS,
+  });
+
   let superAdmin = await User.findOne({ email: DEFAULT_ADMIN.email.toLowerCase() });
   if (!superAdmin) {
     superAdmin = await User.create({
       companyId: company._id,
-      roleId: adminRole._id,
+      roleId: superAdminRole._id,
       nombre: DEFAULT_ADMIN.nombre,
       email: DEFAULT_ADMIN.email.toLowerCase(),
       passwordHash: await bcrypt.hash(DEFAULT_ADMIN.password, 10),
@@ -88,14 +99,28 @@ export async function ensureInitialAccess() {
       isSuperAdmin: true,
     });
     console.log("Bootstrap: super admin inicial creado");
-  } else if (!superAdmin.isSuperAdmin) {
-    superAdmin.isSuperAdmin = true;
-    await superAdmin.save();
+  } else {
+    let changed = false;
+
+    if (!superAdmin.isSuperAdmin) {
+      superAdmin.isSuperAdmin = true;
+      changed = true;
+    }
+
+    if (String(superAdmin.roleId) !== String(superAdminRole._id)) {
+      superAdmin.roleId = superAdminRole._id;
+      changed = true;
+    }
+
+    if (changed) {
+      await superAdmin.save();
+    }
   }
 
   return {
     company,
     adminRole,
+    superAdminRole,
     adminUser: superAdmin,
     credentials: {
       email: DEFAULT_ADMIN.email,
