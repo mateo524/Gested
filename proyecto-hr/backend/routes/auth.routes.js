@@ -63,6 +63,14 @@ router.post("/login", async (req, res) => {
     }
 
     const safeUser = await buildSafeUser(user);
+
+    if (!safeUser.isSuperAdmin) {
+      const company = await Company.findById(user.companyId).lean();
+      if (!company?.activa) {
+        return res.status(403).json({ mensaje: "La empresa tiene el acceso suspendido" });
+      }
+    }
+
     const token = buildToken(user, safeUser);
 
     res.json({ mensaje: "Login correcto", token, user: safeUser });
@@ -83,7 +91,16 @@ router.get("/me", auth, async (req, res) => {
       return res.status(404).json({ mensaje: "Usuario no encontrado" });
     }
 
-    res.json(await buildSafeUser(user));
+    const safeUser = await buildSafeUser(user);
+
+    if (!safeUser.isSuperAdmin) {
+      const company = await Company.findById(user.companyId).lean();
+      if (!company?.activa) {
+        return res.status(403).json({ mensaje: "La empresa tiene el acceso suspendido" });
+      }
+    }
+
+    res.json(safeUser);
   } catch {
     res.status(401).json({ mensaje: "Token invalido" });
   }

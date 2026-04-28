@@ -10,6 +10,7 @@ import AuditPage from "./pages/AuditPage";
 import ExportPage from "./pages/ExportPage";
 import SettingsPage from "./pages/SettingsPage";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
+import RecordsPage from "./pages/RecordsPage";
 
 function AppContent() {
   const { isAuthenticated, hasPermission, user } = useAuth();
@@ -21,6 +22,7 @@ function AppContent() {
     hasPermission("manage_users") ? "usuarios" : null,
     hasPermission("manage_roles") ? "roles" : null,
     hasPermission("view_audit") ? "auditoria" : null,
+    hasPermission("export_reports") ? "registros" : null,
     hasPermission("export_reports") ? "exportaciones" : null,
     hasPermission("manage_settings") ? "parametros" : null,
   ].filter(Boolean);
@@ -46,6 +48,7 @@ function AppContent() {
       {view === "usuarios" && <UsersPage />}
       {view === "roles" && <RolesPage />}
       {view === "auditoria" && <AuditPage />}
+      {view === "registros" && <RecordsPage />}
       {view === "exportaciones" && <ExportPage />}
       {view === "parametros" && <SettingsPage />}
     </AppShell>

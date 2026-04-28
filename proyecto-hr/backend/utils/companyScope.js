@@ -33,5 +33,11 @@ export async function resolveCompanyScope(req) {
     throw error;
   }
 
+  if (company.activa === false) {
+    const error = new Error("La empresa tiene el acceso suspendido");
+    error.status = 403;
+    throw error;
+  }
+
   return { companyId: String(req.user.companyId), company };
 }
