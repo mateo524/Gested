@@ -12,6 +12,8 @@ import auditRoutes from "./routes/audit.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import recordsRoutes from "./routes/records.routes.js";
+import storageRoutes from "./routes/storage.routes.js";
+import announcementsRoutes from "./routes/announcements.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 
 const app = express();
@@ -28,6 +30,8 @@ app.use("/audit", auditRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/export", exportRoutes);
 app.use("/records", recordsRoutes);
+app.use("/storage", storageRoutes);
+app.use("/announcements", announcementsRoutes);
 
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
