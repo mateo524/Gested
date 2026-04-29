@@ -2,7 +2,10 @@ import bcrypt from "bcryptjs";
 import Company from "../models/Company.js";
 import CompanySetting from "../models/CompanySetting.js";
 import Role from "../models/Role.js";
+import School from "../models/School.js";
 import User from "../models/User.js";
+import { ensureEducationalRoles, ensurePermissionsSeed } from "./seedRolesPermissions.js";
+import { PERMISSIONS } from "./permissions.js";
 
 export const COMPANY_ADMIN_PERMISSIONS = [
   "manage_users",
@@ -10,11 +13,24 @@ export const COMPANY_ADMIN_PERMISSIONS = [
   "view_audit",
   "export_reports",
   "manage_settings",
+  PERMISSIONS.MANAGE_SCHOOLS,
+  PERMISSIONS.MANAGE_SCHOOL_USERS,
+  PERMISSIONS.MANAGE_EMPLOYEES,
+  PERMISSIONS.MANAGE_COMPETENCIES,
+  PERMISSIONS.MANAGE_METRICS,
+  PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+  PERMISSIONS.MANAGE_EVALUATIONS,
+  PERMISSIONS.MANAGE_DEVELOPMENT_PLANS,
+  PERMISSIONS.VIEW_REPORTS,
+  PERMISSIONS.DOWNLOAD_REPORTS,
 ];
 
 export const SUPER_ADMIN_PERMISSIONS = [
   ...COMPANY_ADMIN_PERMISSIONS,
   "manage_companies",
+  PERMISSIONS.VIEW_GLOBAL_REPORTS,
+  PERMISSIONS.DOWNLOAD_GLOBAL_DATA,
+  PERMISSIONS.MANAGE_GLOBAL_USERS,
 ];
 
 const DEFAULT_ADMIN = {
@@ -23,6 +39,7 @@ const DEFAULT_ADMIN = {
   nombre: process.env.SEED_ADMIN_NAME || "Administrador General",
   companyName: process.env.SEED_COMPANY_NAME || "Empresa Demo",
   companySlug: process.env.SEED_COMPANY_SLUG || "empresa-demo",
+  schoolName: process.env.SEED_SCHOOL_NAME || "Colegio Demo",
 };
 
 async function ensureRole({ companyId, nombre, permisos }) {
@@ -33,6 +50,8 @@ async function ensureRole({ companyId, nombre, permisos }) {
       companyId,
       nombre,
       permisos,
+      scope: nombre === "Super Admin" ? "global" : "company",
+      code: nombre === "Super Admin" ? "SUPER_ADMIN" : null,
     });
     return role;
   }
@@ -40,6 +59,11 @@ async function ensureRole({ companyId, nombre, permisos }) {
   const mergedPermissions = Array.from(new Set([...(role.permisos || []), ...permisos]));
   if (mergedPermissions.length !== role.permisos.length) {
     role.permisos = mergedPermissions;
+    await role.save();
+  }
+
+  if (!role.scope) {
+    role.scope = nombre === "Super Admin" ? "global" : "company";
     await role.save();
   }
 
@@ -54,6 +78,17 @@ export async function ensureCompanyStructure({ companyName, companySlug }) {
       nombre: companyName,
       slug: companySlug,
       tipoCliente: "general",
+    });
+  }
+
+  let school = await School.findOne({ companyId: company._id, nombre: DEFAULT_ADMIN.schoolName });
+  if (!school) {
+    school = await School.create({
+      companyId: company._id,
+      nombre: DEFAULT_ADMIN.schoolName,
+      codigo: "DEMO",
+      ciudad: "Buenos Aires",
+      provincia: "Buenos Aires",
     });
   }
 
@@ -73,14 +108,16 @@ export async function ensureCompanyStructure({ companyName, companySlug }) {
     });
   }
 
-  return { company, adminRole };
+  return { company, school, adminRole };
 }
 
 export async function ensureInitialAccess() {
-  const { company, adminRole } = await ensureCompanyStructure({
+  await ensurePermissionsSeed();
+  const { company, school, adminRole } = await ensureCompanyStructure({
     companyName: DEFAULT_ADMIN.companyName,
     companySlug: DEFAULT_ADMIN.companySlug,
   });
+  await ensureEducationalRoles({ companyId: company._id, schoolId: school._id });
 
   const superAdminRole = await ensureRole({
     companyId: company._id,
@@ -92,6 +129,7 @@ export async function ensureInitialAccess() {
   if (!superAdmin) {
     superAdmin = await User.create({
       companyId: company._id,
+      schoolId: school._id,
       roleId: superAdminRole._id,
       nombre: DEFAULT_ADMIN.nombre,
       email: DEFAULT_ADMIN.email.toLowerCase(),
@@ -110,6 +148,11 @@ export async function ensureInitialAccess() {
 
     if (String(superAdmin.roleId) !== String(superAdminRole._id)) {
       superAdmin.roleId = superAdminRole._id;
+      changed = true;
+    }
+
+    if (!superAdmin.schoolId) {
+      superAdmin.schoolId = school._id;
       changed = true;
     }
 

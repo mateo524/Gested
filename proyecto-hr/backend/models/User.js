@@ -7,10 +7,22 @@ const UserSchema = new mongoose.Schema(
       ref: "Company",
       required: true,
     },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      default: null,
+      index: true,
+    },
     roleId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Role",
       required: true,
+    },
+    employeeId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Employee",
+      default: null,
+      index: true,
     },
     nombre: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },

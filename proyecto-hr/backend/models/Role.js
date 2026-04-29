@@ -6,11 +6,28 @@ const RoleSchema = new mongoose.Schema({
     ref: "Company",
     required: true,
   },
+  schoolId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "School",
+    default: null,
+    index: true,
+  },
+  code: {
+    type: String,
+    enum: ["SUPER_ADMIN", "ADMIN_COLEGIO", "RRHH", "JEFE", "EMPLEADO", "LECTOR"],
+    default: null,
+  },
   nombre: { type: String, required: true },
   permisos: {
     type: [String],
     default: [],
   },
+  scope: {
+    type: String,
+    enum: ["global", "company", "school", "team", "self", "read_only"],
+    default: "company",
+  },
+  activo: { type: Boolean, default: true },
 });
 
 export default mongoose.model("Role", RoleSchema);
