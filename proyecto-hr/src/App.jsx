@@ -3,6 +3,8 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import DashboardPage from "./pages/DashboardPage";
+import EmployeesPage from "./pages/EmployeesPage";
+import DevelopmentPlansPage from "./pages/DevelopmentPlansPage";
 import UsersPage from "./pages/UsersPage";
 import RolesPage from "./pages/RolesPage";
 import AuditPage from "./pages/AuditPage";
@@ -20,6 +22,8 @@ function AppContent() {
   return (
     <AppShell view={view} setView={setView}>
       {view === "dashboard" && <DashboardPage />}
+      {view === "empleados" && <EmployeesPage />}
+      {view === "planes-desarrollo" && <DevelopmentPlansPage />}
       {view === "usuarios" && <UsersPage />}
       {view === "roles" && <RolesPage />}
       {view === "auditoría" && <AuditPage />}

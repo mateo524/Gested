@@ -9,6 +9,8 @@ import rolesRoutes from "./routes/roles.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import exportRoutes from "./routes/export.routes.js";
+import recordsRoutes from "./routes/records.routes.js";
+import developmentPlansRoutes from "./routes/developmentPlans.routes.js";
 
 const app = express();
 
@@ -26,6 +28,8 @@ app.use("/roles", rolesRoutes);
 app.use("/audit", auditRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/export", exportRoutes);
+app.use("/records", recordsRoutes);
+app.use("/development-plans", developmentPlansRoutes);
 
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
