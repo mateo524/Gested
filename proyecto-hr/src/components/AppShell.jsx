@@ -122,6 +122,24 @@ export default function AppShell({ view, setView, children }) {
   const menuItems = [
     { key: "dashboard", label: "Panel", show: true },
     { key: "novedades", label: "Novedades", show: true },
+    { key: "colegios", label: "Colegios", show: hasPermission("manage_schools") || hasPermission("manage_companies") },
+    { key: "empleados", label: "Empleados", show: hasPermission("manage_employees") },
+    { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies") },
+    { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics") },
+    {
+      key: "ciclos",
+      label: "Ciclos",
+      show: hasPermission("manage_evaluation_cycles") || hasPermission("view_reports"),
+    },
+    {
+      key: "evaluaciones",
+      label: "Evaluaciones",
+      show:
+        hasPermission("manage_evaluations") ||
+        hasPermission("evaluate_team") ||
+        hasPermission("self_evaluate") ||
+        hasPermission("view_reports"),
+    },
     { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
     { key: "archivo-central", label: "Archivo central", show: hasPermission("manage_companies") },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
@@ -147,6 +165,36 @@ export default function AppShell({ view, setView, children }) {
       eyebrow: "Comunicacion",
       title: "Novedades",
       description: "Informacion compartida dentro de la app entre Gested y cada empresa.",
+    },
+    colegios: {
+      eyebrow: "Estructura escolar",
+      title: "Colegios",
+      description: "Sedes y colegios donde se organiza el desempeño, los equipos y los ciclos.",
+    },
+    empleados: {
+      eyebrow: "Talento",
+      title: "Empleados",
+      description: "Docentes y colaboradores organizados por colegio, cargo, area y responsable.",
+    },
+    competencias: {
+      eyebrow: "Modelo",
+      title: "Competencias",
+      description: "Marco competencial para evaluar conocimientos, actitudes y habilidades.",
+    },
+    metricas: {
+      eyebrow: "Modelo",
+      title: "Metricas",
+      description: "Indicadores observables y niveles 1 a 5 para una evaluacion consistente.",
+    },
+    ciclos: {
+      eyebrow: "Calendario",
+      title: "Ciclos de evaluacion",
+      description: "Periodos institucionales que ordenan autoevaluacion, jefatura y cierre final.",
+    },
+    evaluaciones: {
+      eyebrow: "Desempeno",
+      title: "Evaluaciones",
+      description: "Cargas por empleado con puntajes, comentarios y trazabilidad por ciclo.",
     },
     "archivo-central": {
       eyebrow: "Supervision",
