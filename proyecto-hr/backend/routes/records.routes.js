@@ -1,4 +1,5 @@
 import express from "express";
+import { Parser } from "json2csv";
 import Record from "../models/Record.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import { auth } from "../middleware/auth.js";
@@ -7,11 +8,10 @@ import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
-router.get("/", auth, permit("export_reports"), async (req, res) => {
-  const { companyId } = await resolveCompanyScope(req);
-  const q = req.query.q?.trim();
-  const rol = req.query.rol?.trim();
-  const databaseId = req.query.databaseId?.trim();
+function buildFilters(companyId, query) {
+  const q = query.q?.trim();
+  const rol = query.rol?.trim();
+  const databaseId = query.databaseId?.trim();
 
   const filters = { companyId };
   if (rol) filters.rol = rol;
@@ -23,6 +23,13 @@ router.get("/", auth, permit("export_reports"), async (req, res) => {
       { rol: { $regex: q, $options: "i" } },
     ];
   }
+
+  return filters;
+}
+
+router.get("/", auth, permit("export_reports"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const filters = buildFilters(companyId, req.query);
 
   const [records, roles, files] = await Promise.all([
     Record.find(filters).sort({ createdAt: -1 }).limit(300).lean(),
@@ -37,6 +44,21 @@ router.get("/", auth, permit("export_reports"), async (req, res) => {
       files,
     },
   });
+});
+
+router.get("/export", auth, permit("export_reports"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const filters = buildFilters(companyId, req.query);
+  const records = await Record.find(filters).lean();
+
+  const parser = new Parser({
+    fields: ["nombreCompleto", "rol", "email"],
+  });
+
+  const csv = parser.parse(records);
+  res.header("Content-Type", "text/csv");
+  res.attachment("registros-filtrados.csv");
+  res.send(csv);
 });
 
 export default router;

@@ -1,4 +1,7 @@
 import express from "express";
+import fs from "node:fs/promises";
+import path from "node:path";
+import multer from "multer";
 import Announcement from "../models/Announcement.js";
 import Company from "../models/Company.js";
 import { auth } from "../middleware/auth.js";
@@ -7,6 +10,30 @@ import { resolveCompanyScope } from "../utils/companyScope.js";
 import { logAudit } from "../utils/audit.js";
 
 const router = express.Router();
+const uploadsDir = path.resolve("uploads", "announcements");
+
+await fs.mkdir(uploadsDir, { recursive: true });
+
+const storage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, uploadsDir),
+  filename: (_req, file, cb) => {
+    const safeName = file.originalname.replace(/\s+/g, "-");
+    cb(null, `${Date.now()}-${safeName}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 12 * 1024 * 1024 },
+});
+
+function mapAnnouncement(item, currentUserId) {
+  const hasRead = item.readBy?.some((entry) => String(entry.userId) === String(currentUserId));
+  return {
+    ...item,
+    isRead: !!hasRead,
+  };
+}
 
 router.get("/", auth, async (req, res) => {
   if (req.user.isSuperAdmin) {
@@ -19,7 +46,11 @@ router.get("/", auth, async (req, res) => {
       Company.find().select("nombre slug activa").sort({ nombre: 1 }).lean(),
     ]);
 
-    return res.json({ announcements, companies });
+    return res.json({
+      announcements: announcements.map((item) => mapAnnouncement(item, req.user.userId)),
+      companies,
+      unreadCount: 0,
+    });
   }
 
   const { companyId } = await resolveCompanyScope(req);
@@ -28,40 +59,113 @@ router.get("/", auth, async (req, res) => {
     .limit(100)
     .lean();
 
-  res.json({ announcements, companies: [] });
+  const mapped = announcements.map((item) => mapAnnouncement(item, req.user.userId));
+
+  res.json({
+    announcements: mapped,
+    companies: [],
+    unreadCount: mapped.filter((item) => !item.isRead).length,
+  });
 });
 
-router.post("/", auth, permit("manage_companies"), async (req, res) => {
-  const { companyId, titulo, cuerpo, prioridad = "informativa", categoria = "general" } = req.body;
-
-  if (!companyId || !titulo?.trim() || !cuerpo?.trim()) {
-    return res.status(400).json({ mensaje: "Debes completar empresa, titulo y contenido" });
+router.get("/summary", auth, async (req, res) => {
+  if (req.user.isSuperAdmin) {
+    const companies = await Company.find().select("nombre slug activa").sort({ nombre: 1 }).lean();
+    return res.json({ unreadCount: 0, latest: [], companies });
   }
 
-  const company = await Company.findById(companyId).lean();
-  if (!company) {
-    return res.status(404).json({ mensaje: "Empresa no encontrada" });
+  const { companyId } = await resolveCompanyScope(req);
+  const announcements = await Announcement.find({ companyId, visible: true })
+    .sort({ createdAt: -1 })
+    .limit(6)
+    .lean();
+
+  const mapped = announcements.map((item) => mapAnnouncement(item, req.user.userId));
+
+  res.json({
+    unreadCount: mapped.filter((item) => !item.isRead).length,
+    latest: mapped,
+  });
+});
+
+router.post(
+  "/",
+  auth,
+  permit("manage_companies"),
+  upload.array("attachments", 5),
+  async (req, res) => {
+    const {
+      companyId,
+      titulo,
+      cuerpo,
+      prioridad = "informativa",
+      categoria = "general",
+    } = req.body;
+
+    if (!companyId || !titulo?.trim() || !cuerpo?.trim()) {
+      return res.status(400).json({ mensaje: "Debes completar empresa, titulo y contenido" });
+    }
+
+    const company = await Company.findById(companyId).lean();
+    if (!company) {
+      return res.status(404).json({ mensaje: "Empresa no encontrada" });
+    }
+
+    const attachments = (req.files || []).map((file) => ({
+      nombreOriginal: file.originalname,
+      nombreArchivo: file.filename,
+      mimeType: file.mimetype,
+      extension: path.extname(file.originalname).replace(".", "").toLowerCase(),
+      tipoArchivo: "documento",
+    }));
+
+    const announcement = await Announcement.create({
+      companyId,
+      authorUserId: req.user.userId,
+      titulo: titulo.trim(),
+      cuerpo: cuerpo.trim(),
+      prioridad,
+      categoria,
+      visible: true,
+      attachments,
+    });
+
+    await logAudit({
+      companyId,
+      userId: req.user.userId,
+      accion: "create",
+      modulo: "novedades",
+      detalle: `Se envio una novedad a ${company.nombre}: ${announcement.titulo}`,
+    });
+
+    res.status(201).json({ mensaje: "Novedad enviada", announcement });
+  }
+);
+
+router.post("/:id/read", auth, async (req, res) => {
+  const announcement = await Announcement.findById(req.params.id);
+
+  if (!announcement) {
+    return res.status(404).json({ mensaje: "Novedad no encontrada" });
   }
 
-  const announcement = await Announcement.create({
-    companyId,
-    authorUserId: req.user.userId,
-    titulo: titulo.trim(),
-    cuerpo: cuerpo.trim(),
-    prioridad,
-    categoria,
-    visible: true,
-  });
+  if (!req.user.isSuperAdmin && String(announcement.companyId) !== String(req.user.companyId)) {
+    return res.status(403).json({ mensaje: "No tienes acceso a esta novedad" });
+  }
 
-  await logAudit({
-    companyId,
-    userId: req.user.userId,
-    accion: "create",
-    modulo: "novedades",
-    detalle: `Se envio una novedad a ${company.nombre}: ${announcement.titulo}`,
-  });
+  const exists = announcement.readBy.some(
+    (entry) => String(entry.userId) === String(req.user.userId)
+  );
 
-  res.status(201).json({ mensaje: "Novedad enviada", announcement });
+  if (!exists) {
+    announcement.readBy.push({
+      userId: req.user.userId,
+      readAt: new Date(),
+    });
+    await announcement.save();
+  }
+
+  res.json({ mensaje: "Novedad marcada como leida" });
 });
 
 router.put("/:id/visibility", auth, permit("manage_companies"), async (req, res) => {

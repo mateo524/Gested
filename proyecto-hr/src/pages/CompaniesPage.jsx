@@ -5,6 +5,7 @@ import { apiFetch } from "../lib/api";
 const emptyCompany = {
   nombre: "",
   slug: "",
+  tipoCliente: "general",
   adminNombre: "",
   adminEmail: "",
   adminPassword: "",
@@ -27,26 +28,79 @@ export default function CompaniesPage() {
   const [provisionedAccess, setProvisionedAccess] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
 
   const filteredCompanies = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return companies;
 
     return companies.filter((company) =>
-      [company.nombre, company.slug]
+      [company.nombre, company.slug, company.tipoCliente]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
     );
   }, [companies, query]);
 
+  const allVisibleSelected =
+    filteredCompanies.length > 0 &&
+    filteredCompanies.every((company) => selectedIds.includes(company._id));
+
   async function loadCompanies() {
-    const data = await apiFetch("/companies", { token });
+    const data = await apiFetch(`/companies${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`, { token });
     setCompanies(data);
   }
 
   useEffect(() => {
     loadCompanies().catch((error) => setMessage(error.message));
-  }, [token]);
+  }, [token, query]);
+
+  function toggleSelection(companyId) {
+    setSelectedIds((current) =>
+      current.includes(companyId)
+        ? current.filter((id) => id !== companyId)
+        : [...current, companyId]
+    );
+  }
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelectedIds((current) =>
+        current.filter((id) => !filteredCompanies.some((company) => company._id === id))
+      );
+      return;
+    }
+
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      filteredCompanies.forEach((company) => next.add(company._id));
+      return [...next];
+    });
+  }
+
+  async function runBulkAction(action) {
+    if (!selectedIds.length) {
+      setMessage("Selecciona al menos una empresa");
+      return;
+    }
+
+    try {
+      const data = await apiFetch("/companies/bulk", {
+        method: "POST",
+        token,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, companyIds: selectedIds }),
+      });
+
+      setMessage(data.mensaje);
+      setSelectedIds([]);
+      await loadCompanies();
+      await refreshCompanies();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -114,8 +168,7 @@ export default function CompaniesPage() {
         <h3 className="mt-3 text-3xl font-semibold text-slate-950">Crear empresa y acceso inicial</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
           Gested puede dejar lista una empresa con su administrador inicial para que entre, vea
-          solo su informacion y opere dentro del alcance asignado. Si no defines password, se crea
-          una temporal y el sistema pedira cambio al primer ingreso.
+          solo su informacion y opere dentro del alcance asignado.
         </p>
       </section>
 
@@ -123,17 +176,14 @@ export default function CompaniesPage() {
         <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Empresas</p>
           <h3 className="mt-4 text-4xl font-bold text-slate-950">{companies.length}</h3>
-          <p className="mt-2 text-sm text-slate-500">Cuentas dadas de alta en la plataforma.</p>
         </article>
         <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Activas</p>
           <h3 className="mt-4 text-4xl font-bold text-slate-950">{activeCount}</h3>
-          <p className="mt-2 text-sm text-slate-500">Con acceso habilitado para operar.</p>
         </article>
         <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Aisladas</p>
-          <h3 className="mt-4 text-4xl font-bold text-slate-950">{companies.length}</h3>
-          <p className="mt-2 text-sm text-slate-500">Cada una con datos y permisos propios.</p>
+          <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Seleccionadas</p>
+          <h3 className="mt-4 text-4xl font-bold text-slate-950">{selectedIds.length}</h3>
         </article>
       </section>
 
@@ -161,6 +211,17 @@ export default function CompaniesPage() {
               value={form.slug}
               onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })}
             />
+            <select
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              value={form.tipoCliente}
+              onChange={(event) => setForm({ ...form, tipoCliente: event.target.value })}
+            >
+              <option value="general">General</option>
+              <option value="educacion">Educacion</option>
+              <option value="salud">Salud</option>
+              <option value="operacion">Operacion</option>
+              <option value="servicios">Servicios</option>
+            </select>
             <input
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
               placeholder="Nombre del admin de empresa"
@@ -209,9 +270,7 @@ export default function CompaniesPage() {
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
               <h4 className="text-xl font-semibold">Empresas registradas</h4>
-              <p className="mt-1 text-slate-500">
-                Cada empresa mantiene aislados sus usuarios, roles, trazabilidad y contenido.
-              </p>
+              <p className="mt-1 text-slate-500">Cada empresa mantiene aislados sus usuarios, roles, trazabilidad y contenido.</p>
             </div>
 
             <input
@@ -222,36 +281,77 @@ export default function CompaniesPage() {
             />
           </div>
 
+          <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-slate-600">
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
+                Seleccionar visibles
+              </label>
+              <span className="text-sm text-slate-500">{selectedIds.length} seleccionadas</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => runBulkAction("activate")}
+                className="rounded-2xl border border-emerald-200 px-4 py-2 text-sm font-medium text-emerald-700"
+              >
+                Activar
+              </button>
+              <button
+                type="button"
+                onClick={() => runBulkAction("deactivate")}
+                className="rounded-2xl border border-amber-200 px-4 py-2 text-sm font-medium text-amber-700"
+              >
+                Desactivar
+              </button>
+            </div>
+          </div>
+
           <div className="mt-6 space-y-4">
             {filteredCompanies.map((company) => (
               <article key={company._id} className="rounded-3xl border border-slate-200 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <p className="text-lg font-semibold">{company.nombre}</p>
-                      <span
-                        className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                          company.activa ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"
+                <div className="flex flex-wrap items-start gap-4">
+                  <label className="mt-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(company._id)}
+                      onChange={() => toggleSelection(company._id)}
+                    />
+                  </label>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-3">
+                          <p className="text-lg font-semibold">{company.nombre}</p>
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              company.activa
+                                ? "bg-emerald-50 text-emerald-700"
+                                : "bg-amber-50 text-amber-700"
+                            }`}
+                          >
+                            {company.activa ? "Activa" : "Inactiva"}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-sm text-slate-500">Slug: {company.slug}</p>
+                        <p className="mt-1 text-sm text-slate-500">Tipo: {company.tipoCliente || "general"}</p>
+                        <p className="mt-1 text-sm text-slate-500">Usuarios asignados: {company.usersCount || 0}</p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => toggleCompany(company)}
+                        className={`rounded-2xl px-4 py-2 text-sm font-medium ${
+                          company.activa
+                            ? "border border-amber-200 text-amber-700"
+                            : "border border-emerald-200 text-emerald-700"
                         }`}
                       >
-                        {company.activa ? "Activa" : "Inactiva"}
-                      </span>
+                        {company.activa ? "Desactivar acceso" : "Reactivar acceso"}
+                      </button>
                     </div>
-                    <p className="mt-2 text-sm text-slate-500">Slug: {company.slug}</p>
-                    <p className="mt-1 text-sm text-slate-500">Usuarios asignados: {company.usersCount || 0}</p>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => toggleCompany(company)}
-                    className={`rounded-2xl px-4 py-2 text-sm font-medium ${
-                      company.activa
-                        ? "border border-amber-200 text-amber-700"
-                        : "border border-emerald-200 text-emerald-700"
-                    }`}
-                  >
-                    {company.activa ? "Desactivar acceso" : "Reactivar acceso"}
-                  </button>
                 </div>
               </article>
             ))}

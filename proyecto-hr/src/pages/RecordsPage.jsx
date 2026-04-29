@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiUrl } from "../lib/api";
 
 const emptyFilters = {
   q: "",
@@ -32,6 +32,32 @@ export default function RecordsPage() {
       })
       .catch((error) => setMessage(error.message));
   }, [token, activeCompanyId, queryString]);
+
+  async function exportFilteredRecords() {
+    try {
+      const response = await fetch(`${apiUrl}/records/export${queryString}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("No se pudo exportar la vista filtrada");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "registros-filtrados.csv";
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      setMessage("Exportacion filtrada generada");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -99,14 +125,23 @@ export default function RecordsPage() {
       </section>
 
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <h3 className="text-xl font-semibold">Vista operativa</h3>
             <p className="mt-1 text-slate-500">Muestra util para revisar lo que realmente quedo cargado.</p>
           </div>
-          <span className="rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
-            {records.length} registros
-          </span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
+              {records.length} registros
+            </span>
+            <button
+              type="button"
+              onClick={exportFilteredRecords}
+              className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Exportar vista filtrada
+            </button>
+          </div>
         </div>
 
         {message ? <p className="mt-4 text-red-500">{message}</p> : null}

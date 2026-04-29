@@ -12,6 +12,7 @@ function formatDate(value) {
 const emptyFilters = {
   companyId: "",
   tipoArchivo: "",
+  q: "",
 };
 
 export default function StorageCenterPage() {
@@ -20,6 +21,13 @@ export default function StorageCenterPage() {
   const [detail, setDetail] = useState(null);
   const [filters, setFilters] = useState(emptyFilters);
   const [message, setMessage] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    companyId: "",
+    nombreVisible: "",
+    tipoArchivo: "documento",
+    file: null,
+  });
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -42,6 +50,47 @@ export default function StorageCenterPage() {
       setDetail(next);
     } catch (error) {
       setMessage(error.message);
+    }
+  }
+
+  async function uploadDocument(event) {
+    event.preventDefault();
+
+    if (!uploadForm.companyId || !uploadForm.nombreVisible || !uploadForm.file) {
+      setMessage("Completa empresa, nombre visible y archivo");
+      return;
+    }
+
+    try {
+      setIsUploading(true);
+      setMessage("");
+      const body = new FormData();
+      body.append("companyId", uploadForm.companyId);
+      body.append("nombreVisible", uploadForm.nombreVisible);
+      body.append("tipoArchivo", uploadForm.tipoArchivo);
+      body.append("file", uploadForm.file);
+
+      await apiFetch("/storage/upload", {
+        method: "POST",
+        token,
+        body,
+      });
+
+      setUploadForm({
+        companyId: "",
+        nombreVisible: "",
+        tipoArchivo: "documento",
+        file: null,
+      });
+      setMessage("Documento agregado al archivo central");
+      const input = document.getElementById("storage-upload-file");
+      if (input) input.value = "";
+      const next = await apiFetch(`/storage/overview${queryString}`, { token });
+      setData(next);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setIsUploading(false);
     }
   }
 
@@ -75,7 +124,63 @@ export default function StorageCenterPage() {
         </article>
       </section>
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-xl font-semibold">Subir documento operativo</h3>
+          <p className="mt-1 text-slate-500">
+            Suma contratos, instructivos, PDF o respaldos para que Gested los conserve por empresa.
+          </p>
+
+          <form className="mt-6 space-y-4" onSubmit={uploadDocument}>
+            <select
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              value={uploadForm.companyId}
+              onChange={(event) => setUploadForm({ ...uploadForm, companyId: event.target.value })}
+            >
+              <option value="">Selecciona empresa</option>
+              {data.filters.companies.map((company) => (
+                <option key={company._id} value={company._id}>
+                  {company.nombre}
+                </option>
+              ))}
+            </select>
+
+            <input
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              placeholder="Nombre visible del documento"
+              value={uploadForm.nombreVisible}
+              onChange={(event) => setUploadForm({ ...uploadForm, nombreVisible: event.target.value })}
+            />
+
+            <select
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              value={uploadForm.tipoArchivo}
+              onChange={(event) => setUploadForm({ ...uploadForm, tipoArchivo: event.target.value })}
+            >
+              <option value="documento">Documento</option>
+              <option value="contrato">Contrato</option>
+              <option value="instructivo">Instructivo</option>
+              <option value="respaldo">Respaldo</option>
+            </select>
+
+            <input
+              id="storage-upload-file"
+              type="file"
+              className="block w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm text-slate-500"
+              onChange={(event) => setUploadForm({ ...uploadForm, file: event.target.files?.[0] || null })}
+            />
+
+            <button
+              type="submit"
+              disabled={isUploading}
+              className="rounded-2xl bg-slate-950 px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {isUploading ? "Guardando..." : "Guardar en archivo central"}
+            </button>
+          </form>
+        </div>
+
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-wrap items-end gap-4">
           <label className="min-w-56">
             <span className="mb-2 block text-sm text-slate-500">Empresa</span>
@@ -109,6 +214,16 @@ export default function StorageCenterPage() {
             </select>
           </label>
 
+          <label className="min-w-56 flex-1">
+            <span className="mb-2 block text-sm text-slate-500">Buscar</span>
+            <input
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              placeholder="Nombre, archivo o contenido"
+              value={filters.q}
+              onChange={(event) => setFilters({ ...filters, q: event.target.value })}
+            />
+          </label>
+
           <button
             type="button"
             onClick={() => setFilters(emptyFilters)}
@@ -117,6 +232,7 @@ export default function StorageCenterPage() {
             Limpiar
           </button>
         </div>
+      </section>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
