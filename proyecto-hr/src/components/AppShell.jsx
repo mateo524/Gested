@@ -140,31 +140,20 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("self_evaluate") ||
         hasPermission("view_reports"),
     },
-    { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
-    { key: "archivo-central", label: "Archivo central", show: hasPermission("manage_companies") },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
-    { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
-    { key: "auditoria", label: "Auditoria", show: hasPermission("view_audit") },
-    { key: "registros", label: "Registros", show: hasPermission("export_reports") },
-    { key: "exportaciones", label: "Exportaciones", show: hasPermission("export_reports") },
-    { key: "parametros", label: "Parametros", show: hasPermission("manage_settings") },
+    { key: "parametros", label: "Configuracion", show: hasPermission("manage_settings") },
   ];
 
   const viewMeta = {
     dashboard: {
-      eyebrow: "Vision general",
-      title: "Panel ejecutivo",
-      description: "Indicadores, trazabilidad y foco operativo para la empresa seleccionada.",
-    },
-    empresas: {
-      eyebrow: "Crecimiento",
-      title: "Empresas cliente",
-      description: "Alta, activacion y control de acceso para cada cuenta administrada por Gested.",
+      eyebrow: "Vision institucional",
+      title: "Panel de desempeno",
+      description: "Indicadores, seguimiento y foco operativo para el colegio activo.",
     },
     novedades: {
       eyebrow: "Comunicacion",
       title: "Novedades",
-      description: "Informacion compartida dentro de la app entre Gested y cada empresa.",
+      description: "Avisos, recordatorios y mensajes importantes para el trabajo de cada colegio.",
     },
     colegios: {
       eyebrow: "Estructura escolar",
@@ -196,40 +185,15 @@ export default function AppShell({ view, setView, children }) {
       title: "Evaluaciones",
       description: "Cargas por empleado con puntajes, comentarios y trazabilidad por ciclo.",
     },
-    "archivo-central": {
-      eyebrow: "Supervision",
-      title: "Archivo central",
-      description: "Vista consolidada de archivos y contenido subido por todas las empresas.",
-    },
     usuarios: {
       eyebrow: "Accesos",
       title: "Usuarios",
-      description: "Personas habilitadas para trabajar con datos y modulos dentro de cada empresa.",
-    },
-    roles: {
-      eyebrow: "Gobernanza",
-      title: "Roles y permisos",
-      description: "Definicion clara de quien puede ver, editar, exportar o administrar.",
-    },
-    auditoria: {
-      eyebrow: "Trazabilidad",
-      title: "Auditoria",
-      description: "Registro de movimientos y decisiones sensibles dentro del sistema.",
-    },
-    registros: {
-      eyebrow: "Datos",
-      title: "Registros importados",
-      description: "Lectura operativa de la informacion ya procesada para la empresa activa.",
-    },
-    exportaciones: {
-      eyebrow: "Datos",
-      title: "Importacion y reportes",
-      description: "Carga de bases, lectura visual y exportacion de informacion lista para usar.",
+      description: "Accesos habilitados para directivos, RRHH, jefes, docentes y auditores.",
     },
     parametros: {
       eyebrow: "Configuracion",
-      title: "Parametros",
-      description: "Identidad visible, limites de carga y ajustes operativos por empresa.",
+      title: "Configuracion",
+      description: "Identidad visible, ajustes operativos y criterios generales del colegio.",
     },
   };
 
@@ -286,13 +250,13 @@ export default function AppShell({ view, setView, children }) {
             <LogoMark branding={branding} />
             <div>
               <p className="text-xs uppercase tracking-[0.26em] text-amber-200">{brandName}</p>
-              <p className="text-sm text-slate-400">Gestion de datos</p>
+              <p className="text-sm text-slate-400">Desempeno educativo</p>
             </div>
           </div>
 
-          <h1 className="mt-8 text-2xl font-semibold">Centro de clientes</h1>
+          <h1 className="mt-8 text-2xl font-semibold">Centro de desempeno</h1>
           <p className="mt-3 text-sm leading-6 text-slate-400">
-            Informacion ordenada, accesos controlados y operacion clara para cada empresa.
+            Evaluaciones, competencias y seguimiento claro para cada colegio.
           </p>
 
           <div className="mt-8 space-y-2">
