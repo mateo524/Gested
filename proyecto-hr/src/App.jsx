@@ -51,13 +51,7 @@ function AppContent() {
         hasPermission("view_reports")
           ? "evaluaciones"
           : null,
-        hasPermission("manage_companies") ? "empresas" : null,
-        hasPermission("manage_companies") ? "archivo-central" : null,
         hasPermission("manage_users") ? "usuarios" : null,
-        hasPermission("manage_roles") ? "roles" : null,
-        hasPermission("view_audit") ? "auditoria" : null,
-        hasPermission("export_reports") ? "registros" : null,
-        hasPermission("export_reports") ? "exportaciones" : null,
         hasPermission("manage_settings") ? "parametros" : null,
       ].filter(Boolean),
     [hasPermission, user]
