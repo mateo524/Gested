@@ -12,7 +12,20 @@ import { generateTempPassword } from "../utils/password.js";
 const router = express.Router();
 
 router.get("/", auth, permit("manage_companies"), async (req, res) => {
-  const companies = await Company.find().sort({ nombre: 1 }).lean();
+  const q = req.query.q?.trim();
+  const companies = await Company.find(
+    q
+      ? {
+          $or: [
+            { nombre: { $regex: q, $options: "i" } },
+            { slug: { $regex: q, $options: "i" } },
+            { tipoCliente: { $regex: q, $options: "i" } },
+          ],
+        }
+      : {}
+  )
+    .sort({ nombre: 1 })
+    .lean();
   const users = await User.find().select("companyId isSuperAdmin").lean();
 
   res.json(
@@ -30,6 +43,7 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
   const {
     nombre,
     slug,
+    tipoCliente = "general",
     adminNombre,
     adminEmail,
     adminPassword,
@@ -52,6 +66,9 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
     companyName: nombre.trim(),
     companySlug: slug.trim(),
   });
+
+  company.tipoCliente = tipoCliente.trim() || "general";
+  await company.save();
 
   let adminUser = null;
   let generatedPassword = null;
@@ -106,8 +123,39 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
   });
 });
 
+router.post("/bulk", auth, permit("manage_companies"), async (req, res) => {
+  const { action, companyIds = [] } = req.body;
+
+  if (!action || !Array.isArray(companyIds) || !companyIds.length) {
+    return res.status(400).json({ mensaje: "Debes indicar accion y empresas" });
+  }
+
+  const companies = await Company.find({ _id: { $in: companyIds } });
+  if (!companies.length) {
+    return res.status(404).json({ mensaje: "No se encontraron empresas para procesar" });
+  }
+
+  if (action === "activate") {
+    await Company.updateMany({ _id: { $in: companyIds } }, { activa: true });
+  } else if (action === "deactivate") {
+    await Company.updateMany({ _id: { $in: companyIds } }, { activa: false });
+  } else {
+    return res.status(400).json({ mensaje: "Accion masiva no valida" });
+  }
+
+  await logAudit({
+    companyId: req.user.companyId,
+    userId: req.user.userId,
+    accion: "bulk",
+    modulo: "companies",
+    detalle: `Accion masiva ${action} sobre ${companies.length} empresa(s)`,
+  });
+
+  res.json({ mensaje: "Accion masiva aplicada", processed: companies.length });
+});
+
 router.put("/:id", auth, permit("manage_companies"), async (req, res) => {
-  const { nombre, slug, activa } = req.body;
+  const { nombre, slug, activa, tipoCliente } = req.body;
   const company = await Company.findById(req.params.id);
 
   if (!company) {
@@ -116,6 +164,7 @@ router.put("/:id", auth, permit("manage_companies"), async (req, res) => {
 
   if (nombre) company.nombre = nombre.trim();
   if (slug) company.slug = slug.trim();
+  if (tipoCliente) company.tipoCliente = tipoCliente.trim();
   if (typeof activa === "boolean") company.activa = activa;
 
   await company.save();

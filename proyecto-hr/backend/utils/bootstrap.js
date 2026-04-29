@@ -53,6 +53,7 @@ export async function ensureCompanyStructure({ companyName, companySlug }) {
     company = await Company.create({
       nombre: companyName,
       slug: companySlug,
+      tipoCliente: "general",
     });
   }
 

@@ -6,6 +6,7 @@ import AuditLog from "../models/AuditLog.js";
 import CompanySetting from "../models/CompanySetting.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Record from "../models/Record.js";
+import Company from "../models/Company.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
@@ -66,6 +67,22 @@ router.get("/summary", auth, async (req, res) => {
     DatabaseFile.find({ companyId }).sort({ fechaSubida: -1 }).limit(20).lean(),
   ]);
 
+  let superAdmin = null;
+  if (req.user.isSuperAdmin) {
+    const companies = await Company.find().select("tipoCliente activa").lean();
+    const typeMap = new Map();
+    companies.forEach((item) => {
+      const label = item.tipoCliente || "general";
+      typeMap.set(label, (typeMap.get(label) || 0) + 1);
+    });
+
+    superAdmin = {
+      totalCompanies: companies.length,
+      activeCompanies: companies.filter((item) => item.activa).length,
+      clientTypes: [...typeMap.entries()].map(([label, value]) => ({ label, value })),
+    };
+  }
+
   const roleDistribution = groupCount(recentRecords, "rol").slice(0, 8);
   const importTimeline = groupTimeline(files.map((file) => ({ createdAt: file.fechaSubida })));
   const fileRanking = files
@@ -96,6 +113,7 @@ router.get("/summary", auth, async (req, res) => {
       importTimeline,
       fileRanking,
     },
+    superAdmin,
   });
 });
 

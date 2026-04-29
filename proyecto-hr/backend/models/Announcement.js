@@ -1,5 +1,28 @@
 import mongoose from "mongoose";
 
+const AttachmentSchema = new mongoose.Schema(
+  {
+    nombreOriginal: String,
+    nombreArchivo: String,
+    mimeType: String,
+    extension: String,
+    tipoArchivo: { type: String, default: "documento" },
+  },
+  { _id: false }
+);
+
+const ReadBySchema = new mongoose.Schema(
+  {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    readAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const AnnouncementSchema = new mongoose.Schema(
   {
     companyId: {
@@ -21,6 +44,8 @@ const AnnouncementSchema = new mongoose.Schema(
     },
     categoria: { type: String, default: "general" },
     visible: { type: Boolean, default: true },
+    attachments: { type: [AttachmentSchema], default: [] },
+    readBy: { type: [ReadBySchema], default: [] },
   },
   { timestamps: true }
 );

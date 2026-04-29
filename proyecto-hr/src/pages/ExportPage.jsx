@@ -443,7 +443,7 @@ export default function ExportPage() {
             </select>
           </div>
 
-          {comparison ? (
+      {comparison ? (
             <div className="mt-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-[1.75rem] border border-slate-200 p-5">
@@ -472,6 +472,85 @@ export default function ExportPage() {
                   value={comparison.overlap.rightUniqueEmails}
                   hint="Presentes solo en la base derecha"
                 />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-3">
+                <SummaryCard
+                  label="Altas"
+                  value={comparison.changes.addedCount}
+                  hint="Registros que aparecen en la base nueva"
+                />
+                <SummaryCard
+                  label="Bajas"
+                  value={comparison.changes.removedCount}
+                  hint="Registros que estaban y ya no aparecen"
+                />
+                <SummaryCard
+                  label="Cambios"
+                  value={comparison.changes.changedCount}
+                  hint="Personas cuyo nombre o rol cambio"
+                />
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-3">
+                <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                    Altas detectadas
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {comparison.changes.added.length ? (
+                      comparison.changes.added.map((item) => (
+                        <div key={`added-${item.email}`} className="rounded-2xl bg-white px-3 py-3 text-sm">
+                          <p className="font-medium text-slate-900">{item.nombreCompleto || item.email}</p>
+                          <p className="text-slate-500">{item.rol || "Sin rol"} · {item.email}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-600">No hay altas en la muestra comparada.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">
+                    Bajas detectadas
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {comparison.changes.removed.length ? (
+                      comparison.changes.removed.map((item) => (
+                        <div key={`removed-${item.email}`} className="rounded-2xl bg-white px-3 py-3 text-sm">
+                          <p className="font-medium text-slate-900">{item.nombreCompleto || item.email}</p>
+                          <p className="text-slate-500">{item.rol || "Sin rol"} · {item.email}</p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-600">No hay bajas en la muestra comparada.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4">
+                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+                    Cambios detectados
+                  </p>
+                  <div className="mt-3 space-y-3">
+                    {comparison.changes.changed.length ? (
+                      comparison.changes.changed.map((item) => (
+                        <div key={`changed-${item.email}`} className="rounded-2xl bg-white px-3 py-3 text-sm">
+                          <p className="font-medium text-slate-900">{item.email}</p>
+                          <p className="text-slate-500">
+                            {item.before.nombreCompleto || "Sin nombre"} / {item.before.rol || "Sin rol"}
+                          </p>
+                          <p className="text-slate-700">
+                            {item.after.nombreCompleto || "Sin nombre"} / {item.after.rol || "Sin rol"}
+                          </p>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-slate-600">No hay cambios en la muestra comparada.</p>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           ) : (

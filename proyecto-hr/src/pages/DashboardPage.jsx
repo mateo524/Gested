@@ -83,6 +83,47 @@ export default function DashboardPage() {
         ))}
       </section>
 
+      {summary.superAdmin ? (
+        <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-semibold">Vista global Gested</h3>
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              <SummaryCard
+                label="Empresas totales"
+                value={summary.superAdmin.totalCompanies}
+                hint="Cuentas administradas"
+              />
+              <SummaryCard
+                label="Empresas activas"
+                value={summary.superAdmin.activeCompanies}
+                hint="Con acceso vigente"
+              />
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <h3 className="text-xl font-semibold">KPIs por tipo de cliente</h3>
+            <div className="mt-6 h-72">
+              {summary.superAdmin.clientTypes?.length ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={summary.superAdmin.clientTypes}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis dataKey="label" stroke="#64748b" />
+                    <YAxis allowDecimals={false} stroke="#64748b" />
+                    <Tooltip />
+                    <Bar dataKey="value" radius={[12, 12, 0, 0]} fill="#0f172a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
+                  Aun no hay tipos de cliente suficientes para mostrar.
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <div>

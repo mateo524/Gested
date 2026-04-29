@@ -218,12 +218,61 @@ router.get("/compare", auth, permit("export_reports"), async (req, res) => {
     getRecordsByFile(rightFile._id),
   ]);
 
-  const leftEmails = new Set(leftRecords.map((item) => item.email).filter(Boolean));
-  const rightEmails = new Set(rightRecords.map((item) => item.email).filter(Boolean));
+  const leftMap = new Map(
+    leftRecords
+      .filter((item) => item.email)
+      .map((item) => [item.email.toLowerCase(), item])
+  );
+  const rightMap = new Map(
+    rightRecords
+      .filter((item) => item.email)
+      .map((item) => [item.email.toLowerCase(), item])
+  );
+  const leftEmails = new Set(leftMap.keys());
+  const rightEmails = new Set(rightMap.keys());
   let sharedEmails = 0;
+  const added = [];
+  const removed = [];
+  const changed = [];
 
   leftEmails.forEach((email) => {
-    if (rightEmails.has(email)) sharedEmails += 1;
+    if (rightEmails.has(email)) {
+      sharedEmails += 1;
+      const left = leftMap.get(email);
+      const right = rightMap.get(email);
+      if (
+        (left?.nombreCompleto || "") !== (right?.nombreCompleto || "") ||
+        (left?.rol || "") !== (right?.rol || "")
+      ) {
+        changed.push({
+          email,
+          before: {
+            nombreCompleto: left?.nombreCompleto || "",
+            rol: left?.rol || "",
+          },
+          after: {
+            nombreCompleto: right?.nombreCompleto || "",
+            rol: right?.rol || "",
+          },
+        });
+      }
+    } else {
+      removed.push({
+        email,
+        nombreCompleto: leftMap.get(email)?.nombreCompleto || "",
+        rol: leftMap.get(email)?.rol || "",
+      });
+    }
+  });
+
+  rightEmails.forEach((email) => {
+    if (!leftEmails.has(email)) {
+      added.push({
+        email,
+        nombreCompleto: rightMap.get(email)?.nombreCompleto || "",
+        rol: rightMap.get(email)?.rol || "",
+      });
+    }
   });
 
   res.json({
@@ -243,6 +292,14 @@ router.get("/compare", auth, permit("export_reports"), async (req, res) => {
       sharedEmails,
       leftUniqueEmails: Math.max(leftEmails.size - sharedEmails, 0),
       rightUniqueEmails: Math.max(rightEmails.size - sharedEmails, 0),
+    },
+    changes: {
+      addedCount: added.length,
+      removedCount: removed.length,
+      changedCount: changed.length,
+      added: added.slice(0, 20),
+      removed: removed.slice(0, 20),
+      changed: changed.slice(0, 20),
     },
   });
 });

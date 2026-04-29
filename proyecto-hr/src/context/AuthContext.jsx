@@ -16,6 +16,15 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
   const [companies, setCompanies] = useState([]);
   const [branding, setBranding] = useState(defaultBranding);
+  const [announcementSummary, setAnnouncementSummary] = useState({
+    unreadCount: 0,
+    latest: [],
+  });
+  const [globalSearchResults, setGlobalSearchResults] = useState({
+    companies: [],
+    files: [],
+    announcements: [],
+  });
   const [activeCompanyId, setActiveCompanyIdState] = useState(
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
   );
@@ -52,6 +61,37 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const fetchAnnouncementSummary = async (nextToken) => {
+    if (!nextToken) {
+      setAnnouncementSummary({ unreadCount: 0, latest: [] });
+      return;
+    }
+
+    try {
+      const data = await apiFetch("/announcements/summary", { token: nextToken });
+      setAnnouncementSummary({
+        unreadCount: data.unreadCount || 0,
+        latest: data.latest || [],
+      });
+    } catch {
+      setAnnouncementSummary({ unreadCount: 0, latest: [] });
+    }
+  };
+
+  const searchGlobally = async (q) => {
+    if (!token || !user?.isSuperAdmin || !q?.trim()) {
+      setGlobalSearchResults({ companies: [], files: [], announcements: [] });
+      return;
+    }
+
+    try {
+      const data = await apiFetch(`/search/global?q=${encodeURIComponent(q.trim())}`, { token });
+      setGlobalSearchResults(data);
+    } catch {
+      setGlobalSearchResults({ companies: [], files: [], announcements: [] });
+    }
+  };
+
   const fetchCompanies = async (nextToken, nextUser) => {
     if (!nextToken || !nextUser?.permisos?.includes("manage_companies")) {
       setCompanies([]);
@@ -78,7 +118,11 @@ export function AuthProvider({ children }) {
 
   const login = async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken, nextUser);
-    await Promise.all([fetchCompanies(nextToken, nextUser), fetchBranding(nextToken)]);
+    await Promise.all([
+      fetchCompanies(nextToken, nextUser),
+      fetchBranding(nextToken),
+      fetchAnnouncementSummary(nextToken),
+    ]);
   };
 
   const updateSession = async ({ token: nextToken, user: nextUser }) => {
@@ -86,6 +130,7 @@ export function AuthProvider({ children }) {
     await Promise.all([
       fetchCompanies(nextToken || token, nextUser),
       fetchBranding(nextToken || token),
+      fetchAnnouncementSummary(nextToken || token),
     ]);
   };
 
@@ -97,6 +142,8 @@ export function AuthProvider({ children }) {
     setUser(null);
     setCompanies([]);
     setBranding(defaultBranding);
+    setAnnouncementSummary({ unreadCount: 0, latest: [] });
+    setGlobalSearchResults({ companies: [], files: [], announcements: [] });
     setActiveCompanyIdState("");
   };
 
@@ -107,7 +154,11 @@ export function AuthProvider({ children }) {
       .then(async (nextUser) => {
         localStorage.setItem("user", JSON.stringify(nextUser));
         setUser(nextUser);
-        await Promise.all([fetchCompanies(token, nextUser), fetchBranding(token)]);
+        await Promise.all([
+          fetchCompanies(token, nextUser),
+          fetchBranding(token),
+          fetchAnnouncementSummary(token),
+        ]);
       })
       .catch(() => logout());
   }, [token, activeCompanyId]);
@@ -126,18 +177,22 @@ export function AuthProvider({ children }) {
       user,
       companies,
       branding,
+      announcementSummary,
+      globalSearchResults,
       activeCompany,
       activeCompanyId,
       setActiveCompanyId,
       refreshCompanies: () => fetchCompanies(token, user),
       refreshBranding: () => fetchBranding(token),
+      refreshAnnouncementSummary: () => fetchAnnouncementSummary(token),
+      searchGlobally,
       login,
       updateSession,
       logout,
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
     }),
-    [token, user, companies, branding, activeCompanyId]
+    [token, user, companies, branding, announcementSummary, globalSearchResults, activeCompanyId]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
