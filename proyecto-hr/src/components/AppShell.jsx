@@ -5,6 +5,8 @@ export default function AppShell({ view, setView, children }) {
 
   const menuItems = [
     { key: "dashboard", label: "Dashboard", show: true },
+    { key: "empleados", label: "Empleados", show: true },
+    { key: "planes-desarrollo", label: "Planes de Desarrollo", show: true },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "auditoría", label: "Auditoría", show: hasPermission("view_audit") },
@@ -25,10 +27,10 @@ export default function AppShell({ view, setView, children }) {
       <div className="flex min-h-screen">
         <aside className="w-72 bg-slate-950 text-white p-6">
           <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-            Enterprise HR
+            Gestión de Talento
           </p>
 
-          <h1 className="text-2xl mt-2">PeopleOps Hub</h1>
+          <h1 className="text-2xl mt-2">Perfomia</h1>
 
           <div className="mt-8 space-y-2">
             {menuItems
