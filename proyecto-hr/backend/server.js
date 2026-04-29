@@ -18,6 +18,9 @@ import searchRoutes from "./routes/search.routes.js";
 import employeesRoutes from "./routes/employees.routes.js";
 import competenciesRoutes from "./routes/competencies.routes.js";
 import metricsRoutes from "./routes/metrics.routes.js";
+import schoolsRoutes from "./routes/schools.routes.js";
+import evaluationCyclesRoutes from "./routes/evaluationCycles.routes.js";
+import evaluationsRoutes from "./routes/evaluations.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 
 const app = express();
@@ -40,6 +43,9 @@ app.use("/search", searchRoutes);
 app.use("/employees", employeesRoutes);
 app.use("/competencies", competenciesRoutes);
 app.use("/metrics", metricsRoutes);
+app.use("/schools", schoolsRoutes);
+app.use("/evaluation-cycles", evaluationCyclesRoutes);
+app.use("/evaluations", evaluationsRoutes);
 
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
