@@ -10,6 +10,12 @@ const UsersPage = lazy(() => import("./pages/UsersPage"));
 const RolesPage = lazy(() => import("./pages/RolesPage"));
 const AuditPage = lazy(() => import("./pages/AuditPage"));
 const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
+const SchoolsPage = lazy(() => import("./pages/SchoolsPage"));
+const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const CompetenciesPage = lazy(() => import("./pages/CompetenciesPage"));
+const MetricsPage = lazy(() => import("./pages/MetricsPage"));
+const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
+const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
 const RecordsPage = lazy(() => import("./pages/RecordsPage"));
 const ExportPage = lazy(() => import("./pages/ExportPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
@@ -32,6 +38,19 @@ function AppContent() {
       [
         "dashboard",
         "novedades",
+        hasPermission("manage_schools") || hasPermission("manage_companies") ? "colegios" : null,
+        hasPermission("manage_employees") ? "empleados" : null,
+        hasPermission("manage_competencies") ? "competencias" : null,
+        hasPermission("manage_metrics") ? "metricas" : null,
+        hasPermission("manage_evaluation_cycles") || hasPermission("view_reports")
+          ? "ciclos"
+          : null,
+        hasPermission("manage_evaluations") ||
+        hasPermission("evaluate_team") ||
+        hasPermission("self_evaluate") ||
+        hasPermission("view_reports")
+          ? "evaluaciones"
+          : null,
         hasPermission("manage_companies") ? "empresas" : null,
         hasPermission("manage_companies") ? "archivo-central" : null,
         hasPermission("manage_users") ? "usuarios" : null,
@@ -63,6 +82,12 @@ function AppContent() {
       <Suspense fallback={<ViewLoader />}>
         {view === "dashboard" && <DashboardPage />}
         {view === "novedades" && <AnnouncementsPage />}
+        {view === "colegios" && <SchoolsPage />}
+        {view === "empleados" && <EmployeesPage />}
+        {view === "competencias" && <CompetenciesPage />}
+        {view === "metricas" && <MetricsPage />}
+        {view === "ciclos" && <EvaluationCyclesPage />}
+        {view === "evaluaciones" && <EvaluationsPage />}
         {view === "empresas" && <CompaniesPage />}
         {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}
