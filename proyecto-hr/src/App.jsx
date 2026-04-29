@@ -16,6 +16,7 @@ const CompetenciesPage = lazy(() => import("./pages/CompetenciesPage"));
 const MetricsPage = lazy(() => import("./pages/MetricsPage"));
 const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
 const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
+const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
 const RecordsPage = lazy(() => import("./pages/RecordsPage"));
 const ExportPage = lazy(() => import("./pages/ExportPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
@@ -52,6 +53,7 @@ function AppContent() {
           ? "evaluaciones"
           : null,
         hasPermission("manage_users") ? "usuarios" : null,
+        hasPermission("view_reports") ? "bases-descargas" : null,
         hasPermission("manage_settings") ? "parametros" : null,
       ].filter(Boolean),
     [hasPermission, user]
@@ -82,6 +84,7 @@ function AppContent() {
         {view === "metricas" && <MetricsPage />}
         {view === "ciclos" && <EvaluationCyclesPage />}
         {view === "evaluaciones" && <EvaluationsPage />}
+        {view === "bases-descargas" && <EducationalExportsPage />}
         {view === "empresas" && <CompaniesPage />}
         {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}

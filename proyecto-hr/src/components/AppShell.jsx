@@ -122,10 +122,18 @@ export default function AppShell({ view, setView, children }) {
   const menuItems = [
     { key: "dashboard", label: "Panel", show: true },
     { key: "novedades", label: "Novedades", show: true },
-    { key: "colegios", label: "Colegios", show: hasPermission("manage_schools") || hasPermission("manage_companies") },
+    {
+      key: "colegios",
+      label: "Colegios",
+      show: hasPermission("manage_schools") || hasPermission("manage_companies"),
+    },
     { key: "empleados", label: "Empleados", show: hasPermission("manage_employees") },
-    { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies") },
-    { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics") },
+    {
+      key: "competencias",
+      label: "Competencias",
+      show: hasPermission("manage_competencies"),
+    },
+    { key: "metricas", label: "Métricas", show: hasPermission("manage_metrics") },
     {
       key: "ciclos",
       label: "Ciclos",
@@ -141,17 +149,18 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("view_reports"),
     },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
-    { key: "parametros", label: "Configuracion", show: hasPermission("manage_settings") },
+    { key: "bases-descargas", label: "Bases y Descargas", show: hasPermission("view_reports") },
+    { key: "parametros", label: "Configuración", show: hasPermission("manage_settings") },
   ];
 
   const viewMeta = {
     dashboard: {
-      eyebrow: "Vision institucional",
-      title: "Panel de desempeno",
+      eyebrow: "Visión institucional",
+      title: "Panel de desempeño",
       description: "Indicadores, seguimiento y foco operativo para el colegio activo.",
     },
     novedades: {
-      eyebrow: "Comunicacion",
+      eyebrow: "Comunicación",
       title: "Novedades",
       description: "Avisos, recordatorios y mensajes importantes para el trabajo de cada colegio.",
     },
@@ -163,7 +172,7 @@ export default function AppShell({ view, setView, children }) {
     empleados: {
       eyebrow: "Talento",
       title: "Empleados",
-      description: "Docentes y colaboradores organizados por colegio, cargo, area y responsable.",
+      description: "Docentes y colaboradores organizados por colegio, cargo, área y responsable.",
     },
     competencias: {
       eyebrow: "Modelo",
@@ -172,16 +181,16 @@ export default function AppShell({ view, setView, children }) {
     },
     metricas: {
       eyebrow: "Modelo",
-      title: "Metricas",
-      description: "Indicadores observables y niveles 1 a 5 para una evaluacion consistente.",
+      title: "Métricas",
+      description: "Indicadores observables y niveles 1 a 5 para una evaluación consistente.",
     },
     ciclos: {
       eyebrow: "Calendario",
-      title: "Ciclos de evaluacion",
-      description: "Periodos institucionales que ordenan autoevaluacion, jefatura y cierre final.",
+      title: "Ciclos de evaluación",
+      description: "Períodos institucionales que ordenan autoevaluación, jefatura y cierre final.",
     },
     evaluaciones: {
-      eyebrow: "Desempeno",
+      eyebrow: "Desempeño",
       title: "Evaluaciones",
       description: "Cargas por empleado con puntajes, comentarios y trazabilidad por ciclo.",
     },
@@ -190,9 +199,14 @@ export default function AppShell({ view, setView, children }) {
       title: "Usuarios",
       description: "Accesos habilitados para directivos, RRHH, jefes, docentes y auditores.",
     },
+    "bases-descargas": {
+      eyebrow: "Datos institucionales",
+      title: "Bases y Descargas",
+      description: "Consulta, filtra y descarga información educativa con validación por rol.",
+    },
     parametros: {
-      eyebrow: "Configuracion",
-      title: "Configuracion",
+      eyebrow: "Configuración",
+      title: "Configuración",
       description: "Identidad visible, ajustes operativos y criterios generales del colegio.",
     },
   };
@@ -218,12 +232,10 @@ export default function AppShell({ view, setView, children }) {
 
   function handleSearchSelection(groupLabel, item) {
     if (groupLabel === "Empresas") {
-      setView("empresas");
-      if (item._id) {
-        setActiveCompanyId(item._id);
-      }
+      setActiveCompanyId(item._id);
+      setView("colegios");
     } else if (groupLabel === "Archivos") {
-      setView(hasPermission("manage_companies") ? "archivo-central" : "exportaciones");
+      setView("bases-descargas");
       if (item.companyId && hasPermission("manage_companies")) {
         setActiveCompanyId(item.companyId);
       }
@@ -250,11 +262,11 @@ export default function AppShell({ view, setView, children }) {
             <LogoMark branding={branding} />
             <div>
               <p className="text-xs uppercase tracking-[0.26em] text-amber-200">{brandName}</p>
-              <p className="text-sm text-slate-400">Desempeno educativo</p>
+              <p className="text-sm text-slate-400">Desempeño educativo</p>
             </div>
           </div>
 
-          <h1 className="mt-8 text-2xl font-semibold">Centro de desempeno</h1>
+          <h1 className="mt-8 text-2xl font-semibold">Centro de desempeño</h1>
           <p className="mt-3 text-sm leading-6 text-slate-400">
             Evaluaciones, competencias y seguimiento claro para cada colegio.
           </p>
@@ -309,9 +321,15 @@ export default function AppShell({ view, setView, children }) {
           <header className="border-b border-black/5 bg-white/80 px-8 py-5 backdrop-blur">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{currentView.eyebrow}</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-950">{currentView.title}</h2>
-                <p className="mt-2 max-w-3xl text-sm text-slate-500">{currentView.description}</p>
+                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
+                  {currentView.eyebrow}
+                </p>
+                <h2 className="mt-2 text-2xl font-semibold text-slate-950">
+                  {currentView.title}
+                </h2>
+                <p className="mt-2 max-w-3xl text-sm text-slate-500">
+                  {currentView.description}
+                </p>
               </div>
 
               <div className="flex flex-wrap items-start gap-3">
@@ -332,7 +350,9 @@ export default function AppShell({ view, setView, children }) {
                       <div className="absolute right-0 z-20 mt-3 w-full rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-xl">
                         {searchGroups.map((group) => (
                           <div key={group.label} className="mb-4 last:mb-0">
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">{group.label}</p>
+                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                              {group.label}
+                            </p>
                             <div className="mt-2 space-y-2">
                               {group.items.length ? (
                                 group.items.map((item, index) => (
