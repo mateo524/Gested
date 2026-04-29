@@ -7,6 +7,13 @@ import CompanySetting from "../models/CompanySetting.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Record from "../models/Record.js";
 import Company from "../models/Company.js";
+import School from "../models/School.js";
+import Employee from "../models/Employee.js";
+import Competency from "../models/Competency.js";
+import Metric from "../models/Metric.js";
+import EvaluationCycle from "../models/EvaluationCycle.js";
+import Evaluation from "../models/Evaluation.js";
+import DownloadLog from "../models/DownloadLog.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
@@ -53,6 +60,18 @@ router.get("/summary", auth, async (req, res) => {
     latestAudit,
     recentRecords,
     files,
+    schoolsCount,
+    employeesTotal,
+    docentesTotal,
+    competenciesTotal,
+    metricsTotal,
+    activeCyclesCount,
+    evaluationsTotal,
+    pendingEvaluations,
+    lowPerformanceCount,
+    averageEvaluation,
+    recentEvaluations,
+    downloadEvents,
   ] = await Promise.all([
     User.countDocuments({ companyId }),
     User.countDocuments({ companyId, activo: true }),
@@ -65,6 +84,21 @@ router.get("/summary", auth, async (req, res) => {
     AuditLog.find({ companyId }).sort({ createdAt: -1 }).limit(6).lean(),
     Record.find({ companyId }).sort({ createdAt: -1 }).limit(2000).lean(),
     DatabaseFile.find({ companyId }).sort({ fechaSubida: -1 }).limit(20).lean(),
+    School.countDocuments({ companyId }),
+    Employee.countDocuments({ companyId }),
+    Employee.countDocuments({ companyId, tipoEmpleado: "DOCENTE" }),
+    Competency.countDocuments({ companyId }),
+    Metric.countDocuments({ companyId }),
+    EvaluationCycle.countDocuments({ companyId, estado: "ABIERTO" }),
+    Evaluation.countDocuments({ companyId }),
+    Evaluation.countDocuments({ companyId, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
+    Evaluation.countDocuments({ companyId, resultadoFinal: { $lt: 3 } }),
+    Evaluation.aggregate([
+      { $match: { companyId: company._id } },
+      { $group: { _id: null, avg: { $avg: "$resultadoFinal" } } },
+    ]),
+    Evaluation.find({ companyId }).sort({ createdAt: -1 }).limit(200).lean(),
+    DownloadLog.countDocuments({ companyId }),
   ]);
 
   let superAdmin = null;
@@ -89,13 +123,19 @@ router.get("/summary", auth, async (req, res) => {
     .map((file) => ({ label: file.nombreVisible, value: file.registros || 0 }))
     .sort((a, b) => b.value - a.value)
     .slice(0, 6);
+  const evaluationTimeline = groupTimeline(recentEvaluations);
+  const evaluationStates = groupCount(recentEvaluations, "estado").slice(0, 6);
 
   res.json({
     cards: [
-      { label: "Usuarios activos", value: activeUsers, hint: `${usersTotal} usuarios totales` },
-      { label: "Roles configurados", value: rolesTotal, hint: "Accesos por empresa" },
-      { label: "Bases activas", value: activeFiles, hint: `${totalFiles} archivos historicos` },
-      { label: "Registros importados", value: recordsTotal, hint: "Datos listos para explotar" },
+      { label: "Empleados", value: employeesTotal, hint: `${docentesTotal} docentes registrados` },
+      { label: "Evaluaciones", value: evaluationsTotal, hint: `${pendingEvaluations} pendientes o abiertas` },
+      { label: "Ciclos activos", value: activeCyclesCount, hint: `${schoolsCount} colegios vinculados` },
+      {
+        label: "Promedio general",
+        value: averageEvaluation[0]?.avg ? Number(averageEvaluation[0].avg).toFixed(2) : "0.00",
+        hint: `${lowPerformanceCount} con desempeño crítico`,
+      },
     ],
     latestAudit,
     company: {
@@ -112,6 +152,24 @@ router.get("/summary", auth, async (req, res) => {
       roleDistribution,
       importTimeline,
       fileRanking,
+      evaluationTimeline,
+      evaluationStates,
+    },
+    educational: {
+      schoolsCount,
+      usersTotal,
+      activeUsers,
+      rolesTotal,
+      competenciesTotal,
+      metricsTotal,
+      activeFiles,
+      totalFiles,
+      recordsTotal,
+      evaluationsTotal,
+      pendingEvaluations,
+      lowPerformanceCount,
+      averageScore: averageEvaluation[0]?.avg || 0,
+      downloadEvents,
     },
     superAdmin,
   });
