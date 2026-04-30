@@ -21,6 +21,8 @@ export default function UsersPage() {
   const [createdAccess, setCreatedAccess] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkPasswords, setBulkPasswords] = useState([]);
+  const [importFile, setImportFile] = useState(null);
+  const [importSummary, setImportSummary] = useState(null);
 
   const editingUser = useMemo(
     () => users.find((user) => user._id === editingId) || null,
@@ -177,6 +179,34 @@ export default function UsersPage() {
       await loadData();
       if (editingId === userId) resetForm();
       setMessage("Usuario eliminado");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function importUsers() {
+    if (!importFile) {
+      setMessage("Selecciona un archivo CSV o Excel");
+      return;
+    }
+
+    try {
+      setMessage("");
+      setImportSummary(null);
+      const formData = new FormData();
+      formData.append("file", importFile);
+
+      const data = await apiFetch("/users/import", {
+        method: "POST",
+        token,
+        body: formData,
+      });
+
+      setImportSummary(data);
+      setBulkPasswords(data.temporaryPasswords || []);
+      setImportFile(null);
+      await loadData();
+      setMessage("Importacion completada");
     } catch (error) {
       setMessage(error.message);
     }
@@ -419,6 +449,47 @@ export default function UsersPage() {
           </div>
         </section>
       </div>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-xl font-semibold">Importacion masiva de usuarios</h3>
+        <p className="mt-1 text-slate-500">
+          Sube un archivo CSV o Excel con columnas: nombre, email, rol, activo, password.
+        </p>
+
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <input
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={(event) => setImportFile(event.target.files?.[0] || null)}
+            className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={importUsers}
+            className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white"
+          >
+            Importar archivo
+          </button>
+        </div>
+
+        {importSummary ? (
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <p>Total filas: {importSummary.total}</p>
+            <p>Creados: {importSummary.created}</p>
+            <p>Actualizados: {importSummary.updated}</p>
+            <p>Errores: {importSummary.errors?.length || 0}</p>
+            {importSummary.errors?.length ? (
+              <div className="mt-2 space-y-1 text-red-600">
+                {importSummary.errors.slice(0, 8).map((error, index) => (
+                  <p key={`${error.row}-${index}`}>
+                    Fila {error.row}: {error.message}
+                  </p>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
     </div>
   );
 }
