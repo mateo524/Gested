@@ -8,14 +8,14 @@ function LogoMark({ branding }) {
       <img
         src={branding.logoUrl}
         alt={branding.nombreVisible || "Performia"}
-        className="h-11 w-11 rounded-full border border-white/10 bg-white/5 object-cover"
+        className="h-10 w-10 rounded-full border border-white/10 bg-white/5 object-cover"
       />
     );
   }
 
   return (
     <div
-      className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-amber-200"
+      className="grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-amber-200"
       style={{ boxShadow: `0 0 0 1px ${branding?.primaryColor || "#10b981"}33 inset` }}
     >
       P
@@ -287,14 +287,10 @@ export default function AppShell({ view, setView, children }) {
       setView("organizaciones");
     } else if (groupLabel === "Archivos") {
       setView("bases-descargas");
-      if (item.companyId && hasPermission("manage_companies")) {
-        setActiveCompanyId(item.companyId);
-      }
+      if (item.companyId && hasPermission("manage_companies")) setActiveCompanyId(item.companyId);
     } else {
       setView("novedades");
-      if (item.companyId && hasPermission("manage_companies")) {
-        setActiveCompanyId(item.companyId);
-      }
+      if (item.companyId && hasPermission("manage_companies")) setActiveCompanyId(item.companyId);
     }
     setSearchTerm("");
   }
@@ -307,19 +303,19 @@ export default function AppShell({ view, setView, children }) {
       }}
     >
       <div className="min-h-screen">
-        <header className="border-b border-black/5 bg-white/85 px-8 py-5 backdrop-blur">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <header className="sticky top-0 z-30 border-b border-black/5 bg-white/90 px-6 py-3 backdrop-blur">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <LogoMark branding={branding} />
               <div>
-                <p className="text-xs uppercase tracking-[0.26em] text-slate-700">{brandName}</p>
-                <p className="text-sm text-slate-500">Desempeno educativo</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-slate-700">{brandName}</p>
+                <p className="text-xs text-slate-500">Desempeno educativo</p>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               {hasPermission("manage_companies") && companies.length ? (
                 <select
-                  className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                  className="w-52 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
                   value={activeCompanyId}
                   onChange={(event) => setActiveCompanyId(event.target.value)}
                 >
@@ -332,21 +328,21 @@ export default function AppShell({ view, setView, children }) {
               ) : null}
               <button
                 onClick={logout}
-                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
               >
                 Salir
               </button>
             </div>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
             {groupedMenu.map((group) => {
               const isActiveGroup = group.items.some((item) => item.key === view);
               return (
                 <button
                   key={group.key}
                   onClick={() => setView(group.items[0].key)}
-                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
                     isActiveGroup
                       ? "text-white"
                       : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
@@ -360,104 +356,93 @@ export default function AppShell({ view, setView, children }) {
           </div>
         </header>
 
-        <div className="flex-1">
-          <header className="border-b border-black/5 bg-white/80 px-8 py-5 backdrop-blur">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <p className="text-xs uppercase tracking-[0.22em] text-slate-500">
-                  {currentView.eyebrow}
-                </p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-950">
-                  {currentView.title}
-                </h2>
-                <p className="mt-2 max-w-3xl text-sm text-slate-500">
-                  {currentView.description}
-                </p>
-                {currentGroup?.items?.length > 1 ? (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {currentGroup.items.map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        onClick={() => setView(item.key)}
-                        className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                          view === item.key
-                            ? "border-transparent text-white"
-                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                        }`}
-                        style={view === item.key ? { backgroundColor: primaryColor } : {}}
-                      >
-                        {item.label}
-                      </button>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
+        <header className="border-b border-black/5 bg-white/80 px-6 py-4 backdrop-blur">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{currentView.eyebrow}</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{currentView.title}</h2>
+              <p className="mt-2 max-w-3xl text-sm text-slate-500">{currentView.description}</p>
+              {currentGroup?.items?.length > 1 ? (
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
+                  {currentGroup.items.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setView(item.key)}
+                      className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
+                        view === item.key
+                          ? "border-transparent text-white"
+                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                      }`}
+                      style={view === item.key ? { backgroundColor: primaryColor } : {}}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
 
-              <div className="flex flex-wrap items-start gap-3">
-                {user?.isSuperAdmin ? (
-                  <div className="relative min-w-80">
-                    <input
-                      className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
-                      placeholder="Buscar empresas, archivos o mensajes"
-                      value={searchTerm}
-                      onChange={(event) => {
-                        const next = event.target.value;
-                        setSearchTerm(next);
-                        searchGlobally(next);
-                      }}
-                    />
+            <div className="flex flex-wrap items-start gap-3">
+              {user?.isSuperAdmin ? (
+                <div className="relative min-w-64">
+                  <input
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    placeholder="Buscar empresas, archivos o mensajes"
+                    value={searchTerm}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      setSearchTerm(next);
+                      searchGlobally(next);
+                    }}
+                  />
 
-                    {searchTerm.trim() ? (
-                      <div className="absolute right-0 z-20 mt-3 w-full rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-xl">
-                        {searchGroups.map((group) => (
-                          <div key={group.label} className="mb-4 last:mb-0">
-                            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                              {group.label}
-                            </p>
-                            <div className="mt-2 space-y-2">
-                              {group.items.length ? (
-                                group.items.map((item, index) => (
-                                  <button
-                                    key={`${group.label}-${index}`}
-                                    type="button"
-                                    onClick={() => handleSearchSelection(group.label, item)}
-                                    className="block w-full rounded-2xl bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
-                                  >
-                                    <span className="block font-medium text-slate-900">
-                                      {item.nombre || item.nombreVisible || item.titulo || item.slug}
-                                    </span>
-                                    <span className="mt-1 block text-xs text-slate-500">
-                                      {item.slug || item.tipoArchivo || item.categoria || item.companyName || ""}
-                                    </span>
-                                  </button>
-                                ))
-                              ) : (
-                                <p className="text-sm text-slate-500">Sin resultados.</p>
-                              )}
-                            </div>
+                  {searchTerm.trim() ? (
+                    <div className="absolute right-0 z-20 mt-3 w-full rounded-[1.5rem] border border-slate-200 bg-white p-4 shadow-xl">
+                      {searchGroups.map((group) => (
+                        <div key={group.label} className="mb-4 last:mb-0">
+                          <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                            {group.label}
+                          </p>
+                          <div className="mt-2 space-y-2">
+                            {group.items.length ? (
+                              group.items.map((item, index) => (
+                                <button
+                                  key={`${group.label}-${index}`}
+                                  type="button"
+                                  onClick={() => handleSearchSelection(group.label, item)}
+                                  className="block w-full rounded-2xl bg-slate-50 px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-slate-100"
+                                >
+                                  <span className="block font-medium text-slate-900">
+                                    {item.nombre || item.nombreVisible || item.titulo || item.slug}
+                                  </span>
+                                  <span className="mt-1 block text-xs text-slate-500">
+                                    {item.slug || item.tipoArchivo || item.categoria || item.companyName || ""}
+                                  </span>
+                                </button>
+                              ))
+                            ) : (
+                              <p className="text-sm text-slate-500">Sin resultados.</p>
+                            )}
                           </div>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
 
-                <NotificationBell
-                  announcementSummary={announcementSummary}
-                  onMarkRead={handleMarkRead}
-                />
-              </div>
+              <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
             </div>
-          </header>
+          </div>
+        </header>
 
-          <main className="p-8">
-            <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-              {user?.nombre} · {user?.roleName} · {user?.companyName}
-            </div>
-            {children}
-          </main>
-        </div>
+        <main className="p-8">
+          <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+            {user?.nombre} - {user?.roleName} - {user?.companyName}
+          </div>
+          {children}
+        </main>
       </div>
     </div>
   );
