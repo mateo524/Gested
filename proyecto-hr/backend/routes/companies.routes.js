@@ -5,13 +5,14 @@ import Role from "../models/Role.js";
 import User from "../models/User.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
+import { requireSuperAdmin } from "../middleware/rbac.js";
 import { ensureCompanyStructure } from "../utils/bootstrap.js";
 import { logAudit } from "../utils/audit.js";
 import { generateTempPassword } from "../utils/password.js";
 
 const router = express.Router();
 
-router.get("/", auth, permit("manage_companies"), async (req, res) => {
+router.get("/", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const q = req.query.q?.trim();
   const companies = await Company.find(
     q
@@ -39,7 +40,7 @@ router.get("/", auth, permit("manage_companies"), async (req, res) => {
   );
 });
 
-router.post("/", auth, permit("manage_companies"), async (req, res) => {
+router.post("/", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const {
     nombre,
     slug,
@@ -123,7 +124,7 @@ router.post("/", auth, permit("manage_companies"), async (req, res) => {
   });
 });
 
-router.post("/bulk", auth, permit("manage_companies"), async (req, res) => {
+router.post("/bulk", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const { action, companyIds = [] } = req.body;
 
   if (!action || !Array.isArray(companyIds) || !companyIds.length) {
@@ -154,7 +155,7 @@ router.post("/bulk", auth, permit("manage_companies"), async (req, res) => {
   res.json({ mensaje: "Accion masiva aplicada", processed: companies.length });
 });
 
-router.put("/:id", auth, permit("manage_companies"), async (req, res) => {
+router.put("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const { nombre, slug, activa, tipoCliente } = req.body;
   const company = await Company.findById(req.params.id);
 

@@ -121,8 +121,11 @@ export default function AppShell({ view, setView, children }) {
 
   const menuItems = [
     { key: "dashboard", label: "Panel", show: true },
-    { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
-    { key: "colegios", label: "Colegios", show: hasPermission("manage_schools") },
+    {
+      key: "organizaciones",
+      label: "Organizaciones",
+      show: hasPermission("manage_companies") || hasPermission("manage_schools"),
+    },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "novedades", label: "Novedades", show: true },
@@ -171,7 +174,7 @@ export default function AppShell({ view, setView, children }) {
       key: "gestion",
       label: "Gestion",
       items: menuItems.filter(
-        (item) => item.show && ["empresas", "colegios", "usuarios", "roles"].includes(item.key)
+        (item) => item.show && ["organizaciones", "usuarios", "roles"].includes(item.key)
       ),
     },
     {
@@ -195,10 +198,10 @@ export default function AppShell({ view, setView, children }) {
   ].filter((group) => group.items.length);
 
   const viewMeta = {
-    empresas: {
+    organizaciones: {
       eyebrow: "Clientes",
-      title: "Empresas",
-      description: "Alta y gestion de empresas, estados de acceso y estructura inicial.",
+      title: "Organizaciones",
+      description: "Empresas y colegios en una sola vista, con acceso segun rol.",
     },
     dashboard: {
       eyebrow: "Vision institucional",
@@ -214,11 +217,6 @@ export default function AppShell({ view, setView, children }) {
       eyebrow: "Comunicacion",
       title: "Novedades",
       description: "Avisos, recordatorios y mensajes importantes para el trabajo de cada colegio.",
-    },
-    colegios: {
-      eyebrow: "Estructura escolar",
-      title: "Colegios",
-      description: "Sedes y colegios donde se organiza el desempeno, los equipos y los ciclos.",
     },
     empleados: {
       eyebrow: "Talento",
@@ -286,7 +284,7 @@ export default function AppShell({ view, setView, children }) {
   function handleSearchSelection(groupLabel, item) {
     if (groupLabel === "Empresas") {
       setActiveCompanyId(item._id);
-      setView("colegios");
+      setView("organizaciones");
     } else if (groupLabel === "Archivos") {
       setView("bases-descargas");
       if (item.companyId && hasPermission("manage_companies")) {
