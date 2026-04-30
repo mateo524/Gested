@@ -16,6 +16,7 @@ const CompetenciesPage = lazy(() => import("./pages/CompetenciesPage"));
 const MetricsPage = lazy(() => import("./pages/MetricsPage"));
 const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
 const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
+const DevelopmentPlansPage = lazy(() => import("./pages/DevelopmentPlansPage"));
 const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
 const RecordsPage = lazy(() => import("./pages/RecordsPage"));
 const ExportPage = lazy(() => import("./pages/ExportPage"));
@@ -52,8 +53,17 @@ function AppContent() {
         hasPermission("view_reports")
           ? "evaluaciones"
           : null,
+        hasPermission("manage_development_plans") ||
+        hasPermission("evaluate_team") ||
+        hasPermission("view_reports")
+          ? "planes"
+          : null,
         hasPermission("manage_users") ? "usuarios" : null,
-        hasPermission("view_reports") ? "bases-descargas" : null,
+        hasPermission("view_reports") ||
+        hasPermission("download_team_reports") ||
+        hasPermission("download_self_report")
+          ? "bases-descargas"
+          : null,
         hasPermission("manage_settings") ? "parametros" : null,
       ].filter(Boolean),
     [hasPermission, user]
@@ -84,6 +94,7 @@ function AppContent() {
         {view === "metricas" && <MetricsPage />}
         {view === "ciclos" && <EvaluationCyclesPage />}
         {view === "evaluaciones" && <EvaluationsPage />}
+        {view === "planes" && <DevelopmentPlansPage />}
         {view === "bases-descargas" && <EducationalExportsPage />}
         {view === "empresas" && <CompaniesPage />}
         {view === "archivo-central" && <StorageCenterPage />}

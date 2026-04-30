@@ -128,12 +128,8 @@ export default function AppShell({ view, setView, children }) {
       show: hasPermission("manage_schools") || hasPermission("manage_companies"),
     },
     { key: "empleados", label: "Empleados", show: hasPermission("manage_employees") },
-    {
-      key: "competencias",
-      label: "Competencias",
-      show: hasPermission("manage_competencies"),
-    },
-    { key: "metricas", label: "Métricas", show: hasPermission("manage_metrics") },
+    { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies") },
+    { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics") },
     {
       key: "ciclos",
       label: "Ciclos",
@@ -148,35 +144,46 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("self_evaluate") ||
         hasPermission("view_reports"),
     },
+    {
+      key: "planes",
+      label: "Planes",
+      show:
+        hasPermission("manage_development_plans") ||
+        hasPermission("evaluate_team") ||
+        hasPermission("view_reports"),
+    },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     {
       key: "bases-descargas",
       label: "Bases y Descargas",
-      show: hasPermission("view_reports"),
+      show:
+        hasPermission("view_reports") ||
+        hasPermission("download_team_reports") ||
+        hasPermission("download_self_report"),
     },
-    { key: "parametros", label: "Configuración", show: hasPermission("manage_settings") },
+    { key: "parametros", label: "Configuracion", show: hasPermission("manage_settings") },
   ];
 
   const viewMeta = {
     dashboard: {
-      eyebrow: "Visión institucional",
-      title: "Panel de desempeño",
+      eyebrow: "Vision institucional",
+      title: "Panel de desempeno",
       description: "Indicadores, seguimiento y foco operativo para el colegio activo.",
     },
     novedades: {
-      eyebrow: "Comunicación",
+      eyebrow: "Comunicacion",
       title: "Novedades",
       description: "Avisos, recordatorios y mensajes importantes para el trabajo de cada colegio.",
     },
     colegios: {
       eyebrow: "Estructura escolar",
       title: "Colegios",
-      description: "Sedes y colegios donde se organiza el desempeño, los equipos y los ciclos.",
+      description: "Sedes y colegios donde se organiza el desempeno, los equipos y los ciclos.",
     },
     empleados: {
       eyebrow: "Talento",
       title: "Empleados",
-      description: "Docentes y colaboradores organizados por colegio, cargo, área y responsable.",
+      description: "Docentes y colaboradores organizados por colegio, cargo, area y responsable.",
     },
     competencias: {
       eyebrow: "Modelo",
@@ -185,18 +192,23 @@ export default function AppShell({ view, setView, children }) {
     },
     metricas: {
       eyebrow: "Modelo",
-      title: "Métricas",
-      description: "Indicadores observables y niveles 1 a 5 para una evaluación consistente.",
+      title: "Metricas",
+      description: "Indicadores observables y niveles 1 a 5 para una evaluacion consistente.",
     },
     ciclos: {
       eyebrow: "Calendario",
-      title: "Ciclos de evaluación",
-      description: "Períodos institucionales que ordenan autoevaluación, jefatura y cierre final.",
+      title: "Ciclos de evaluacion",
+      description: "Periodos que ordenan autoevaluacion, jefatura y cierre final.",
     },
     evaluaciones: {
-      eyebrow: "Desempeño",
+      eyebrow: "Desempeno",
       title: "Evaluaciones",
       description: "Cargas por empleado con puntajes, comentarios y trazabilidad por ciclo.",
+    },
+    planes: {
+      eyebrow: "Desarrollo",
+      title: "Planes de desarrollo",
+      description: "Seguimiento de fortalezas, mejora y compromisos de evolucion por persona.",
     },
     usuarios: {
       eyebrow: "Accesos",
@@ -206,11 +218,11 @@ export default function AppShell({ view, setView, children }) {
     "bases-descargas": {
       eyebrow: "Datos institucionales",
       title: "Bases y Descargas",
-      description: "Consulta, filtra y descarga información educativa con validación por rol.",
+      description: "Consulta, filtra y descarga informacion educativa con validacion por rol.",
     },
     parametros: {
-      eyebrow: "Configuración",
-      title: "Configuración",
+      eyebrow: "Configuracion",
+      title: "Configuracion",
       description: "Identidad visible, ajustes operativos y criterios generales del colegio.",
     },
   };
@@ -249,7 +261,6 @@ export default function AppShell({ view, setView, children }) {
         setActiveCompanyId(item.companyId);
       }
     }
-
     setSearchTerm("");
   }
 
@@ -266,11 +277,11 @@ export default function AppShell({ view, setView, children }) {
             <LogoMark branding={branding} />
             <div>
               <p className="text-xs uppercase tracking-[0.26em] text-amber-200">{brandName}</p>
-              <p className="text-sm text-slate-400">Desempeño educativo</p>
+              <p className="text-sm text-slate-400">Desempeno educativo</p>
             </div>
           </div>
 
-          <h1 className="mt-8 text-2xl font-semibold">Centro de desempeño</h1>
+          <h1 className="mt-8 text-2xl font-semibold">Centro de desempeno</h1>
           <p className="mt-3 text-sm leading-6 text-slate-400">
             Evaluaciones, competencias y seguimiento claro para cada colegio.
           </p>
