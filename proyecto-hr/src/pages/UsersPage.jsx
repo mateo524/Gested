@@ -189,7 +189,7 @@ export default function UsersPage() {
         <h3 className="mt-3 text-3xl font-bold text-slate-950">Usuarios y credenciales</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
           Crea accesos por empresa, asigna roles y define si el ingreso queda habilitado. Si no
-          cargas password, Gested genera una temporal y luego pide cambio de clave al ingresar.
+          cargas contraseña, Performia genera una temporal y luego pide cambio de clave al ingresar.
         </p>
       </section>
 

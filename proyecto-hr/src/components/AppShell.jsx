@@ -7,7 +7,7 @@ function LogoMark({ branding }) {
     return (
       <img
         src={branding.logoUrl}
-        alt={branding.nombreVisible || "Gested"}
+        alt={branding.nombreVisible || "Performia"}
         className="h-11 w-11 rounded-full border border-white/10 bg-white/5 object-cover"
       />
     );
@@ -18,7 +18,7 @@ function LogoMark({ branding }) {
       className="grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-semibold text-amber-200"
       style={{ boxShadow: `0 0 0 1px ${branding?.primaryColor || "#10b981"}33 inset` }}
     >
-      G
+      P
     </div>
   );
 }
@@ -149,7 +149,11 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("view_reports"),
     },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
-    { key: "bases-descargas", label: "Bases y Descargas", show: hasPermission("view_reports") },
+    {
+      key: "bases-descargas",
+      label: "Bases y Descargas",
+      show: hasPermission("view_reports"),
+    },
     { key: "parametros", label: "Configuración", show: hasPermission("manage_settings") },
   ];
 
@@ -212,7 +216,7 @@ export default function AppShell({ view, setView, children }) {
   };
 
   const currentView = viewMeta[view] || viewMeta.dashboard;
-  const brandName = branding?.nombreVisible || "Gested";
+  const brandName = branding?.nombreVisible || "Performia";
   const primaryColor = branding?.primaryColor || "#10b981";
 
   const searchGroups = useMemo(

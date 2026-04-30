@@ -50,7 +50,7 @@ export default function DashboardPage() {
             {summary.company.nombreVisible}
           </p>
           <h3 className="mt-3 text-4xl font-bold text-slate-950">
-            Gested para {activeCompany?.nombre || summary.company.legalName}
+            Performia para {activeCompany?.nombre || summary.company.legalName}
           </h3>
           <p className="mt-3 max-w-2xl text-slate-500">
             Información consolidada, seguimiento docente y lectura ejecutiva para tomar decisiones
@@ -127,7 +127,7 @@ export default function DashboardPage() {
       {summary.superAdmin ? (
         <section className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-semibold">Vista global GestED</h3>
+            <h3 className="text-xl font-semibold">Vista global Performia</h3>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <SummaryCard
                 label="Empresas totales"

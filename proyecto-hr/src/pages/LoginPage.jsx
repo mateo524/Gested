@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
 const defaultBranding = {
-  nombreVisible: "Gested",
+  nombreVisible: "Performia",
   logoUrl: "",
   primaryColor: "#10b981",
 };
@@ -42,7 +42,7 @@ export default function LoginPage() {
   const pageStyle = useMemo(
     () => ({
       borderColor: `${portalBranding.primaryColor}22`,
-      background: `linear-gradient(180deg, #f8f4ec, #f8f4ec)`,
+      background: "linear-gradient(180deg, #f8f4ec, #f8f4ec)",
     }),
     [portalBranding.primaryColor]
   );
@@ -66,7 +66,7 @@ export default function LoginPage() {
 
       await login(data);
     } catch (error) {
-      setMessage(error.message || "No se pudo iniciar sesion.");
+      setMessage(error.message || "No se pudo iniciar sesión.");
     } finally {
       setIsSubmitting(false);
     }
@@ -95,28 +95,31 @@ export default function LoginPage() {
                 />
               ) : (
                 <div className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-white/10 text-sm font-semibold text-amber-200">
-                  G
+                  P
                 </div>
               )}
               <div>
                 <p className="text-xs uppercase tracking-[0.32em] text-amber-200">
                   {portalBranding.nombreVisible}
                 </p>
-                <p className="text-sm text-slate-300">Gestion de datos</p>
+                <p className="text-sm text-slate-300">Gestión del desempeño</p>
               </div>
             </div>
 
             <div className="mt-12 max-w-3xl">
-              <p className="text-xs uppercase tracking-[0.3em]" style={{ color: portalBranding.primaryColor }}>
+              <p
+                className="text-xs uppercase tracking-[0.3em]"
+                style={{ color: portalBranding.primaryColor }}
+              >
                 Plataforma interna
               </p>
               <h1 className="mt-4 text-5xl font-semibold leading-[0.95] md:text-6xl">
-                Datos mejor organizados para tomar decisiones con mas claridad
+                Datos mejor organizados para tomar decisiones con más claridad
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
                 {portalBranding.company?.nombre
-                  ? `Portal de acceso para ${portalBranding.company.nombre} dentro de Gested.`
-                  : "Gested concentra acceso, control, seguridad y operacion diaria en una experiencia mas ordenada y profesional para gestionar informacion."}
+                  ? `Portal de acceso para ${portalBranding.company.nombre} dentro de Performia.`
+                  : "Performia concentra acceso, control, seguridad y operación diaria en una experiencia más ordenada y profesional para gestionar información."}
               </p>
             </div>
           </div>
@@ -129,7 +132,7 @@ export default function LoginPage() {
               Entrar a {portalBranding.nombreVisible}
             </h2>
             <p className="mt-3 text-base leading-7 text-slate-600">
-              Gestion de datos, control de accesos y operacion interna desde un solo lugar.
+              Gestión del desempeño, control de accesos y operación interna desde un solo lugar.
             </p>
 
             <form className="mt-10 space-y-4" onSubmit={handleSubmit}>
@@ -143,7 +146,7 @@ export default function LoginPage() {
 
               <input
                 type="email"
-                placeholder="Correo electronico"
+                placeholder="Correo electrónico"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition"
@@ -151,7 +154,7 @@ export default function LoginPage() {
 
               <input
                 type="password"
-                placeholder="Contrasena"
+                placeholder="Contraseña"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition"
@@ -163,7 +166,7 @@ export default function LoginPage() {
                 className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
                 style={{ backgroundColor: portalBranding.primaryColor }}
               >
-                {isSubmitting ? "Ingresando..." : "Iniciar sesion"}
+                {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
               </button>
             </form>
 

@@ -91,7 +91,7 @@ export default function ExportPage() {
       const a = document.createElement("a");
 
       a.href = url;
-      a.download = type === "csv" ? "gested-reporte.csv" : "gested-reporte.xlsx";
+      a.download = type === "csv" ? "performia-reporte.csv" : "performia-reporte.xlsx";
       a.click();
 
       window.URL.revokeObjectURL(url);
@@ -131,7 +131,7 @@ export default function ExportPage() {
       setMessage(error.message);
     } finally {
       setIsUploading(false);
-      const input = document.getElementById("gested-import-file");
+      const input = document.getElementById("performia-import-file");
       if (input) input.value = "";
     }
   };
@@ -162,7 +162,7 @@ export default function ExportPage() {
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.24em] text-emerald-500">Centro de datos Gested</p>
+          <p className="text-sm uppercase tracking-[0.24em] text-emerald-500">Centro de datos Performia</p>
           <h3 className="mt-3 text-4xl font-bold text-slate-950">
             Importa, compara y explota la informacion de {activeCompany?.nombre || "tu empresa"}
           </h3>
@@ -235,7 +235,7 @@ export default function ExportPage() {
             <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Importacion guiada</p>
             <h3 className="mt-2 text-2xl font-semibold">Subir nueva base</h3>
             <p className="mt-2 text-slate-500">
-              Carga un Excel y Gested lo procesa para convertirlo en registros listos para usar.
+              Carga un Excel y Performia lo procesa para convertirlo en registros listos para usar.
             </p>
           </div>
 
@@ -255,7 +255,7 @@ export default function ExportPage() {
                 {form.file ? form.file.name : "Selecciona .xlsx o .xls"}
               </span>
               <input
-                id="gested-import-file"
+                id="performia-import-file"
                 type="file"
                 accept=".xlsx,.xls"
                 className="mt-4 block w-full text-sm text-slate-500"

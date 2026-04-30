@@ -167,8 +167,8 @@ export default function CompaniesPage() {
         <p className="text-xs uppercase tracking-[0.22em] text-emerald-500">Alta de clientes</p>
         <h3 className="mt-3 text-3xl font-semibold text-slate-950">Crear empresa y acceso inicial</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
-          Gested puede dejar lista una empresa con su administrador inicial para que entre, vea
-          solo su informacion y opere dentro del alcance asignado.
+          Performia puede dejar lista una empresa con su administrador inicial para que entre, vea
+          solo su información y opere dentro del alcance asignado.
         </p>
       </section>
 

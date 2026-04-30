@@ -128,7 +128,7 @@ export default function StorageCenterPage() {
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-xl font-semibold">Subir documento operativo</h3>
           <p className="mt-1 text-slate-500">
-            Suma contratos, instructivos, PDF o respaldos para que Gested los conserve por empresa.
+            Suma contratos, instructivos, PDF o respaldos para que Performia los conserve por empresa.
           </p>
 
           <form className="mt-6 space-y-4" onSubmit={uploadDocument}>

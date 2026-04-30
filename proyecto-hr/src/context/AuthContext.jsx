@@ -5,7 +5,7 @@ const AuthContext = createContext(null);
 const ACTIVE_COMPANY_KEY = "active_company_id";
 
 const defaultBranding = {
-  nombreVisible: "Gested",
+  nombreVisible: "Performia",
   logoUrl: "",
   primaryColor: "#10b981",
   maxUploadSizeMb: 10,
@@ -165,8 +165,8 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--gested-primary", branding.primaryColor || "#10b981");
-    root.style.setProperty("--gested-primary-soft", `${branding.primaryColor || "#10b981"}22`);
+    root.style.setProperty("--performia-primary", branding.primaryColor || "#10b981");
+    root.style.setProperty("--performia-primary-soft", `${branding.primaryColor || "#10b981"}22`);
   }, [branding.primaryColor]);
 
   const activeCompany = companies.find((company) => company._id === activeCompanyId) || null;
