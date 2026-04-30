@@ -10,10 +10,7 @@ const defaultBranding = {
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
   const [portalBranding] = useState(defaultBranding);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -34,9 +31,7 @@ export default function LoginPage() {
 
       const data = await apiFetch("/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: form.email,
           password: form.password,
@@ -45,7 +40,7 @@ export default function LoginPage() {
 
       await login(data);
     } catch (error) {
-      setMessage(error.message || "No se pudo iniciar sesión.");
+      setMessage(error.message || "No se pudo iniciar sesion.");
     } finally {
       setIsSubmitting(false);
     }
@@ -81,7 +76,7 @@ export default function LoginPage() {
                 <p className="text-xs uppercase tracking-[0.32em] text-amber-200">
                   {portalBranding.nombreVisible}
                 </p>
-                <p className="text-sm text-slate-300">Gestión del desempeño</p>
+                <p className="text-sm text-slate-300">Gestion del desempeno</p>
               </div>
             </div>
 
@@ -93,11 +88,11 @@ export default function LoginPage() {
                 Plataforma interna
               </p>
               <h1 className="mt-4 text-5xl font-semibold leading-[0.95] md:text-6xl">
-                Datos mejor organizados para tomar decisiones con más claridad
+                Datos mejor organizados para tomar decisiones con mas claridad
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
-                Performia concentra acceso, control, seguridad y operacion diaria en una experiencia
-                mas ordenada y profesional para gestionar informacion.
+                Performia concentra acceso, control, seguridad y operacion diaria en una
+                experiencia mas ordenada y profesional para gestionar informacion.
               </p>
             </div>
           </div>
@@ -110,13 +105,13 @@ export default function LoginPage() {
               Entrar a {portalBranding.nombreVisible}
             </h2>
             <p className="mt-3 text-base leading-7 text-slate-600">
-              Gestión del desempeño, control de accesos y operación interna desde un solo lugar.
+              Gestion del desempeno, control de accesos y operacion interna desde un solo lugar.
             </p>
 
             <form className="mt-10 space-y-4" onSubmit={handleSubmit}>
               <input
                 type="email"
-                placeholder="Correo electrónico"
+                placeholder="Correo electronico"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition"
@@ -124,7 +119,7 @@ export default function LoginPage() {
 
               <input
                 type="password"
-                placeholder="Contraseña"
+                placeholder="Contrasena"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
                 className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition"
@@ -136,7 +131,7 @@ export default function LoginPage() {
                 className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
                 style={{ backgroundColor: portalBranding.primaryColor }}
               >
-                {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
+                {isSubmitting ? "Ingresando..." : "Iniciar sesion"}
               </button>
             </form>
 

@@ -34,13 +34,8 @@ export default function DashboardPage() {
       .catch((error) => setMessage(error.message));
   }, [token, activeCompany?._id]);
 
-  if (message) {
-    return <p className="text-red-500">{message}</p>;
-  }
-
-  if (!summary) {
-    return <p className="text-slate-500">Cargando panel...</p>;
-  }
+  if (message) return <p className="text-red-500">{message}</p>;
+  if (!summary) return <p className="text-slate-500">Cargando panel...</p>;
 
   return (
     <div className="space-y-6">
@@ -53,8 +48,8 @@ export default function DashboardPage() {
             Performia para {activeCompany?.nombre || summary.company.legalName}
           </h3>
           <p className="mt-3 max-w-2xl text-slate-500">
-            Información consolidada, seguimiento docente y lectura ejecutiva para tomar decisiones
-            con más claridad en el colegio activo.
+            Informacion consolidada, seguimiento docente y lectura ejecutiva para tomar decisiones
+            con mas claridad en el colegio activo.
           </p>
         </div>
 
@@ -66,7 +61,7 @@ export default function DashboardPage() {
               <p className="text-3xl font-bold">{summary.security.totalAuditEvents}</p>
             </div>
             <div>
-              <p className="text-slate-400">Permisos en sesión</p>
+              <p className="text-slate-400">Permisos en sesion</p>
               <p className="text-3xl font-bold">{summary.security.permissionsInSession}</p>
             </div>
             <div>
@@ -86,12 +81,12 @@ export default function DashboardPage() {
       {summary.educational ? (
         <section className="grid gap-6 xl:grid-cols-[0.82fr_1.18fr]">
           <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-            <h3 className="text-xl font-semibold">Resumen académico</h3>
+            <h3 className="text-xl font-semibold">Resumen academico</h3>
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <SummaryCard
                 label="Competencias"
                 value={summary.educational.competenciesTotal}
-                hint={`${summary.educational.metricsTotal} métricas asociadas`}
+                hint={`${summary.educational.metricsTotal} metricas asociadas`}
               />
               <SummaryCard
                 label="Descargas"
@@ -116,7 +111,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               ) : (
                 <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
-                  Aún no hay estados suficientes para graficar.
+                  Aun no hay estados suficientes para graficar.
                 </div>
               )}
             </div>
@@ -157,7 +152,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               ) : (
                 <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
-                  Aún no hay tipos de cliente suficientes para mostrar.
+                  Aun no hay tipos de cliente suficientes para mostrar.
                 </div>
               )}
             </div>
@@ -168,9 +163,9 @@ export default function DashboardPage() {
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <h3 className="text-xl font-semibold">Distribución por rol</h3>
+            <h3 className="text-xl font-semibold">Distribucion por rol</h3>
             <p className="mt-1 text-slate-500">
-              Lectura rápida del peso operativo de cada perfil dentro de la base activa.
+              Lectura rapida del peso operativo de cada perfil dentro de la base activa.
             </p>
           </div>
 
@@ -187,7 +182,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
-                Todavía no hay datos suficientes para graficar.
+                Todavia no hay datos suficientes para graficar.
               </div>
             )}
           </div>
@@ -195,9 +190,9 @@ export default function DashboardPage() {
 
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <div>
-            <h3 className="text-xl font-semibold">Evolución de evaluaciones</h3>
+            <h3 className="text-xl font-semibold">Evolucion de evaluaciones</h3>
             <p className="mt-1 text-slate-500">
-              Muestra cómo crece la carga de evaluaciones en el tiempo.
+              Muestra como crece la carga de evaluaciones en el tiempo.
             </p>
           </div>
 
@@ -220,7 +215,7 @@ export default function DashboardPage() {
               </ResponsiveContainer>
             ) : (
               <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
-                Aún no hay historial de evaluaciones para mostrar.
+                Aun no hay historial de evaluaciones para mostrar.
               </div>
             )}
           </div>
@@ -229,9 +224,9 @@ export default function DashboardPage() {
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold">Fuentes con más registros</h3>
+          <h3 className="text-xl font-semibold">Fuentes con mas registros</h3>
           <p className="mt-1 text-slate-500">
-            Ranking de archivos que hoy concentran más volumen dentro del colegio.
+            Ranking de archivos que hoy concentran mas volumen dentro del colegio.
           </p>
 
           <div className="mt-6 space-y-4">
@@ -251,7 +246,7 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="text-slate-500">Todavía no hay bases cargadas.</p>
+              <p className="text-slate-500">Todavia no hay bases cargadas.</p>
             )}
           </div>
         </div>
@@ -274,7 +269,7 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="text-slate-500">Todavía no hay eventos auditados.</p>
+              <p className="text-slate-500">Todavia no hay eventos auditados.</p>
             )}
           </div>
         </div>

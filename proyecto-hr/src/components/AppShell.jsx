@@ -161,6 +161,39 @@ export default function AppShell({ view, setView, children }) {
     },
   ];
 
+  const groupedMenu = [
+    {
+      key: "panel",
+      label: "Panel",
+      items: menuItems.filter((item) => item.show && item.key === "dashboard"),
+    },
+    {
+      key: "gestion",
+      label: "Gestion",
+      items: menuItems.filter(
+        (item) => item.show && ["empresas", "colegios", "usuarios", "roles"].includes(item.key)
+      ),
+    },
+    {
+      key: "evaluacion",
+      label: "Evaluacion",
+      items: menuItems.filter(
+        (item) =>
+          item.show &&
+          ["empleados", "competencias", "metricas", "ciclos", "evaluaciones", "planes"].includes(
+            item.key
+          )
+      ),
+    },
+    {
+      key: "datos",
+      label: "Datos",
+      items: menuItems.filter(
+        (item) => item.show && ["novedades", "bases-descargas"].includes(item.key)
+      ),
+    },
+  ].filter((group) => group.items.length);
+
   const viewMeta = {
     empresas: {
       eyebrow: "Clientes",
@@ -230,6 +263,8 @@ export default function AppShell({ view, setView, children }) {
   };
 
   const currentView = viewMeta[view] || viewMeta.dashboard;
+  const currentGroup =
+    groupedMenu.find((group) => group.items.some((item) => item.key === view)) || groupedMenu[0];
   const brandName = branding?.nombreVisible || "Performia";
   const primaryColor = branding?.primaryColor || "#10b981";
 
@@ -303,20 +338,21 @@ export default function AppShell({ view, setView, children }) {
               </select>
             ) : null}
 
-            {menuItems
-              .filter((item) => item.show)
-              .map((item) => (
+            {groupedMenu.map((group) => {
+              const isActiveGroup = group.items.some((item) => item.key === view);
+              return (
                 <button
-                  key={item.key}
-                  onClick={() => setView(item.key)}
-                  className={`w-full rounded-2xl px-5 py-4 text-left text-[15px] font-medium transition ${
-                    view === item.key ? "text-white" : "text-slate-200 hover:bg-slate-800"
+                  key={group.key}
+                  onClick={() => setView(group.items[0].key)}
+                  className={`w-full rounded-2xl px-5 py-4 text-left text-[16px] font-semibold transition ${
+                    isActiveGroup ? "text-white" : "text-slate-200 hover:bg-slate-800"
                   }`}
-                  style={view === item.key ? { backgroundColor: primaryColor } : {}}
+                  style={isActiveGroup ? { backgroundColor: primaryColor } : {}}
                 >
-                  {item.label}
+                  {group.label}
                 </button>
-              ))}
+              );
+            })}
           </div>
 
           <div className="mt-10 border-t border-slate-800 pt-6">
@@ -347,6 +383,25 @@ export default function AppShell({ view, setView, children }) {
                 <p className="mt-2 max-w-3xl text-sm text-slate-500">
                   {currentView.description}
                 </p>
+                {currentGroup?.items?.length > 1 ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {currentGroup.items.map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => setView(item.key)}
+                        className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                          view === item.key
+                            ? "border-transparent text-white"
+                            : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                        }`}
+                        style={view === item.key ? { backgroundColor: primaryColor } : {}}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
 
               <div className="flex flex-wrap items-start gap-3">
