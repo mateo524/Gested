@@ -56,7 +56,6 @@ function AppContent() {
         hasPermission("view_reports")
           ? "planes"
           : null,
-        hasPermission("manage_users") ? "usuarios" : null,
         hasPermission("view_reports") ||
         hasPermission("download_team_reports") ||
         hasPermission("download_self_report")
