@@ -4,6 +4,7 @@ import multer from "multer";
 import ExcelJS from "exceljs";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
+import Company from "../models/Company.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
@@ -54,6 +55,37 @@ async function parseUploadedRows(file) {
   });
 
   return rows;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function slugifyText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ".")
+    .replace(/[^a-z0-9._-]/g, "");
+}
+
+async function buildUniqueEmail({ companySlug, baseLocalPart, companyId }) {
+  const safeCompany = slugifyText(companySlug || "empresa") || "empresa";
+  const safeLocal = slugifyText(baseLocalPart || "usuario") || "usuario";
+  const domain = `${safeCompany}.performia.app`;
+  let candidate = `${safeLocal}@${domain}`;
+  let index = 1;
+
+  while (await User.findOne({ companyId, email: candidate })) {
+    index += 1;
+    candidate = `${safeLocal}.${index}@${domain}`;
+  }
+
+  return candidate;
 }
 
 router.get("/", auth, permit("manage_users"), async (req, res) => {
@@ -151,12 +183,22 @@ router.post(
       return res.status(400).json({ mensaje: "El archivo no contiene filas para importar" });
     }
 
-    const roles = await Role.find({ companyId }).lean();
+    const [roles, company] = await Promise.all([
+      Role.find({ companyId }).lean(),
+      Company.findById(companyId).lean(),
+    ]);
     const roleByKey = new Map();
     roles.forEach((role) => {
-      roleByKey.set(String(role.nombre || "").trim().toLowerCase(), role);
-      roleByKey.set(String(role.code || "").trim().toLowerCase(), role);
+      roleByKey.set(normalizeText(role.nombre), role);
+      roleByKey.set(normalizeText(role.code), role);
     });
+
+    const defaultRole =
+      roleByKey.get("empleado") ||
+      roleByKey.get("empleado/docente") ||
+      roleByKey.get("empleado_docente") ||
+      roleByKey.get("rrhh") ||
+      roles[0];
 
     const result = {
       total: rows.length,
@@ -167,17 +209,27 @@ router.post(
     };
 
     for (const row of rows) {
-      const nombre = String(row.nombre || "").trim();
-      const email = String(row.email || "").trim().toLowerCase();
-      const rolInput = String(row.rol || row.role || row.rolecode || "").trim().toLowerCase();
-      const role = roleByKey.get(rolInput);
+      const nombreBase = String(row.nombre || row.name || "").trim();
+      const apellido = String(row.apellido || row.lastname || "").trim();
+      const nombre = [nombreBase, apellido].filter(Boolean).join(" ").trim();
+      let email = String(row.email || "").trim().toLowerCase();
+      const rolInput = normalizeText(row.rol || row.role || row.rolecode || "");
+      const role = roleByKey.get(rolInput) || defaultRole;
 
-      if (!nombre || !email || !role) {
+      if (!nombre || !role) {
         result.errors.push({
           row: row._rowNumber,
-          message: "Faltan datos obligatorios o rol invalido",
+          message: "Faltan datos obligatorios o no hay roles disponibles",
         });
         continue;
+      }
+
+      if (!email) {
+        email = await buildUniqueEmail({
+          companySlug: company?.slug || company?.nombre,
+          baseLocalPart: nombre,
+          companyId,
+        });
       }
 
       const activo = toBoolean(row.activo, true);

@@ -16,6 +16,7 @@ const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
 const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
 const DevelopmentPlansPage = lazy(() => import("./pages/DevelopmentPlansPage"));
 const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
+const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
 
 function ViewLoader() {
   return (
@@ -61,6 +62,7 @@ function AppContent() {
         hasPermission("download_self_report")
           ? "bases-descargas"
           : null,
+        user?.isSuperAdmin ? "archivo-central" : null,
       ].filter(Boolean),
     [hasPermission, user]
   );
@@ -92,6 +94,7 @@ function AppContent() {
         {view === "evaluaciones" && <EvaluationsPage />}
         {view === "planes" && <DevelopmentPlansPage />}
         {view === "bases-descargas" && <EducationalExportsPage />}
+        {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}
         {view === "roles" && <RolesPage />}
       </Suspense>

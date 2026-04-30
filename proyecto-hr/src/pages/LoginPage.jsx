@@ -47,12 +47,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f3efe7] px-6 py-8 text-slate-950">
+    <div className="min-h-screen bg-[#0E1A20] px-6 py-8 text-[#E8EEF1]">
       <div
         className="mx-auto grid min-h-[calc(100vh-4rem)] max-w-7xl overflow-hidden rounded-[2rem] border shadow-[0_30px_80px_rgba(15,23,42,0.12)] lg:grid-cols-[1.15fr_0.85fr]"
         style={pageStyle}
       >
-        <section className="relative overflow-hidden bg-[#090c12] p-8 text-white md:p-12 lg:p-14">
+        <section className="relative overflow-hidden bg-[#0E1A20] p-8 text-white md:p-12 lg:p-14">
           <div
             className="absolute inset-0"
             style={{
@@ -76,7 +76,7 @@ export default function LoginPage() {
                 <p className="text-xs uppercase tracking-[0.32em] text-amber-200">
                   {portalBranding.nombreVisible}
                 </p>
-                <p className="text-sm text-slate-300">Gestion del desempeno</p>
+                <p className="text-sm text-[#7A9AAA]">Gestion del desempeno</p>
               </div>
             </div>
 
@@ -87,25 +87,25 @@ export default function LoginPage() {
               >
                 Plataforma interna
               </p>
-              <h1 className="mt-4 text-5xl font-semibold leading-[0.95] md:text-6xl">
+              <h1 className="mt-4 text-5xl leading-[0.95] md:text-6xl" style={{ fontFamily: "Instrument Serif, serif" }}>
                 Datos mejor organizados para tomar decisiones con mas claridad
               </h1>
-              <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
+              <p className="mt-6 max-w-2xl text-base leading-7 text-[#AFC3CE] md:text-lg">
                 Performia concentra acceso, control, seguridad y operacion diaria en una
                 experiencia mas ordenada y profesional para gestionar informacion.
               </p>
 
               <div className="mt-8 grid gap-3 md:grid-cols-3">
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Gestion</p>
+                <article className="rounded-2xl border border-white/10 bg-[#142028] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Gestion</p>
                   <p className="mt-2 text-2xl font-semibold text-white">Centralizada</p>
                 </article>
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Auditoria</p>
+                <article className="rounded-2xl border border-white/10 bg-[#142028] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Auditoria</p>
                   <p className="mt-2 text-2xl font-semibold text-white">Activa</p>
                 </article>
-                <article className="rounded-2xl border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-slate-300">Operacion</p>
+                <article className="rounded-2xl border border-white/10 bg-[#142028] p-4">
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Operacion</p>
                   <p className="mt-2 text-2xl font-semibold text-white">Ordenada</p>
                 </article>
               </div>
@@ -113,13 +113,13 @@ export default function LoginPage() {
           </div>
         </section>
 
-        <section className="flex items-center bg-[#f8f4ec] p-8 md:p-12">
-          <div className="mx-auto w-full max-w-md rounded-[1.75rem] border border-slate-200 bg-white/70 p-7 shadow-sm backdrop-blur">
-            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Ingreso seguro</p>
-            <h2 className="mt-3 text-4xl font-semibold leading-tight text-slate-950">
+        <section className="flex items-center bg-[#142028] p-8 md:p-12">
+          <div className="mx-auto w-full max-w-md rounded-[1.75rem] border border-white/10 bg-[#1A2C38] p-7 shadow-sm backdrop-blur">
+            <p className="text-xs uppercase tracking-[0.28em] text-[#7A9AAA]">Ingreso seguro</p>
+            <h2 className="mt-3 text-4xl leading-tight text-white" style={{ fontFamily: "Instrument Serif, serif" }}>
               Entrar a {portalBranding.nombreVisible}
             </h2>
-            <p className="mt-3 text-base leading-7 text-slate-600">
+            <p className="mt-3 text-base leading-7 text-[#AFC3CE]">
               Gestion del desempeno, control de accesos y operacion interna desde un solo lugar.
             </p>
 
@@ -129,7 +129,7 @@ export default function LoginPage() {
                 placeholder="Correo electronico"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition focus:border-slate-500"
+                className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
               />
 
               <input
@@ -137,7 +137,7 @@ export default function LoginPage() {
                 placeholder="Contrasena"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition focus:border-slate-500"
+                className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
               />
 
               <button
@@ -155,7 +155,7 @@ export default function LoginPage() {
                 {message}
               </p>
             ) : (
-              <p className="mt-4 text-sm text-slate-500">
+              <p className="mt-4 text-sm text-[#7A9AAA]">
                 Si el servidor estaba inactivo, el primer ingreso puede tardar algunos segundos.
               </p>
             )}

@@ -108,6 +108,14 @@ export default function EducationalExportsPage() {
         </p>
       </section>
 
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <h4 className="text-lg font-semibold text-slate-950">Donde cargar bases y usuarios</h4>
+        <p className="mt-2 text-sm text-slate-600">
+          Para cargar bases y documentos por empresa usa <strong>Archivo central</strong>. Para crear
+          accesos desde Excel (mail, password y rol) usa <strong>Usuarios - Importacion masiva</strong>.
+        </p>
+      </section>
+
       {overview ? (
         <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
           <SummaryCard label="Empleados" value={overview.summary.employees} hint="Base institucional" />

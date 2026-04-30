@@ -7,6 +7,7 @@ import Company from "../models/Company.js";
 import Record from "../models/Record.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
+import { requireSuperAdmin } from "../middleware/rbac.js";
 import { logAudit } from "../utils/audit.js";
 
 const router = express.Router();
@@ -36,7 +37,7 @@ function inferType(file) {
   return "otro";
 }
 
-router.get("/overview", auth, permit("manage_companies"), async (req, res) => {
+router.get("/overview", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const companyId = req.query.companyId?.trim();
   const tipoArchivo = req.query.tipoArchivo?.trim();
   const q = req.query.q?.trim();
@@ -89,6 +90,7 @@ router.get("/overview", auth, permit("manage_companies"), async (req, res) => {
 router.post(
   "/upload",
   auth,
+  requireSuperAdmin,
   permit("manage_companies"),
   upload.single("file"),
   async (req, res) => {
@@ -131,7 +133,7 @@ router.post(
   }
 );
 
-router.get("/:id/detail", auth, permit("manage_companies"), async (req, res) => {
+router.get("/:id/detail", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const file = await DatabaseFile.findById(req.params.id).lean();
 
   if (!file) {

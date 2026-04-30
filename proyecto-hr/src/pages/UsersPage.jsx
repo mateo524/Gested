@@ -212,6 +212,22 @@ export default function UsersPage() {
     }
   }
 
+  function downloadTemplate() {
+    const csv = [
+      "nombre,apellido,email,rol,activo,password",
+      "Ana,Perez,ana.perez@colegio.com,EMPLEADO,true,",
+      "Carlos,Gomez,,JEFE,true,",
+      "Marta,Ruiz,marta.ruiz@colegio.com,RRHH,true,Temporal#2026",
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "plantilla-usuarios-performia.csv";
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
@@ -455,6 +471,11 @@ export default function UsersPage() {
         <p className="mt-1 text-slate-500">
           Sube un archivo CSV o Excel con columnas: nombre, email, rol, activo, password.
         </p>
+        <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+          Si una fila no trae email, Performia lo genera automaticamente.
+          Si no trae password, genera una temporal y pide cambio al primer ingreso.
+          Si no trae rol, intenta asignar EMPLEADO por defecto.
+        </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <input
@@ -469,6 +490,13 @@ export default function UsersPage() {
             className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white"
           >
             Importar archivo
+          </button>
+          <button
+            type="button"
+            onClick={downloadTemplate}
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+          >
+            Descargar plantilla
           </button>
         </div>
 
