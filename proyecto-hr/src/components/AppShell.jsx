@@ -162,6 +162,7 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("download_team_reports") ||
         hasPermission("download_self_report"),
     },
+    { key: "archivo-central", label: "Archivo central", show: !!user?.isSuperAdmin },
   ];
 
   const groupedMenu = [
@@ -192,7 +193,7 @@ export default function AppShell({ view, setView, children }) {
       key: "datos",
       label: "Datos",
       items: menuItems.filter(
-        (item) => item.show && ["novedades", "bases-descargas"].includes(item.key)
+        (item) => item.show && ["novedades", "bases-descargas", "archivo-central"].includes(item.key)
       ),
     },
   ].filter((group) => group.items.length);
@@ -258,6 +259,11 @@ export default function AppShell({ view, setView, children }) {
       title: "Bases y Descargas",
       description: "Consulta, filtra y descarga informacion educativa con validacion por rol.",
     },
+    "archivo-central": {
+      eyebrow: "Control global",
+      title: "Archivo central",
+      description: "Carga y supervision de archivos por empresa y tipo de documento.",
+    },
   };
 
   const currentView = viewMeta[view] || viewMeta.dashboard;
@@ -299,23 +305,23 @@ export default function AppShell({ view, setView, children }) {
     <div
       className="min-h-screen"
       style={{
-        background: `radial-gradient(circle at top left, ${primaryColor}22, transparent 24%), linear-gradient(180deg, #f7f1e7, #f5f7fb)`,
+        background: `radial-gradient(circle at top center, ${primaryColor}18, transparent 30%), #0E1A20`,
       }}
     >
       <div className="min-h-screen">
-        <header className="sticky top-0 z-30 border-b border-black/5 bg-white/90 px-6 py-3 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/90 px-6 py-3 backdrop-blur">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <LogoMark branding={branding} />
               <div>
-                <p className="text-xs uppercase tracking-[0.24em] text-slate-700">{brandName}</p>
-                <p className="text-xs text-slate-500">Desempeno educativo</p>
+                <p className="text-xs uppercase tracking-[0.24em] text-[#FAD564]">{brandName}</p>
+                <p className="text-xs text-[#7A9AAA]">Desempeno educativo</p>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {hasPermission("manage_companies") && companies.length ? (
                 <select
-                  className="w-52 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                  className="w-52 rounded-xl border border-white/15 bg-[#142028] px-3 py-2 text-sm text-[#E8EEF1]"
                   value={activeCompanyId}
                   onChange={(event) => setActiveCompanyId(event.target.value)}
                 >
@@ -328,7 +334,7 @@ export default function AppShell({ view, setView, children }) {
               ) : null}
               <button
                 onClick={logout}
-                className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700"
+                className="rounded-xl border border-white/15 bg-[#142028] px-3 py-2 text-sm font-medium text-[#E8EEF1]"
               >
                 Salir
               </button>
@@ -345,7 +351,7 @@ export default function AppShell({ view, setView, children }) {
                   className={`whitespace-nowrap rounded-xl px-3 py-1.5 text-sm font-semibold transition ${
                     isActiveGroup
                       ? "text-white"
-                      : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
+                      : "border border-white/15 bg-[#142028] text-[#E8EEF1] hover:border-white/25"
                   }`}
                   style={isActiveGroup ? { backgroundColor: primaryColor } : {}}
                 >
@@ -356,12 +362,12 @@ export default function AppShell({ view, setView, children }) {
           </div>
         </header>
 
-        <header className="border-b border-black/5 bg-white/80 px-6 py-4 backdrop-blur">
+        <header className="border-b border-white/10 bg-[#142028]/85 px-6 py-4 backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-slate-500">{currentView.eyebrow}</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-950">{currentView.title}</h2>
-              <p className="mt-2 max-w-3xl text-sm text-slate-500">{currentView.description}</p>
+              <p className="text-xs uppercase tracking-[0.22em] text-[#7A9AAA]">{currentView.eyebrow}</p>
+              <h2 className="mt-2 text-2xl font-semibold text-white">{currentView.title}</h2>
+              <p className="mt-2 max-w-3xl text-sm text-[#AFC3CE]">{currentView.description}</p>
               {currentGroup?.items?.length > 1 ? (
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
                   {currentGroup.items.map((item) => (
@@ -369,11 +375,11 @@ export default function AppShell({ view, setView, children }) {
                       key={item.key}
                       type="button"
                       onClick={() => setView(item.key)}
-                      className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
-                        view === item.key
-                          ? "border-transparent text-white"
-                          : "border-slate-200 bg-white text-slate-700 hover:border-slate-300"
-                      }`}
+                        className={`whitespace-nowrap rounded-xl border px-3 py-1.5 text-sm font-medium transition ${
+                          view === item.key
+                            ? "border-transparent text-white"
+                            : "border-white/15 bg-[#1A2C38] text-[#E8EEF1] hover:border-white/25"
+                        }`}
                       style={view === item.key ? { backgroundColor: primaryColor } : {}}
                     >
                       {item.label}
@@ -387,7 +393,7 @@ export default function AppShell({ view, setView, children }) {
               {user?.isSuperAdmin ? (
                 <div className="relative min-w-64">
                   <input
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+                    className="w-full rounded-2xl border border-white/15 bg-[#1A2C38] px-4 py-3 text-sm text-white placeholder:text-[#7A9AAA]"
                     placeholder="Buscar empresas, archivos o mensajes"
                     value={searchTerm}
                     onChange={(event) => {
@@ -438,7 +444,7 @@ export default function AppShell({ view, setView, children }) {
         </header>
 
         <main className="p-8">
-          <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
             {user?.nombre} - {user?.roleName} - {user?.companyName}
           </div>
           {children}
