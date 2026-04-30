@@ -5,11 +5,10 @@ import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
 
 const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const CompaniesPage = lazy(() => import("./pages/CompaniesPage"));
+const OrganizationsPage = lazy(() => import("./pages/OrganizationsPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
 const RolesPage = lazy(() => import("./pages/RolesPage"));
 const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
-const SchoolsPage = lazy(() => import("./pages/SchoolsPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
 const CompetenciesPage = lazy(() => import("./pages/CompetenciesPage"));
 const MetricsPage = lazy(() => import("./pages/MetricsPage"));
@@ -34,8 +33,9 @@ function AppContent() {
     () =>
       [
         "dashboard",
-        hasPermission("manage_companies") ? "empresas" : null,
-        hasPermission("manage_schools") ? "colegios" : null,
+        hasPermission("manage_companies") || hasPermission("manage_schools")
+          ? "organizaciones"
+          : null,
         hasPermission("manage_users") ? "usuarios" : null,
         hasPermission("manage_roles") ? "roles" : null,
         "novedades",
@@ -84,7 +84,7 @@ function AppContent() {
       <Suspense fallback={<ViewLoader />}>
         {view === "dashboard" && <DashboardPage />}
         {view === "novedades" && <AnnouncementsPage />}
-        {view === "colegios" && <SchoolsPage />}
+        {view === "organizaciones" && <OrganizationsPage />}
         {view === "empleados" && <EmployeesPage />}
         {view === "competencias" && <CompetenciesPage />}
         {view === "metricas" && <MetricsPage />}
@@ -92,7 +92,6 @@ function AppContent() {
         {view === "evaluaciones" && <EvaluationsPage />}
         {view === "planes" && <DevelopmentPlansPage />}
         {view === "bases-descargas" && <EducationalExportsPage />}
-        {view === "empresas" && <CompaniesPage />}
         {view === "usuarios" && <UsersPage />}
         {view === "roles" && <RolesPage />}
       </Suspense>

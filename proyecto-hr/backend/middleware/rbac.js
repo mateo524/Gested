@@ -43,3 +43,13 @@ export function requireRole(...roles) {
     next();
   };
 }
+
+export function requireSuperAdmin(req, res, next) {
+  if (!req.user?.isSuperAdmin) {
+    return res.status(403).json({
+      mensaje: "Solo Super Admin puede acceder a este recurso",
+    });
+  }
+
+  next();
+}
