@@ -121,12 +121,11 @@ export default function AppShell({ view, setView, children }) {
 
   const menuItems = [
     { key: "dashboard", label: "Panel", show: true },
+    { key: "empresas", label: "Empresas", show: hasPermission("manage_companies") },
+    { key: "colegios", label: "Colegios", show: hasPermission("manage_schools") },
+    { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
+    { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
     { key: "novedades", label: "Novedades", show: true },
-    {
-      key: "colegios",
-      label: "Colegios",
-      show: hasPermission("manage_schools") || hasPermission("manage_companies"),
-    },
     { key: "empleados", label: "Empleados", show: hasPermission("manage_employees") },
     { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies") },
     { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics") },
@@ -152,7 +151,6 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("evaluate_team") ||
         hasPermission("view_reports"),
     },
-    { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
     {
       key: "bases-descargas",
       label: "Bases y Descargas",
@@ -161,14 +159,23 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("download_team_reports") ||
         hasPermission("download_self_report"),
     },
-    { key: "parametros", label: "Configuracion", show: hasPermission("manage_settings") },
   ];
 
   const viewMeta = {
+    empresas: {
+      eyebrow: "Clientes",
+      title: "Empresas",
+      description: "Alta y gestion de empresas, estados de acceso y estructura inicial.",
+    },
     dashboard: {
       eyebrow: "Vision institucional",
       title: "Panel de desempeno",
       description: "Indicadores, seguimiento y foco operativo para el colegio activo.",
+    },
+    roles: {
+      eyebrow: "Permisos",
+      title: "Roles",
+      description: "Define permisos por perfil para controlar lo que puede ver y descargar cada usuario.",
     },
     novedades: {
       eyebrow: "Comunicacion",
@@ -219,11 +226,6 @@ export default function AppShell({ view, setView, children }) {
       eyebrow: "Datos institucionales",
       title: "Bases y Descargas",
       description: "Consulta, filtra y descarga informacion educativa con validacion por rol.",
-    },
-    parametros: {
-      eyebrow: "Configuracion",
-      title: "Configuracion",
-      description: "Identidad visible, ajustes operativos y criterios generales del colegio.",
     },
   };
 
@@ -307,7 +309,7 @@ export default function AppShell({ view, setView, children }) {
                 <button
                   key={item.key}
                   onClick={() => setView(item.key)}
-                  className={`w-full rounded-2xl px-4 py-3 text-left transition ${
+                  className={`w-full rounded-2xl px-5 py-4 text-left text-[15px] font-medium transition ${
                     view === item.key ? "text-white" : "text-slate-200 hover:bg-slate-800"
                   }`}
                   style={view === item.key ? { backgroundColor: primaryColor } : {}}
