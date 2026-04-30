@@ -35,7 +35,7 @@ export default function SettingsPage() {
 
       setSettings((prev) => ({ ...prev, ...(data.settings || {}) }));
       await refreshBranding();
-      setMessage("Parametros actualizados");
+      setMessage("Parámetros actualizados");
     } catch (error) {
       setMessage(error.message);
     }
@@ -46,11 +46,11 @@ export default function SettingsPage() {
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
         <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Control de marca y operacion</p>
         <h3 className="mt-3 text-3xl font-bold text-slate-950">
-          Parametros de {activeCompany?.nombre || "la empresa"}
+          Parámetros de {activeCompany?.nombre || "la empresa"}
         </h3>
         <p className="mt-3 max-w-3xl text-slate-500">
-          Este apartado sirve para definir como se presenta la empresa dentro de Gested, que
-          capacidad de carga maneja y que referencias visuales usa el equipo para operar de forma
+          Este apartado sirve para definir cómo se presenta la empresa dentro de Performia, qué
+          capacidad de carga maneja y qué referencias visuales usa el equipo para operar de forma
           consistente.
         </p>
       </section>
@@ -95,7 +95,7 @@ export default function SettingsPage() {
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-xl font-semibold">Vista previa de marca</h3>
           <p className="mt-1 text-slate-500">
-            Asi se reflejara la identidad de la empresa dentro del panel.
+            Así se reflejará la identidad de la empresa dentro del panel.
           </p>
 
           <div className="mt-6 rounded-[1.75rem] border border-slate-200 p-6">
@@ -118,7 +118,7 @@ export default function SettingsPage() {
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Marca activa</p>
                 <p className="mt-1 text-2xl font-semibold text-slate-950">
-                  {settings.nombreVisible || activeCompany?.nombre || "Gested"}
+                  {settings.nombreVisible || activeCompany?.nombre || "Performia"}
                 </p>
               </div>
             </div>
@@ -130,7 +130,7 @@ export default function SettingsPage() {
 
           <div className="mt-6 space-y-4">
             <label className="block">
-              <span className="mb-2 block text-sm text-slate-500">Tamano maximo por archivo (MB)</span>
+              <span className="mb-2 block text-sm text-slate-500">Tamaño máximo por archivo (MB)</span>
               <input
                 type="number"
                 min="1"
@@ -146,11 +146,11 @@ export default function SettingsPage() {
             </label>
 
             <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Que controla este modulo</p>
+              <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Qué controla este módulo</p>
               <ul className="mt-3 space-y-2 text-sm text-slate-600">
                 <li>Nombre y referencia visual de la empresa dentro del panel.</li>
-                <li>Capacidad maxima sugerida para importaciones.</li>
-                <li>Base para seguir sumando branding, notificaciones y politicas.</li>
+                <li>Capacidad máxima sugerida para importaciones.</li>
+                <li>Base para seguir sumando branding, notificaciones y políticas.</li>
               </ul>
             </div>
           </div>
@@ -160,7 +160,7 @@ export default function SettingsPage() {
             className="mt-6 rounded-2xl bg-emerald-500 px-6 py-3 font-semibold text-white"
             style={{ backgroundColor: settings.primaryColor }}
           >
-            Guardar parametros
+            Guardar parámetros
           </button>
 
           {message ? <p className="mt-4 text-slate-600">{message}</p> : null}

@@ -16,7 +16,7 @@ export default function ForcePasswordPage() {
     event.preventDefault();
 
     if (form.newPassword !== form.confirmPassword) {
-      setMessage("La nueva password y la confirmacion no coinciden");
+      setMessage("La nueva contraseña y la confirmación no coinciden");
       return;
     }
 
@@ -49,16 +49,16 @@ export default function ForcePasswordPage() {
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-3xl items-center justify-center">
         <div className="w-full rounded-[2rem] border border-black/10 bg-white p-8 shadow-[0_30px_80px_rgba(15,23,42,0.12)] md:p-10">
           <p className="text-xs uppercase tracking-[0.3em] text-emerald-500">Primer acceso</p>
-          <h1 className="mt-4 text-4xl font-semibold text-slate-950">Actualiza tu password</h1>
+          <h1 className="mt-4 text-4xl font-semibold text-slate-950">Actualiza tu contraseña</h1>
           <p className="mt-4 max-w-2xl text-slate-600">
-            {user?.nombre}, este acceso fue creado con una password temporal. Antes de seguir
-            trabajando en Gested, define una nueva clave personal.
+            {user?.nombre}, este acceso fue creado con una contraseña temporal. Antes de seguir
+            trabajando en Performia, define una nueva clave personal.
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
             <input
               type="password"
-              placeholder="Password actual"
+              placeholder="Contraseña actual"
               value={form.currentPassword}
               onChange={(event) =>
                 setForm({ ...form, currentPassword: event.target.value })
@@ -68,7 +68,7 @@ export default function ForcePasswordPage() {
 
             <input
               type="password"
-              placeholder="Nueva password"
+              placeholder="Nueva contraseña"
               value={form.newPassword}
               onChange={(event) => setForm({ ...form, newPassword: event.target.value })}
               className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 outline-none transition focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100"
@@ -76,7 +76,7 @@ export default function ForcePasswordPage() {
 
             <input
               type="password"
-              placeholder="Confirmar nueva password"
+              placeholder="Confirmar nueva contraseña"
               value={form.confirmPassword}
               onChange={(event) =>
                 setForm({ ...form, confirmPassword: event.target.value })
@@ -90,7 +90,7 @@ export default function ForcePasswordPage() {
                 disabled={isSubmitting}
                 className="rounded-[1.25rem] bg-slate-950 px-6 py-3.5 font-semibold text-white transition hover:bg-slate-800 disabled:cursor-wait disabled:opacity-70"
               >
-                {isSubmitting ? "Guardando..." : "Actualizar password"}
+                {isSubmitting ? "Guardando..." : "Actualizar contraseña"}
               </button>
 
               <button
