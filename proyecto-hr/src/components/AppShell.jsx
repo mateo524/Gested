@@ -306,44 +306,50 @@ export default function AppShell({ view, setView, children }) {
         background: `radial-gradient(circle at top left, ${primaryColor}22, transparent 24%), linear-gradient(180deg, #f7f1e7, #f5f7fb)`,
       }}
     >
-      <div className="flex min-h-screen">
-        <aside className="w-72 border-r border-black/5 bg-[#111111] p-6 text-white">
-          <div className="flex items-center gap-3">
-            <LogoMark branding={branding} />
-            <div>
-              <p className="text-xs uppercase tracking-[0.26em] text-amber-200">{brandName}</p>
-              <p className="text-sm text-slate-400">Desempeno educativo</p>
+      <div className="min-h-screen">
+        <header className="border-b border-black/5 bg-white/85 px-8 py-5 backdrop-blur">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <LogoMark branding={branding} />
+              <div>
+                <p className="text-xs uppercase tracking-[0.26em] text-slate-700">{brandName}</p>
+                <p className="text-sm text-slate-500">Desempeno educativo</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              {hasPermission("manage_companies") && companies.length ? (
+                <select
+                  className="w-56 rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                  value={activeCompanyId}
+                  onChange={(event) => setActiveCompanyId(event.target.value)}
+                >
+                  {companies.map((company) => (
+                    <option key={company._id} value={company._id}>
+                      {company.nombre}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+              <button
+                onClick={logout}
+                className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700"
+              >
+                Salir
+              </button>
             </div>
           </div>
 
-          <h1 className="mt-8 text-2xl font-semibold">Centro de desempeno</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-400">
-            Evaluaciones, competencias y seguimiento claro para cada colegio.
-          </p>
-
-          <div className="mt-8 space-y-2">
-            {hasPermission("manage_companies") && companies.length ? (
-              <select
-                className="mb-4 w-full rounded-2xl border border-slate-800 bg-slate-900 px-4 py-3 text-sm text-white"
-                value={activeCompanyId}
-                onChange={(event) => setActiveCompanyId(event.target.value)}
-              >
-                {companies.map((company) => (
-                  <option key={company._id} value={company._id}>
-                    {company.nombre}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-
+          <div className="flex flex-wrap gap-2">
             {groupedMenu.map((group) => {
               const isActiveGroup = group.items.some((item) => item.key === view);
               return (
                 <button
                   key={group.key}
                   onClick={() => setView(group.items[0].key)}
-                  className={`w-full rounded-2xl px-5 py-4 text-left text-[16px] font-semibold transition ${
-                    isActiveGroup ? "text-white" : "text-slate-200 hover:bg-slate-800"
+                  className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                    isActiveGroup
+                      ? "text-white"
+                      : "border border-slate-200 bg-white text-slate-700 hover:border-slate-300"
                   }`}
                   style={isActiveGroup ? { backgroundColor: primaryColor } : {}}
                 >
@@ -352,21 +358,7 @@ export default function AppShell({ view, setView, children }) {
               );
             })}
           </div>
-
-          <div className="mt-10 border-t border-slate-800 pt-6">
-            <p className="text-sm text-slate-300">{user?.nombre}</p>
-            <p className="text-xs text-slate-500">{user?.email}</p>
-            <p className="mt-1 text-xs text-slate-500">{user?.roleName}</p>
-            <p className="mt-1 text-xs text-slate-500">{user?.companyName}</p>
-
-            <button
-              onClick={logout}
-              className="mt-4 rounded-xl bg-slate-800 px-4 py-2 transition hover:bg-slate-700"
-            >
-              Salir
-            </button>
-          </div>
-        </aside>
+        </header>
 
         <div className="flex-1">
           <header className="border-b border-black/5 bg-white/80 px-8 py-5 backdrop-blur">
@@ -459,7 +451,12 @@ export default function AppShell({ view, setView, children }) {
             </div>
           </header>
 
-          <main className="p-8">{children}</main>
+          <main className="p-8">
+            <div className="mb-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+              {user?.nombre} · {user?.roleName} · {user?.companyName}
+            </div>
+            {children}
+          </main>
         </div>
       </div>
     </div>
