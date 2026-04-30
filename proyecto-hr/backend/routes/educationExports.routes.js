@@ -74,6 +74,17 @@ async function buildScopedFilter(req, dataset) {
     if (req.query.employeeId) filter.employeeId = req.query.employeeId;
     if (req.query.cycleId) filter.cycleId = req.query.cycleId;
 
+    if (req.user.roleCode === "JEFE" && req.user.employeeId) {
+      const team = await Employee.find({
+        companyId: req.user.companyId,
+        schoolId: req.user.schoolId,
+        managerId: req.user.employeeId,
+      })
+        .select("_id")
+        .lean();
+      filter.employeeId = { $in: team.map((item) => item._id) };
+    }
+
     if (req.user.roleCode === "EMPLEADO" && req.user.employeeId) {
       filter.employeeId = req.user.employeeId;
     }
@@ -121,6 +132,38 @@ function canDownloadDataset(req, dataset) {
   return false;
 }
 
+function getDownloadPolicy(req) {
+  const datasets = Object.keys(allowedDatasets);
+  return datasets.map((dataset) => {
+    let scope = "global";
+    if (!req.user.isSuperAdmin) {
+      if (req.user.roleCode === "JEFE") scope = "equipo";
+      else if (req.user.roleCode === "EMPLEADO") scope = "propio";
+      else scope = "colegio";
+    }
+
+    const canDownload = canDownloadDataset(req, dataset);
+    let reason = "Permitido";
+    if (!canDownload) {
+      reason = "Tu rol no tiene permiso para descargar este dataset";
+    } else if (scope === "equipo") {
+      reason = "Descarga limitada a tu equipo a cargo";
+    } else if (scope === "propio") {
+      reason = "Descarga limitada a tu información personal";
+    } else if (scope === "colegio") {
+      reason = "Descarga limitada al colegio activo";
+    }
+
+    return {
+      dataset,
+      label: allowedDatasets[dataset].filename,
+      canDownload,
+      scope,
+      reason,
+    };
+  });
+}
+
 async function registerDownload(req, dataset, filters) {
   await DownloadLog.create({
     userId: req.user.userId,
@@ -164,6 +207,7 @@ router.get(
       schools,
       recentDownloads: downloads,
       datasets: Object.keys(allowedDatasets),
+      downloadPolicy: getDownloadPolicy(req),
     });
   }
 );
@@ -192,6 +236,7 @@ router.get(
       items: data,
       filters: req.query,
       canDownload: canDownloadDataset(req, req.params.dataset),
+      policy: getDownloadPolicy(req).find((item) => item.dataset === req.params.dataset),
     });
   }
 );
@@ -249,6 +294,58 @@ router.get(
     );
     await workbook.xlsx.write(res);
     res.end();
+  }
+);
+
+router.get(
+  "/evaluation-report/:evaluationId",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.DOWNLOAD_REPORTS,
+    PERMISSIONS.DOWNLOAD_TEAM_REPORTS,
+    PERMISSIONS.DOWNLOAD_SELF_REPORT,
+    PERMISSIONS.VIEW_REPORTS
+  ),
+  async (req, res) => {
+    const evaluation = await Evaluation.findOne(
+      await buildScopedFilter(req, "evaluations")
+    )
+      .where("_id")
+      .equals(req.params.evaluationId)
+      .lean();
+
+    if (!evaluation) {
+      return res.status(404).json({ mensaje: "Evaluación no encontrada" });
+    }
+
+    const [employee, school] = await Promise.all([
+      Employee.findById(evaluation.employeeId).lean(),
+      School.findById(evaluation.schoolId).lean(),
+    ]);
+
+    const report = {
+      generatedAt: new Date(),
+      role: req.user.roleCode,
+      schoolName: school?.nombre || "Colegio",
+      employee: employee
+        ? {
+            nombreCompleto: `${employee.apellido}, ${employee.nombre}`,
+            cargo: employee.cargo || "-",
+            area: employee.area || "-",
+            email: employee.email || "-",
+          }
+        : null,
+      evaluation: {
+        tipo: evaluation.tipo,
+        estado: evaluation.estado,
+        resultadoFinal: evaluation.resultadoFinal,
+        acuerdoEmpleado: evaluation.acuerdoEmpleado,
+        comentariosGenerales: evaluation.comentariosGenerales || "",
+        fecha: evaluation.createdAt,
+      },
+    };
+
+    res.json(report);
   }
 );
 
