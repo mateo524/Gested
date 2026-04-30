@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { apiFetch, apiUrl } from "../lib/api";
+import { apiFetch } from "../lib/api";
 
 const defaultBranding = {
   nombreVisible: "Performia",
@@ -11,33 +11,12 @@ const defaultBranding = {
 export default function LoginPage() {
   const { login } = useAuth();
   const [form, setForm] = useState({
-    portal: "",
     email: "",
     password: "",
   });
   const [message, setMessage] = useState("");
-  const [portalBranding, setPortalBranding] = useState(defaultBranding);
+  const [portalBranding] = useState(defaultBranding);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!form.portal.trim()) {
-      setPortalBranding(defaultBranding);
-      return;
-    }
-
-    const timeout = setTimeout(async () => {
-      try {
-        const response = await fetch(`${apiUrl}/settings/public/${form.portal.trim()}`);
-        if (!response.ok) return;
-        const data = await response.json();
-        setPortalBranding({ ...defaultBranding, ...(data.settings || {}), company: data.company });
-      } catch {
-        setPortalBranding(defaultBranding);
-      }
-    }, 300);
-
-    return () => clearTimeout(timeout);
-  }, [form.portal]);
 
   const pageStyle = useMemo(
     () => ({
@@ -117,9 +96,8 @@ export default function LoginPage() {
                 Datos mejor organizados para tomar decisiones con más claridad
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 md:text-lg">
-                {portalBranding.company?.nombre
-                  ? `Portal de acceso para ${portalBranding.company.nombre} dentro de Performia.`
-                  : "Performia concentra acceso, control, seguridad y operación diaria en una experiencia más ordenada y profesional para gestionar información."}
+                Performia concentra acceso, control, seguridad y operacion diaria en una experiencia
+                mas ordenada y profesional para gestionar informacion.
               </p>
             </div>
           </div>
@@ -136,14 +114,6 @@ export default function LoginPage() {
             </p>
 
             <form className="mt-10 space-y-4" onSubmit={handleSubmit}>
-              <input
-                type="text"
-                placeholder="Portal de empresa (opcional)"
-                value={form.portal}
-                onChange={(e) => setForm({ ...form, portal: e.target.value })}
-                className="w-full rounded-[1.25rem] border border-slate-300 bg-white px-4 py-3.5 text-slate-900 outline-none transition"
-              />
-
               <input
                 type="email"
                 placeholder="Correo electrónico"

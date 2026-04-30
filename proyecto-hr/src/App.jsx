@@ -8,7 +8,6 @@ const DashboardPage = lazy(() => import("./pages/DashboardPage"));
 const CompaniesPage = lazy(() => import("./pages/CompaniesPage"));
 const UsersPage = lazy(() => import("./pages/UsersPage"));
 const RolesPage = lazy(() => import("./pages/RolesPage"));
-const AuditPage = lazy(() => import("./pages/AuditPage"));
 const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
 const SchoolsPage = lazy(() => import("./pages/SchoolsPage"));
 const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
@@ -18,10 +17,6 @@ const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
 const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
 const DevelopmentPlansPage = lazy(() => import("./pages/DevelopmentPlansPage"));
 const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
-const RecordsPage = lazy(() => import("./pages/RecordsPage"));
-const ExportPage = lazy(() => import("./pages/ExportPage"));
-const SettingsPage = lazy(() => import("./pages/SettingsPage"));
-const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
 
 function ViewLoader() {
   return (
@@ -39,8 +34,11 @@ function AppContent() {
     () =>
       [
         "dashboard",
+        hasPermission("manage_companies") ? "empresas" : null,
+        hasPermission("manage_schools") ? "colegios" : null,
+        hasPermission("manage_users") ? "usuarios" : null,
+        hasPermission("manage_roles") ? "roles" : null,
         "novedades",
-        hasPermission("manage_schools") || hasPermission("manage_companies") ? "colegios" : null,
         hasPermission("manage_employees") ? "empleados" : null,
         hasPermission("manage_competencies") ? "competencias" : null,
         hasPermission("manage_metrics") ? "metricas" : null,
@@ -64,7 +62,6 @@ function AppContent() {
         hasPermission("download_self_report")
           ? "bases-descargas"
           : null,
-        hasPermission("manage_settings") ? "parametros" : null,
       ].filter(Boolean),
     [hasPermission, user]
   );
@@ -97,13 +94,8 @@ function AppContent() {
         {view === "planes" && <DevelopmentPlansPage />}
         {view === "bases-descargas" && <EducationalExportsPage />}
         {view === "empresas" && <CompaniesPage />}
-        {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}
         {view === "roles" && <RolesPage />}
-        {view === "auditoria" && <AuditPage />}
-        {view === "registros" && <RecordsPage />}
-        {view === "exportaciones" && <ExportPage />}
-        {view === "parametros" && <SettingsPage />}
       </Suspense>
     </AppShell>
   );
