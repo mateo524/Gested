@@ -17,6 +17,7 @@ const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
 const DevelopmentPlansPage = lazy(() => import("./pages/DevelopmentPlansPage"));
 const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
 const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 
 function ViewLoader() {
   return (
@@ -39,6 +40,7 @@ function AppContent() {
           : null,
         hasPermission("manage_users") ? "usuarios" : null,
         hasPermission("manage_roles") ? "roles" : null,
+        hasPermission("manage_settings") || user?.isSuperAdmin ? "settings" : null,
         "novedades",
         hasPermission("manage_employees") ? "empleados" : null,
         hasPermission("manage_competencies") ? "competencias" : null,
@@ -97,6 +99,7 @@ function AppContent() {
         {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}
         {view === "roles" && <RolesPage />}
+        {view === "settings" && <SettingsPage />}
       </Suspense>
     </AppShell>
   );

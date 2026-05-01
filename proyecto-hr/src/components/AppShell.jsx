@@ -72,6 +72,7 @@ export default function AppShell({ view, setView, children }) {
         { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
         { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), group: "gestion" },
         { key: "roles", label: "Roles", show: hasPermission("manage_roles"), group: "gestion" },
+        { key: "settings", label: "Parametros", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
         {
           key: "evaluaciones",
           label: "Evaluacion",
