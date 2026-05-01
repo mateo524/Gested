@@ -18,8 +18,8 @@ export default function OrganizationsPage() {
   }, [canManageCompanies, token]);
 
   const tabs = useMemo(() => {
-    const base = [{ key: "colegios", label: canManageCompanies ? "Colegios" : "Mi colegio" }];
-    return canManageCompanies ? [{ key: "empresas", label: "Empresas" }, ...base] : base;
+    if (canManageCompanies) return [{ key: "empresas", label: "Organizaciones" }];
+    return [{ key: "colegios", label: "Mi colegio" }];
   }, [canManageCompanies]);
 
   return (
@@ -91,7 +91,7 @@ export default function OrganizationsPage() {
       ) : null}
 
       {tab === "empresas" && canManageCompanies ? <CompaniesPage /> : null}
-      {tab === "colegios" ? <SchoolsPage /> : null}
+      {tab === "colegios" && !canManageCompanies ? <SchoolsPage /> : null}
     </div>
   );
 }

@@ -29,6 +29,7 @@ export default function CompaniesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
+  const [seedFile, setSeedFile] = useState(null);
 
   const filteredCompanies = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -114,22 +115,36 @@ export default function CompaniesPage() {
         ...form,
         slug: form.slug || slugify(form.nombre),
       };
+      let data;
 
-      const data = await apiFetch("/companies", {
-        method: "POST",
-        token,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+      if (seedFile) {
+        const body = new FormData();
+        Object.entries(payload).forEach(([key, value]) => body.append(key, value));
+        body.append("file", seedFile);
+        data = await apiFetch("/companies", {
+          method: "POST",
+          token,
+          body,
+        });
+      } else {
+        data = await apiFetch("/companies", {
+          method: "POST",
+          token,
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+      }
 
       setForm(emptyCompany);
+      setSeedFile(null);
       setProvisionedAccess({
         empresa: data.company?.nombre,
         admin: data.adminUser?.nombre,
         email: data.adminUser?.email,
         temporaryPassword: data.adminUser?.temporaryPassword || form.adminPassword,
+        imported: data.imported || null,
       });
       setMessage("Empresa creada y acceso inicial generado.");
       await loadCompanies();
@@ -259,6 +274,20 @@ export default function CompaniesPage() {
               value={form.adminPassword}
               onChange={(event) => setForm({ ...form, adminPassword: event.target.value })}
             />
+            <label className="block">
+              <span className="mb-2 block text-sm text-slate-500">
+                Archivo inicial de estructura (opcional): empleados + roles
+              </span>
+              <input
+                type="file"
+                accept=".csv,.xlsx,.xls"
+                onChange={(event) => setSeedFile(event.target.files?.[0] || null)}
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+              />
+            </label>
+            {seedFile ? (
+              <p className="text-xs text-slate-500">Archivo seleccionado: {seedFile.name}</p>
+            ) : null}
 
             <button
               type="submit"
@@ -276,9 +305,14 @@ export default function CompaniesPage() {
               <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">Acceso generado</p>
               <div className="mt-3 space-y-2 text-sm text-slate-700">
                 <p>Empresa: {provisionedAccess.empresa}</p>
-                <p>Admin: {provisionedAccess.admin}</p>
+                <p>Director (admin colegio): {provisionedAccess.admin}</p>
                 <p>Email: {provisionedAccess.email}</p>
                 <p>Password temporal: {provisionedAccess.temporaryPassword}</p>
+                {provisionedAccess.imported ? (
+                  <p>
+                    Importación inicial: {provisionedAccess.imported.rows} filas, {provisionedAccess.imported.employees} empleados, {provisionedAccess.imported.users} usuarios, {provisionedAccess.imported.errors} errores.
+                  </p>
+                ) : null}
               </div>
             </div>
           ) : null}
