@@ -80,7 +80,7 @@ export const ROLE_DEFINITIONS = [
   },
   {
     code: "ADMIN_COLEGIO",
-    nombre: "Admin Colegio",
+    nombre: "Director",
     scope: "school",
     permisos: [
       PERMISSIONS.MANAGE_SCHOOLS,

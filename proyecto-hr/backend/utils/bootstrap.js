@@ -94,7 +94,7 @@ export async function ensureCompanyStructure({ companyName, companySlug }) {
 
   const adminRole = await ensureRole({
     companyId: company._id,
-    nombre: "Admin",
+    nombre: "Director",
     permisos: COMPANY_ADMIN_PERMISSIONS,
   });
 
