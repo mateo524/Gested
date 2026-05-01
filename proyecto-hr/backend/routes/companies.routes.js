@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import Company from "../models/Company.js";
 import Role from "../models/Role.js";
 import User from "../models/User.js";
+import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { requireSuperAdmin } from "../middleware/rbac.js";
@@ -179,6 +180,37 @@ router.put("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (r
   });
 
   res.json({ mensaje: "Empresa actualizada", company });
+});
+
+router.delete("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
+  const company = await Company.findById(req.params.id);
+  if (!company) {
+    return res.status(404).json({ mensaje: "Empresa no encontrada" });
+  }
+
+  const [usersCount, schoolsCount] = await Promise.all([
+    User.countDocuments({ companyId: company._id }),
+    School.countDocuments({ companyId: company._id }),
+  ]);
+
+  if (usersCount > 0 || schoolsCount > 0) {
+    return res.status(400).json({
+      mensaje:
+        "No se puede eliminar: la empresa tiene usuarios o colegios asociados. Primero desactiva o depura esos datos.",
+    });
+  }
+
+  await Company.deleteOne({ _id: company._id });
+
+  await logAudit({
+    companyId: company._id,
+    userId: req.user.userId,
+    accion: "delete",
+    modulo: "companies",
+    detalle: `Empresa eliminada: ${company.nombre}`,
+  });
+
+  res.json({ mensaje: "Empresa eliminada" });
 });
 
 export default router;

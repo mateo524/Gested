@@ -57,6 +57,11 @@ function AppContent() {
         hasPermission("view_reports")
           ? "planes"
           : null,
+        hasPermission("manage_employees") ||
+        hasPermission("manage_metrics") ||
+        hasPermission("manage_evaluation_cycles")
+          ? "cargas"
+          : null,
         hasPermission("view_reports") ||
         hasPermission("download_team_reports") ||
         hasPermission("download_self_report")
@@ -93,6 +98,7 @@ function AppContent() {
         {view === "ciclos" && <EvaluationCyclesPage />}
         {view === "evaluaciones" && <EvaluationsPage />}
         {view === "planes" && <DevelopmentPlansPage />}
+        {view === "cargas" && <EducationalExportsPage />}
         {view === "bases-descargas" && <EducationalExportsPage />}
         {view === "archivo-central" && <StorageCenterPage />}
         {view === "usuarios" && <UsersPage />}

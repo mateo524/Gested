@@ -159,6 +159,24 @@ export default function CompaniesPage() {
     }
   }
 
+  async function deleteCompany(company) {
+    const ok = window.confirm(`Eliminar empresa ${company.nombre}? Esta accion no se puede deshacer.`);
+    if (!ok) return;
+
+    try {
+      setMessage("");
+      await apiFetch(`/companies/${company._id}`, {
+        method: "DELETE",
+        token,
+      });
+      setMessage("Empresa eliminada");
+      await loadCompanies();
+      await refreshCompanies();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   const activeCount = companies.filter((company) => company.activa).length;
 
   return (
@@ -349,6 +367,13 @@ export default function CompaniesPage() {
                         }`}
                       >
                         {company.activa ? "Desactivar acceso" : "Reactivar acceso"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => deleteCompany(company)}
+                        className="rounded-2xl border border-red-300 px-4 py-2 text-sm font-medium text-red-600"
+                      >
+                        Eliminar empresa
                       </button>
                     </div>
                   </div>
