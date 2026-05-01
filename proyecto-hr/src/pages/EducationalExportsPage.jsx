@@ -26,6 +26,11 @@ const datasetLabels = {
 
 export default function EducationalExportsPage() {
   const { token, user } = useAuth();
+  const canImport =
+    user?.isSuperAdmin ||
+    user?.permisos?.includes("manage_employees") ||
+    user?.permisos?.includes("manage_metrics") ||
+    user?.permisos?.includes("manage_evaluation_cycles");
   const [overview, setOverview] = useState(null);
   const [dataset, setDataset] = useState("employees");
   const [datasetData, setDatasetData] = useState({ items: [], canDownload: false, policy: null });
@@ -151,8 +156,7 @@ export default function EducationalExportsPage() {
         </p>
       </section>
 
-      {(user?.isSuperAdmin || user?.permisos?.includes("manage_employees")) ? (
-        <section className="pf-card p-6">
+      <section className="pf-card p-6">
           <h4 className="text-lg font-semibold text-slate-950">Importar base de evaluacion</h4>
           <p className="mt-1 text-sm text-slate-600">
             Carga archivo para crear o actualizar empleados, metricas y ciclos de evaluacion.
@@ -181,13 +185,18 @@ export default function EducationalExportsPage() {
             <button
               type="button"
               onClick={importDatasetFile}
-              disabled={isImporting}
+              disabled={isImporting || !canImport}
               className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {isImporting ? "Importando..." : "Importar base"}
             </button>
           </div>
           {importFile ? <p className="mt-3 text-xs text-[#A9BFCA]">Archivo seleccionado: {importFile.name}</p> : null}
+          {!canImport ? (
+            <p className="mt-3 text-xs text-amber-300">
+              Tu rol actual no permite importar. Pedí a un administrador permiso de carga.
+            </p>
+          ) : null}
           {importResult ? (
             <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-[#D4E1E8]">
               <p>Total filas: {importResult.total}</p>
@@ -197,7 +206,6 @@ export default function EducationalExportsPage() {
             </div>
           ) : null}
         </section>
-      ) : null}
 
       {overview ? (
         <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">

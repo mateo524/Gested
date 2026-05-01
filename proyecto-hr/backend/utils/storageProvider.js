@@ -1,10 +1,19 @@
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
+import { v2 as cloudinary } from "cloudinary";
 
 const required = ["S3_ENDPOINT", "S3_REGION", "S3_BUCKET", "S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY"];
 
 export function isS3Enabled() {
   return required.every((key) => Boolean(process.env[key]));
+}
+
+function isCloudinaryEnabled() {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+  );
 }
 
 function getS3Client() {
@@ -20,6 +29,30 @@ function getS3Client() {
 }
 
 export async function uploadToStorage({ localPath, contentType, originalName }) {
+  if (isCloudinaryEnabled()) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    const folder = process.env.CLOUDINARY_FOLDER || "performia";
+    const uploaded = await cloudinary.uploader.upload(localPath, {
+      resource_type: "auto",
+      folder,
+      use_filename: true,
+      unique_filename: true,
+      overwrite: false,
+    });
+
+    return {
+      provider: "cloudinary",
+      key: uploaded.public_id,
+      bucket: process.env.CLOUDINARY_CLOUD_NAME,
+      publicUrl: uploaded.secure_url,
+    };
+  }
+
   if (!isS3Enabled()) {
     return {
       provider: "local",
