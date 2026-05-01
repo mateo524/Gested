@@ -9,6 +9,7 @@ import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { requireSuperAdmin } from "../middleware/rbac.js";
 import { logAudit } from "../utils/audit.js";
+import { uploadToStorage } from "../utils/storageProvider.js";
 
 const router = express.Router();
 const uploadsDir = path.resolve("uploads", "storage");
@@ -108,6 +109,12 @@ router.post(
       return res.status(404).json({ mensaje: "Empresa no encontrada" });
     }
 
+    const uploaded = await uploadToStorage({
+      localPath: file.path,
+      contentType: file.mimetype,
+      originalName: file.originalname,
+    });
+
     const saved = await DatabaseFile.create({
       companyId,
       nombreVisible,
@@ -119,7 +126,14 @@ router.post(
       hoja: "",
       registros: 0,
       activa: true,
+      storageProvider: uploaded.provider,
+      storageKey: uploaded.key,
+      storageBucket: uploaded.bucket,
+      publicUrl: uploaded.publicUrl,
     });
+    if (uploaded.provider === "s3") {
+      await fs.unlink(file.path).catch(() => {});
+    }
 
     await logAudit({
       companyId,

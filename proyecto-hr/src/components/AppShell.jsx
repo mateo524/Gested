@@ -78,7 +78,7 @@ export default function AppShell({ view, setView, children }) {
           hasPermission("self_evaluate"),
       },
       { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies") },
-      { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics") },
+      { key: "metricas", label: "Métricas", show: hasPermission("manage_metrics") },
       { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") },
       { key: "planes", label: "Desarrollo", show: hasPermission("manage_development_plans") },
       {
@@ -99,7 +99,7 @@ export default function AppShell({ view, setView, children }) {
           hasPermission("download_self_report"),
       },
       { key: "novedades", label: "Novedades", show: true },
-      { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin },
+      { key: "organizaciones", label: "Organización", show: user?.isSuperAdmin },
       { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
       { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
       { key: "archivo-central", label: "Archivo central", show: user?.isSuperAdmin },
@@ -118,7 +118,7 @@ export default function AppShell({ view, setView, children }) {
       <div className="grid min-h-screen grid-cols-[250px_1fr]">
         <aside className="border-r border-white/10 bg-[#0E1A20] p-4">
           <AppLogo variant="dark" />
-          <p className="mt-3 text-xs text-[#7A9AAA]">Gestion de desempeno institucional</p>
+          <p className="mt-3 text-xs text-[#7A9AAA]">Gestión de desempeño institucional</p>
 
           <nav className="mt-6 space-y-1">
             {grouped
@@ -155,7 +155,7 @@ export default function AppShell({ view, setView, children }) {
           <header className="flex items-center justify-between border-b border-white/10 bg-[#142028] px-6 py-3">
             <div>
               <p className="text-xs uppercase tracking-[0.2em] text-[#7A9AAA]">Performia app</p>
-              <h1 className="text-lg font-semibold text-white">{user?.companyName || "Organizacion"}</h1>
+              <h1 className="text-lg font-semibold text-white">{user?.companyName || "Organización"}</h1>
             </div>
 
             <div className="flex items-center gap-3">
@@ -182,4 +182,3 @@ export default function AppShell({ view, setView, children }) {
     </div>
   );
 }
-
