@@ -148,7 +148,7 @@ export default function AppShell({ view, setView, children }) {
     },
     {
       key: "planes",
-      label: "Planes",
+      label: "Desarrollo",
       show:
         hasPermission("manage_development_plans") ||
         hasPermission("evaluate_team") ||
@@ -246,7 +246,7 @@ export default function AppShell({ view, setView, children }) {
     },
     planes: {
       eyebrow: "Desarrollo",
-      title: "Planes de desarrollo",
+      title: "Desarrollo",
       description: "Seguimiento de fortalezas, mejora y compromisos de evolucion por persona.",
     },
     usuarios: {
@@ -443,7 +443,7 @@ export default function AppShell({ view, setView, children }) {
           </div>
         </header>
 
-        <main className="p-8">
+        <main className="performia-night p-8">
           <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
             {user?.nombre} - {user?.roleName} - {user?.companyName}
           </div>

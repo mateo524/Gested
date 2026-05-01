@@ -17,3 +17,41 @@ body {
   background: var(--gested-bg);
   color: var(--gested-text);
 }
+
+.performia-night .bg-white {
+  background-color: var(--gested-card) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.performia-night .bg-slate-50,
+.performia-night .bg-slate-100 {
+  background-color: var(--gested-mid) !important;
+}
+
+.performia-night .border-slate-100,
+.performia-night .border-slate-200,
+.performia-night .border-slate-300 {
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.performia-night .text-slate-950,
+.performia-night .text-slate-900 {
+  color: var(--gested-text) !important;
+}
+
+.performia-night .text-slate-700,
+.performia-night .text-slate-600,
+.performia-night .text-slate-500,
+.performia-night .text-slate-400 {
+  color: var(--gested-muted) !important;
+}
+
+.performia-night input,
+.performia-night select {
+  background-color: #0f1f28 !important;
+  color: var(--gested-text) !important;
+}
+
+.performia-night input::placeholder {
+  color: var(--gested-muted);
+}
