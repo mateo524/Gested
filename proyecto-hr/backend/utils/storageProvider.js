@@ -86,3 +86,50 @@ export async function uploadToStorage({ localPath, contentType, originalName }) 
     publicUrl,
   };
 }
+
+export async function uploadBufferToStorage({
+  buffer,
+  contentType,
+  originalName,
+  folderPath = "performia",
+}) {
+  if (isCloudinaryEnabled()) {
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    const safeFolder = (folderPath || process.env.CLOUDINARY_FOLDER || "performia").replace(/^\/+|\/+$/g, "");
+    const uploaded = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        {
+          resource_type: "auto",
+          folder: safeFolder,
+          use_filename: true,
+          unique_filename: true,
+          overwrite: false,
+        },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+      stream.end(buffer);
+    });
+
+    return {
+      provider: "cloudinary",
+      key: uploaded.public_id,
+      bucket: process.env.CLOUDINARY_CLOUD_NAME,
+      publicUrl: uploaded.secure_url,
+    };
+  }
+
+  return {
+    provider: "local",
+    key: null,
+    bucket: null,
+    publicUrl: null,
+  };
+}

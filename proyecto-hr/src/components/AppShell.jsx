@@ -62,19 +62,26 @@ export default function AppShell({ view, setView, children }) {
     token,
   } = useAuth();
 
-  const navItems = useMemo(
+  const allViews = useMemo(
     () =>
       [
-        { key: "dashboard", label: "Panel", show: true },
-        { key: "empleados", label: "Empleados", show: hasPermission("manage_employees") },
+        { key: "dashboard", label: "Panel", show: true, group: "panel" },
+        { key: "empleados", label: "Empleados", show: hasPermission("manage_employees"), group: "gestion" },
+        { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), group: "gestion" },
+        { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics"), group: "gestion" },
+        { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
+        { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), group: "gestion" },
+        { key: "roles", label: "Roles", show: hasPermission("manage_roles"), group: "gestion" },
         {
           key: "evaluaciones",
-          label: "Evaluación",
+          label: "Evaluacion",
           show:
             hasPermission("manage_evaluations") ||
             hasPermission("evaluate_team") ||
             hasPermission("self_evaluate"),
+          group: "evaluacion",
         },
+        { key: "planes", label: "Desarrollo", show: hasPermission("manage_development_plans"), group: "evaluacion" },
         {
           key: "cargas",
           label: "Cargas",
@@ -82,6 +89,7 @@ export default function AppShell({ view, setView, children }) {
             hasPermission("manage_employees") ||
             hasPermission("manage_metrics") ||
             hasPermission("manage_evaluation_cycles"),
+          group: "datos",
         },
         {
           key: "bases-descargas",
@@ -91,15 +99,24 @@ export default function AppShell({ view, setView, children }) {
             hasPermission("download_reports") ||
             hasPermission("download_team_reports") ||
             hasPermission("download_self_report"),
+          group: "datos",
         },
-        { key: "novedades", label: user?.isSuperAdmin ? "Datos" : "Novedades", show: true },
-        { key: "organizaciones", label: "Organización", show: user?.isSuperAdmin },
-        { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users") },
-        { key: "roles", label: "Roles", show: hasPermission("manage_roles") },
-        { key: "archivo-central", label: "Archivo central", show: user?.isSuperAdmin },
+        { key: "novedades", label: user?.isSuperAdmin ? "Datos" : "Novedades", show: true, group: "datos" },
+        { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
+        { key: "archivo-central", label: "Archivo central", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
     [hasPermission, user]
   );
+
+  const primaryTabs = [
+    { key: "panel", label: "Panel", defaultView: "dashboard" },
+    { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
+    { key: "gestion", label: "Gestion", defaultView: "empleados" },
+    { key: "datos", label: "Datos", defaultView: "bases-descargas" },
+  ];
+
+  const activePrimary = allViews.find((item) => item.key === view)?.group || "panel";
+  const secondaryTabs = allViews.filter((item) => item.group === activePrimary);
 
   async function handleMarkRead(item) {
     if (!token || item.isRead || user?.isSuperAdmin) return;
@@ -107,27 +124,32 @@ export default function AppShell({ view, setView, children }) {
     await refreshAnnouncementSummary();
   }
 
+  function openPrimary(groupKey, fallback) {
+    const first = allViews.find((item) => item.group === groupKey);
+    setView(first?.key || fallback);
+  }
+
   return (
     <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <AppLogo variant="dark" />
-            <p className="mt-1 text-xs text-[#7A9AAA]">Gestión de desempeño institucional</p>
+            <p className="mt-1 text-xs text-[#7A9AAA]">Gestion de desempeno institucional</p>
           </div>
 
-          <div className="hidden min-w-0 flex-1 items-center justify-center gap-2 overflow-x-auto lg:flex">
-            {navItems.map((item) => (
+          <div className="hidden items-center gap-2 lg:flex">
+            {primaryTabs.map((tab) => (
               <button
-                key={item.key}
-                onClick={() => setView(item.key)}
-                className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm transition ${
-                  view === item.key
+                key={tab.key}
+                onClick={() => openPrimary(tab.key, tab.defaultView)}
+                className={`rounded-xl px-3 py-2 text-sm transition ${
+                  activePrimary === tab.key
                     ? "bg-[#28964D] text-white"
                     : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
                 }`}
               >
-                {item.label}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -147,34 +169,34 @@ export default function AppShell({ view, setView, children }) {
               </select>
             ) : null}
             <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
-            <button
-              onClick={logout}
-              className="rounded-xl border border-white/15 bg-[#1A2C38] px-3 py-2 text-sm text-white"
-            >
+            <button onClick={logout} className="rounded-xl border border-white/15 bg-[#1A2C38] px-3 py-2 text-sm text-white">
               Salir
             </button>
           </div>
         </div>
-        <div className="mx-auto flex w-full max-w-[1280px] gap-2 overflow-x-auto px-4 pb-3 lg:hidden">
-          {navItems.map((item) => (
-            <button
-              key={item.key}
-              onClick={() => setView(item.key)}
-              className={`whitespace-nowrap rounded-xl px-3 py-2 text-sm transition ${
-                view === item.key
-                  ? "bg-[#28964D] text-white"
-                  : "border border-white/10 bg-[#142028] text-[#AFC3CE]"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
+
+        <div className="mx-auto w-full max-w-[1280px] px-4 pb-3">
+          <div className="flex flex-wrap gap-2">
+            {secondaryTabs.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setView(item.key)}
+                className={`rounded-xl px-3 py-2 text-sm transition ${
+                  view === item.key
+                    ? "bg-[#1e3a8a] text-white"
+                    : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
         <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.nombre} · {user?.roleName} · {user?.companyName || "Organización"}
+          {user?.nombre} · {user?.roleName} · {user?.companyName || "Organizacion"}
         </div>
         {children}
       </main>

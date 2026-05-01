@@ -6,6 +6,10 @@ const DatabaseFileSchema = new mongoose.Schema({
     ref: "Company",
     required: true,
   },
+  schoolId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "School",
+  },
   nombreVisible: { type: String, required: true },
   nombreArchivo: String,
   archivo: String,
