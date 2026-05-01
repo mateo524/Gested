@@ -14,10 +14,7 @@ const emptyForm = {
 export default function SchoolsPage() {
   const { token, companies, user, activeCompanyId } = useAuth();
   const [schools, setSchools] = useState([]);
-  const [form, setForm] = useState({
-    ...emptyForm,
-    companyId: activeCompanyId || "",
-  });
+  const [form, setForm] = useState({ ...emptyForm, companyId: activeCompanyId || "" });
   const [query, setQuery] = useState("");
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -43,7 +40,6 @@ export default function SchoolsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     try {
       setIsSubmitting(true);
       setMessage("");
@@ -53,10 +49,7 @@ export default function SchoolsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      setForm({
-        ...emptyForm,
-        companyId: user?.isSuperAdmin ? form.companyId : activeCompanyId || "",
-      });
+      setForm({ ...emptyForm, companyId: form.companyId });
       setMessage("Colegio creado");
       await loadSchools();
     } catch (error) {
@@ -72,16 +65,15 @@ export default function SchoolsPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Estructura institucional</p>
         <h3 className="mt-3 text-3xl font-bold text-slate-950">Colegios y sedes</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
-          Define los colegios o sedes que forman parte de cada cliente para segmentar empleados,
-          ciclos y evaluaciones con alcance real.
+          Define los colegios o sedes para segmentar empleados, ciclos y evaluaciones con alcance real.
         </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Nuevo colegio</h4>
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            {user?.isSuperAdmin ? (
+        {user?.isSuperAdmin ? (
+          <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+            <h4 className="text-xl font-semibold">Nuevo colegio</h4>
+            <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
               <select
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3"
                 value={form.companyId}
@@ -94,47 +86,46 @@ export default function SchoolsPage() {
                   </option>
                 ))}
               </select>
-            ) : null}
-
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Nombre del colegio"
-              value={form.nombre}
-              onChange={(event) => setForm({ ...form, nombre: event.target.value })}
-            />
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Código"
-              value={form.codigo}
-              onChange={(event) => setForm({ ...form, codigo: event.target.value })}
-            />
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Ciudad"
-              value={form.ciudad}
-              onChange={(event) => setForm({ ...form, ciudad: event.target.value })}
-            />
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Provincia"
-              value={form.provincia}
-              onChange={(event) => setForm({ ...form, provincia: event.target.value })}
-            />
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white"
-            >
-              {isSubmitting ? "Guardando..." : "Crear colegio"}
-            </button>
-          </form>
-        </section>
+              <input
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+                placeholder="Nombre del colegio"
+                value={form.nombre}
+                onChange={(event) => setForm({ ...form, nombre: event.target.value })}
+              />
+              <input
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+                placeholder="Codigo"
+                value={form.codigo}
+                onChange={(event) => setForm({ ...form, codigo: event.target.value })}
+              />
+              <input
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+                placeholder="Ciudad"
+                value={form.ciudad}
+                onChange={(event) => setForm({ ...form, ciudad: event.target.value })}
+              />
+              <input
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+                placeholder="Provincia"
+                value={form.provincia}
+                onChange={(event) => setForm({ ...form, provincia: event.target.value })}
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white"
+              >
+                {isSubmitting ? "Guardando..." : "Crear colegio"}
+              </button>
+            </form>
+          </section>
+        ) : null}
 
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <h4 className="text-xl font-semibold">Colegios cargados</h4>
-              <p className="mt-1 text-slate-500">Base institucional sobre la que se apoya toda la operación.</p>
+              <p className="mt-1 text-slate-500">Base institucional para la operacion diaria.</p>
             </div>
             <input
               className="w-full max-w-xs rounded-2xl border border-slate-300 px-4 py-3"
@@ -152,7 +143,8 @@ export default function SchoolsPage() {
                     <div>
                       <p className="text-lg font-semibold text-slate-950">{school.nombre}</p>
                       <p className="mt-1 text-sm text-slate-500">
-                        {school.codigo || "Sin código"} · {school.ciudad || "Sin ciudad"} · {school.provincia || "Sin provincia"}
+                        {school.codigo || "Sin codigo"} - {school.ciudad || "Sin ciudad"} -{" "}
+                        {school.provincia || "Sin provincia"}
                       </p>
                     </div>
                     <span
@@ -166,7 +158,7 @@ export default function SchoolsPage() {
                 </article>
               ))
             ) : (
-              <p className="text-slate-500">Todavía no hay colegios cargados.</p>
+              <p className="text-slate-500">Todavia no hay colegios cargados.</p>
             )}
           </div>
         </section>

@@ -155,6 +155,14 @@ export default function AppShell({ view, setView, children }) {
         hasPermission("view_reports"),
     },
     {
+      key: "cargas",
+      label: "Cargas",
+      show:
+        hasPermission("manage_employees") ||
+        hasPermission("manage_metrics") ||
+        hasPermission("manage_evaluation_cycles"),
+    },
+    {
       key: "bases-descargas",
       label: "Bases y Descargas",
       show:
@@ -196,9 +204,9 @@ export default function AppShell({ view, setView, children }) {
     },
     {
       key: "datos",
-      label: "Datos",
+      label: user?.isSuperAdmin ? "Datos" : "Novedades",
       items: menuItems.filter(
-        (item) => item.show && ["bases-descargas", "archivo-central"].includes(item.key)
+        (item) => item.show && ["cargas", "bases-descargas", "archivo-central"].includes(item.key)
       ),
     },
   ].filter((group) => group.items.length);
@@ -263,6 +271,11 @@ export default function AppShell({ view, setView, children }) {
       eyebrow: "Datos institucionales",
       title: "Bases y Descargas",
       description: "Consulta, filtra y descarga informacion educativa con validacion por rol.",
+    },
+    cargas: {
+      eyebrow: "Operacion de datos",
+      title: "Cargas",
+      description: "Sube archivos, importa informacion y valida resultados antes de descargar.",
     },
     "archivo-central": {
       eyebrow: "Control global",
