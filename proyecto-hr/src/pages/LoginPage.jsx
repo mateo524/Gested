@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import AppLogo from "../components/brand/AppLogo";
 
 const defaultBranding = {
   nombreVisible: "Performia",
@@ -61,23 +62,7 @@ export default function LoginPage() {
           />
           <div className="relative z-10">
             <div className="flex items-center gap-3">
-              {portalBranding.logoUrl ? (
-                <img
-                  src={portalBranding.logoUrl}
-                  alt={portalBranding.nombreVisible}
-                  className="h-12 w-12 rounded-full border border-white/15 object-cover"
-                />
-              ) : (
-                <div className="grid h-12 w-12 place-items-center rounded-full border border-white/15 bg-white/10 text-sm font-semibold text-amber-200">
-                  P
-                </div>
-              )}
-              <div>
-                <p className="text-xs uppercase tracking-[0.32em] text-amber-200">
-                  {portalBranding.nombreVisible}
-                </p>
-                <p className="text-sm text-[#7A9AAA]">Gestion del desempeno</p>
-              </div>
+              <AppLogo variant="dark" />
             </div>
 
             <div className="mt-12 max-w-3xl">
