@@ -15,6 +15,7 @@ import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
+import { uploadBufferToStorage } from "../utils/storageProvider.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -529,14 +530,27 @@ router.post(
       }
     }
 
+    const school = schoolId ? await School.findById(schoolId).lean() : null;
+    const uploaded = await uploadBufferToStorage({
+      buffer: req.file.buffer,
+      contentType: req.file.mimetype,
+      originalName: req.file.originalname,
+      folderPath: `performia/${companyId}/${school?.slug || schoolId || "general"}/${dataset}`,
+    });
+
     await DatabaseFile.create({
       companyId,
+      schoolId,
       nombreVisible: `Importacion ${dataset} (${new Date().toLocaleDateString("es-AR")})`,
       nombreArchivo: req.file.originalname,
       archivo: "",
       extension: req.file.originalname.split(".").pop()?.toLowerCase() || "csv",
       mimeType: req.file.mimetype,
       tipoArchivo: `importacion-${dataset}`,
+      storageProvider: uploaded.provider,
+      storageKey: uploaded.key,
+      storageBucket: uploaded.bucket,
+      publicUrl: uploaded.publicUrl,
       hoja: dataset,
       registros: result.total,
       activa: true,

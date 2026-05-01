@@ -11,6 +11,7 @@ import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { generateTempPassword } from "../utils/password.js";
+import { uploadBufferToStorage } from "../utils/storageProvider.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -356,6 +357,13 @@ router.post(
       detalle: `Importacion de usuarios: ${result.created} creados, ${result.updated} actualizados`,
     });
 
+    const uploaded = await uploadBufferToStorage({
+      buffer: req.file.buffer,
+      contentType: req.file.mimetype,
+      originalName: req.file.originalname,
+      folderPath: `performia/${company?.slug || companyId}/usuarios`,
+    });
+
     await DatabaseFile.create({
       companyId,
       nombreVisible: `Importacion de usuarios (${new Date().toLocaleDateString("es-AR")})`,
@@ -364,6 +372,10 @@ router.post(
       extension: req.file.originalname.split(".").pop()?.toLowerCase() || "csv",
       mimeType: req.file.mimetype,
       tipoArchivo: "importacion-usuarios",
+      storageProvider: uploaded.provider,
+      storageKey: uploaded.key,
+      storageBucket: uploaded.bucket,
+      publicUrl: uploaded.publicUrl,
       hoja: "usuarios",
       registros: result.total,
       activa: true,
