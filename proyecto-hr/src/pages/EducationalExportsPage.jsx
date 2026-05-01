@@ -24,6 +24,21 @@ const datasetLabels = {
   developmentPlans: "Planes de desarrollo",
 };
 
+const importRequirements = {
+  employees: {
+    title: "Columnas recomendadas",
+    fields: ["apellido", "nombre", "email", "cargo", "area", "tipoEmpleado", "activo"],
+  },
+  metrics: {
+    title: "Columnas recomendadas",
+    fields: ["nombre", "competencia", "descripcion", "ponderacion", "cargoAplica", "activa"],
+  },
+  cycles: {
+    title: "Columnas recomendadas",
+    fields: ["anio", "periodo", "etapa", "estado", "fechaInicio", "fechaFin"],
+  },
+};
+
 export default function EducationalExportsPage() {
   const { token, user } = useAuth();
   const canImport =
@@ -47,6 +62,20 @@ export default function EducationalExportsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
   const [importStep, setImportStep] = useState(1);
+
+  function downloadImportErrors() {
+    if (!importResult?.errors?.length) return;
+    const header = "fila,error";
+    const rows = importResult.errors.map((error) => `${error.row},"${String(error.message).replace(/"/g, '""')}"`);
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `errores-importacion-${importDataset}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -223,6 +252,18 @@ export default function EducationalExportsPage() {
           <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-[#1A2C38] p-4">
             <p className="text-sm text-[#D4E1E8]">Archivo: {importFile?.name || "Sin archivo"}</p>
             <p className="text-sm text-[#D4E1E8]">Dataset: {importDataset}</p>
+            <div className="rounded-xl border border-white/10 bg-[#142028] p-3">
+              <p className="text-xs uppercase tracking-[0.15em] text-[#9FB6C1]">
+                {importRequirements[importDataset]?.title || "Columnas"}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {(importRequirements[importDataset]?.fields || []).map((field) => (
+                  <span key={field} className="rounded-full border border-white/10 bg-[#1A2C38] px-2.5 py-1 text-xs text-[#D4E1E8]">
+                    {field}
+                  </span>
+                ))}
+              </div>
+            </div>
             {!canImport ? (
               <p className="text-xs text-amber-300">
                 Tu rol actual no permite importar. Pedí a un administrador permiso de carga.
@@ -259,6 +300,16 @@ export default function EducationalExportsPage() {
 
             {importResult.errors?.length ? (
               <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#142028] p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs text-[#9FB6C1]">Errores detectados por fila</p>
+                  <button
+                    type="button"
+                    onClick={downloadImportErrors}
+                    className="rounded-lg border border-white/15 bg-[#1A2C38] px-3 py-1.5 text-xs text-white"
+                  >
+                    Descargar errores CSV
+                  </button>
+                </div>
                 <table className="min-w-full text-left text-sm">
                   <thead>
                     <tr className="border-b border-white/10 text-[#9FB6C1]">
