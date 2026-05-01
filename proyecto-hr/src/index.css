@@ -36,3 +36,42 @@ body {
   color: #e2e8f0;
 }
 
+@layer components {
+  .pf-card {
+    @apply rounded-[2rem] border border-white/10 bg-[#142028] text-[#E8EEF1] shadow-sm;
+  }
+
+  .pf-input {
+    @apply w-full rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
+  }
+}
+
+/* Hotfix visual global: evita cajas blancas invasivas en tema oscuro */
+@layer utilities {
+  [class*="bg-white"] {
+    background-color: #142028 !important;
+    color: #e8eef1 !important;
+  }
+
+  [class*="border-slate-200"],
+  [class*="border-slate-300"] {
+    border-color: rgba(255, 255, 255, 0.12) !important;
+  }
+
+  [class*="text-slate-950"],
+  [class*="text-slate-900"] {
+    color: #f8fafc !important;
+  }
+
+  [class*="text-slate-700"],
+  [class*="text-slate-600"],
+  [class*="text-slate-500"] {
+    color: #a9bfca !important;
+  }
+
+  [class*="bg-slate-50"],
+  [class*="bg-slate-100"] {
+    background-color: #1a2c38 !important;
+    color: #d4e1e8 !important;
+  }
+}

@@ -20,7 +20,7 @@ const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
 
 function ViewLoader() {
   return (
-    <div className="rounded-[2rem] border border-slate-200 bg-white p-8 text-slate-500 shadow-sm">
+    <div className="pf-card p-8 text-[#A9BFCA]">
       Cargando modulo...
     </div>
   );

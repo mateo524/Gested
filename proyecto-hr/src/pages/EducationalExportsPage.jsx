@@ -4,7 +4,7 @@ import { apiUrl, apiFetch } from "../lib/api";
 
 function SummaryCard({ label, value, hint }) {
   return (
-    <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+    <article className="pf-card p-6">
       <p className="text-sm uppercase tracking-[0.18em] text-slate-400">{label}</p>
       <h3 className="mt-4 text-4xl font-bold text-slate-950">{value}</h3>
       <p className="mt-2 text-sm text-slate-500">{hint}</p>
@@ -134,32 +134,37 @@ export default function EducationalExportsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="pf-card p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Informacion institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Bases y Descargas</h3>
+        <h3 className="mt-3 text-3xl font-bold text-slate-950">Centro de cargas y descargas</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
           Consulta y descarga empleados, evaluaciones, metricas y planes de desarrollo con filtros
           y permisos especificos para cada rol.
         </p>
       </section>
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <h4 className="text-lg font-semibold text-slate-950">Donde cargar bases y usuarios</h4>
+      <section className="pf-card p-6">
+        <h4 className="text-lg font-semibold text-slate-950">Flujo unificado de cargas</h4>
         <p className="mt-2 text-sm text-slate-600">
-          Usa esta pantalla para importar empleados, metricas y ciclos con Excel/CSV y luego descargar
-          resultados. El superadmin puede auditar todo en Archivo central.
+          Paso 1: sube archivo. Paso 2: valida filas. Paso 3: confirma importacion. El sistema
+          registra resultados, errores y deja trazabilidad para superadmin.
         </p>
       </section>
 
       {(user?.isSuperAdmin || user?.permisos?.includes("manage_employees")) ? (
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="pf-card p-6">
           <h4 className="text-lg font-semibold text-slate-950">Importar base de evaluacion</h4>
           <p className="mt-1 text-sm text-slate-600">
-            Carga archivo para crear/actualizar empleados, metricas o ciclos de evaluacion.
+            Carga archivo para crear o actualizar empleados, metricas y ciclos de evaluacion.
           </p>
+          <div className="mt-4 grid gap-2 md:grid-cols-3">
+            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">1. Subir archivo</div>
+            <div className="rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2 text-xs text-[#A9BFCA]">2. Validar filas</div>
+            <div className="rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2 text-xs text-[#A9BFCA]">3. Confirmar carga</div>
+          </div>
           <div className="mt-4 grid gap-3 md:grid-cols-4">
             <select
-              className="rounded-2xl border border-slate-300 px-4 py-3"
+              className="pf-input"
               value={importDataset}
               onChange={(event) => setImportDataset(event.target.value)}
             >
@@ -171,19 +176,20 @@ export default function EducationalExportsPage() {
               type="file"
               accept=".csv,.xlsx,.xls"
               onChange={(event) => setImportFile(event.target.files?.[0] || null)}
-              className="rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+              className="pf-input text-sm"
             />
             <button
               type="button"
               onClick={importDatasetFile}
               disabled={isImporting}
-              className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
               {isImporting ? "Importando..." : "Importar base"}
             </button>
           </div>
+          {importFile ? <p className="mt-3 text-xs text-[#A9BFCA]">Archivo seleccionado: {importFile.name}</p> : null}
           {importResult ? (
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-[#D4E1E8]">
               <p>Total filas: {importResult.total}</p>
               <p>Creados: {importResult.created}</p>
               <p>Actualizados: {importResult.updated}</p>
