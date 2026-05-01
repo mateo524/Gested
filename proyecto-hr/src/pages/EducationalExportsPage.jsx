@@ -46,6 +46,7 @@ export default function EducationalExportsPage() {
   const [importFile, setImportFile] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+  const [importStep, setImportStep] = useState(1);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -128,6 +129,7 @@ export default function EducationalExportsPage() {
 
       setImportResult(data);
       setMessage("Importacion completada");
+      setImportStep(3);
       setImportFile(null);
       await Promise.all([loadOverview(), loadDataset()]);
     } catch (error) {
@@ -157,15 +159,36 @@ export default function EducationalExportsPage() {
       </section>
 
       <section className="pf-card p-6">
-          <h4 className="text-lg font-semibold text-slate-950">Importar base de evaluacion</h4>
-          <p className="mt-1 text-sm text-slate-600">
-            Carga archivo para crear o actualizar empleados, metricas y ciclos de evaluacion.
-          </p>
-          <div className="mt-4 grid gap-2 md:grid-cols-3">
-            <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">1. Subir archivo</div>
-            <div className="rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2 text-xs text-[#A9BFCA]">2. Validar filas</div>
-            <div className="rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2 text-xs text-[#A9BFCA]">3. Confirmar carga</div>
-          </div>
+        <h4 className="text-lg font-semibold text-slate-950">Importador guiado</h4>
+        <p className="mt-1 text-sm text-slate-600">
+          Carga y procesa archivos en tres pasos simples para empleados, métricas o ciclos.
+        </p>
+
+        <div className="mt-4 grid gap-2 md:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => setImportStep(1)}
+            className={`rounded-xl px-3 py-2 text-left text-xs ${importStep === 1 ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200" : "border border-white/10 bg-[#1A2C38] text-[#A9BFCA]"}`}
+          >
+            1. Subir archivo
+          </button>
+          <button
+            type="button"
+            onClick={() => importFile && setImportStep(2)}
+            className={`rounded-xl px-3 py-2 text-left text-xs ${importStep === 2 ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200" : "border border-white/10 bg-[#1A2C38] text-[#A9BFCA]"}`}
+          >
+            2. Validar
+          </button>
+          <button
+            type="button"
+            onClick={() => importResult && setImportStep(3)}
+            className={`rounded-xl px-3 py-2 text-left text-xs ${importStep === 3 ? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200" : "border border-white/10 bg-[#1A2C38] text-[#A9BFCA]"}`}
+          >
+            3. Confirmar resultado
+          </button>
+        </div>
+
+        {importStep === 1 ? (
           <div className="mt-4 grid gap-3 md:grid-cols-4">
             <select
               className="pf-input"
@@ -173,39 +196,101 @@ export default function EducationalExportsPage() {
               onChange={(event) => setImportDataset(event.target.value)}
             >
               <option value="employees">Empleados</option>
-              <option value="metrics">Metricas</option>
+              <option value="metrics">Métricas</option>
               <option value="cycles">Ciclos</option>
             </select>
             <input
               type="file"
               accept=".csv,.xlsx,.xls"
-              onChange={(event) => setImportFile(event.target.files?.[0] || null)}
+              onChange={(event) => {
+                setImportFile(event.target.files?.[0] || null);
+                setImportResult(null);
+              }}
               className="pf-input text-sm"
             />
             <button
               type="button"
-              onClick={importDatasetFile}
-              disabled={isImporting || !canImport}
-              className="rounded-2xl bg-emerald-600 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              onClick={() => setImportStep(2)}
+              disabled={!importFile}
+              className="rounded-2xl border border-white/15 bg-[#1A2C38] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
             >
-              {isImporting ? "Importando..." : "Importar base"}
+              Continuar
             </button>
           </div>
-          {importFile ? <p className="mt-3 text-xs text-[#A9BFCA]">Archivo seleccionado: {importFile.name}</p> : null}
-          {!canImport ? (
-            <p className="mt-3 text-xs text-amber-300">
-              Tu rol actual no permite importar. Pedí a un administrador permiso de carga.
-            </p>
-          ) : null}
-          {importResult ? (
-            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-[#D4E1E8]">
+        ) : null}
+
+        {importStep === 2 ? (
+          <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-[#1A2C38] p-4">
+            <p className="text-sm text-[#D4E1E8]">Archivo: {importFile?.name || "Sin archivo"}</p>
+            <p className="text-sm text-[#D4E1E8]">Dataset: {importDataset}</p>
+            {!canImport ? (
+              <p className="text-xs text-amber-300">
+                Tu rol actual no permite importar. Pedí a un administrador permiso de carga.
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setImportStep(1)}
+                className="rounded-xl border border-white/15 bg-[#142028] px-4 py-2 text-sm text-white"
+              >
+                Volver
+              </button>
+              <button
+                type="button"
+                onClick={importDatasetFile}
+                disabled={isImporting || !canImport || !importFile}
+                className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isImporting ? "Importando..." : "Confirmar importación"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {importStep === 3 && importResult ? (
+          <div className="mt-4 space-y-4">
+            <div className="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-[#D4E1E8]">
               <p>Total filas: {importResult.total}</p>
               <p>Creados: {importResult.created}</p>
               <p>Actualizados: {importResult.updated}</p>
               <p>Errores: {importResult.errors?.length || 0}</p>
             </div>
-          ) : null}
-        </section>
+
+            {importResult.errors?.length ? (
+              <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#142028] p-3">
+                <table className="min-w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-[#9FB6C1]">
+                      <th className="px-3 py-2">Fila</th>
+                      <th className="px-3 py-2">Detalle</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {importResult.errors.map((error, index) => (
+                      <tr key={`${error.row}-${index}`} className="border-b border-white/5">
+                        <td className="px-3 py-2 text-[#E8EEF1]">{error.row}</td>
+                        <td className="px-3 py-2 text-rose-300">{error.message}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={() => {
+                setImportResult(null);
+                setImportStep(1);
+              }}
+              className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-2 text-sm text-white"
+            >
+              Reintentar importación
+            </button>
+          </div>
+        ) : null}
+      </section>
 
       {overview ? (
         <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
