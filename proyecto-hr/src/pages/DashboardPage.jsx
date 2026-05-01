@@ -24,8 +24,9 @@ function SummaryCard({ label, value, hint }) {
 }
 
 export default function DashboardPage() {
-  const { token, activeCompany } = useAuth();
+  const { token, activeCompany, user } = useAuth();
   const [summary, setSummary] = useState(null);
+  const [qualityTrend, setQualityTrend] = useState([]);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -33,6 +34,26 @@ export default function DashboardPage() {
       .then(setSummary)
       .catch((error) => setMessage(error.message));
   }, [token, activeCompany?._id]);
+
+  useEffect(() => {
+    apiFetch("/automation/quality-trend?days=30", { token })
+      .then((data) => setQualityTrend(data?.trend || []))
+      .catch(() => {});
+  }, [token, activeCompany?._id]);
+
+  async function runQualityNow() {
+    try {
+      await apiFetch("/automation/run-now", { method: "POST", token });
+      const [nextSummary, trendData] = await Promise.all([
+        apiFetch("/dashboard/summary", { token }),
+        apiFetch("/automation/quality-trend?days=30", { token }),
+      ]);
+      setSummary(nextSummary);
+      setQualityTrend(trendData?.trend || []);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
 
   if (message) return <p className="text-red-500">{message}</p>;
   if (!summary) return <p className="text-slate-500">Cargando panel...</p>;
@@ -55,6 +76,21 @@ export default function DashboardPage() {
             Sin email: {summary.alerts.missingEmail ?? 0} ·
             Duplicados: {summary.alerts.duplicates ?? 0}
           </p>
+        </section>
+      ) : null}
+
+      {user?.isSuperAdmin ? (
+        <section className="rounded-2xl border border-white/10 bg-[#142028] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-sm text-[#D4E1E8]">Ejecución manual de control de calidad global</p>
+            <button
+              type="button"
+              onClick={runQualityNow}
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Re-ejecutar control ahora
+            </button>
+          </div>
         </section>
       ) : null}
 
@@ -242,6 +278,22 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-xl font-semibold">Tendencia de calidad (30 días)</h3>
+          <div className="mt-4 space-y-2">
+            {qualityTrend.length ? (
+              qualityTrend.slice(-8).map((point, index) => (
+                <div key={`${point.date}-${index}`} className="flex items-center justify-between rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2 text-sm">
+                  <span className="text-[#D4E1E8]">{point.date}</span>
+                  <span className={`${point.score < 70 ? "text-amber-300" : "text-emerald-300"}`}>Score {point.score}</span>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500">Aun no hay datos de tendencia.</p>
+            )}
+          </div>
+        </div>
+
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-xl font-semibold">Fuentes con mas registros</h3>
           <p className="mt-1 text-slate-500">
