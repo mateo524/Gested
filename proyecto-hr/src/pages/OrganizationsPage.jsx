@@ -18,7 +18,13 @@ export default function OrganizationsPage() {
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-600">Organizacion</p>
         <h3 className="mt-2 text-2xl font-semibold text-slate-950">
-          {canManageCompanies ? "Empresas y colegios" : activeCompany?.nombre || "Mi colegio"}
+          {activeCompany?.nombre
+            ? canManageCompanies
+              ? `Empresas y colegios - ${activeCompany.nombre}`
+              : activeCompany.nombre
+            : canManageCompanies
+              ? "Empresas y colegios"
+              : "Mi colegio"}
         </h3>
         <p className="mt-2 text-slate-500">
           {canManageCompanies
