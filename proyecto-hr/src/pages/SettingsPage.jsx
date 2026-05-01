@@ -21,6 +21,7 @@ export default function SettingsPage() {
   const { token, activeCompany, refreshBranding } = useAuth();
   const [settings, setSettings] = useState(defaultSettings);
   const [quality, setQuality] = useState(null);
+  const [latestQualityRun, setLatestQualityRun] = useState(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -40,6 +41,12 @@ export default function SettingsPage() {
   useEffect(() => {
     apiFetch("/education-exports/overview", { token })
       .then((data) => setQuality(data?.summary || null))
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    apiFetch("/automation/quality-latest", { token })
+      .then((data) => setLatestQualityRun(data?.latest || null))
       .catch(() => {});
   }, [token]);
 
@@ -153,6 +160,15 @@ export default function SettingsPage() {
                 <p>Metricas: {quality.metrics}</p>
                 <p>Planes: {quality.developmentPlans}</p>
               </div>
+            </div>
+          ) : null}
+
+          {latestQualityRun ? (
+            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-[#D4E1E8]">
+              <p className="text-xs uppercase tracking-[0.18em] text-emerald-200">Ultimo control nocturno</p>
+              <p className="mt-1">{new Date(latestQualityRun.createdAt).toLocaleString("es-AR")}</p>
+              <p className="mt-1">{latestQualityRun.detalle}</p>
+              <p className="mt-2">Score: {latestQualityRun.metrics?.score ?? "-"} / 100</p>
             </div>
           ) : null}
 
