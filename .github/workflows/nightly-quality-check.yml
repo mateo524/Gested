@@ -1,0 +1,25 @@
+name: Nightly Quality Check
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  run-nightly-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Performia nightly check endpoint
+        env:
+          AUTOMATION_URL: ${{ secrets.PERFORMIA_AUTOMATION_URL }}
+          AUTOMATION_TOKEN: ${{ secrets.PERFORMIA_AUTOMATION_TOKEN }}
+        run: |
+          if [ -z "$AUTOMATION_URL" ] || [ -z "$AUTOMATION_TOKEN" ]; then
+            echo "Missing required secrets: PERFORMIA_AUTOMATION_URL or PERFORMIA_AUTOMATION_TOKEN"
+            exit 1
+          fi
+
+          curl --fail --show-error --silent \
+            --request POST \
+            --header "x-automation-token: $AUTOMATION_TOKEN" \
+            "$AUTOMATION_URL/automation/nightly-check"
