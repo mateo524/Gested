@@ -117,8 +117,18 @@ export default function AppShell({ view, setView, children }) {
   }
 
   function openPrimary(groupKey, fallback) {
-    const first = allViews.find((item) => item.group === groupKey);
-    setView(first?.key || fallback);
+    const priorityByGroup = {
+      panel: ["dashboard"],
+      evaluacion: ["evaluaciones", "planes"],
+      gestion: ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
+      datos: ["bases-descargas", "novedades", "organizaciones", "archivo-central"],
+    };
+
+    const groupViews = allViews.filter((item) => item.group === groupKey).map((item) => item.key);
+    const priority = priorityByGroup[groupKey] || [];
+    const preferred = priority.find((key) => groupViews.includes(key));
+    const first = preferred || groupViews[0] || fallback;
+    if (first) setView(first);
   }
 
   return (
