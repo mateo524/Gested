@@ -24,6 +24,7 @@ export default function UsersPage() {
   const [importFile, setImportFile] = useState(null);
   const [importSummary, setImportSummary] = useState(null);
   const [demoUsers, setDemoUsers] = useState([]);
+  const [isImportingUsers, setIsImportingUsers] = useState(false);
 
   const editingUser = useMemo(
     () => users.find((user) => user._id === editingId) || null,
@@ -192,6 +193,7 @@ export default function UsersPage() {
     }
 
     try {
+      setIsImportingUsers(true);
       setMessage("");
       setImportSummary(null);
       const formData = new FormData();
@@ -210,6 +212,8 @@ export default function UsersPage() {
       setMessage("Importacion completada");
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setIsImportingUsers(false);
     }
   }
 
@@ -506,12 +510,18 @@ export default function UsersPage() {
             onChange={(event) => setImportFile(event.target.files?.[0] || null)}
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
           />
+          {importFile ? (
+            <span className="rounded-xl bg-slate-100 px-3 py-2 text-xs text-slate-600">
+              Archivo: {importFile.name}
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={importUsers}
-            className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white"
+            disabled={isImportingUsers}
+            className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
-            Importar archivo
+            {isImportingUsers ? "Importando..." : "Importar archivo"}
           </button>
           <button
             type="button"

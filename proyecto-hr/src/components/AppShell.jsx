@@ -190,10 +190,15 @@ export default function AppShell({ view, setView, children }) {
       ),
     },
     {
+      key: "comunicacion",
+      label: "Comunicacion",
+      items: menuItems.filter((item) => item.show && ["novedades"].includes(item.key)),
+    },
+    {
       key: "datos",
       label: "Datos",
       items: menuItems.filter(
-        (item) => item.show && ["novedades", "bases-descargas", "archivo-central"].includes(item.key)
+        (item) => item.show && ["bases-descargas", "archivo-central"].includes(item.key)
       ),
     },
   ].filter((group) => group.items.length);
