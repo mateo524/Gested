@@ -2,47 +2,49 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
-const permissionOptions = [
-  { key: "manage_users", label: "Gestion de usuarios", help: "Alta, edicion y baja de accesos." },
-  { key: "manage_roles", label: "Gestion de roles", help: "Creacion y ajuste de perfiles." },
-  { key: "view_audit", label: "Panel de trazabilidad", help: "Consulta de actividad y controles." },
-  { key: "export_reports", label: "Datos y exportaciones", help: "Importar bases y descargar reportes." },
-  { key: "manage_settings", label: "Parametros", help: "Ajustes visibles y operativos." },
-];
-
 export default function RolesPage() {
   const { token } = useAuth();
   const [roles, setRoles] = useState([]);
+  const [permissionsCatalog, setPermissionsCatalog] = useState([]);
+  const [templates, setTemplates] = useState([]);
   const [editingId, setEditingId] = useState("");
   const [nombre, setNombre] = useState("");
+  const [descripcion, setDescripcion] = useState("");
   const [permisos, setPermisos] = useState([]);
+  const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
   const [query, setQuery] = useState("");
 
   const filteredRoles = useMemo(() => {
     const term = query.trim().toLowerCase();
     if (!term) return roles;
-
     return roles.filter((role) =>
-      [role.nombre, ...(role.permisos || [])]
+      [role.nombre, role.code, role.descripcion, ...(role.permisos || [])]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
     );
   }, [roles, query]);
 
-  async function loadRoles() {
-    const data = await apiFetch("/roles", { token });
-    setRoles(data);
+  async function loadData() {
+    const [rolesData, catalog] = await Promise.all([
+      apiFetch("/roles", { token }),
+      apiFetch("/roles/catalog", { token }),
+    ]);
+    setRoles(rolesData);
+    setPermissionsCatalog(catalog.permissions || []);
+    setTemplates(catalog.templates || []);
   }
 
   useEffect(() => {
-    loadRoles().catch((error) => setMessage(error.message));
+    loadData().catch((error) => setMessage(error.message));
   }, [token]);
 
   function resetForm() {
     setEditingId("");
     setNombre("");
+    setDescripcion("");
     setPermisos([]);
+    setCode("");
   }
 
   function togglePermission(permission) {
@@ -53,10 +55,21 @@ export default function RolesPage() {
     );
   }
 
+  function applyTemplate(templateCode) {
+    const template = templates.find((item) => item.code === templateCode);
+    if (!template) return;
+    setCode(template.code || "");
+    setNombre(template.nombre || "");
+    setDescripcion(template.descripcion || "");
+    setPermisos(template.permisos || []);
+  }
+
   function startEdit(role) {
     setEditingId(role._id);
-    setNombre(role.nombre);
+    setNombre(role.nombre || "");
+    setDescripcion(role.descripcion || "");
     setPermisos(role.permisos || []);
+    setCode(role.code || "");
   }
 
   async function handleSubmit(event) {
@@ -65,20 +78,25 @@ export default function RolesPage() {
     try {
       const path = editingId ? `/roles/${editingId}` : "/roles";
       const method = editingId ? "PUT" : "POST";
-
       await apiFetch(path, {
         method,
         token,
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ nombre, permisos }),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, descripcion, permisos, code: editingId ? undefined : code || undefined }),
       });
-
-      await loadRoles();
-      const wasEditing = Boolean(editingId);
+      await loadData();
       resetForm();
-      setMessage(wasEditing ? "Rol actualizado" : "Rol creado");
+      setMessage(editingId ? "Rol actualizado" : "Rol creado");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function syncDefaults() {
+    try {
+      await apiFetch("/roles/sync-defaults", { method: "POST", token });
+      await loadData();
+      setMessage("Roles recomendados sincronizados");
     } catch (error) {
       setMessage(error.message);
     }
@@ -87,7 +105,7 @@ export default function RolesPage() {
   async function removeRole(roleId) {
     try {
       await apiFetch(`/roles/${roleId}`, { method: "DELETE", token });
-      await loadRoles();
+      await loadData();
       if (editingId === roleId) resetForm();
       setMessage("Rol eliminado");
     } catch (error) {
@@ -97,131 +115,131 @@ export default function RolesPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Gobernanza de acceso</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Roles y permisos</h3>
+      <section className="pf-card p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-emerald-400">Gobernanza de accesos</p>
+        <h3 className="mt-3 text-3xl font-bold text-slate-950">Roles claros para cada perfil</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
-          Los roles definen que ve cada usuario dentro de su empresa y que acciones puede ejecutar
-          sobre datos, parametros, usuarios o trazabilidad.
+          Definí qué ve y qué puede hacer cada usuario. Recomendado: usar roles base del sistema y
+          personalizar solo cuando sea necesario.
         </p>
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={syncDefaults}
+            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+          >
+            Restaurar roles recomendados
+          </button>
+        </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="pf-card p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-xl font-semibold">{editingId ? "Editar rol" : "Nuevo rol"}</h3>
-              <p className="mt-1 text-slate-500">Define permisos claros para cada tipo de acceso.</p>
+              <h3 className="text-xl font-semibold text-slate-950">{editingId ? "Editar rol" : "Nuevo rol"}</h3>
+              <p className="mt-1 text-slate-500">Podés crear desde plantilla o armar uno a medida.</p>
             </div>
-
             {editingId ? (
-              <button
-                type="button"
-                onClick={resetForm}
-                className="rounded-2xl border border-slate-200 px-4 py-2 text-sm"
-              >
+              <button type="button" onClick={resetForm} className="rounded-xl border border-white/15 bg-[#1A2C38] px-3 py-2 text-sm text-white">
                 Cancelar
               </button>
             ) : null}
           </div>
 
-          <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Nombre del rol"
-              value={nombre}
-              onChange={(event) => setNombre(event.target.value)}
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            {!editingId ? (
+              <select className="pf-input" value={code} onChange={(e) => applyTemplate(e.target.value)}>
+                <option value="">Plantilla opcional</option>
+                {templates.map((template) => (
+                  <option key={template.code} value={template.code}>
+                    {template.nombre} ({template.code})
+                  </option>
+                ))}
+              </select>
+            ) : null}
+
+            <input className="pf-input" placeholder="Nombre del rol" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <textarea
+              className="pf-input min-h-24"
+              placeholder="Descripcion (que puede hacer este rol)"
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
             />
 
-            <div className="grid gap-3">
-              {permissionOptions.map((permission) => (
-                <label
-                  key={permission.key}
-                  className="rounded-2xl border border-slate-200 px-4 py-4"
-                >
+            <div className="grid gap-2">
+              {permissionsCatalog.map((permission) => (
+                <label key={permission.code} className="rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-3">
                   <div className="flex items-start gap-3">
                     <input
                       type="checkbox"
                       className="mt-1"
-                      checked={permisos.includes(permission.key)}
-                      onChange={() => togglePermission(permission.key)}
+                      checked={permisos.includes(permission.code)}
+                      onChange={() => togglePermission(permission.code)}
                     />
                     <div>
-                      <p className="font-medium text-slate-950">{permission.label}</p>
-                      <p className="mt-1 text-sm text-slate-500">{permission.help}</p>
+                      <p className="text-sm font-medium text-[#E8EEF1]">{permission.label}</p>
+                      <p className="text-xs text-[#9FB6C1]">
+                        {permission.code} · módulo {permission.module}
+                      </p>
                     </div>
                   </div>
                 </label>
               ))}
             </div>
 
-            <button
-              type="submit"
-              className="w-full rounded-2xl bg-emerald-500 py-3 font-semibold text-white"
-            >
-              {editingId ? "Guardar rol" : "Crear rol"}
+            <button type="submit" className="w-full rounded-xl bg-emerald-600 py-3 text-sm font-semibold text-white">
+              {editingId ? "Guardar cambios" : "Crear rol"}
             </button>
           </form>
-
-          {message ? <p className="mt-4 text-sm text-slate-600">{message}</p> : null}
+          {message ? <p className="mt-3 text-sm text-[#A9BFCA]">{message}</p> : null}
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="pf-card p-6">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <h3 className="text-xl font-semibold">Roles configurados</h3>
-              <p className="mt-1 text-slate-500">
-                Cada rol define que modulos aparecen y que acciones se pueden ejecutar.
-              </p>
+              <h3 className="text-xl font-semibold text-slate-950">Roles configurados</h3>
+              <p className="mt-1 text-slate-500">Base clara para superadmin, admin, rrhh, jefe, empleado y lector.</p>
             </div>
-
             <input
-              className="w-full max-w-xs rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Buscar por rol o permiso"
+              className="pf-input w-full max-w-xs"
+              placeholder="Buscar rol, codigo o permiso"
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
             />
           </div>
 
           <div className="mt-6 space-y-4">
             {filteredRoles.map((role) => (
-              <article key={role._id} className="rounded-3xl border border-slate-200 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-4">
+              <article key={role._id} className="rounded-2xl border border-white/10 bg-[#1A2C38] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
-                    <p className="text-lg font-semibold">{role.nombre}</p>
-                    <p className="text-sm text-slate-500">Usuarios asignados: {role.usersCount || 0}</p>
+                    <p className="font-semibold text-[#E8EEF1]">
+                      {role.nombre} {role.code ? <span className="text-xs text-[#9FB6C1]">({role.code})</span> : null}
+                    </p>
+                    <p className="text-xs text-[#9FB6C1]">Usuarios asignados: {role.usersCount || 0}</p>
+                    {role.descripcion ? <p className="mt-1 text-sm text-[#D4E1E8]">{role.descripcion}</p> : null}
                   </div>
-
-                  <div className="flex gap-3">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(role)}
-                      className="rounded-2xl bg-slate-950 px-4 py-2 text-sm font-medium text-white"
-                    >
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => startEdit(role)} className="rounded-lg bg-[#1e3a8a] px-3 py-1.5 text-xs text-white">
                       Editar
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => removeRole(role._id)}
-                      className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600"
-                    >
-                      Eliminar
-                    </button>
+                    {!role.isSystem ? (
+                      <button type="button" onClick={() => removeRole(role._id)} className="rounded-lg border border-rose-300/30 px-3 py-1.5 text-xs text-rose-300">
+                        Eliminar
+                      </button>
+                    ) : null}
                   </div>
                 </div>
-
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {role.permisos?.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(role.permisos || []).length ? (
                     role.permisos.map((permiso) => (
-                      <span
-                        key={permiso}
-                        className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-600"
-                      >
+                      <span key={permiso} className="rounded-full border border-white/10 bg-[#142028] px-2.5 py-1 text-xs text-[#AFC3CE]">
                         {permiso}
                       </span>
                     ))
                   ) : (
-                    <span className="text-slate-400">Sin permisos asignados</span>
+                    <span className="text-xs text-[#9FB6C1]">Sin permisos</span>
                   )}
                 </div>
               </article>

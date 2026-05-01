@@ -18,6 +18,7 @@ const RoleSchema = new mongoose.Schema({
     default: null,
   },
   nombre: { type: String, required: true },
+  descripcion: { type: String, default: "" },
   permisos: {
     type: [String],
     default: [],
@@ -28,6 +29,7 @@ const RoleSchema = new mongoose.Schema({
     default: "company",
   },
   activo: { type: Boolean, default: true },
+  isSystem: { type: Boolean, default: false },
 });
 
 export default mongoose.model("Role", RoleSchema);
