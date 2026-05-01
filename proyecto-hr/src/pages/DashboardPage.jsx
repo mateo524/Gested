@@ -39,6 +39,25 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {summary.alerts ? (
+        <section
+          className={`rounded-2xl border p-4 ${
+            summary.alerts.isLow
+              ? "border-amber-400/40 bg-amber-500/10 text-amber-100"
+              : "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+          }`}
+        >
+          <p className="text-sm font-semibold">
+            {summary.alerts.isLow ? "Alerta de calidad de datos" : "Calidad de datos estable"}
+          </p>
+          <p className="mt-1 text-sm">
+            Score: {summary.alerts.score ?? "-"} / 100 ·
+            Sin email: {summary.alerts.missingEmail ?? 0} ·
+            Duplicados: {summary.alerts.duplicates ?? 0}
+          </p>
+        </section>
+      ) : null}
+
       <section className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
           <p className="text-sm uppercase tracking-[0.2em] text-emerald-500">
