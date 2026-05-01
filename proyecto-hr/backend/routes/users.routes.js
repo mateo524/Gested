@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
+import DatabaseFile from "../models/DatabaseFile.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
@@ -353,6 +354,19 @@ router.post(
       accion: "import",
       modulo: "users",
       detalle: `Importacion de usuarios: ${result.created} creados, ${result.updated} actualizados`,
+    });
+
+    await DatabaseFile.create({
+      companyId,
+      nombreVisible: `Importacion de usuarios (${new Date().toLocaleDateString("es-AR")})`,
+      nombreArchivo: req.file.originalname,
+      archivo: "",
+      extension: req.file.originalname.split(".").pop()?.toLowerCase() || "csv",
+      mimeType: req.file.mimetype,
+      tipoArchivo: "importacion-usuarios",
+      hoja: "usuarios",
+      registros: result.total,
+      activa: true,
     });
 
     res.json({

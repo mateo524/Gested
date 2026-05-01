@@ -25,7 +25,7 @@ const datasetLabels = {
 };
 
 export default function EducationalExportsPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [overview, setOverview] = useState(null);
   const [dataset, setDataset] = useState("employees");
   const [datasetData, setDatasetData] = useState({ items: [], canDownload: false, policy: null });
@@ -37,6 +37,10 @@ export default function EducationalExportsPage() {
     tipo: "",
   });
   const [message, setMessage] = useState("");
+  const [importDataset, setImportDataset] = useState("employees");
+  const [importFile, setImportFile] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState(null);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -97,6 +101,37 @@ export default function EducationalExportsPage() {
     }
   }
 
+  async function importDatasetFile() {
+    if (!importFile) {
+      setMessage("Selecciona un archivo para importar");
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      setMessage("");
+      setImportResult(null);
+      const body = new FormData();
+      body.append("file", importFile);
+      if (filters.schoolId) body.append("schoolId", filters.schoolId);
+
+      const data = await apiFetch(`/education-exports/import/${importDataset}`, {
+        method: "POST",
+        token,
+        body,
+      });
+
+      setImportResult(data);
+      setMessage("Importacion completada");
+      setImportFile(null);
+      await Promise.all([loadOverview(), loadDataset()]);
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setIsImporting(false);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
@@ -111,10 +146,52 @@ export default function EducationalExportsPage() {
       <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
         <h4 className="text-lg font-semibold text-slate-950">Donde cargar bases y usuarios</h4>
         <p className="mt-2 text-sm text-slate-600">
-          Para cargar bases y documentos por empresa usa <strong>Archivo central</strong>. Para crear
-          accesos desde Excel (mail, password y rol) usa <strong>Usuarios - Importacion masiva</strong>.
+          Usa esta pantalla para importar empleados, metricas y ciclos con Excel/CSV y luego descargar
+          resultados. El superadmin puede auditar todo en Archivo central.
         </p>
       </section>
+
+      {(user?.isSuperAdmin || user?.permisos?.includes("manage_employees")) ? (
+        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h4 className="text-lg font-semibold text-slate-950">Importar base de evaluacion</h4>
+          <p className="mt-1 text-sm text-slate-600">
+            Carga archivo para crear/actualizar empleados, metricas o ciclos de evaluacion.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <select
+              className="rounded-2xl border border-slate-300 px-4 py-3"
+              value={importDataset}
+              onChange={(event) => setImportDataset(event.target.value)}
+            >
+              <option value="employees">Empleados</option>
+              <option value="metrics">Metricas</option>
+              <option value="cycles">Ciclos</option>
+            </select>
+            <input
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              onChange={(event) => setImportFile(event.target.files?.[0] || null)}
+              className="rounded-2xl border border-slate-300 px-4 py-3 text-sm"
+            />
+            <button
+              type="button"
+              onClick={importDatasetFile}
+              disabled={isImporting}
+              className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {isImporting ? "Importando..." : "Importar base"}
+            </button>
+          </div>
+          {importResult ? (
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+              <p>Total filas: {importResult.total}</p>
+              <p>Creados: {importResult.created}</p>
+              <p>Actualizados: {importResult.updated}</p>
+              <p>Errores: {importResult.errors?.length || 0}</p>
+            </div>
+          ) : null}
+        </section>
+      ) : null}
 
       {overview ? (
         <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
@@ -215,34 +292,6 @@ export default function EducationalExportsPage() {
           </div>
         </div>
       </section>
-
-      {datasetData?.policy ? (
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-lg font-semibold text-slate-950">Permiso de descarga para este dataset</h4>
-          <p className="mt-1 text-sm text-slate-600">
-            Alcance: <strong>{datasetData.policy.scope}</strong> -{" "}
-            {datasetData.policy.canDownload ? "Descarga habilitada" : "Descarga bloqueada"}
-          </p>
-          <p className="mt-2 text-sm text-slate-500">{datasetData.policy.reason}</p>
-        </section>
-      ) : null}
-
-      {overview?.downloadPolicy?.length ? (
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-lg font-semibold text-slate-950">Politica de descarga por rol</h4>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {overview.downloadPolicy.map((item) => (
-              <article key={item.dataset} className="rounded-xl border border-slate-200 p-4 text-sm">
-                <p className="font-semibold text-slate-900">{datasetLabels[item.dataset] || item.dataset}</p>
-                <p className="mt-1 text-slate-600">
-                  {item.canDownload ? "Habilitado" : "No habilitado"} - {item.scope}
-                </p>
-                <p className="mt-1 text-slate-500">{item.reason}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
 
       <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">

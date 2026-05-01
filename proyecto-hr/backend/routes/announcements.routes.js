@@ -6,6 +6,7 @@ import Announcement from "../models/Announcement.js";
 import Company from "../models/Company.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
+import { requireSuperAdmin } from "../middleware/rbac.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { logAudit } from "../utils/audit.js";
 
@@ -91,6 +92,7 @@ router.get("/summary", auth, async (req, res) => {
 router.post(
   "/",
   auth,
+  requireSuperAdmin,
   permit("manage_companies"),
   upload.array("attachments", 5),
   async (req, res) => {
@@ -168,7 +170,7 @@ router.post("/:id/read", auth, async (req, res) => {
   res.json({ mensaje: "Novedad marcada como leida" });
 });
 
-router.put("/:id/visibility", auth, permit("manage_companies"), async (req, res) => {
+router.put("/:id/visibility", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const announcement = await Announcement.findById(req.params.id);
 
   if (!announcement) {

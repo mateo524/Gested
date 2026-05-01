@@ -1,5 +1,6 @@
 import express from "express";
 import ExcelJS from "exceljs";
+import multer from "multer";
 import { Parser } from "json2csv";
 import DownloadLog from "../models/DownloadLog.js";
 import Employee from "../models/Employee.js";
@@ -7,11 +8,16 @@ import Evaluation from "../models/Evaluation.js";
 import Metric from "../models/Metric.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import School from "../models/School.js";
+import EvaluationCycle from "../models/EvaluationCycle.js";
+import Competency from "../models/Competency.js";
+import DatabaseFile from "../models/DatabaseFile.js";
 import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage() });
 
 const allowedDatasets = {
   employees: {
@@ -174,6 +180,44 @@ async function registerDownload(req, dataset, filters) {
     filters,
     downloadedAt: new Date(),
   });
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+async function parseUploadedRows(file) {
+  const workbook = new ExcelJS.Workbook();
+  const fileName = file.originalname.toLowerCase();
+
+  if (fileName.endsWith(".csv")) {
+    await workbook.csv.readBuffer(file.buffer);
+  } else {
+    await workbook.xlsx.load(file.buffer);
+  }
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return [];
+
+  const headers = worksheet
+    .getRow(1)
+    .values.slice(1)
+    .map((value) => normalizeText(value));
+
+  const rows = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const values = row.values.slice(1);
+    const item = {};
+    headers.forEach((header, index) => {
+      item[header] = values[index];
+    });
+    rows.push({ ...item, _rowNumber: rowNumber });
+  });
+
+  return rows;
 }
 
 router.get(
@@ -346,6 +390,162 @@ router.get(
     };
 
     res.json(report);
+  }
+);
+
+router.post(
+  "/import/:dataset",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES),
+  upload.single("file"),
+  async (req, res) => {
+    const dataset = req.params.dataset;
+    if (!["employees", "metrics", "cycles"].includes(dataset)) {
+      return res.status(400).json({ mensaje: "Dataset no soportado para importacion" });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
+    }
+
+    const { companyId } = await resolveCompanyScope(req);
+    const schoolId = req.body.schoolId || req.user.schoolId || null;
+    const rows = await parseUploadedRows(req.file);
+
+    if (!rows.length) {
+      return res.status(400).json({ mensaje: "El archivo no tiene datos" });
+    }
+
+    const result = { total: rows.length, created: 0, updated: 0, errors: [] };
+
+    if (dataset === "employees") {
+      for (const row of rows) {
+        const apellido = String(row.apellido || "").trim();
+        const nombre = String(row.nombre || "").trim();
+        const cargo = String(row.cargo || "").trim();
+        if (!apellido || !nombre || !cargo || !schoolId) {
+          result.errors.push({ row: row._rowNumber, message: "Faltan apellido, nombre, cargo o colegio" });
+          continue;
+        }
+
+        const email = String(row.email || "").trim().toLowerCase();
+        const base = {
+          companyId,
+          schoolId,
+          apellido,
+          nombre,
+          cargo,
+          area: String(row.area || "").trim(),
+          tipoEmpleado: String(row.tipoempleado || "DOCENTE").trim().toUpperCase(),
+          activo: String(row.activo || "true").toLowerCase() !== "false",
+        };
+
+        const existing = email ? await Employee.findOne({ companyId, schoolId, email }) : null;
+        if (existing) {
+          Object.assign(existing, base);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await Employee.create({ ...base, email: email || undefined });
+          result.created += 1;
+        }
+      }
+    }
+
+    if (dataset === "metrics") {
+      if (!schoolId) {
+        return res.status(400).json({ mensaje: "Debes indicar colegio para importar metricas" });
+      }
+      const competencies = await Competency.find({ companyId, schoolId }).lean();
+      const byName = new Map(competencies.map((item) => [normalizeText(item.nombre), item]));
+
+      for (const row of rows) {
+        const nombre = String(row.nombre || "").trim();
+        const competencyName = normalizeText(row.competencia || row.competency || "");
+        const competency = byName.get(competencyName);
+        if (!nombre || !competency) {
+          result.errors.push({ row: row._rowNumber, message: "Falta nombre o competencia valida" });
+          continue;
+        }
+
+        const payload = {
+          companyId,
+          schoolId,
+          competencyId: competency._id,
+          nombre,
+          descripcion: String(row.descripcion || "").trim(),
+          ponderacion: Number(row.ponderacion || 1) || 1,
+          cargoAplica: String(row.cargoaplica || "").split(",").map((v) => v.trim()).filter(Boolean),
+          activa: String(row.activa || "true").toLowerCase() !== "false",
+        };
+
+        const existing = await Metric.findOne({ companyId, schoolId, competencyId: competency._id, nombre });
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await Metric.create(payload);
+          result.created += 1;
+        }
+      }
+    }
+
+    if (dataset === "cycles") {
+      if (!schoolId) {
+        return res.status(400).json({ mensaje: "Debes indicar colegio para importar ciclos" });
+      }
+      for (const row of rows) {
+        const anio = Number(row.anio || row.año);
+        const periodo = String(row.periodo || "").trim();
+        const etapa = String(row.etapa || "").trim().toUpperCase();
+        const fechaInicio = row.fechainicio ? new Date(row.fechainicio) : null;
+        const fechaFin = row.fechafin ? new Date(row.fechafin) : null;
+        if (!anio || !periodo || !etapa || !fechaInicio || !fechaFin || Number.isNaN(fechaInicio.getTime()) || Number.isNaN(fechaFin.getTime())) {
+          result.errors.push({ row: row._rowNumber, message: "Fila invalida para ciclo" });
+          continue;
+        }
+
+        const payload = {
+          companyId,
+          schoolId,
+          anio,
+          periodo,
+          etapa,
+          estado: String(row.estado || "BORRADOR").trim().toUpperCase(),
+          fechaInicio,
+          fechaFin,
+        };
+
+        const existing = await EvaluationCycle.findOne({ companyId, schoolId, anio, periodo, etapa });
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await EvaluationCycle.create(payload);
+          result.created += 1;
+        }
+      }
+    }
+
+    await DatabaseFile.create({
+      companyId,
+      nombreVisible: `Importacion ${dataset} (${new Date().toLocaleDateString("es-AR")})`,
+      nombreArchivo: req.file.originalname,
+      archivo: "",
+      extension: req.file.originalname.split(".").pop()?.toLowerCase() || "csv",
+      mimeType: req.file.mimetype,
+      tipoArchivo: `importacion-${dataset}`,
+      hoja: dataset,
+      registros: result.total,
+      activa: true,
+    });
+
+    res.json({
+      mensaje: "Importacion completada",
+      ...result,
+    });
   }
 );
 
