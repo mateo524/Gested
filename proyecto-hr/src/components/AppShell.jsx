@@ -83,17 +83,8 @@ export default function AppShell({ view, setView, children }) {
         },
         { key: "planes", label: "Desarrollo", show: hasPermission("manage_development_plans"), group: "evaluacion" },
         {
-          key: "cargas",
-          label: "Cargas",
-          show:
-            hasPermission("manage_employees") ||
-            hasPermission("manage_metrics") ||
-            hasPermission("manage_evaluation_cycles"),
-          group: "datos",
-        },
-        {
           key: "bases-descargas",
-          label: "Bases y descargas",
+          label: "Cargas y descargas",
           show:
             hasPermission("view_reports") ||
             hasPermission("download_reports") ||
@@ -132,10 +123,10 @@ export default function AppShell({ view, setView, children }) {
   return (
     <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-3 px-4 py-3">
+        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-4 py-4">
           <div className="min-w-0">
             <AppLogo variant="dark" />
-            <p className="mt-1 text-xs text-[#7A9AAA]">Gestion de desempeno institucional</p>
+            <p className="mt-1 text-sm text-[#7A9AAA]">Gestion de desempeno institucional</p>
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
@@ -143,7 +134,7 @@ export default function AppShell({ view, setView, children }) {
               <button
                 key={tab.key}
                 onClick={() => openPrimary(tab.key, tab.defaultView)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${
+                className={`rounded-xl px-5 py-3 text-base font-medium transition ${
                   activePrimary === tab.key
                     ? "bg-[#28964D] text-white"
                     : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
@@ -157,7 +148,7 @@ export default function AppShell({ view, setView, children }) {
           <div className="flex items-center gap-2">
             {user?.isSuperAdmin && companies.length ? (
               <select
-                className="max-w-44 rounded-xl border border-white/10 bg-[#142028] px-3 py-2 text-sm text-white"
+                className="max-w-56 rounded-xl border border-white/10 bg-[#142028] px-3 py-3 text-sm text-white"
                 value={activeCompanyId}
                 onChange={(e) => setActiveCompanyId(e.target.value)}
               >
@@ -169,19 +160,19 @@ export default function AppShell({ view, setView, children }) {
               </select>
             ) : null}
             <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
-            <button onClick={logout} className="rounded-xl border border-white/15 bg-[#1A2C38] px-3 py-2 text-sm text-white">
+            <button onClick={logout} className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-3 text-sm text-white">
               Salir
             </button>
           </div>
         </div>
 
-        <div className="mx-auto w-full max-w-[1280px] px-4 pb-3">
+        <div className="mx-auto w-full max-w-[1280px] px-4 pb-4">
           <div className="flex flex-wrap gap-2">
             {secondaryTabs.map((item) => (
               <button
                 key={item.key}
                 onClick={() => setView(item.key)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${
+                className={`rounded-xl px-4 py-2.5 text-sm transition ${
                   view === item.key
                     ? "bg-[#1e3a8a] text-white"
                     : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"

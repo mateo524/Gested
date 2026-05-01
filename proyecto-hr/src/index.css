@@ -37,6 +37,25 @@ body {
   overflow-x: hidden;
 }
 
+input,
+select,
+textarea {
+  color: #e8eef1 !important;
+  background-color: #0e1a20 !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #8ca6b3 !important;
+}
+
+select option,
+select optgroup {
+  background-color: #142028 !important;
+  color: #e8eef1 !important;
+}
+
 @layer components {
   .pf-card {
     @apply rounded-[2rem] border border-white/10 bg-[#142028] text-[#E8EEF1] shadow-sm;
@@ -74,5 +93,9 @@ body {
   [class*="bg-slate-100"] {
     background-color: #1a2c38 !important;
     color: #d4e1e8 !important;
+  }
+
+  [class*="text-slate-400"] {
+    color: #9fb6c1 !important;
   }
 }
