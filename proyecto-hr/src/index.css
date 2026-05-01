@@ -1,57 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
-  font-family: 'DM Sans', sans-serif;
-  --gested-bg: #0e1a20;
-  --gested-card: #142028;
-  --gested-mid: #1a2c38;
-  --gested-text: #e8eef1;
-  --gested-muted: #7a9aaa;
-  --gested-green: #28964d;
-  --gested-yellow: #fad564;
+  --primary: #1e3a8a;
+  --primary-dark: #172554;
+  --primary-light: #dbeafe;
+  --accent: #22c55e;
+  --accent-light: #dcfce7;
+  --slate: #0f172a;
+  --muted: #64748b;
+  --background: #f8fafc;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --success: #22c55e;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
 }
 
 body {
-  font-family: 'DM Sans', sans-serif;
-  background: var(--gested-bg);
-  color: var(--gested-text);
+  margin: 0;
+  font-family: "Inter", sans-serif;
+  background: #020617;
+  color: #e2e8f0;
 }
 
-.performia-night .bg-white {
-  background-color: var(--gested-card) !important;
-  border-color: rgba(255, 255, 255, 0.1) !important;
-}
-
-.performia-night .bg-slate-50,
-.performia-night .bg-slate-100 {
-  background-color: var(--gested-mid) !important;
-}
-
-.performia-night .border-slate-100,
-.performia-night .border-slate-200,
-.performia-night .border-slate-300 {
-  border-color: rgba(255, 255, 255, 0.12) !important;
-}
-
-.performia-night .text-slate-950,
-.performia-night .text-slate-900 {
-  color: var(--gested-text) !important;
-}
-
-.performia-night .text-slate-700,
-.performia-night .text-slate-600,
-.performia-night .text-slate-500,
-.performia-night .text-slate-400 {
-  color: var(--gested-muted) !important;
-}
-
-.performia-night input,
-.performia-night select {
-  background-color: #0f1f28 !important;
-  color: var(--gested-text) !important;
-}
-
-.performia-night input::placeholder {
-  color: var(--gested-muted);
-}
