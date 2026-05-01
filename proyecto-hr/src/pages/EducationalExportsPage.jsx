@@ -220,7 +220,7 @@ export default function EducationalExportsPage() {
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h4 className="text-lg font-semibold text-slate-950">Permiso de descarga para este dataset</h4>
           <p className="mt-1 text-sm text-slate-600">
-            Alcance: <strong>{datasetData.policy.scope}</strong> ·{" "}
+            Alcance: <strong>{datasetData.policy.scope}</strong> -{" "}
             {datasetData.policy.canDownload ? "Descarga habilitada" : "Descarga bloqueada"}
           </p>
           <p className="mt-2 text-sm text-slate-500">{datasetData.policy.reason}</p>
@@ -235,7 +235,7 @@ export default function EducationalExportsPage() {
               <article key={item.dataset} className="rounded-xl border border-slate-200 p-4 text-sm">
                 <p className="font-semibold text-slate-900">{datasetLabels[item.dataset] || item.dataset}</p>
                 <p className="mt-1 text-slate-600">
-                  {item.canDownload ? "Habilitado" : "No habilitado"} · {item.scope}
+                  {item.canDownload ? "Habilitado" : "No habilitado"} - {item.scope}
                 </p>
                 <p className="mt-1 text-slate-500">{item.reason}</p>
               </article>
