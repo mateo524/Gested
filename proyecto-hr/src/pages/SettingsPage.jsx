@@ -7,18 +7,39 @@ const defaultSettings = {
   logoUrl: "",
   primaryColor: "#10b981",
   maxUploadSizeMb: 10,
+  defaultEmailDomain: "performia.app",
+  defaultEmployeeRoleCode: "EMPLEADO",
+  automations: {
+    nightlyDataCheck: true,
+    autoCreateUsersFromImport: false,
+    autoAssignDefaultRole: true,
+    notifyOnImportErrors: true,
+  },
 };
 
 export default function SettingsPage() {
   const { token, activeCompany, refreshBranding } = useAuth();
   const [settings, setSettings] = useState(defaultSettings);
+  const [quality, setQuality] = useState(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     apiFetch("/settings", { token })
       .then((data) => {
-        if (data) setSettings((prev) => ({ ...prev, ...data }));
+        if (data) {
+          setSettings((prev) => ({
+            ...prev,
+            ...data,
+            automations: { ...prev.automations, ...(data.automations || {}) },
+          }));
+        }
       })
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    apiFetch("/education-exports/overview", { token })
+      .then((data) => setQuality(data?.summary || null))
       .catch(() => {});
   }, [token]);
 
@@ -27,15 +48,12 @@ export default function SettingsPage() {
       const data = await apiFetch("/settings", {
         method: "PUT",
         token,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(settings),
       });
-
       setSettings((prev) => ({ ...prev, ...(data.settings || {}) }));
       await refreshBranding();
-      setMessage("Parámetros actualizados");
+      setMessage("Parametros actualizados");
     } catch (error) {
       setMessage(error.message);
     }
@@ -43,127 +61,109 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Control de marca y operacion</p>
+      <section className="pf-card p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-emerald-400">Control de marca y operaciones</p>
         <h3 className="mt-3 text-3xl font-bold text-slate-950">
-          Parámetros de {activeCompany?.nombre || "la empresa"}
+          Parametros de {activeCompany?.nombre || "la organizacion"}
         </h3>
-        <p className="mt-3 max-w-3xl text-slate-500">
-          Este apartado sirve para definir cómo se presenta la empresa dentro de Performia, qué
-          capacidad de carga maneja y qué referencias visuales usa el equipo para operar de forma
-          consistente.
-        </p>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold">Identidad visible</h3>
-          <p className="mt-1 text-slate-500">
-            Ajusta el nombre que se muestra, el logo y el color principal de referencia.
-          </p>
-
+        <div className="pf-card p-6">
+          <h3 className="text-xl font-semibold text-slate-950">Identidad y reglas</h3>
           <div className="mt-6 grid gap-4">
             <input
-              className="rounded-2xl border border-slate-300 px-4 py-3"
+              className="pf-input"
               placeholder="Nombre visible"
               value={settings.nombreVisible}
               onChange={(e) => setSettings({ ...settings, nombreVisible: e.target.value })}
             />
-
             <input
-              className="rounded-2xl border border-slate-300 px-4 py-3"
+              className="pf-input"
               placeholder="URL del logo"
               value={settings.logoUrl}
               onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
             />
-
             <div className="grid gap-4 md:grid-cols-[1fr_auto]">
               <input
-                className="rounded-2xl border border-slate-300 px-4 py-3"
+                className="pf-input"
                 placeholder="Color principal"
                 value={settings.primaryColor}
                 onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
               />
-              <div
-                className="h-full min-h-14 rounded-2xl border border-slate-200"
-                style={{ backgroundColor: settings.primaryColor }}
-              />
+              <div className="h-full min-h-14 w-14 rounded-2xl border border-white/10" style={{ backgroundColor: settings.primaryColor }} />
             </div>
+            <input
+              type="number"
+              min="1"
+              className="pf-input"
+              value={settings.maxUploadSizeMb}
+              onChange={(e) => setSettings({ ...settings, maxUploadSizeMb: Number(e.target.value) || 10 })}
+            />
+            <input
+              className="pf-input"
+              placeholder="Dominio email por defecto"
+              value={settings.defaultEmailDomain || ""}
+              onChange={(e) => setSettings({ ...settings, defaultEmailDomain: e.target.value })}
+            />
+            <select
+              className="pf-input"
+              value={settings.defaultEmployeeRoleCode || "EMPLEADO"}
+              onChange={(e) => setSettings({ ...settings, defaultEmployeeRoleCode: e.target.value })}
+            >
+              <option value="EMPLEADO">EMPLEADO</option>
+              <option value="JEFE">JEFE</option>
+              <option value="RRHH">RRHH</option>
+              <option value="ADMIN_COLEGIO">ADMIN_COLEGIO</option>
+            </select>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold">Vista previa de marca</h3>
-          <p className="mt-1 text-slate-500">
-            Así se reflejará la identidad de la empresa dentro del panel.
-          </p>
-
-          <div className="mt-6 rounded-[1.75rem] border border-slate-200 p-6">
-            <div className="flex items-center gap-4">
-              {settings.logoUrl ? (
-                <img
-                  src={settings.logoUrl}
-                  alt={settings.nombreVisible || "Marca"}
-                  className="h-14 w-14 rounded-full object-cover"
+        <div className="pf-card p-6">
+          <h3 className="text-xl font-semibold text-slate-950">Automatizaciones</h3>
+          <div className="mt-4 grid gap-3 text-sm text-slate-700">
+            {[
+              ["nightlyDataCheck", "Control nocturno de calidad de datos"],
+              ["autoCreateUsersFromImport", "Crear usuarios automaticamente desde importaciones"],
+              ["autoAssignDefaultRole", "Asignar rol por defecto si falta en la fila"],
+              ["notifyOnImportErrors", "Notificar errores de importacion"],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2">
+                <span className="text-[#D4E1E8]">{label}</span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(settings.automations?.[key])}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      automations: { ...settings.automations, [key]: e.target.checked },
+                    })
+                  }
                 />
-              ) : (
-                <div
-                  className="grid h-14 w-14 place-items-center rounded-full text-sm font-semibold text-white"
-                  style={{ backgroundColor: settings.primaryColor }}
-                >
-                  G
-                </div>
-              )}
+              </label>
+            ))}
+          </div>
 
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Marca activa</p>
-                <p className="mt-1 text-2xl font-semibold text-slate-950">
-                  {settings.nombreVisible || activeCompany?.nombre || "Performia"}
-                </p>
+          {quality ? (
+            <div className="mt-6 rounded-2xl border border-white/10 bg-[#1A2C38] p-4 text-sm text-[#D4E1E8]">
+              <p className="text-xs uppercase tracking-[0.18em] text-[#9FB6C1]">Calidad de datos actual</p>
+              <div className="mt-2 grid gap-2 md:grid-cols-2">
+                <p>Empleados: {quality.employees}</p>
+                <p>Evaluaciones: {quality.evaluations}</p>
+                <p>Metricas: {quality.metrics}</p>
+                <p>Planes: {quality.developmentPlans}</p>
               </div>
             </div>
-
-            <div className="mt-6 rounded-[1.5rem] px-4 py-4 text-white" style={{ backgroundColor: settings.primaryColor }}>
-              Color principal aplicado al panel y acciones destacadas.
-            </div>
-          </div>
-
-          <div className="mt-6 space-y-4">
-            <label className="block">
-              <span className="mb-2 block text-sm text-slate-500">Tamaño máximo por archivo (MB)</span>
-              <input
-                type="number"
-                min="1"
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-                value={settings.maxUploadSizeMb}
-                onChange={(e) =>
-                  setSettings({
-                    ...settings,
-                    maxUploadSizeMb: Number(e.target.value),
-                  })
-                }
-              />
-            </label>
-
-            <div className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5">
-              <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Qué controla este módulo</p>
-              <ul className="mt-3 space-y-2 text-sm text-slate-600">
-                <li>Nombre y referencia visual de la empresa dentro del panel.</li>
-                <li>Capacidad máxima sugerida para importaciones.</li>
-                <li>Base para seguir sumando branding, notificaciones y políticas.</li>
-              </ul>
-            </div>
-          </div>
+          ) : null}
 
           <button
             onClick={save}
-            className="mt-6 rounded-2xl bg-emerald-500 px-6 py-3 font-semibold text-white"
+            className="mt-6 rounded-2xl px-6 py-3 font-semibold text-white"
             style={{ backgroundColor: settings.primaryColor }}
           >
-            Guardar parámetros
+            Guardar parametros
           </button>
-
-          {message ? <p className="mt-4 text-slate-600">{message}</p> : null}
+          {message ? <p className="mt-3 text-sm text-[#A9BFCA]">{message}</p> : null}
         </div>
       </section>
     </div>
