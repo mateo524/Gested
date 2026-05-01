@@ -23,6 +23,7 @@ export default function UsersPage() {
   const [bulkPasswords, setBulkPasswords] = useState([]);
   const [importFile, setImportFile] = useState(null);
   const [importSummary, setImportSummary] = useState(null);
+  const [demoUsers, setDemoUsers] = useState([]);
 
   const editingUser = useMemo(
     () => users.find((user) => user._id === editingId) || null,
@@ -207,6 +208,27 @@ export default function UsersPage() {
       setImportFile(null);
       await loadData();
       setMessage("Importacion completada");
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function createDemoRoleUsers() {
+    try {
+      setMessage("");
+      const data = await apiFetch("/users/seed-demo-roles", {
+        method: "POST",
+        token,
+      });
+      setDemoUsers(data.users || []);
+      setBulkPasswords((data.users || []).map((item) => ({
+        _id: item._id,
+        nombre: item.nombre,
+        email: item.email,
+        temporaryPassword: item.temporaryPassword,
+      })));
+      setMessage("Usuarios demo de roles creados para prueba");
+      await loadData();
     } catch (error) {
       setMessage(error.message);
     }
@@ -517,6 +539,30 @@ export default function UsersPage() {
             ) : null}
           </div>
         ) : null}
+
+        <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+          <h4 className="text-sm font-semibold text-slate-800">Modo prueba de roles</h4>
+          <p className="mt-1 text-sm text-slate-600">
+            Crea o actualiza automaticamente 3 usuarios de prueba: admin_colegio, jefe y empleado.
+          </p>
+          <button
+            type="button"
+            onClick={createDemoRoleUsers}
+            className="mt-3 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-medium text-white"
+          >
+            Generar usuarios demo
+          </button>
+
+          {demoUsers.length ? (
+            <div className="mt-3 space-y-2 text-sm text-slate-700">
+              {demoUsers.map((item) => (
+                <p key={item._id}>
+                  {item.roleKey}: {item.email} - {item.temporaryPassword}
+                </p>
+              ))}
+            </div>
+          ) : null}
+        </div>
       </section>
     </div>
   );

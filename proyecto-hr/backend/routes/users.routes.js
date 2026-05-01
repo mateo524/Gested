@@ -167,6 +167,78 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   });
 });
 
+router.post("/seed-demo-roles", auth, permit("manage_users"), async (req, res) => {
+  const { companyId, company } = await resolveCompanyScope(req);
+  const roles = await Role.find({ companyId }).lean();
+  const byCode = new Map(roles.map((role) => [normalizeText(role.code), role]));
+
+  const roleAdmin = byCode.get("admin_colegio");
+  const roleJefe = byCode.get("jefe");
+  const roleEmpleado = byCode.get("empleado");
+
+  if (!roleAdmin || !roleJefe || !roleEmpleado) {
+    return res.status(400).json({
+      mensaje: "Faltan roles requeridos: ADMIN_COLEGIO, JEFE o EMPLEADO",
+    });
+  }
+
+  const companySlug = slugifyText(company?.slug || company?.nombre || "empresa");
+  const specs = [
+    { key: "admin_colegio", nombre: "Admin Colegio Demo", roleId: roleAdmin._id },
+    { key: "jefe", nombre: "Jefe Demo", roleId: roleJefe._id },
+    { key: "empleado", nombre: "Empleado Demo", roleId: roleEmpleado._id },
+  ];
+
+  const created = [];
+
+  for (const spec of specs) {
+    const email = `${spec.key}.${companySlug}@performia.app`;
+    const tempPassword = generateTempPassword();
+    const hash = await bcrypt.hash(tempPassword, 10);
+    let user = await User.findOne({ companyId, email, isSuperAdmin: false });
+
+    if (user) {
+      user.nombre = spec.nombre;
+      user.roleId = spec.roleId;
+      user.passwordHash = hash;
+      user.mustChangePassword = true;
+      user.activo = true;
+      await user.save();
+    } else {
+      user = await User.create({
+        companyId,
+        nombre: spec.nombre,
+        email,
+        roleId: spec.roleId,
+        activo: true,
+        mustChangePassword: true,
+        passwordHash: hash,
+      });
+    }
+
+    created.push({
+      _id: user._id,
+      nombre: user.nombre,
+      email: user.email,
+      roleKey: spec.key,
+      temporaryPassword: tempPassword,
+    });
+  }
+
+  await logAudit({
+    companyId,
+    userId: req.user.userId,
+    accion: "seed",
+    modulo: "users",
+    detalle: "Se generaron usuarios demo de roles para pruebas",
+  });
+
+  res.json({
+    mensaje: "Usuarios demo creados/actualizados",
+    users: created,
+  });
+});
+
 router.post(
   "/import",
   auth,
