@@ -52,15 +52,8 @@ async function runCompanyQualityCheck(companyId) {
   };
 }
 
-router.post("/nightly-check", async (req, res) => {
-  const token = req.headers["x-automation-token"];
-  if (!process.env.AUTOMATION_TOKEN || token !== process.env.AUTOMATION_TOKEN) {
-    return res.status(401).json({ mensaje: "Token de automatizacion invalido" });
-  }
-
-  const companies = await Company.find({ activa: true }).select("_id nombre").lean();
+async function executeQualityChecks(companies) {
   const results = [];
-
   for (const company of companies) {
     const settings = await CompanySetting.findOne({ companyId: company._id }).lean();
     if (settings?.automations?.nightlyDataCheck === false) continue;
@@ -77,6 +70,17 @@ router.post("/nightly-check", async (req, res) => {
       metadata: summary,
     });
   }
+  return results;
+}
+
+router.post("/nightly-check", async (req, res) => {
+  const token = req.headers["x-automation-token"];
+  if (!process.env.AUTOMATION_TOKEN || token !== process.env.AUTOMATION_TOKEN) {
+    return res.status(401).json({ mensaje: "Token de automatizacion invalido" });
+  }
+
+  const companies = await Company.find({ activa: true }).select("_id nombre").lean();
+  const results = await executeQualityChecks(companies);
 
   res.json({
     mensaje: "Control nocturno ejecutado",
@@ -108,6 +112,26 @@ router.get(
             metrics: latest.metadata || {},
           }
         : null,
+    });
+  }
+);
+
+router.post(
+  "/run-now",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_COMPANIES, PERMISSIONS.MANAGE_SETTINGS),
+  async (req, res) => {
+    if (!req.user.isSuperAdmin) {
+      return res.status(403).json({ mensaje: "Solo superadmin puede ejecutar control global" });
+    }
+
+    const companies = await Company.find({ activa: true }).select("_id nombre").lean();
+    const results = await executeQualityChecks(companies);
+    res.json({
+      mensaje: "Control ejecutado manualmente",
+      processed: results.length,
+      results,
+      executedAt: new Date(),
     });
   }
 );
@@ -146,6 +170,36 @@ router.get(
     );
 
     res.json({ items });
+  }
+);
+
+router.get(
+  "/quality-trend",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_SETTINGS, PERMISSIONS.VIEW_REPORTS, PERMISSIONS.VIEW_AUDIT),
+  async (req, res) => {
+    const { companyId } = await resolveCompanyScope(req);
+    const days = Math.min(Math.max(Number(req.query.days || 30), 7), 90);
+    const from = new Date();
+    from.setDate(from.getDate() - days);
+
+    const logs = await AuditLog.find({
+      companyId,
+      modulo: "automation",
+      accion: "automation_quality_check",
+      createdAt: { $gte: from },
+    })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const trend = logs.map((log) => ({
+      date: new Date(log.createdAt).toLocaleDateString("es-AR"),
+      score: log.metadata?.score ?? 0,
+      missingEmail: log.metadata?.missingEmail ?? 0,
+      duplicates: log.metadata?.duplicates ?? 0,
+    }));
+
+    res.json({ days, trend });
   }
 );
 

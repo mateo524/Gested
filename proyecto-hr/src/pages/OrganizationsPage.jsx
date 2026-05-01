@@ -67,13 +67,16 @@ export default function OrganizationsPage() {
                 <article key={item.companyId} className="rounded-xl border border-white/10 bg-[#1A2C38] px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium text-[#E8EEF1]">{item.nombre}</p>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
-                        (item.score ?? 0) < 70 ? "bg-amber-500/20 text-amber-200" : "bg-emerald-500/20 text-emerald-200"
-                      }`}
-                    >
-                      Score {item.score ?? "-"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${(item.score ?? 0) < 50 ? "bg-red-400" : (item.score ?? 0) < 70 ? "bg-amber-400" : "bg-emerald-400"}`} />
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                          (item.score ?? 0) < 70 ? "bg-amber-500/20 text-amber-200" : "bg-emerald-500/20 text-emerald-200"
+                        }`}
+                      >
+                        Score {item.score ?? "-"}
+                      </span>
+                    </div>
                   </div>
                 </article>
               ))
