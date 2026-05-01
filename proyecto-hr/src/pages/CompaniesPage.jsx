@@ -6,6 +6,7 @@ const emptyCompany = {
   nombre: "",
   slug: "",
   tipoCliente: "general",
+  schoolName: "",
   adminNombre: "",
   adminEmail: "",
   adminPassword: "",
@@ -30,6 +31,22 @@ export default function CompaniesPage() {
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [seedFile, setSeedFile] = useState(null);
+
+  function downloadInitialTemplate() {
+    const csv = [
+      "apellido,nombre,email,cargo,area,tipoEmpleado,rol,activo,password",
+      "Perez,Ana,ana.perez@colegio.com,Docente,Matematica,DOCENTE,EMPLEADO,true,",
+      "Gomez,Carlos,carlos.gomez@colegio.com,Coordinador,Secundaria,DIRECTIVO,JEFE,true,",
+      "Lopez,Marina,marina.lopez@colegio.com,Directora,Direccion,DIRECTIVO,ADMIN_COLEGIO,true,",
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "plantilla-estructura-inicial-performia.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   const filteredCompanies = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -257,6 +274,12 @@ export default function CompaniesPage() {
             </select>
             <input
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              placeholder="Nombre del colegio principal"
+              value={form.schoolName}
+              onChange={(event) => setForm({ ...form, schoolName: event.target.value })}
+            />
+            <input
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
               placeholder="Nombre del admin de empresa"
               value={form.adminNombre}
               onChange={(event) => setForm({ ...form, adminNombre: event.target.value })}
@@ -285,6 +308,13 @@ export default function CompaniesPage() {
                 className="w-full rounded-2xl border border-slate-300 px-4 py-3 text-sm"
               />
             </label>
+            <button
+              type="button"
+              onClick={downloadInitialTemplate}
+              className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-2 text-sm text-white"
+            >
+              Descargar plantilla de estructura inicial
+            </button>
             {seedFile ? (
               <p className="text-xs text-slate-500">Archivo seleccionado: {seedFile.name}</p>
             ) : null}

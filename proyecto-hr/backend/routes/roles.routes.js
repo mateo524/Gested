@@ -35,6 +35,37 @@ router.get("/catalog", auth, permit("manage_roles"), async (_req, res) => {
   });
 });
 
+router.get("/qa/status", auth, permit("manage_roles"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const [roles, users] = await Promise.all([
+    Role.find({ companyId }).lean(),
+    User.find({ companyId, isSuperAdmin: false }).select("roleId").lean(),
+  ]);
+
+  const byCode = new Map(roles.filter((r) => r.code).map((r) => [r.code, r]));
+  const items = ROLE_DEFINITIONS.filter((r) => r.code !== "SUPER_ADMIN").map((template) => {
+    const role = byCode.get(template.code);
+    const usersCount = role
+      ? users.filter((u) => String(u.roleId) === String(role._id)).length
+      : 0;
+    const current = new Set(role?.permisos || []);
+    const expected = new Set(template.permisos || []);
+    const missing = [...expected].filter((p) => !current.has(p));
+    const extra = [...current].filter((p) => !expected.has(p));
+    return {
+      code: template.code,
+      nombre: template.nombre,
+      exists: Boolean(role),
+      usersCount,
+      missing,
+      extra,
+      ok: Boolean(role) && missing.length === 0,
+    };
+  });
+
+  res.json({ items });
+});
+
 router.get("/", auth, async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
   const roles = await Role.find({ companyId }).lean();

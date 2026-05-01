@@ -96,6 +96,7 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
     adminNombre,
     adminEmail,
     adminPassword,
+    schoolName,
     createAdmin = true,
   } = req.body;
 
@@ -114,6 +115,7 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
   const { company, adminRole, school: defaultSchool } = await ensureCompanyStructure({
     companyName: nombre.trim(),
     companySlug: slug.trim(),
+    schoolName: schoolName?.trim(),
   });
   await ensureEducationalRoles({ companyId: company._id, schoolId: defaultSchool?._id || null });
 
