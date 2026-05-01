@@ -7,6 +7,7 @@ export default function RolesPage() {
   const [roles, setRoles] = useState([]);
   const [permissionsCatalog, setPermissionsCatalog] = useState([]);
   const [templates, setTemplates] = useState([]);
+  const [qaStatus, setQaStatus] = useState([]);
   const [editingId, setEditingId] = useState("");
   const [nombre, setNombre] = useState("");
   const [descripcion, setDescripcion] = useState("");
@@ -33,6 +34,8 @@ export default function RolesPage() {
     setRoles(rolesData);
     setPermissionsCatalog(catalog.permissions || []);
     setTemplates(catalog.templates || []);
+    const qa = await apiFetch("/roles/qa/status", { token });
+    setQaStatus(qa.items || []);
   }
 
   useEffect(() => {
@@ -102,6 +105,16 @@ export default function RolesPage() {
     }
   }
 
+  async function createDemoRoleUsers() {
+    try {
+      await apiFetch("/users/seed-demo-roles", { method: "POST", token });
+      setMessage("Usuarios de prueba por rol creados para QA");
+      await loadData();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   async function removeRole(roleId) {
     try {
       await apiFetch(`/roles/${roleId}`, { method: "DELETE", token });
@@ -123,13 +136,39 @@ export default function RolesPage() {
           personalizar solo cuando sea necesario.
         </p>
         <div className="mt-4">
-          <button
-            type="button"
-            onClick={syncDefaults}
-            className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
-          >
-            Restaurar roles recomendados
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={syncDefaults}
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+            >
+              Restaurar roles recomendados
+            </button>
+            <button
+              type="button"
+              onClick={createDemoRoleUsers}
+              className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-2 text-sm text-white"
+            >
+              Generar usuarios QA por rol
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section className="pf-card p-6">
+        <h4 className="text-lg font-semibold text-slate-950">Estado QA de roles</h4>
+        <div className="mt-4 grid gap-3">
+          {qaStatus.map((item) => (
+            <article key={item.code} className="rounded-xl border border-white/10 bg-[#1A2C38] px-4 py-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="text-sm font-medium text-[#E8EEF1]">{item.nombre} ({item.code})</p>
+                <span className={`rounded-full px-2.5 py-1 text-xs ${item.ok ? "bg-emerald-500/20 text-emerald-200" : "bg-amber-500/20 text-amber-200"}`}>
+                  {item.ok ? "OK" : "Revisar"}
+                </span>
+              </div>
+              <p className="mt-1 text-xs text-[#9FB6C1]">Usuarios: {item.usersCount} · Faltantes: {item.missing.length} · Extra: {item.extra.length}</p>
+            </article>
+          ))}
         </div>
       </section>
 

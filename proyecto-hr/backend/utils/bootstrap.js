@@ -70,7 +70,7 @@ async function ensureRole({ companyId, nombre, permisos }) {
   return role;
 }
 
-export async function ensureCompanyStructure({ companyName, companySlug }) {
+export async function ensureCompanyStructure({ companyName, companySlug, schoolName = DEFAULT_ADMIN.schoolName }) {
   let company = await Company.findOne({ nombre: companyName });
 
   if (!company) {
@@ -81,11 +81,12 @@ export async function ensureCompanyStructure({ companyName, companySlug }) {
     });
   }
 
-  let school = await School.findOne({ companyId: company._id, nombre: DEFAULT_ADMIN.schoolName });
+  const requestedSchoolName = schoolName?.trim() || DEFAULT_ADMIN.schoolName;
+  let school = await School.findOne({ companyId: company._id, nombre: requestedSchoolName });
   if (!school) {
     school = await School.create({
       companyId: company._id,
-      nombre: DEFAULT_ADMIN.schoolName,
+      nombre: requestedSchoolName,
       codigo: "DEMO",
       ciudad: "Buenos Aires",
       provincia: "Buenos Aires",
