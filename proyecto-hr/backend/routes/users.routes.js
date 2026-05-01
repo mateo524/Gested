@@ -6,6 +6,8 @@ import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
 import DatabaseFile from "../models/DatabaseFile.js";
+import Announcement from "../models/Announcement.js";
+import CompanySetting from "../models/CompanySetting.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
@@ -380,6 +382,18 @@ router.post(
       registros: result.total,
       activa: true,
     });
+
+    const settings = await CompanySetting.findOne({ companyId }).lean();
+    if (result.errors.length && settings?.automations?.notifyOnImportErrors !== false) {
+      await Announcement.create({
+        companyId,
+        authorUserId: req.user.userId,
+        titulo: "Importacion masiva de usuarios con errores",
+        cuerpo: `Se detectaron ${result.errors.length} errores en la importacion de usuarios. Revisa el resumen y el CSV de errores.`,
+        prioridad: "importante",
+        categoria: "importacion",
+      });
+    }
 
     res.json({
       mensaje: "Importacion finalizada",

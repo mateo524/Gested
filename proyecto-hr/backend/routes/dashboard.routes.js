@@ -72,6 +72,7 @@ router.get("/summary", auth, async (req, res) => {
     averageEvaluation,
     recentEvaluations,
     downloadEvents,
+    latestQualityRun,
   ] = await Promise.all([
     User.countDocuments({ companyId }),
     User.countDocuments({ companyId, activo: true }),
@@ -99,6 +100,13 @@ router.get("/summary", auth, async (req, res) => {
     ]),
     Evaluation.find({ companyId }).sort({ createdAt: -1 }).limit(200).lean(),
     DownloadLog.countDocuments({ companyId }),
+    AuditLog.findOne({
+      companyId,
+      modulo: "automation",
+      accion: "automation_quality_check",
+    })
+      .sort({ createdAt: -1 })
+      .lean(),
   ]);
 
   let superAdmin = null;
@@ -171,6 +179,16 @@ router.get("/summary", auth, async (req, res) => {
       averageScore: averageEvaluation[0]?.avg || 0,
       downloadEvents,
     },
+    alerts: latestQualityRun
+      ? {
+          latestQualityRunAt: latestQualityRun.createdAt,
+          score: latestQualityRun.metadata?.score ?? null,
+          isLow: typeof latestQualityRun.metadata?.score === "number" ? latestQualityRun.metadata.score < 70 : false,
+          summary: latestQualityRun.detalle || "",
+          missingEmail: latestQualityRun.metadata?.missingEmail ?? 0,
+          duplicates: latestQualityRun.metadata?.duplicates ?? 0,
+        }
+      : null,
     superAdmin,
   });
 });

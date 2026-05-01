@@ -1,12 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../lib/api";
 import CompaniesPage from "./CompaniesPage";
 import SchoolsPage from "./SchoolsPage";
 
 export default function OrganizationsPage() {
-  const { user, activeCompany } = useAuth();
+  const { user, activeCompany, token } = useAuth();
   const canManageCompanies = !!user?.isSuperAdmin;
   const [tab, setTab] = useState(canManageCompanies ? "empresas" : "colegios");
+  const [qualityItems, setQualityItems] = useState([]);
+
+  useEffect(() => {
+    if (!canManageCompanies) return;
+    apiFetch("/automation/quality-by-company", { token })
+      .then((data) => setQualityItems(data.items || []))
+      .catch(() => {});
+  }, [canManageCompanies, token]);
 
   const tabs = useMemo(() => {
     const base = [{ key: "colegios", label: canManageCompanies ? "Colegios" : "Mi colegio" }];
@@ -48,6 +57,32 @@ export default function OrganizationsPage() {
           ))}
         </div>
       </section>
+
+      {canManageCompanies ? (
+        <section className="pf-card p-6">
+          <h4 className="text-lg font-semibold text-slate-950">Salud de datos por empresa</h4>
+          <div className="mt-4 grid gap-3">
+            {qualityItems.length ? (
+              qualityItems.map((item) => (
+                <article key={item.companyId} className="rounded-xl border border-white/10 bg-[#1A2C38] px-4 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="font-medium text-[#E8EEF1]">{item.nombre}</p>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                        (item.score ?? 0) < 70 ? "bg-amber-500/20 text-amber-200" : "bg-emerald-500/20 text-emerald-200"
+                      }`}
+                    >
+                      Score {item.score ?? "-"}
+                    </span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="text-sm text-[#A9BFCA]">Aun no hay controles nocturnos ejecutados.</p>
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {tab === "empresas" && canManageCompanies ? <CompaniesPage /> : null}
       {tab === "colegios" ? <SchoolsPage /> : null}

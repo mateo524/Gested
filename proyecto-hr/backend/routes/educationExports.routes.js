@@ -11,6 +11,8 @@ import School from "../models/School.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Competency from "../models/Competency.js";
 import DatabaseFile from "../models/DatabaseFile.js";
+import Announcement from "../models/Announcement.js";
+import CompanySetting from "../models/CompanySetting.js";
 import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
@@ -555,6 +557,18 @@ router.post(
       registros: result.total,
       activa: true,
     });
+
+    const settings = await CompanySetting.findOne({ companyId }).lean();
+    if (result.errors.length && settings?.automations?.notifyOnImportErrors !== false) {
+      await Announcement.create({
+        companyId,
+        authorUserId: req.user.userId,
+        titulo: `Importacion con errores (${dataset})`,
+        cuerpo: `Se detectaron ${result.errors.length} errores en la importacion ${dataset}. Revisa el detalle en Cargas y descargas.`,
+        prioridad: "importante",
+        categoria: "importacion",
+      });
+    }
 
     res.json({
       mensaje: "Importacion completada",

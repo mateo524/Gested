@@ -112,4 +112,41 @@ router.get(
   }
 );
 
+router.get(
+  "/quality-by-company",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_COMPANIES, PERMISSIONS.VIEW_GLOBAL_REPORTS),
+  async (req, res) => {
+    if (!req.user.isSuperAdmin) {
+      return res.status(403).json({ mensaje: "Solo superadmin puede ver calidad global" });
+    }
+
+    const companies = await Company.find({}).select("_id nombre slug activa").lean();
+    const items = await Promise.all(
+      companies.map(async (company) => {
+        const latest = await AuditLog.findOne({
+          companyId: company._id,
+          modulo: "automation",
+          accion: "automation_quality_check",
+        })
+          .sort({ createdAt: -1 })
+          .lean();
+
+        return {
+          companyId: company._id,
+          nombre: company.nombre,
+          slug: company.slug,
+          activa: company.activa,
+          score: latest?.metadata?.score ?? null,
+          missingEmail: latest?.metadata?.missingEmail ?? 0,
+          duplicates: latest?.metadata?.duplicates ?? 0,
+          checkedAt: latest?.createdAt || null,
+        };
+      })
+    );
+
+    res.json({ items });
+  }
+);
+
 export default router;
