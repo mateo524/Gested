@@ -28,6 +28,14 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [qualityTrend, setQualityTrend] = useState([]);
   const [message, setMessage] = useState("");
+  const [demoMessage, setDemoMessage] = useState("");
+  const [checklist, setChecklist] = useState({
+    loginRoles: false,
+    importFlow: false,
+    exportsFlow: false,
+    cloudinaryStorage: false,
+    nightlyAutomation: false,
+  });
 
   useEffect(() => {
     apiFetch("/dashboard/summary", { token })
@@ -41,6 +49,19 @@ export default function DashboardPage() {
       .catch(() => {});
   }, [token, activeCompany?._id]);
 
+  useEffect(() => {
+    const saved = localStorage.getItem("performia_launch_checklist");
+    if (saved) {
+      try {
+        setChecklist(JSON.parse(saved));
+      } catch {}
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("performia_launch_checklist", JSON.stringify(checklist));
+  }, [checklist]);
+
   async function runQualityNow() {
     try {
       await apiFetch("/automation/run-now", { method: "POST", token });
@@ -52,6 +73,16 @@ export default function DashboardPage() {
       setQualityTrend(trendData?.trend || []);
     } catch (error) {
       setMessage(error.message);
+    }
+  }
+
+  async function createDemoUsers() {
+    try {
+      setDemoMessage("");
+      await apiFetch("/users/seed-demo-roles", { method: "POST", token });
+      setDemoMessage("Usuarios demo creados/actualizados para la empresa activa.");
+    } catch (error) {
+      setDemoMessage(error.message);
     }
   }
 
@@ -90,6 +121,46 @@ export default function DashboardPage() {
             >
               Re-ejecutar control ahora
             </button>
+          </div>
+        </section>
+      ) : null}
+
+      {user?.isSuperAdmin ? (
+        <section className="grid gap-4 xl:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-[#142028] p-4">
+            <h4 className="text-sm font-semibold text-white">Acciones rapidas de lanzamiento</h4>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={createDemoUsers}
+                className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white"
+              >
+                Generar usuarios demo
+              </button>
+            </div>
+            {demoMessage ? <p className="mt-2 text-sm text-[#AFC3CE]">{demoMessage}</p> : null}
+          </div>
+
+          <div className="rounded-2xl border border-white/10 bg-[#142028] p-4">
+            <h4 className="text-sm font-semibold text-white">Checklist salida al mercado</h4>
+            <div className="mt-3 grid gap-2 text-sm">
+              {[
+                ["loginRoles", "Login probado por rol"],
+                ["importFlow", "Importador guiado validado"],
+                ["exportsFlow", "Exportaciones CSV/Excel validadas"],
+                ["cloudinaryStorage", "Subida a Cloudinary validada"],
+                ["nightlyAutomation", "Control nocturno automático activo"],
+              ].map(([key, label]) => (
+                <label key={key} className="flex items-center justify-between rounded-lg border border-white/10 bg-[#1A2C38] px-3 py-2">
+                  <span className="text-[#D4E1E8]">{label}</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(checklist[key])}
+                    onChange={(e) => setChecklist((prev) => ({ ...prev, [key]: e.target.checked }))}
+                  />
+                </label>
+              ))}
+            </div>
           </div>
         </section>
       ) : null}

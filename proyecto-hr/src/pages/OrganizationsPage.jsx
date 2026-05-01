@@ -60,6 +60,9 @@ export default function OrganizationsPage() {
 
       {canManageCompanies ? (
         <section className="pf-card p-6">
+          <div className="mb-4 rounded-xl border border-white/10 bg-[#1A2C38] p-3 text-sm text-[#D4E1E8]">
+            Flujo guiado recomendado: 1) Crear empresa, 2) Crear colegio, 3) Generar admin de colegio, 4) Probar login con rol cliente.
+          </div>
           <h4 className="text-lg font-semibold text-slate-950">Salud de datos por empresa</h4>
           <div className="mt-4 grid gap-3">
             {qualityItems.length ? (
