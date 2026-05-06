@@ -11,6 +11,18 @@ const defaultBranding = {
   maxUploadSizeMb: 10,
 };
 
+function decodeTokenPayload(token) {
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return null;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const decoded = atob(normalized);
+    return JSON.parse(decoded);
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem("token") || "");
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
@@ -170,6 +182,10 @@ export function AuthProvider({ children }) {
   }, [branding.primaryColor]);
 
   const activeCompany = companies.find((company) => company._id === activeCompanyId) || null;
+  const tokenPayload = token ? decodeTokenPayload(token) : null;
+  const tokenExpiresAt = tokenPayload?.exp ? new Date(tokenPayload.exp * 1000) : null;
+  const tokenRemainingMs = tokenExpiresAt ? tokenExpiresAt.getTime() - Date.now() : 0;
+  const tokenNearExpiry = tokenExpiresAt ? tokenRemainingMs <= 60 * 60 * 1000 : false;
 
   const value = useMemo(
     () => ({
@@ -180,6 +196,8 @@ export function AuthProvider({ children }) {
       announcementSummary,
       globalSearchResults,
       activeCompany,
+      tokenExpiresAt,
+      tokenNearExpiry,
       activeCompanyId,
       setActiveCompanyId,
       refreshCompanies: () => fetchCompanies(token, user),
@@ -192,7 +210,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
     }),
-    [token, user, companies, branding, announcementSummary, globalSearchResults, activeCompanyId]
+    [token, user, companies, branding, announcementSummary, globalSearchResults, activeCompanyId, tokenExpiresAt, tokenNearExpiry]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
