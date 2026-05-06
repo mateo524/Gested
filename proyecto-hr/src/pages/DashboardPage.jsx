@@ -348,7 +348,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h3 className="text-xl font-semibold">Tendencia de calidad (30 días)</h3>
           <div className="mt-4 space-y-2">
@@ -394,25 +394,43 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold">Actividad reciente</h3>
+          <h3 className="text-xl font-semibold">Decisiones recomendadas</h3>
           <p className="mt-1 text-slate-500">
-            Cambios relevantes registrados para este colegio dentro del sistema.
+            Prioriza inversion en capacitacion donde el promedio es mas bajo y replica buenas practicas donde es mas alto.
           </p>
 
           <div className="mt-6 grid gap-4">
-            {summary.latestAudit.length ? (
-              summary.latestAudit.map((log) => (
-                <div key={log._id} className="rounded-3xl border border-slate-200 p-5">
-                  <p className="font-semibold capitalize">{log.accion}</p>
-                  <p className="mt-1 text-sm uppercase tracking-[0.15em] text-slate-400">
-                    {log.modulo}
-                  </p>
-                  <p className="mt-3 text-slate-600">{log.detalle}</p>
-                </div>
-              ))
-            ) : (
-              <p className="text-slate-500">Todavia no hay eventos auditados.</p>
-            )}
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4">
+              <p className="text-sm font-semibold text-rose-700">Areas a priorizar</p>
+              <div className="mt-2 space-y-2">
+                {summary.decisionInsights?.weakestAreas?.length ? (
+                  summary.decisionInsights.weakestAreas.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between text-sm text-slate-800">
+                      <span>{item.label} ({item.employees})</span>
+                      <span className="font-semibold">{item.value}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">Sin datos suficientes.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4">
+              <p className="text-sm font-semibold text-emerald-700">Areas con mejor desempeno</p>
+              <div className="mt-2 space-y-2">
+                {summary.decisionInsights?.strongestAreas?.length ? (
+                  summary.decisionInsights.strongestAreas.map((item) => (
+                    <div key={item.label} className="flex items-center justify-between text-sm text-slate-800">
+                      <span>{item.label} ({item.employees})</span>
+                      <span className="font-semibold">{item.value}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500">Sin datos suficientes.</p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </section>

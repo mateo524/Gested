@@ -73,6 +73,8 @@ router.get("/summary", auth, async (req, res) => {
     recentEvaluations,
     downloadEvents,
     latestQualityRun,
+    employeesList,
+    evaluationByEmployee,
   ] = await Promise.all([
     User.countDocuments({ companyId }),
     User.countDocuments({ companyId, activo: true }),
@@ -107,6 +109,11 @@ router.get("/summary", auth, async (req, res) => {
     })
       .sort({ createdAt: -1 })
       .lean(),
+    Employee.find({ companyId }).select("_id area cargo nombre apellido").lean(),
+    Evaluation.aggregate([
+      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
+    ]),
   ]);
 
   let superAdmin = null;
@@ -133,6 +140,41 @@ router.get("/summary", auth, async (req, res) => {
     .slice(0, 6);
   const evaluationTimeline = groupTimeline(recentEvaluations);
   const evaluationStates = groupCount(recentEvaluations, "estado").slice(0, 6);
+
+  const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));
+  const byArea = new Map();
+  evaluationByEmployee.forEach((row) => {
+    const employee = employeeById.get(String(row._id));
+    if (!employee) return;
+    const area = (employee.area || "Sin area").trim();
+    const current = byArea.get(area) || { totalScore: 0, totalWeight: 0, employees: 0 };
+    current.totalScore += row.avgScore * row.count;
+    current.totalWeight += row.count;
+    current.employees += 1;
+    byArea.set(area, current);
+  });
+
+  const areaInsights = [...byArea.entries()]
+    .map(([label, value]) => ({
+      label,
+      avg: value.totalWeight ? value.totalScore / value.totalWeight : 0,
+      employees: value.employees,
+    }))
+    .sort((a, b) => a.avg - b.avg);
+
+  const weakestAreas = areaInsights.slice(0, 3).map((item) => ({
+    label: item.label,
+    value: Number(item.avg.toFixed(2)),
+    employees: item.employees,
+  }));
+  const strongestAreas = [...areaInsights]
+    .reverse()
+    .slice(0, 3)
+    .map((item) => ({
+      label: item.label,
+      value: Number(item.avg.toFixed(2)),
+      employees: item.employees,
+    }));
 
   res.json({
     cards: [
@@ -162,6 +204,10 @@ router.get("/summary", auth, async (req, res) => {
       fileRanking,
       evaluationTimeline,
       evaluationStates,
+    },
+    decisionInsights: {
+      weakestAreas,
+      strongestAreas,
     },
     educational: {
       schoolsCount,
