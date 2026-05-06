@@ -376,6 +376,68 @@ function normalizeRowsForDataset(rows, dataset) {
   return { validRows, invalidRows };
 }
 
+function validateCorrectedRow(dataset, row) {
+  if (dataset === "employees") {
+    const apellido = String(row.apellido || "").trim();
+    const nombre = String(row.nombre || "").trim();
+    const cargo = String(row.cargo || "").trim();
+    if (!apellido || !nombre || !cargo) {
+      return { ok: false, message: "Faltan apellido, nombre o cargo" };
+    }
+    return {
+      ok: true,
+      row: {
+        apellido,
+        nombre,
+        email: String(row.email || "").trim().toLowerCase(),
+        cargo,
+        area: String(row.area || "").trim(),
+        tipoempleado: String(row.tipoempleado || "DOCENTE").trim().toUpperCase(),
+        activo: String(row.activo || "true").trim().toLowerCase(),
+      },
+    };
+  }
+
+  if (dataset === "metrics") {
+    const competencia = String(row.competencia || "").trim();
+    const nombre = String(row.nombre || "").trim();
+    const ponderacion = Number(row.ponderacion || 1);
+    if (!competencia || !nombre || !Number.isFinite(ponderacion) || ponderacion <= 0) {
+      return { ok: false, message: "Fila invalida para metricas" };
+    }
+    return {
+      ok: true,
+      row: {
+        competencia,
+        nombre,
+        descripcion: String(row.descripcion || "").trim(),
+        ponderacion,
+      },
+    };
+  }
+
+  if (dataset === "cycles") {
+    const periodo = String(row.periodo || "").trim();
+    const etapa = String(row.etapa || "INICIO").trim().toUpperCase();
+    const estado = String(row.estado || "BORRADOR").trim().toUpperCase();
+    const fechaInicio = new Date(row.fechaInicio);
+    const fechaFin = new Date(row.fechaFin);
+    const anio = Number(row.anio || new Date().getFullYear());
+    if (!periodo || Number.isNaN(fechaInicio.getTime()) || Number.isNaN(fechaFin.getTime())) {
+      return { ok: false, message: "Fila invalida para ciclos" };
+    }
+    return { ok: true, row: { periodo, etapa, estado, fechaInicio, fechaFin, anio } };
+  }
+
+  if (dataset === "roles") {
+    const nombre = String(row.nombre || "").trim();
+    if (!nombre) return { ok: false, message: "Falta nombre de rol" };
+    return { ok: true, row: { nombre } };
+  }
+
+  return { ok: false, message: "Dataset no soportado" };
+}
+
 function saveImportPreview(payload) {
   const token = `preview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
   importPreviewStore.set(token, { ...payload, createdAt: Date.now() });
@@ -632,8 +694,21 @@ router.post(
     const dataset = preview.dataset;
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = preview.schoolId || req.user.schoolId || null;
-    const rows = preview.validRows;
-    const result = { total: rows.length + preview.invalidRows.length, created: 0, updated: 0, errors: preview.invalidRows };
+    const rows = [...preview.validRows];
+    const correctedRows = Array.isArray(req.body.correctedRows) ? req.body.correctedRows : [];
+    const correctedErrors = [];
+    correctedRows.forEach((item, index) => {
+      const checked = validateCorrectedRow(dataset, item);
+      if (checked.ok) rows.push(checked.row);
+      else correctedErrors.push({ row: item.row || `manual-${index + 1}`, message: checked.message });
+    });
+
+    const result = {
+      total: rows.length + preview.invalidRows.length,
+      created: 0,
+      updated: 0,
+      errors: [...preview.invalidRows, ...correctedErrors],
+    };
 
     if (dataset === "employees") {
       for (const row of rows) {
