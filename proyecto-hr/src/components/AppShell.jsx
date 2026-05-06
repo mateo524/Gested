@@ -66,13 +66,13 @@ export default function AppShell({ view, setView, children }) {
     () =>
       [
         { key: "dashboard", label: "Panel", show: true, group: "panel" },
-        { key: "empleados", label: "Empleados", show: hasPermission("manage_employees"), group: "gestion" },
+        { key: "empleados", label: "Plantilla", show: hasPermission("manage_employees"), group: "gestion" },
         { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), group: "gestion" },
-        { key: "metricas", label: "Metricas", show: hasPermission("manage_metrics"), group: "gestion" },
-        { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
-        { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), group: "gestion" },
-        { key: "roles", label: "Roles", show: hasPermission("manage_roles"), group: "gestion" },
-        { key: "settings", label: "Parametros", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
+        { key: "metricas", label: "Indicadores", show: hasPermission("manage_metrics"), group: "gestion" },
+        { key: "ciclos", label: "Periodos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
+        { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
+        { key: "roles", label: "Perfiles", show: hasPermission("manage_roles"), group: "gestion" },
+        { key: "settings", label: "Configuracion", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
         {
           key: "evaluaciones",
           label: "Evaluacion",
@@ -93,9 +93,9 @@ export default function AppShell({ view, setView, children }) {
             hasPermission("download_self_report"),
           group: "datos",
         },
-        { key: "novedades", label: user?.isSuperAdmin ? "Datos" : "Novedades", show: true, group: "datos" },
+        { key: "novedades", label: "Novedades", show: true, group: "novedades" },
         { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
-        { key: "archivo-central", label: "Archivo central", show: user?.isSuperAdmin, group: "datos" },
+        { key: "archivo-central", label: "Archivo central (solo superadmin)", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
     [hasPermission, user]
   );
@@ -105,6 +105,7 @@ export default function AppShell({ view, setView, children }) {
     { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
     { key: "gestion", label: "Gestion", defaultView: "empleados" },
     { key: "datos", label: "Datos", defaultView: "bases-descargas" },
+    { key: "novedades", label: "Novedades", defaultView: "novedades" },
   ];
 
   const activePrimary = allViews.find((item) => item.key === view)?.group || "panel";
@@ -121,7 +122,8 @@ export default function AppShell({ view, setView, children }) {
       panel: ["dashboard"],
       evaluacion: ["evaluaciones", "planes"],
       gestion: ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
-      datos: ["bases-descargas", "novedades", "organizaciones", "archivo-central"],
+      datos: ["bases-descargas", "organizaciones", "archivo-central"],
+      novedades: ["novedades"],
     };
 
     const groupViews = allViews.filter((item) => item.group === groupKey).map((item) => item.key);

@@ -107,6 +107,9 @@ export default function StorageCenterPage() {
           Desde aca el superadmin puede revisar todo lo que se subio a la app, separado por empresa
           y tipo de archivo, con acceso rapido a la fuente y una vista previa de contenido.
         </p>
+        <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+          Acceso: solo superadmin. Los usuarios de colegio/empresa no ven este modulo.
+        </div>
       </section>
 
       <section className="grid gap-6 md:grid-cols-3">

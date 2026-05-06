@@ -71,8 +71,11 @@ export default function SettingsPage() {
       <section className="pf-card p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-emerald-400">Control de marca y operaciones</p>
         <h3 className="mt-3 text-3xl font-bold text-slate-950">
-          Parametros de {activeCompany?.nombre || "la organizacion"}
+          Configuracion de {activeCompany?.nombre || "la organizacion"}
         </h3>
+        <p className="mt-3 text-slate-600">
+          Este modulo define como se ve la plataforma para tu organizacion y como se comportan las automatizaciones de importacion y control.
+        </p>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
