@@ -171,6 +171,10 @@ export default function EmployeesPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!form.schoolId) {
+      setMessage("Selecciona un colegio antes de crear el empleado");
+      return;
+    }
     try {
       setIsSubmitting(true);
       setMessage("");
