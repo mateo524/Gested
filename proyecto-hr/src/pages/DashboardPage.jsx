@@ -124,15 +124,15 @@ export default function DashboardPage() {
               summary.decisionInsights.riskRanking.map((item, idx) => (
                 <div
                   key={`${item.employeeId}-${idx}`}
-                  className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3 py-2"
+                  className="flex items-center justify-between rounded-xl border border-rose-400/40 bg-rose-900/30 px-3 py-2"
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{item.nombre}</p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-sm font-semibold text-rose-100">{item.nombre}</p>
+                    <p className="text-xs text-rose-200/80">
                       {item.area} - {item.cargo}
                     </p>
                   </div>
-                  <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                  <span className="rounded-full border border-rose-300/40 bg-rose-800/40 px-3 py-1 text-xs font-semibold text-rose-100">
                     {item.avgScore}
                   </span>
                 </div>

@@ -129,6 +129,7 @@ export default function EmployeesPage() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [profile, setProfile] = useState(null);
+  const [editingId, setEditingId] = useState("");
 
   const employeesById = useMemo(
     () => new Map(employees.map((employee) => [employee._id, employee])),
@@ -178,8 +179,9 @@ export default function EmployeesPage() {
     try {
       setIsSubmitting(true);
       setMessage("");
-      await apiFetch("/employees", {
-        method: "POST",
+      const isEditing = Boolean(editingId);
+      await apiFetch(isEditing ? `/employees/${editingId}` : "/employees", {
+        method: isEditing ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
@@ -188,13 +190,36 @@ export default function EmployeesPage() {
         ...emptyForm,
         schoolId: current.schoolId,
       }));
-      setMessage("Empleado creado");
+      setEditingId("");
+      setMessage(isEditing ? "Empleado actualizado" : "Empleado creado");
       await loadBase();
     } catch (error) {
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function handleEdit(employee) {
+    setEditingId(employee._id);
+    setForm({
+      schoolId: employee.schoolId || "",
+      nombre: employee.nombre || "",
+      apellido: employee.apellido || "",
+      email: employee.email || "",
+      cargo: employee.cargo || "",
+      area: employee.area || "",
+      tipoEmpleado: employee.tipoEmpleado || "DOCENTE",
+      managerId: employee.managerId || "",
+      fechaIngreso: employee.fechaIngreso ? new Date(employee.fechaIngreso).toISOString().slice(0, 10) : "",
+    });
+    setMessage("Editando empleado seleccionado");
+  }
+
+  function cancelEdit() {
+    setEditingId("");
+    setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
+    setMessage("Edicion cancelada");
   }
 
   return (
@@ -210,7 +235,10 @@ export default function EmployeesPage() {
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Nuevo empleado</h4>
+          <h4 className="text-xl font-semibold">{editingId ? "Editar empleado" : "Nuevo empleado"}</h4>
+          <p className="mt-2 text-sm text-slate-500">
+            Crea una persona para evaluaciones. Campos clave: colegio, nombre completo y cargo.
+          </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <select
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
@@ -242,7 +270,7 @@ export default function EmployeesPage() {
 
             <input
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Email"
+              placeholder="Email institucional"
               value={form.email}
               onChange={(event) => setForm({ ...form, email: event.target.value })}
             />
@@ -250,13 +278,13 @@ export default function EmployeesPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <input
                 className="rounded-2xl border border-slate-300 px-4 py-3"
-                placeholder="Cargo"
+                placeholder="Cargo (ej: Docente de Matematica)"
                 value={form.cargo}
                 onChange={(event) => setForm({ ...form, cargo: event.target.value })}
               />
               <input
                 className="rounded-2xl border border-slate-300 px-4 py-3"
-                placeholder="Área"
+                placeholder="Area / Departamento"
                 value={form.area}
                 onChange={(event) => setForm({ ...form, area: event.target.value })}
               />
@@ -300,8 +328,17 @@ export default function EmployeesPage() {
               disabled={isSubmitting}
               className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white"
             >
-              {isSubmitting ? "Guardando..." : "Crear empleado"}
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear empleado"}
             </button>
+            {editingId ? (
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="w-full rounded-2xl border border-slate-300 py-3 font-semibold text-slate-700"
+              >
+                Cancelar edicion
+              </button>
+            ) : null}
           </form>
         </section>
 
@@ -343,13 +380,22 @@ export default function EmployeesPage() {
                     <p className="mt-1 text-sm text-slate-500">
                       Jefe: {manager ? `${manager.apellido}, ${manager.nombre}` : "Sin asignar"}
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => openProfile(employee._id)}
-                      className="mt-3 rounded-xl border border-slate-200 px-4 py-2 text-sm"
-                    >
-                      Ver ficha completa
-                    </button>
+                    <div className="mt-3 flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openProfile(employee._id)}
+                        className="rounded-xl border border-slate-200 px-4 py-2 text-sm"
+                      >
+                        Ver ficha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleEdit(employee)}
+                        className="rounded-xl border border-emerald-300 px-4 py-2 text-sm text-emerald-700"
+                      >
+                        Editar
+                      </button>
+                    </div>
                   </article>
                 );
               })

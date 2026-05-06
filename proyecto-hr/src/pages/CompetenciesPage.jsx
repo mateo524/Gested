@@ -76,6 +76,9 @@ export default function CompetenciesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h4 className="text-xl font-semibold">Nueva competencia</h4>
+          <p className="mt-2 text-sm text-slate-500">
+            Define la capacidad que vas a evaluar (ej: Trabajo en equipo, Comunicacion).
+          </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <select
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
