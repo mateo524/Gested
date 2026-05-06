@@ -11,6 +11,7 @@ import School from "../models/School.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Competency from "../models/Competency.js";
 import Role from "../models/Role.js";
+import EvaluationScore from "../models/EvaluationScore.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Announcement from "../models/Announcement.js";
 import CompanySetting from "../models/CompanySetting.js";
@@ -231,6 +232,107 @@ function firstByAliases(row, aliases) {
     if (value !== undefined && String(value).trim() !== "") return value;
   }
   return "";
+}
+
+function getRowValues(row) {
+  return Object.entries(row)
+    .filter(([key]) => key !== "_rowNumber")
+    .map(([, value]) => value)
+    .filter((value) => value !== undefined && value !== null && String(value).trim() !== "");
+}
+
+function parseNameParts(fullName) {
+  const clean = String(fullName || "").trim();
+  if (!clean) return { nombre: "", apellido: "" };
+  const parts = clean.split(/\s+/).filter(Boolean);
+  if (parts.length === 1) return { nombre: parts[0], apellido: "-" };
+  return {
+    nombre: parts.slice(0, -1).join(" "),
+    apellido: parts.at(-1),
+  };
+}
+
+function extractNarrativeData(rows) {
+  const result = {
+    fullName: "",
+    cargo: "",
+    area: "",
+    competencias: [],
+    promedioFinal: 0,
+  };
+
+  const knownCompetencies = [
+    "trabajo en equipo",
+    "comunicacion efectiva",
+    "orientacion al logro",
+    "adaptacion y gestion del cambio",
+    "iniciativa y orientacion al servicio",
+    "liderazgo pedagogico",
+    "liderazgo",
+    "toma de decisiones",
+    "formacion de formadores",
+  ];
+
+  const extracted = [];
+  for (const row of rows) {
+    const values = getRowValues(row);
+    const textValues = values
+      .map((value) => String(value).trim())
+      .filter(Boolean);
+    if (!textValues.length) continue;
+
+    const allLower = textValues.join(" | ").toLowerCase();
+
+    if (!result.fullName && allLower.includes("nombre:")) {
+      const raw = textValues.find((value) => value.toLowerCase().includes("nombre:")) || "";
+      const clean = raw.split(":").slice(1).join(":").trim();
+      if (clean) result.fullName = clean;
+    }
+
+    if (!result.cargo && allLower.includes("cargo:") && !allLower.includes("jefatura")) {
+      const raw = textValues.find((value) => value.toLowerCase().includes("cargo:")) || "";
+      const clean = raw.split(":").slice(1).join(":").trim();
+      if (clean) result.cargo = clean;
+    }
+
+    if (!result.area && (allLower.includes("area / ciclo") || allLower.includes("área / ciclo"))) {
+      const areaCandidate = textValues.at(-1);
+      if (areaCandidate && !areaCandidate.toLowerCase().includes("area / ciclo")) {
+        result.area = areaCandidate;
+      }
+    }
+
+    const numericValues = values
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5);
+
+    for (const known of knownCompetencies) {
+      if (allLower.includes(known) && numericValues.length) {
+        extracted.push({ competencia: known, nivel: numericValues[0] });
+      }
+    }
+  }
+
+  const grouped = new Map();
+  extracted.forEach((item) => {
+    const key = item.competencia;
+    const current = grouped.get(key) || { total: 0, count: 0 };
+    current.total += item.nivel;
+    current.count += 1;
+    grouped.set(key, current);
+  });
+
+  result.competencias = [...grouped.entries()].map(([competencia, data]) => ({
+    competencia,
+    nivel: Math.round((data.total / data.count) * 100) / 100,
+  }));
+
+  if (result.competencias.length) {
+    const total = result.competencias.reduce((acc, item) => acc + item.nivel, 0);
+    result.promedioFinal = Math.round((total / result.competencias.length) * 100) / 100;
+  }
+
+  return result;
 }
 
 async function parseUploadedRows(file) {
@@ -654,12 +756,54 @@ router.post(
     const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
     const detectedDataset = classifyDataset(rows, requestedDataset);
 
-    if (detectedDataset === "narrative" || detectedDataset === "unknown") {
+    if (detectedDataset === "unknown") {
       return res.status(422).json({
         ok: false,
-        status: "rejected_non_structured_file",
+        status: "rejected_unrecognized_file",
         detectedDataset,
-        mensaje: "El archivo parece narrativo o no estructurado. Usa una plantilla tabular de importacion.",
+        mensaje: "No se pudo reconocer la estructura del archivo para importacion.",
+      });
+    }
+
+    if (detectedDataset === "narrative") {
+      const narrativeData = extractNarrativeData(rows);
+      const nameParts = parseNameParts(narrativeData.fullName);
+      const previewToken = saveImportPreview({
+        dataset: detectedDataset,
+        schoolId: req.body.schoolId || req.user.schoolId || null,
+        validRows: [],
+        invalidRows: [],
+        narrativeData,
+        fileMeta: {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          bufferBase64: req.file.buffer.toString("base64"),
+        },
+      });
+
+      const extractedSummary = {
+        nombre: narrativeData.fullName || "",
+        apellido: nameParts.apellido || "",
+        cargo: narrativeData.cargo || "",
+        area: narrativeData.area || "",
+        competenciasDetectadas: narrativeData.competencias.length,
+        promedioFinal: narrativeData.promedioFinal || 0,
+      };
+
+      return res.json({
+        ok: true,
+        previewToken,
+        datasetDetected: "narrative",
+        totalRows: rows.length,
+        validCount: narrativeData.competencias.length ? 1 : 0,
+        invalidCount: narrativeData.competencias.length ? 0 : 1,
+        truncated,
+        previewLimit: MAX_PREVIEW_ROWS,
+        extractedSummary,
+        sampleValidRows: narrativeData.competencias.slice(0, 20),
+        sampleErrors: narrativeData.competencias.length
+          ? []
+          : [{ row: 0, message: "No se detectaron competencias puntuables en el formulario." }],
       });
     }
 
@@ -720,6 +864,123 @@ router.post(
       updated: 0,
       errors: [...preview.invalidRows, ...correctedErrors],
     };
+
+    if (dataset === "narrative") {
+      if (!schoolId) {
+        return res.status(400).json({ mensaje: "Debes indicar colegio para importar formulario narrativo" });
+      }
+      const narrativeData = preview.narrativeData || {};
+      const nameParts = parseNameParts(narrativeData.fullName || "");
+      const apellido = nameParts.apellido || "SinApellido";
+      const nombre = nameParts.nombre || "SinNombre";
+      const cargo = String(narrativeData.cargo || "Docente").trim();
+      const area = String(narrativeData.area || "General").trim();
+
+      const employee = await Employee.findOneAndUpdate(
+        { companyId, schoolId, apellido, nombre, cargo },
+        {
+          $set: {
+            companyId,
+            schoolId,
+            apellido,
+            nombre,
+            cargo,
+            area,
+            tipoEmpleado: "DOCENTE",
+            activo: true,
+          },
+        },
+        { new: true, upsert: true }
+      );
+
+      const now = new Date();
+      const startOfYear = new Date(now.getFullYear(), 0, 1);
+      const endOfYear = new Date(now.getFullYear(), 11, 31);
+      const cycle = await EvaluationCycle.findOneAndUpdate(
+        {
+          companyId,
+          schoolId,
+          anio: now.getFullYear(),
+          periodo: "Importado",
+          etapa: "EVALUACION_FINAL",
+        },
+        {
+          $set: {
+            companyId,
+            schoolId,
+            anio: now.getFullYear(),
+            periodo: "Importado",
+            etapa: "EVALUACION_FINAL",
+            estado: "CERRADO",
+            fechaInicio: startOfYear,
+            fechaFin: endOfYear,
+          },
+        },
+        { new: true, upsert: true }
+      );
+
+      const evaluation = await Evaluation.create({
+        companyId,
+        schoolId,
+        employeeId: employee._id,
+        evaluatorUserId: req.user.userId,
+        cycleId: cycle._id,
+        tipo: "FINAL",
+        estado: "CERRADA",
+        comentariosGenerales: "Evaluacion importada desde formulario narrativo",
+        acuerdoEmpleado: "PENDIENTE",
+        resultadoFinal: Number(narrativeData.promedioFinal || 0),
+      });
+
+      for (const item of narrativeData.competencias || []) {
+        const compName = String(item.competencia || "").trim();
+        if (!compName) continue;
+
+        const competency = await Competency.findOneAndUpdate(
+          { companyId, schoolId, nombre: compName },
+          {
+            $setOnInsert: {
+              companyId,
+              schoolId,
+              nombre: compName,
+              descripcion: "Competencia detectada en formulario narrativo",
+              tipo: "TRANSVERSAL",
+              componente: "H",
+              activa: true,
+            },
+          },
+          { upsert: true, new: true }
+        );
+
+        const metricName = `Nivel general - ${compName}`;
+        const metric = await Metric.findOneAndUpdate(
+          { companyId, schoolId, competencyId: competency._id, nombre: metricName },
+          {
+            $setOnInsert: {
+              companyId,
+              schoolId,
+              competencyId: competency._id,
+              nombre: metricName,
+              descripcion: "Metrica generada automaticamente desde formulario narrativo",
+              ponderacion: 1,
+              activa: true,
+              cargoAplica: [cargo],
+            },
+          },
+          { upsert: true, new: true }
+        );
+
+        const roundedNivel = Math.min(5, Math.max(1, Math.round(Number(item.nivel || 1))));
+        await EvaluationScore.create({
+          evaluationId: evaluation._id,
+          metricId: metric._id,
+          nivel: roundedNivel,
+          comentario: "Generado automaticamente desde importacion narrativo",
+        });
+      }
+
+      result.created += 1;
+    }
 
     if (dataset === "employees") {
       for (const row of rows) {

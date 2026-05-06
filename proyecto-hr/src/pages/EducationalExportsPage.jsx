@@ -30,7 +30,6 @@ export default function EducationalExportsPage() {
 
   const [importDataset, setImportDataset] = useState("auto");
   const [importFile, setImportFile] = useState(null);
-  const [importStep, setImportStep] = useState(1);
   const [importPreview, setImportPreview] = useState(null);
   const [editableErrors, setEditableErrors] = useState([]);
   const [importResult, setImportResult] = useState(null);
@@ -104,7 +103,6 @@ export default function EducationalExportsPage() {
       setImportPreview(data);
       setEditableErrors((data.sampleErrors || []).map((item) => ({ ...item, normalized: { ...(item.normalized || {}) } })));
       setImportResult(null);
-      setImportStep(3);
     } catch (error) {
       setMessage(
         error.name === "AbortError"
@@ -167,7 +165,7 @@ export default function EducationalExportsPage() {
       </section>
 
       <section className="pf-card p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-slate-950">Importacion inteligente</h4>
+        <h4 className="text-lg font-semibold text-slate-950">Subida de datos (unificada)</h4>
         {!canImport ? (
           <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Tu rol no tiene permiso para importar. Entrá con superadmin, director o RRHH con permisos de carga.
@@ -178,7 +176,7 @@ export default function EducationalExportsPage() {
             {message}
           </div>
         ) : null}
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-3">
           <select className="pf-input" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
@@ -192,11 +190,8 @@ export default function EducationalExportsPage() {
             accept=".csv,.xlsx,.xls"
             onChange={(e) => setImportFile(e.target.files?.[0] || null)}
           />
-          <button className="rounded-xl border border-white/20 bg-[#1A2C38] px-4 py-3 text-white" onClick={() => setImportStep(2)} disabled={!importFile}>
-            Paso 2: Validar
-          </button>
-          <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile || importStep < 2}>
-            {isImporting ? "Validando..." : "Validar archivo"}
+          <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile}>
+            {isImporting ? "Procesando..." : "Subir y validar datos"}
           </button>
         </div>
 
@@ -210,6 +205,16 @@ export default function EducationalExportsPage() {
               <p className="text-xs text-amber-300">
                 Se previsualizaron solo {importPreview.previewLimit} filas para acelerar validacion.
               </p>
+            ) : null}
+            {importPreview.datasetDetected === "narrative" && importPreview.extractedSummary ? (
+              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen extraido automaticamente</p>
+                <p className="mt-1 text-sm text-[#D4E1E8]">Nombre: {importPreview.extractedSummary.nombre || "-"}</p>
+                <p className="text-sm text-[#D4E1E8]">Cargo: {importPreview.extractedSummary.cargo || "-"}</p>
+                <p className="text-sm text-[#D4E1E8]">Area: {importPreview.extractedSummary.area || "-"}</p>
+                <p className="text-sm text-[#D4E1E8]">Competencias detectadas: {importPreview.extractedSummary.competenciasDetectadas || 0}</p>
+                <p className="text-sm text-[#D4E1E8]">Promedio final: {importPreview.extractedSummary.promedioFinal || 0}</p>
+              </div>
             ) : null}
             {editableErrors.length ? (
               <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
