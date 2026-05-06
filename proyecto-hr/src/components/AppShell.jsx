@@ -60,6 +60,8 @@ export default function AppShell({ view, setView, children }) {
     announcementSummary,
     refreshAnnouncementSummary,
     token,
+    tokenExpiresAt,
+    tokenNearExpiry,
   } = useAuth();
 
   const allViews = useMemo(
@@ -93,7 +95,7 @@ export default function AppShell({ view, setView, children }) {
             hasPermission("download_self_report"),
           group: "datos",
         },
-        { key: "novedades", label: "Novedades", show: true, group: "novedades" },
+        { key: "novedades", label: "Comunicados", show: user?.isSuperAdmin, group: "novedades" },
         { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
         { key: "archivo-central", label: "Archivo central (solo superadmin)", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
@@ -105,8 +107,9 @@ export default function AppShell({ view, setView, children }) {
     { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
     { key: "gestion", label: "Gestion", defaultView: "empleados" },
     { key: "datos", label: "Datos", defaultView: "bases-descargas" },
-    { key: "novedades", label: "Novedades", defaultView: "novedades" },
+    { key: "novedades", label: "Comunicados", defaultView: "novedades", show: user?.isSuperAdmin },
   ];
+  const visiblePrimaryTabs = primaryTabs.filter((item) => item.show !== false);
 
   const activePrimary = allViews.find((item) => item.key === view)?.group || "panel";
   const secondaryTabs = allViews.filter((item) => item.group === activePrimary);
@@ -143,7 +146,7 @@ export default function AppShell({ view, setView, children }) {
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
-            {primaryTabs.map((tab) => (
+            {visiblePrimaryTabs.map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => openPrimary(tab.key, tab.defaultView)}
@@ -202,6 +205,11 @@ export default function AppShell({ view, setView, children }) {
         <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
           {user?.nombre} · {user?.roleName} · {user?.companyName || "Organizacion"}
         </div>
+        {tokenNearExpiry ? (
+          <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
+          </div>
+        ) : null}
         {children}
       </main>
     </div>

@@ -9,6 +9,40 @@ import { logAudit } from "../utils/audit.js";
 
 const router = express.Router();
 
+const LOGIN_WINDOW_MS = 10 * 60 * 1000;
+const LOGIN_MAX_ATTEMPTS = 5;
+const LOCK_TIME_MS = 15 * 60 * 1000;
+const loginAttempts = new Map();
+const loginLocks = new Map();
+
+function loginKey(req, email) {
+  const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+  return `${String(ip)}::${String(email || "").toLowerCase()}`;
+}
+
+function cleanOldAttempts(key) {
+  const now = Date.now();
+  const items = loginAttempts.get(key) || [];
+  const filtered = items.filter((timestamp) => now - timestamp <= LOGIN_WINDOW_MS);
+  if (filtered.length) loginAttempts.set(key, filtered);
+  else loginAttempts.delete(key);
+  return filtered;
+}
+
+function registerFailedAttempt(key) {
+  const attempts = cleanOldAttempts(key);
+  attempts.push(Date.now());
+  loginAttempts.set(key, attempts);
+  if (attempts.length >= LOGIN_MAX_ATTEMPTS) {
+    loginLocks.set(key, Date.now() + LOCK_TIME_MS);
+  }
+}
+
+function clearAttempts(key) {
+  loginAttempts.delete(key);
+  loginLocks.delete(key);
+}
+
 async function buildSafeUser(user) {
   const role = await Role.findById(user.roleId).lean();
   const company = await Company.findById(user.companyId).lean();
@@ -55,6 +89,18 @@ router.post("/login", async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
     const password = req.body.password?.trim();
+    const key = loginKey(req, email);
+
+    const lockUntil = loginLocks.get(key);
+    if (lockUntil && lockUntil > Date.now()) {
+      const waitMinutes = Math.ceil((lockUntil - Date.now()) / 60000);
+      return res.status(429).json({
+        mensaje: `Demasiados intentos fallidos. Reintenta en ${waitMinutes} minuto(s).`,
+      });
+    }
+    if (lockUntil && lockUntil <= Date.now()) {
+      loginLocks.delete(key);
+    }
 
     if (!email || !password) {
       return res.status(400).json({ mensaje: "Email y password son obligatorios" });
@@ -62,13 +108,25 @@ router.post("/login", async (req, res) => {
 
     const user = await User.findOne({ email, activo: true });
     if (!user) {
+      registerFailedAttempt(key);
       return res.status(401).json({ mensaje: "Credenciales invalidas" });
     }
 
     const ok = await bcrypt.compare(password, user.passwordHash);
     if (!ok) {
+      registerFailedAttempt(key);
+      await logAudit({
+        companyId: user.companyId,
+        userId: user._id,
+        accion: "login_failed",
+        modulo: "seguridad",
+        detalle: "Intento de login fallido",
+        metadata: { email, ip: req.ip || null },
+      });
       return res.status(401).json({ mensaje: "Credenciales invalidas" });
     }
+
+    clearAttempts(key);
 
     const safeUser = await buildSafeUser(user);
 
@@ -80,6 +138,15 @@ router.post("/login", async (req, res) => {
     }
 
     const token = buildToken(user, safeUser);
+
+    await logAudit({
+      companyId: user.companyId,
+      userId: user._id,
+      accion: "login_success",
+      modulo: "seguridad",
+      detalle: "Inicio de sesion exitoso",
+      metadata: { email, ip: req.ip || null },
+    });
 
     res.json({ mensaje: "Login correcto", token, user: safeUser });
   } catch (error) {
