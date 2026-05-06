@@ -33,6 +33,8 @@ export default function EducationalExportsPage() {
   const [importPreview, setImportPreview] = useState(null);
   const [editableErrors, setEditableErrors] = useState([]);
   const [importResult, setImportResult] = useState(null);
+  const [importJobs, setImportJobs] = useState([]);
+  const [selectedJob, setSelectedJob] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
 
   const queryString = useMemo(() => {
@@ -54,8 +56,14 @@ export default function EducationalExportsPage() {
     setDatasetData(data);
   }
 
+  async function loadImportJobs() {
+    const data = await apiFetch("/education-exports/import-jobs", { token });
+    setImportJobs(data.items || []);
+  }
+
   useEffect(() => {
     loadOverview().catch((error) => setMessage(error.message));
+    loadImportJobs().catch((error) => setMessage(error.message));
   }, []);
 
   useEffect(() => {
@@ -101,8 +109,14 @@ export default function EducationalExportsPage() {
         signal: controller.signal,
       });
       setImportPreview(data);
+      if (data.importJobId) {
+        apiFetch(`/education-exports/import-jobs/${data.importJobId}`, { token })
+          .then((detail) => setSelectedJob(detail.job || null))
+          .catch(() => setSelectedJob(null));
+      }
       setEditableErrors((data.sampleErrors || []).map((item) => ({ ...item, normalized: { ...(item.normalized || {}) } })));
       setImportResult(null);
+      await loadImportJobs();
     } catch (error) {
       setMessage(error.name === "AbortError" ? "La validacion demoro demasiado." : error.message);
       setImportPreview(null);
@@ -129,7 +143,7 @@ export default function EducationalExportsPage() {
       setImportPreview(null);
       setImportFile(null);
       setMessage("Importacion confirmada.");
-      await Promise.all([loadOverview(), loadDataset()]);
+      await Promise.all([loadOverview(), loadDataset(), loadImportJobs()]);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -162,8 +176,8 @@ export default function EducationalExportsPage() {
         <h4 className="text-lg font-semibold text-white">Subida de datos</h4>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Subir archivo</span>
-          <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Validar filas</span>
-          <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Confirmar</span>
+          <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>Paso 2: Validar filas</span>
+          <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>Paso 3: Confirmar</span>
         </div>
 
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
@@ -220,6 +234,52 @@ export default function EducationalExportsPage() {
             <p>Errores: {importResult.errors?.length || 0}</p>
           </div>
         ) : null}
+
+        {selectedJob ? (
+          <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
+            <p className="font-semibold text-white">Trazabilidad de importacion</p>
+            <p className="mt-1">Archivo: {selectedJob.sourceFileName}</p>
+            <p>Estado: {selectedJob.stage}</p>
+            <p>Parser: {selectedJob.parserType}</p>
+            <p>Dataset detectado: {selectedJob.datasetDetected}</p>
+            <p>Filas: {selectedJob.totalRows} | Validas: {selectedJob.validRows} | Errores: {selectedJob.errorCount}</p>
+          </div>
+        ) : null}
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <h4 className="text-lg font-semibold text-white">Historial de importaciones</h4>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full text-left text-sm">
+            <thead>
+              <tr className="border-b border-white/10 text-[#9fb6c4]">
+                <th className="px-3 py-2">Fecha</th>
+                <th className="px-3 py-2">Archivo</th>
+                <th className="px-3 py-2">Dataset</th>
+                <th className="px-3 py-2">Estado</th>
+                <th className="px-3 py-2">Filas</th>
+                <th className="px-3 py-2">Errores</th>
+              </tr>
+            </thead>
+            <tbody>
+              {importJobs.map((job) => (
+                <tr key={job._id} className="border-b border-white/5 text-[#d4e1e8]">
+                  <td className="px-3 py-2">{formatDate(job.createdAt)}</td>
+                  <td className="px-3 py-2">{job.sourceFileName}</td>
+                  <td className="px-3 py-2">{job.datasetDetected || job.datasetRequested}</td>
+                  <td className="px-3 py-2">{job.stage}</td>
+                  <td className="px-3 py-2">{job.totalRows}</td>
+                  <td className="px-3 py-2">{job.errorCount}</td>
+                </tr>
+              ))}
+              {!importJobs.length ? (
+                <tr>
+                  <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>Todavia no hay importaciones registradas.</td>
+                </tr>
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       {overview ? (
