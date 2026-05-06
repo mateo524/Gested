@@ -20,8 +20,6 @@ const defaultSettings = {
 export default function SettingsPage() {
   const { token, activeCompany, refreshBranding } = useAuth();
   const [settings, setSettings] = useState(defaultSettings);
-  const [quality, setQuality] = useState(null);
-  const [latestQualityRun, setLatestQualityRun] = useState(null);
   const [securityStatus, setSecurityStatus] = useState(null);
   const [message, setMessage] = useState("");
 
@@ -40,24 +38,12 @@ export default function SettingsPage() {
   }, [token]);
 
   useEffect(() => {
-    apiFetch("/education-exports/overview", { token })
-      .then((data) => setQuality(data?.summary || null))
-      .catch(() => {});
-  }, [token]);
-
-  useEffect(() => {
-    apiFetch("/automation/quality-latest", { token })
-      .then((data) => setLatestQualityRun(data?.latest || null))
-      .catch(() => {});
-  }, [token]);
-
-  useEffect(() => {
     apiFetch("/auth/security-status", { token })
       .then(setSecurityStatus)
       .catch(() => {});
   }, [token]);
 
-  const save = async () => {
+  async function save() {
     try {
       const data = await apiFetch("/settings", {
         method: "PUT",
@@ -67,67 +53,37 @@ export default function SettingsPage() {
       });
       setSettings((prev) => ({ ...prev, ...(data.settings || {}) }));
       await refreshBranding();
-      setMessage("Parametros actualizados");
+      setMessage("Configuracion actualizada.");
     } catch (error) {
       setMessage(error.message);
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
-      <section className="pf-card p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-400">Control de marca y operaciones</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Control de organizacion</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">
           Configuracion de {activeCompany?.nombre || "la organizacion"}
         </h3>
-        <p className="mt-3 text-slate-600">
-          Este modulo define como se ve la plataforma para tu organizacion y como se comportan las automatizaciones de importacion y control.
+        <p className="mt-3 text-[#9fb6c4]">
+          Ajusta marca visual, reglas de carga y automatizaciones operativas.
         </p>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <div className="pf-card p-6">
-          <h3 className="text-xl font-semibold text-slate-950">Identidad y reglas</h3>
+        <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h3 className="text-xl font-semibold text-white">Identidad y reglas</h3>
           <div className="mt-6 grid gap-4">
-            <input
-              className="pf-input"
-              placeholder="Nombre visible"
-              value={settings.nombreVisible}
-              onChange={(e) => setSettings({ ...settings, nombreVisible: e.target.value })}
-            />
-            <input
-              className="pf-input"
-              placeholder="URL del logo"
-              value={settings.logoUrl}
-              onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })}
-            />
+            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre visible" value={settings.nombreVisible} onChange={(e) => setSettings({ ...settings, nombreVisible: e.target.value })} />
+            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="URL del logo" value={settings.logoUrl} onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-              <input
-                className="pf-input"
-                placeholder="Color principal"
-                value={settings.primaryColor}
-                onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })}
-              />
+              <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Color principal" value={settings.primaryColor} onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })} />
               <div className="h-full min-h-14 w-14 rounded-2xl border border-white/10" style={{ backgroundColor: settings.primaryColor }} />
             </div>
-            <input
-              type="number"
-              min="1"
-              className="pf-input"
-              value={settings.maxUploadSizeMb}
-              onChange={(e) => setSettings({ ...settings, maxUploadSizeMb: Number(e.target.value) || 10 })}
-            />
-            <input
-              className="pf-input"
-              placeholder="Dominio email por defecto"
-              value={settings.defaultEmailDomain || ""}
-              onChange={(e) => setSettings({ ...settings, defaultEmailDomain: e.target.value })}
-            />
-            <select
-              className="pf-input"
-              value={settings.defaultEmployeeRoleCode || "EMPLEADO"}
-              onChange={(e) => setSettings({ ...settings, defaultEmployeeRoleCode: e.target.value })}
-            >
+            <input type="number" min="1" className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={settings.maxUploadSizeMb} onChange={(e) => setSettings({ ...settings, maxUploadSizeMb: Number(e.target.value) || 10 })} />
+            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Dominio email por defecto" value={settings.defaultEmailDomain || ""} onChange={(e) => setSettings({ ...settings, defaultEmailDomain: e.target.value })} />
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={settings.defaultEmployeeRoleCode || "EMPLEADO"} onChange={(e) => setSettings({ ...settings, defaultEmployeeRoleCode: e.target.value })}>
               <option value="EMPLEADO">EMPLEADO</option>
               <option value="JEFE">JEFE</option>
               <option value="RRHH">RRHH</option>
@@ -136,17 +92,17 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        <div className="pf-card p-6">
-          <h3 className="text-xl font-semibold text-slate-950">Automatizaciones</h3>
-          <div className="mt-4 grid gap-3 text-sm text-slate-700">
+        <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h3 className="text-xl font-semibold text-white">Automatizaciones</h3>
+          <div className="mt-4 grid gap-3 text-sm text-[#c5d5de]">
             {[
               ["nightlyDataCheck", "Control nocturno de calidad de datos"],
               ["autoCreateUsersFromImport", "Crear usuarios automaticamente desde importaciones"],
-              ["autoAssignDefaultRole", "Asignar rol por defecto si falta en la fila"],
+              ["autoAssignDefaultRole", "Asignar rol por defecto si falta en una fila"],
               ["notifyOnImportErrors", "Notificar errores de importacion"],
             ].map(([key, label]) => (
-              <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2">
-                <span className="text-[#D4E1E8]">{label}</span>
+              <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0f1f28] px-3 py-2">
+                <span>{label}</span>
                 <input
                   type="checkbox"
                   checked={Boolean(settings.automations?.[key])}
@@ -161,66 +117,29 @@ export default function SettingsPage() {
             ))}
           </div>
 
-          {quality ? (
-            <div className="mt-6 rounded-2xl border border-white/10 bg-[#1A2C38] p-4 text-sm text-[#D4E1E8]">
-              <p className="text-xs uppercase tracking-[0.18em] text-[#9FB6C1]">Calidad de datos actual</p>
-              <div className="mt-2 grid gap-2 md:grid-cols-2">
-                <p>Empleados: {quality.employees}</p>
-                <p>Evaluaciones: {quality.evaluations}</p>
-                <p>Metricas: {quality.metrics}</p>
-                <p>Planes: {quality.developmentPlans}</p>
-              </div>
-            </div>
-          ) : null}
-
-          {latestQualityRun ? (
-            <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4 text-sm text-[#D4E1E8]">
-              <p className="text-xs uppercase tracking-[0.18em] text-emerald-200">Ultimo control nocturno</p>
-              <p className="mt-1">{new Date(latestQualityRun.createdAt).toLocaleString("es-AR")}</p>
-              <p className="mt-1">{latestQualityRun.detalle}</p>
-              <p className="mt-2">Score: {latestQualityRun.metrics?.score ?? "-"} / 100</p>
-            </div>
-          ) : null}
-
-          <button
-            onClick={save}
-            className="mt-6 rounded-2xl px-6 py-3 font-semibold text-white"
-            style={{ backgroundColor: settings.primaryColor }}
-          >
-            Guardar parametros
+          <button onClick={save} className="mt-6 rounded-2xl px-6 py-3 font-semibold text-white" style={{ backgroundColor: settings.primaryColor }}>
+            Guardar configuracion
           </button>
-          {message ? <p className="mt-3 text-sm text-[#A9BFCA]">{message}</p> : null}
+          {message ? <p className="mt-3 text-sm text-[#c5d5de]">{message}</p> : null}
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-2">
-        <article className="pf-card p-6">
-          <h3 className="text-xl font-semibold text-slate-950">Guia rapida de modulos</h3>
-          <div className="mt-4 space-y-2 text-sm text-slate-700">
-            <p><strong>Panel:</strong> decisiones recomendadas y foco de capacitacion.</p>
-            <p><strong>Gestion:</strong> personas, perfiles, indicadores y periodos.</p>
-            <p><strong>Evaluacion:</strong> ciclos, evaluaciones y planes de mejora.</p>
-            <p><strong>Datos:</strong> subir, validar y descargar informacion.</p>
-            <p><strong>Comunicados:</strong> solo superadmin envia novedades; receptores las ven en campanita.</p>
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <h3 className="text-xl font-semibold text-white">Seguridad de accesos</h3>
+        {securityStatus ? (
+          <div className="mt-4 space-y-2 text-sm text-[#c5d5de]">
+            <p>
+              Politica activa: {securityStatus.policy.maxAttempts} intentos en {securityStatus.policy.windowMinutes} min,
+              bloqueo por {securityStatus.policy.lockMinutes} min.
+            </p>
+            <p>Logins fallidos recientes: {securityStatus.recentFailedLogins?.length || 0}</p>
+            <p>Logins exitosos recientes: {securityStatus.recentSuccessLogins?.length || 0}</p>
           </div>
-        </article>
-
-        <article className="pf-card p-6">
-          <h3 className="text-xl font-semibold text-slate-950">Seguridad de accesos</h3>
-          {securityStatus ? (
-            <div className="mt-4 space-y-3 text-sm text-slate-700">
-              <p>
-                Politica activa: {securityStatus.policy.maxAttempts} intentos en{" "}
-                {securityStatus.policy.windowMinutes} min, bloqueo por {securityStatus.policy.lockMinutes} min.
-              </p>
-              <p>Logins fallidos recientes: {securityStatus.recentFailedLogins?.length || 0}</p>
-              <p>Logins exitosos recientes: {securityStatus.recentSuccessLogins?.length || 0}</p>
-            </div>
-          ) : (
-            <p className="mt-4 text-sm text-slate-500">Cargando estado de seguridad...</p>
-          )}
-        </article>
+        ) : (
+          <p className="mt-4 text-sm text-[#9fb6c4]">Cargando estado de seguridad...</p>
+        )}
       </section>
     </div>
   );
 }
+
