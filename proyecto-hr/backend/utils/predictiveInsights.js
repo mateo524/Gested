@@ -160,3 +160,58 @@ export async function buildLayer3Forecast({ companyId, patterns = [], prediction
     return { ...localForecast, status: "fallback_exception" };
   }
 }
+
+export function simulateTrainingImpact({
+  predictions = [],
+  trainingRecommendations = [],
+  competency = "",
+  investment = "media",
+}) {
+  const normalizedInvestment = String(investment || "media").toLowerCase();
+  const upliftByInvestment = {
+    baja: 0.12,
+    media: 0.22,
+    alta: 0.34,
+  };
+  const uplift = upliftByInvestment[normalizedInvestment] ?? upliftByInvestment.media;
+
+  const baseAvgRisk = predictions.length
+    ? predictions.reduce((sum, item) => sum + Number(item.riskScore || 0), 0) / predictions.length
+    : 0;
+  const highRiskCount = predictions.filter((item) => Number(item.riskScore || 0) >= 75).length;
+  const currentComp = trainingRecommendations.find(
+    (item) => String(item.competencia).toLowerCase() === String(competency).toLowerCase()
+  );
+  const compScore = Number(currentComp?.avgScore || 3);
+  const needFactor = Math.max(0.5, (5 - compScore) / 2.2);
+
+  const projectedRiskReductionPct = round(uplift * needFactor * 100, 1);
+  const projectedRiskAfter = round(baseAvgRisk * (1 - projectedRiskReductionPct / 100), 1);
+  const projectedAvgScoreUplift = round(0.15 + uplift * needFactor, 2);
+  const projectedHighRiskAfter = Math.max(
+    0,
+    Math.round(highRiskCount * (1 - projectedRiskReductionPct / 130))
+  );
+
+  return {
+    competency: competency || currentComp?.competencia || "Competencia prioritaria",
+    investment: normalizedInvestment,
+    baseline: {
+      avgRisk: round(baseAvgRisk, 1),
+      highRiskEmployees: highRiskCount,
+      competencyAvgScore: compScore,
+    },
+    projection: {
+      avgRisk: projectedRiskAfter,
+      highRiskEmployees: projectedHighRiskAfter,
+      avgScoreUplift: projectedAvgScoreUplift,
+      riskReductionPct: projectedRiskReductionPct,
+      horizonDays: 60,
+    },
+    evidence: [
+      `inversion ${normalizedInvestment}`,
+      `competencia base ${round(compScore, 2)}`,
+      `empleados alto riesgo ${highRiskCount}`,
+    ],
+  };
+}
