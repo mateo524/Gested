@@ -137,6 +137,16 @@ export default function EducationalExportsPage() {
 
       <section className="pf-card p-6 space-y-4">
         <h4 className="text-lg font-semibold text-slate-950">Importacion inteligente</h4>
+        {!canImport ? (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            Tu rol no tiene permiso para importar. Entrá con superadmin, director o RRHH con permisos de carga.
+          </div>
+        ) : null}
+        {message ? (
+          <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {message}
+          </div>
+        ) : null}
         <div className="grid gap-3 md:grid-cols-4">
           <select className="pf-input" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
@@ -229,7 +239,7 @@ export default function EducationalExportsPage() {
         </div>
       </section>
 
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {!message ? null : <p className="hidden">{message}</p>}
     </div>
   );
 }
