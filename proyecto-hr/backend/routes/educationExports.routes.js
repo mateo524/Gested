@@ -205,6 +205,15 @@ function sanitizeHeader(value) {
     .replace(/[^a-z0-9]/g, "");
 }
 
+function normalizeNarrativeText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const fieldAliases = {
   nombre: ["nombre", "name", "firstname", "first_name"],
   apellido: ["apellido", "lastname", "last_name", "surname"],
@@ -281,23 +290,49 @@ function extractNarrativeData(rows) {
       .filter(Boolean);
     if (!textValues.length) continue;
 
-    const allLower = textValues.join(" | ").toLowerCase();
+    const allLower = normalizeNarrativeText(textValues.join(" | "));
 
-    if (!result.fullName && allLower.includes("nombre:")) {
-      const raw = textValues.find((value) => value.toLowerCase().includes("nombre:")) || "";
-      const clean = raw.split(":").slice(1).join(":").trim();
-      if (clean) result.fullName = clean;
+    if (!result.fullName && allLower.includes("nombre")) {
+      const labelWithValue = textValues.find((value) =>
+        normalizeNarrativeText(value).startsWith("nombre:")
+      );
+      if (labelWithValue) {
+        const clean = labelWithValue.split(":").slice(1).join(":").trim();
+        if (clean) result.fullName = clean;
+      } else {
+        const labelIndex = textValues.findIndex(
+          (value) => normalizeNarrativeText(value) === "nombre:"
+            || normalizeNarrativeText(value) === "nombre"
+        );
+        if (labelIndex >= 0) {
+          const nextValue = String(textValues[labelIndex + 1] || "").trim();
+          if (nextValue) result.fullName = nextValue;
+        }
+      }
     }
 
-    if (!result.cargo && allLower.includes("cargo:") && !allLower.includes("jefatura")) {
-      const raw = textValues.find((value) => value.toLowerCase().includes("cargo:")) || "";
-      const clean = raw.split(":").slice(1).join(":").trim();
-      if (clean) result.cargo = clean;
+    if (!result.cargo && allLower.includes("cargo") && !allLower.includes("jefatura")) {
+      const labelWithValue = textValues.find((value) =>
+        normalizeNarrativeText(value).startsWith("cargo:")
+      );
+      if (labelWithValue) {
+        const clean = labelWithValue.split(":").slice(1).join(":").trim();
+        if (clean) result.cargo = clean;
+      } else {
+        const labelIndex = textValues.findIndex(
+          (value) => normalizeNarrativeText(value) === "cargo:"
+            || normalizeNarrativeText(value) === "cargo"
+        );
+        if (labelIndex >= 0) {
+          const nextValue = String(textValues[labelIndex + 1] || "").trim();
+          if (nextValue) result.cargo = nextValue;
+        }
+      }
     }
 
-    if (!result.area && (allLower.includes("area / ciclo") || allLower.includes("área / ciclo"))) {
+    if (!result.area && allLower.includes("area / ciclo")) {
       const areaCandidate = textValues.at(-1);
-      if (areaCandidate && !areaCandidate.toLowerCase().includes("area / ciclo")) {
+      if (areaCandidate && !normalizeNarrativeText(areaCandidate).includes("area / ciclo")) {
         result.area = areaCandidate;
       }
     }
@@ -307,7 +342,7 @@ function extractNarrativeData(rows) {
       .filter((value) => Number.isFinite(value) && value >= 1 && value <= 5);
 
     for (const known of knownCompetencies) {
-      if (allLower.includes(known) && numericValues.length) {
+      if (allLower.includes(normalizeNarrativeText(known)) && numericValues.length) {
         extracted.push({ competencia: known, nivel: numericValues[0] });
       }
     }
@@ -351,7 +386,10 @@ async function parseUploadedRows(file) {
   const headers = worksheet
     .getRow(1)
     .values.slice(1)
-    .map((value) => sanitizeHeader(value));
+    .map((value, index) => {
+      const clean = sanitizeHeader(value);
+      return clean || `col_${index + 1}`;
+    });
 
   const rows = [];
   let truncated = false;
