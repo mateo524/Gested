@@ -10,6 +10,7 @@ import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import School from "../models/School.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Competency from "../models/Competency.js";
+import Role from "../models/Role.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Announcement from "../models/Announcement.js";
 import CompanySetting from "../models/CompanySetting.js";
@@ -21,6 +22,7 @@ import { uploadBufferToStorage } from "../utils/storageProvider.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
+const importPreviewStore = new Map();
 
 const allowedDatasets = {
   employees: {
@@ -191,6 +193,42 @@ function normalizeText(value) {
     .toLowerCase();
 }
 
+function sanitizeHeader(value) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const fieldAliases = {
+  nombre: ["nombre", "name", "firstname", "first_name"],
+  apellido: ["apellido", "lastname", "last_name", "surname"],
+  email: ["email", "correo", "mail", "correoelectronico"],
+  cargo: ["cargo", "puesto", "roletitle", "rolcargo"],
+  area: ["area", "departamento", "sector"],
+  tipoempleado: ["tipoempleado", "tipo", "perfil"],
+  activo: ["activo", "active", "habilitado"],
+  competencia: ["competencia", "competency"],
+  metrica: ["metrica", "metrica", "nombre", "metric"],
+  descripcion: ["descripcion", "description"],
+  ponderacion: ["ponderacion", "weight", "peso"],
+  ciclo: ["ciclo", "nombreciclo", "evaluationcycle"],
+  periodo: ["periodo", "mes", "period"],
+  etapa: ["etapa", "stage"],
+  estado: ["estado", "status"],
+  fechainicio: ["fechainicio", "inicio", "startdate"],
+  fechafin: ["fechafin", "fin", "enddate"],
+  rol: ["rol", "role", "nombrerol"],
+};
+
+function firstByAliases(row, aliases) {
+  for (const alias of aliases) {
+    const value = row[alias];
+    if (value !== undefined && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+
 async function parseUploadedRows(file) {
   const workbook = new ExcelJS.Workbook();
   const fileName = file.originalname.toLowerCase();
@@ -207,7 +245,7 @@ async function parseUploadedRows(file) {
   const headers = worksheet
     .getRow(1)
     .values.slice(1)
-    .map((value) => normalizeText(value));
+    .map((value) => sanitizeHeader(value));
 
   const rows = [];
   worksheet.eachRow((row, rowNumber) => {
@@ -221,6 +259,137 @@ async function parseUploadedRows(file) {
   });
 
   return rows;
+}
+
+function classifyDataset(rows, requestedDataset) {
+  if (requestedDataset && requestedDataset !== "auto") {
+    return requestedDataset;
+  }
+
+  const firstRows = rows.slice(0, 20);
+  const rowText = JSON.stringify(firstRows).toLowerCase();
+
+  if (rowText.includes("evaluaciondedesempeno") || rowText.includes("comentarios jefatura")) {
+    return "narrative";
+  }
+
+  const hasEmployeeFields = firstRows.some(
+    (row) =>
+      firstByAliases(row, fieldAliases.apellido) &&
+      firstByAliases(row, fieldAliases.nombre) &&
+      firstByAliases(row, fieldAliases.cargo)
+  );
+  if (hasEmployeeFields) return "employees";
+
+  const hasMetricFields = firstRows.some(
+    (row) =>
+      firstByAliases(row, fieldAliases.competencia) &&
+      firstByAliases(row, fieldAliases.metrica)
+  );
+  if (hasMetricFields) return "metrics";
+
+  const hasCycleFields = firstRows.some(
+    (row) =>
+      firstByAliases(row, fieldAliases.periodo) &&
+      firstByAliases(row, fieldAliases.fechainicio) &&
+      firstByAliases(row, fieldAliases.fechafin)
+  );
+  if (hasCycleFields) return "cycles";
+
+  const hasRoleFields = firstRows.some((row) => firstByAliases(row, fieldAliases.rol));
+  if (hasRoleFields) return "roles";
+
+  return "unknown";
+}
+
+function normalizeRowsForDataset(rows, dataset) {
+  const validRows = [];
+  const invalidRows = [];
+
+  for (const row of rows) {
+    if (Object.keys(row).filter((key) => key !== "_rowNumber").every((key) => !String(row[key] || "").trim())) {
+      continue;
+    }
+
+    if (dataset === "employees") {
+      const normalized = {
+        apellido: String(firstByAliases(row, fieldAliases.apellido)).trim(),
+        nombre: String(firstByAliases(row, fieldAliases.nombre)).trim(),
+        email: String(firstByAliases(row, fieldAliases.email)).trim().toLowerCase(),
+        cargo: String(firstByAliases(row, fieldAliases.cargo)).trim(),
+        area: String(firstByAliases(row, fieldAliases.area)).trim(),
+        tipoempleado: String(firstByAliases(row, fieldAliases.tipoempleado) || "DOCENTE").trim().toUpperCase(),
+        activo: String(firstByAliases(row, fieldAliases.activo) || "true").trim().toLowerCase(),
+      };
+      const errors = [];
+      if (!normalized.apellido) errors.push("Falta apellido");
+      if (!normalized.nombre) errors.push("Falta nombre");
+      if (!normalized.cargo) errors.push("Falta cargo");
+      if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized });
+      else validRows.push(normalized);
+      continue;
+    }
+
+    if (dataset === "metrics") {
+      const normalized = {
+        competencia: String(firstByAliases(row, fieldAliases.competencia)).trim(),
+        nombre: String(firstByAliases(row, fieldAliases.metrica)).trim(),
+        descripcion: String(firstByAliases(row, fieldAliases.descripcion)).trim(),
+        ponderacion: Number(firstByAliases(row, fieldAliases.ponderacion) || 1),
+      };
+      const errors = [];
+      if (!normalized.competencia) errors.push("Falta competencia");
+      if (!normalized.nombre) errors.push("Falta metrica");
+      if (!Number.isFinite(normalized.ponderacion) || normalized.ponderacion <= 0) errors.push("Ponderacion invalida");
+      if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized });
+      else validRows.push(normalized);
+      continue;
+    }
+
+    if (dataset === "cycles") {
+      const normalized = {
+        periodo: String(firstByAliases(row, fieldAliases.periodo)).trim(),
+        etapa: String(firstByAliases(row, fieldAliases.etapa) || "INICIO").trim().toUpperCase(),
+        estado: String(firstByAliases(row, fieldAliases.estado) || "BORRADOR").trim().toUpperCase(),
+        fechaInicio: new Date(firstByAliases(row, fieldAliases.fechainicio)),
+        fechaFin: new Date(firstByAliases(row, fieldAliases.fechafin)),
+        anio: Number(String(firstByAliases(row, ["anio", "ano", "año"]) || new Date().getFullYear())),
+      };
+      const errors = [];
+      if (!normalized.periodo) errors.push("Falta periodo");
+      if (Number.isNaN(normalized.fechaInicio.getTime())) errors.push("Fecha inicio invalida");
+      if (Number.isNaN(normalized.fechaFin.getTime())) errors.push("Fecha fin invalida");
+      if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized });
+      else validRows.push(normalized);
+      continue;
+    }
+
+    if (dataset === "roles") {
+      const normalized = {
+        nombre: String(firstByAliases(row, fieldAliases.rol)).trim(),
+      };
+      if (!normalized.nombre) invalidRows.push({ row: row._rowNumber, message: "Falta nombre de rol", normalized });
+      else validRows.push(normalized);
+    }
+  }
+
+  return { validRows, invalidRows };
+}
+
+function saveImportPreview(payload) {
+  const token = `preview_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  importPreviewStore.set(token, { ...payload, createdAt: Date.now() });
+  return token;
+}
+
+function getImportPreview(token) {
+  const data = importPreviewStore.get(token);
+  if (!data) return null;
+  if (Date.now() - data.createdAt > 1000 * 60 * 30) {
+    importPreviewStore.delete(token);
+    return null;
+  }
+  return data;
 }
 
 router.get(
@@ -393,6 +562,223 @@ router.get(
     };
 
     res.json(report);
+  }
+);
+
+router.post(
+  "/import/preview",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES),
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
+    }
+
+    const rows = await parseUploadedRows(req.file);
+    if (!rows.length) {
+      return res.status(400).json({ mensaje: "El archivo no tiene datos" });
+    }
+
+    const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
+    const detectedDataset = classifyDataset(rows, requestedDataset);
+
+    if (detectedDataset === "narrative" || detectedDataset === "unknown") {
+      return res.status(422).json({
+        ok: false,
+        status: "rejected_non_structured_file",
+        detectedDataset,
+        mensaje: "El archivo parece narrativo o no estructurado. Usa una plantilla tabular de importacion.",
+      });
+    }
+
+    const { validRows, invalidRows } = normalizeRowsForDataset(rows, detectedDataset);
+    const previewToken = saveImportPreview({
+      dataset: detectedDataset,
+      schoolId: req.body.schoolId || req.user.schoolId || null,
+      validRows,
+      invalidRows,
+      fileMeta: {
+        originalname: req.file.originalname,
+        mimetype: req.file.mimetype,
+        bufferBase64: req.file.buffer.toString("base64"),
+      },
+    });
+
+    res.json({
+      ok: true,
+      previewToken,
+      datasetDetected: detectedDataset,
+      totalRows: validRows.length + invalidRows.length,
+      validCount: validRows.length,
+      invalidCount: invalidRows.length,
+      sampleValidRows: validRows.slice(0, 20),
+      sampleErrors: invalidRows.slice(0, 20),
+    });
+  }
+);
+
+router.post(
+  "/import/confirm",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES),
+  async (req, res) => {
+    const previewToken = String(req.body.previewToken || "");
+    const preview = getImportPreview(previewToken);
+    if (!preview) {
+      return res.status(400).json({ mensaje: "Preview expirada o inexistente. Vuelve a subir el archivo." });
+    }
+
+    const dataset = preview.dataset;
+    const { companyId } = await resolveCompanyScope(req);
+    const schoolId = preview.schoolId || req.user.schoolId || null;
+    const rows = preview.validRows;
+    const result = { total: rows.length + preview.invalidRows.length, created: 0, updated: 0, errors: preview.invalidRows };
+
+    if (dataset === "employees") {
+      for (const row of rows) {
+        if (!schoolId) {
+          result.errors.push({ row: "-", message: "No hay colegio activo para crear empleados" });
+          continue;
+        }
+        const email = String(row.email || "").trim().toLowerCase();
+        const base = {
+          companyId,
+          schoolId,
+          apellido: row.apellido,
+          nombre: row.nombre,
+          cargo: row.cargo,
+          area: row.area || "",
+          tipoEmpleado: row.tipoempleado || "DOCENTE",
+          activo: row.activo !== "false",
+        };
+        const existing = email ? await Employee.findOne({ companyId, schoolId, email }) : null;
+        if (existing) {
+          Object.assign(existing, base);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await Employee.create({ ...base, email: email || undefined });
+          result.created += 1;
+        }
+      }
+    }
+
+    if (dataset === "metrics") {
+      if (!schoolId) return res.status(400).json({ mensaje: "Debes indicar colegio para importar metricas" });
+      const competencies = await Competency.find({ companyId, schoolId }).lean();
+      const byName = new Map(competencies.map((item) => [normalizeText(item.nombre), item]));
+      for (const row of rows) {
+        const competency = byName.get(normalizeText(row.competencia));
+        if (!competency) {
+          result.errors.push({ row: "-", message: `Competencia no encontrada: ${row.competencia}` });
+          continue;
+        }
+        const payload = {
+          companyId,
+          schoolId,
+          competencyId: competency._id,
+          nombre: row.nombre,
+          descripcion: row.descripcion || "",
+          ponderacion: row.ponderacion || 1,
+          cargoAplica: [],
+          activa: true,
+        };
+        const existing = await Metric.findOne({ companyId, schoolId, competencyId: competency._id, nombre: row.nombre });
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await Metric.create(payload);
+          result.created += 1;
+        }
+      }
+    }
+
+    if (dataset === "cycles") {
+      if (!schoolId) return res.status(400).json({ mensaje: "Debes indicar colegio para importar ciclos" });
+      for (const row of rows) {
+        const payload = {
+          companyId,
+          schoolId,
+          anio: row.anio,
+          periodo: row.periodo,
+          etapa: row.etapa,
+          estado: row.estado,
+          fechaInicio: row.fechaInicio,
+          fechaFin: row.fechaFin,
+        };
+        const existing = await EvaluationCycle.findOne({
+          companyId,
+          schoolId,
+          anio: row.anio,
+          periodo: row.periodo,
+          etapa: row.etapa,
+        });
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await EvaluationCycle.create(payload);
+          result.created += 1;
+        }
+      }
+    }
+
+    if (dataset === "roles") {
+      for (const row of rows) {
+        const existing = await Role.findOne({
+          companyId,
+          schoolId: schoolId || null,
+          nombre: row.nombre,
+        });
+        if (existing) {
+          result.updated += 1;
+          continue;
+        }
+        await Role.create({
+          companyId,
+          schoolId: schoolId || null,
+          nombre: row.nombre,
+          descripcion: "Rol importado",
+          permisos: [],
+          scope: schoolId ? "school" : "company",
+          activo: true,
+        });
+        result.created += 1;
+      }
+    }
+
+    const school = schoolId ? await School.findById(schoolId).lean() : null;
+    const uploaded = await uploadBufferToStorage({
+      buffer: Buffer.from(preview.fileMeta.bufferBase64, "base64"),
+      contentType: preview.fileMeta.mimetype,
+      originalName: preview.fileMeta.originalname,
+      folderPath: `performia/${companyId}/${school?.slug || schoolId || "general"}/${dataset}`,
+    });
+
+    await DatabaseFile.create({
+      companyId,
+      schoolId,
+      nombreVisible: `Importacion ${dataset} (${new Date().toLocaleDateString("es-AR")})`,
+      nombreArchivo: preview.fileMeta.originalname,
+      archivo: "",
+      extension: preview.fileMeta.originalname.split(".").pop()?.toLowerCase() || "csv",
+      mimeType: preview.fileMeta.mimetype,
+      tipoArchivo: `importacion-${dataset}`,
+      storageProvider: uploaded.provider,
+      storageKey: uploaded.key,
+      storageBucket: uploaded.bucket,
+      publicUrl: uploaded.publicUrl,
+      hoja: dataset,
+      registros: result.total,
+      activa: true,
+    });
+
+    importPreviewStore.delete(previewToken);
+    res.json({ mensaje: "Importacion confirmada", ...result });
   }
 );
 
