@@ -74,7 +74,12 @@ export default function AppShell({ view, setView, children }) {
         { key: "ciclos", label: "Periodos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
         { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
         { key: "roles", label: "Perfiles", show: hasPermission("manage_roles"), group: "gestion" },
-        { key: "settings", label: "Configuracion", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
+        {
+          key: "settings",
+          label: "Configuracion",
+          show: hasPermission("manage_settings") || user?.isSuperAdmin,
+          group: "gestion",
+        },
         {
           key: "evaluaciones",
           label: "Evaluacion",
@@ -97,7 +102,6 @@ export default function AppShell({ view, setView, children }) {
         },
         { key: "novedades", label: "Comunicados", show: user?.isSuperAdmin, group: "novedades" },
         { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
-        { key: "archivo-central", label: "Archivo central (solo superadmin)", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
     [hasPermission, user]
   );
@@ -125,7 +129,7 @@ export default function AppShell({ view, setView, children }) {
       panel: ["dashboard"],
       evaluacion: ["evaluaciones", "planes"],
       gestion: ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
-      datos: ["bases-descargas", "organizaciones", "archivo-central"],
+      datos: ["bases-descargas", "organizaciones"],
       novedades: ["novedades"],
     };
 
