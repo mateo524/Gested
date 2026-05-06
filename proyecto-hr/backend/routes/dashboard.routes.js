@@ -13,8 +13,10 @@ import Competency from "../models/Competency.js";
 import Metric from "../models/Metric.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Evaluation from "../models/Evaluation.js";
+import EvaluationScore from "../models/EvaluationScore.js";
 import DownloadLog from "../models/DownloadLog.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
+import { Parser } from "json2csv";
 
 const router = express.Router();
 
@@ -75,6 +77,9 @@ router.get("/summary", auth, async (req, res) => {
     latestQualityRun,
     employeesList,
     evaluationByEmployee,
+    evaluationScores,
+    metricsList,
+    competenciesList,
   ] = await Promise.all([
     User.countDocuments({ companyId }),
     User.countDocuments({ companyId, activo: true }),
@@ -114,6 +119,14 @@ router.get("/summary", auth, async (req, res) => {
       { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
       { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
     ]),
+    EvaluationScore.find({})
+      .populate({
+        path: "evaluationId",
+        select: "companyId employeeId",
+      })
+      .lean(),
+    Metric.find({ companyId }).select("_id nombre competencyId").lean(),
+    Competency.find({ companyId }).select("_id nombre").lean(),
   ]);
 
   let superAdmin = null;
@@ -176,6 +189,55 @@ router.get("/summary", auth, async (req, res) => {
       employees: item.employees,
     }));
 
+  const riskRanking = evaluationByEmployee
+    .map((item) => {
+      const employee = employeeById.get(String(item._id));
+      return employee
+        ? {
+            employeeId: String(item._id),
+            nombre: `${employee.apellido}, ${employee.nombre}`,
+            area: employee.area || "Sin area",
+            cargo: employee.cargo || "Sin cargo",
+            avgScore: Number(item.avgScore.toFixed(2)),
+            evaluations: item.count,
+          }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 10);
+
+  const metricById = new Map(metricsList.map((item) => [String(item._id), item]));
+  const competencyById = new Map(competenciesList.map((item) => [String(item._id), item.nombre]));
+  const competencyScores = new Map();
+
+  for (const score of evaluationScores) {
+    const evaluation = score.evaluationId;
+    if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    const metric = metricById.get(String(score.metricId));
+    if (!metric) continue;
+    const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
+    const current = competencyScores.get(compName) || { total: 0, count: 0 };
+    current.total += score.nivel || 0;
+    current.count += 1;
+    competencyScores.set(compName, current);
+  }
+
+  const trainingRecommendations = [...competencyScores.entries()]
+    .map(([competencia, value]) => ({
+      competencia,
+      avgScore: value.count ? Number((value.total / value.count).toFixed(2)) : 0,
+      priority: value.count && value.total / value.count < 3 ? "ALTA" : value.total / value.count < 3.8 ? "MEDIA" : "BAJA",
+      action:
+        value.count && value.total / value.count < 3
+          ? "Capacitacion intensiva + mentoring"
+          : value.total / value.count < 3.8
+            ? "Refuerzo con talleres practicos"
+            : "Mantener y documentar buenas practicas",
+    }))
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 8);
+
   res.json({
     cards: [
       { label: "Empleados", value: employeesTotal, hint: `${docentesTotal} docentes registrados` },
@@ -208,6 +270,8 @@ router.get("/summary", auth, async (req, res) => {
     decisionInsights: {
       weakestAreas,
       strongestAreas,
+      riskRanking,
+      trainingRecommendations,
     },
     educational: {
       schoolsCount,
@@ -237,6 +301,86 @@ router.get("/summary", auth, async (req, res) => {
       : null,
     superAdmin,
   });
+});
+
+router.get("/decision-report", auth, async (req, res) => {
+  const summaryReq = {
+    ...req,
+    query: req.query,
+  };
+  const { companyId, company } = await resolveCompanyScope(summaryReq);
+
+  const [employeesList, evaluationByEmployee, competenciesList, metricsList, evaluationScores] = await Promise.all([
+    Employee.find({ companyId }).select("_id nombre apellido area cargo").lean(),
+    Evaluation.aggregate([
+      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
+    ]),
+    Competency.find({ companyId }).select("_id nombre").lean(),
+    Metric.find({ companyId }).select("_id competencyId").lean(),
+    EvaluationScore.find({})
+      .populate({ path: "evaluationId", select: "companyId" })
+      .lean(),
+  ]);
+
+  const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));
+  const riskRows = evaluationByEmployee
+    .map((item) => {
+      const employee = employeeById.get(String(item._id));
+      return employee
+        ? {
+            tipo: "RIESGO_EMPLEADO",
+            nombre: `${employee.apellido}, ${employee.nombre}`,
+            area: employee.area || "Sin area",
+            cargo: employee.cargo || "Sin cargo",
+            score: Number(item.avgScore.toFixed(2)),
+            detalle: `Evaluaciones: ${item.count}`,
+          }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 25);
+
+  const metricById = new Map(metricsList.map((item) => [String(item._id), item]));
+  const competencyById = new Map(competenciesList.map((item) => [String(item._id), item.nombre]));
+  const competencyScores = new Map();
+
+  for (const score of evaluationScores) {
+    const evaluation = score.evaluationId;
+    if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    const metric = metricById.get(String(score.metricId));
+    if (!metric) continue;
+    const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
+    const current = competencyScores.get(compName) || { total: 0, count: 0 };
+    current.total += score.nivel || 0;
+    current.count += 1;
+    competencyScores.set(compName, current);
+  }
+
+  const trainingRows = [...competencyScores.entries()]
+    .map(([name, value]) => {
+      const avg = value.count ? value.total / value.count : 0;
+      return {
+        tipo: "CAPACITACION_COMPETENCIA",
+        nombre: name,
+        area: "-",
+        cargo: "-",
+        score: Number(avg.toFixed(2)),
+        detalle: avg < 3 ? "Prioridad ALTA" : avg < 3.8 ? "Prioridad MEDIA" : "Prioridad BAJA",
+      };
+    })
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 25);
+
+  const role = req.user.roleCode || "ROL";
+  const rows = [...riskRows, ...trainingRows];
+  const parser = new Parser({ fields: ["tipo", "nombre", "area", "cargo", "score", "detalle"] });
+  const csv = parser.parse(rows);
+
+  res.header("Content-Type", "text/csv");
+  res.attachment(`reporte-decisiones-${role.toLowerCase()}.csv`);
+  return res.send(csv);
 });
 
 export default router;
