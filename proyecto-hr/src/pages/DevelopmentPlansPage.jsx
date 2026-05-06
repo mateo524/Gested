@@ -45,7 +45,10 @@ export default function DevelopmentPlansPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
+    if (!form.employeeId || !form.aspectoDesarrollar) {
+      setMessage("Selecciona empleado y define el aspecto a desarrollar.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       setMessage("");
@@ -55,17 +58,13 @@ export default function DevelopmentPlansPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...form,
-          fortalezas: form.fortalezas
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
+          fortalezas: form.fortalezas.split(",").map((item) => item.trim()).filter(Boolean),
           evaluationId: form.evaluationId || null,
           fechaSeguimiento: form.fechaSeguimiento || null,
         }),
       });
-
       setForm(emptyForm);
-      setMessage("Plan de desarrollo creado");
+      setMessage("Plan de desarrollo creado.");
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -76,24 +75,23 @@ export default function DevelopmentPlansPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Seguimiento profesional</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Planes de desarrollo</h3>
-        <p className="mt-3 max-w-3xl text-slate-500">
-          Define fortalezas, objetivos de mejora, forma de medición y fecha de seguimiento para cada
-          persona evaluada.
-        </p>
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento profesional</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Planes de desarrollo</h3>
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">Define fortalezas, objetivo de mejora, medicion y fecha de seguimiento.</p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Nuevo plan</h4>
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-xl font-semibold text-white">Nuevo plan</h4>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Objetivo</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Seguimiento</span>
+          </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              value={form.employeeId}
-              onChange={(event) => setForm({ ...form, employeeId: event.target.value })}
-            >
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Relacion base</p>
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
               <option value="">Selecciona empleado</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
@@ -102,75 +100,39 @@ export default function DevelopmentPlansPage() {
               ))}
             </select>
 
-            <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              value={form.evaluationId}
-              onChange={(event) => setForm({ ...form, evaluationId: event.target.value })}
-            >
-              <option value="">Sin evaluación base</option>
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.evaluationId} onChange={(event) => setForm({ ...form, evaluationId: event.target.value })}>
+              <option value="">Sin evaluacion base</option>
               {evaluations.map((evaluation) => (
                 <option key={evaluation._id} value={evaluation._id}>
-                  {evaluation.tipo} · {evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}
+                  {evaluation.tipo} - {evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}
                 </option>
               ))}
             </select>
 
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Fortalezas separadas por coma"
-              value={form.fortalezas}
-              onChange={(event) => setForm({ ...form, fortalezas: event.target.value })}
-            />
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definicion del plan</p>
+            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Fortalezas (separadas por coma)" value={form.fortalezas} onChange={(event) => setForm({ ...form, fortalezas: event.target.value })} />
+            <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
+            <textarea className="min-h-20 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Como se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
 
-            <textarea
-              className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Aspecto a desarrollar"
-              value={form.aspectoDesarrollar}
-              onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })}
-            />
-
-            <textarea
-              className="min-h-20 w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Cómo se va a medir"
-              value={form.medicion}
-              onChange={(event) => setForm({ ...form, medicion: event.target.value })}
-            />
-
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Seguimiento</p>
             <div className="grid gap-4 md:grid-cols-2">
-              <input
-                type="date"
-                className="rounded-2xl border border-slate-300 px-4 py-3"
-                value={form.fechaSeguimiento}
-                onChange={(event) => setForm({ ...form, fechaSeguimiento: event.target.value })}
-              />
-              <select
-                className="rounded-2xl border border-slate-300 px-4 py-3"
-                value={form.estado}
-                onChange={(event) => setForm({ ...form, estado: event.target.value })}
-              >
+              <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaSeguimiento} onChange={(event) => setForm({ ...form, fechaSeguimiento: event.target.value })} />
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(event) => setForm({ ...form, estado: event.target.value })}>
                 <option value="PENDIENTE">Pendiente</option>
                 <option value="EN_CURSO">En curso</option>
                 <option value="CERRADO">Cerrado</option>
               </select>
             </div>
 
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white"
-            >
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
               {isSubmitting ? "Guardando..." : "Crear plan"}
             </button>
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <div className="flex flex-wrap gap-3">
-            <select
-              className="rounded-2xl border border-slate-300 px-4 py-3"
-              value={filters.employeeId}
-              onChange={(event) => setFilters({ ...filters, employeeId: event.target.value })}
-            >
+            <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.employeeId} onChange={(event) => setFilters({ ...filters, employeeId: event.target.value })}>
               <option value="">Todos los empleados</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
@@ -178,12 +140,7 @@ export default function DevelopmentPlansPage() {
                 </option>
               ))}
             </select>
-
-            <select
-              className="rounded-2xl border border-slate-300 px-4 py-3"
-              value={filters.estado}
-              onChange={(event) => setFilters({ ...filters, estado: event.target.value })}
-            >
+            <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.estado} onChange={(event) => setFilters({ ...filters, estado: event.target.value })}>
               <option value="">Todos los estados</option>
               <option value="PENDIENTE">Pendiente</option>
               <option value="EN_CURSO">En curso</option>
@@ -194,37 +151,27 @@ export default function DevelopmentPlansPage() {
           <div className="mt-6 space-y-4">
             {plans.length ? (
               plans.map((plan) => (
-                <article key={plan._id} className="rounded-[1.75rem] border border-slate-200 p-5">
+                <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-lg font-semibold text-slate-950">
-                      {plan.employeeId?.apellido}, {plan.employeeId?.nombre}
-                    </p>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">
-                      {plan.estado}
-                    </span>
+                    <p className="text-lg font-semibold text-white">{plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
+                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{plan.estado}</span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-700">{plan.aspectoDesarrollar}</p>
-                  <p className="mt-1 text-sm text-slate-500">Medición: {plan.medicion || "-"}</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Seguimiento:{" "}
-                    {plan.fechaSeguimiento
-                      ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR")
-                      : "-"}
-                  </p>
+                  <p className="mt-2 text-sm text-[#c5d5de]">{plan.aspectoDesarrollar}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Medicion: {plan.medicion || "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Seguimiento: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
                 </article>
               ))
             ) : (
-              <p className="text-slate-500">
-                {user?.roleCode === "EMPLEADO"
-                  ? "Todavía no tienes planes asociados."
-                  : "Todavía no hay planes cargados."}
+              <p className="text-[#9fb6c4]">
+                {user?.roleCode === "EMPLEADO" ? "Todavia no tienes planes asociados." : "Todavia no hay planes cargados."}
               </p>
             )}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
     </div>
   );
 }
+

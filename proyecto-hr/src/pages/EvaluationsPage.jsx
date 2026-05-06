@@ -93,15 +93,16 @@ export default function EvaluationsPage() {
 
   function updateScore(metricId, field, value) {
     setScores((current) =>
-      current.map((score) =>
-        score.metricId === metricId ? { ...score, [field]: value } : score
-      )
+      current.map((score) => (score.metricId === metricId ? { ...score, [field]: value } : score))
     );
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-
+    if (!form.employeeId || !form.cycleId) {
+      setMessage("Selecciona empleado y periodo para guardar la evaluacion.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       setMessage("");
@@ -109,14 +110,11 @@ export default function EvaluationsPage() {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          scores,
-        }),
+        body: JSON.stringify({ ...form, scores }),
       });
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
-      setMessage("Evaluacion creada");
+      setMessage("Evaluacion creada.");
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -128,17 +126,13 @@ export default function EvaluationsPage() {
   async function downloadIndividualReport(evaluationId) {
     try {
       setMessage("");
-      const data = await apiFetch(`/education-exports/evaluation-report/${evaluationId}`, {
-        token,
-      });
-
+      const data = await apiFetch(`/education-exports/evaluation-report/${evaluationId}`, { token });
       const printable = buildPrintableReport(data);
       const popup = window.open("", "_blank", "width=900,height=800");
       if (!popup) {
-        setMessage("Tu navegador bloqueo la ventana del reporte");
+        setMessage("Tu navegador bloqueo la ventana del reporte.");
         return;
       }
-
       popup.document.open();
       popup.document.write(printable);
       popup.document.close();
@@ -151,24 +145,25 @@ export default function EvaluationsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Seguimiento del desempeno</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Evaluaciones</h3>
-        <p className="mt-3 max-w-3xl text-slate-500">
-          Registra autoevaluaciones, evaluaciones de jefatura y cierres finales con puntaje por
-          metrica, comentarios y trazabilidad.
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeno</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Evaluaciones</h3>
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
+          Crea evaluaciones por empleado, por periodo y con puntaje por indicador.
         </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Nueva evaluacion</h4>
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-xl font-semibold text-white">Nueva evaluacion</h4>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado y periodo</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Tipo y estado</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Puntajes</span>
+          </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              value={form.employeeId}
-              onChange={(event) => setForm({ ...form, employeeId: event.target.value })}
-            >
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Seleccion base</p>
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
               <option value="">Selecciona empleado</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
@@ -176,118 +171,81 @@ export default function EvaluationsPage() {
                 </option>
               ))}
             </select>
-            <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              value={form.cycleId}
-              onChange={(event) => setForm({ ...form, cycleId: event.target.value })}
-            >
-              <option value="">Selecciona ciclo</option>
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.cycleId} onChange={(event) => setForm({ ...form, cycleId: event.target.value })}>
+              <option value="">Selecciona periodo</option>
               {cycles.map((cycle) => (
                 <option key={cycle._id} value={cycle._id}>
-                  {cycle.periodo} {cycle.anio} · {cycle.etapa}
+                  {cycle.periodo} {cycle.anio} - {cycle.etapa}
                 </option>
               ))}
             </select>
+
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Contexto evaluativo</p>
             <div className="grid gap-4 md:grid-cols-2">
-              <select
-                className="rounded-2xl border border-slate-300 px-4 py-3"
-                value={form.tipo}
-                onChange={(event) => setForm({ ...form, tipo: event.target.value })}
-              >
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
                 <option value="AUTOEVALUACION">Autoevaluacion</option>
                 <option value="JEFATURA">Jefatura</option>
                 <option value="FINAL">Final</option>
               </select>
-              <select
-                className="rounded-2xl border border-slate-300 px-4 py-3"
-                value={form.estado}
-                onChange={(event) => setForm({ ...form, estado: event.target.value })}
-              >
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(event) => setForm({ ...form, estado: event.target.value })}>
                 <option value="BORRADOR">Borrador</option>
                 <option value="ENVIADA">Enviada</option>
                 <option value="REVISADA">Revisada</option>
                 <option value="CERRADA">Cerrada</option>
               </select>
             </div>
-            <textarea
-              className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Comentarios generales"
-              value={form.comentariosGenerales}
-              onChange={(event) => setForm({ ...form, comentariosGenerales: event.target.value })}
-            />
+            <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Comentarios generales" value={form.comentariosGenerales} onChange={(event) => setForm({ ...form, comentariosGenerales: event.target.value })} />
 
-            <div className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
-              <p className="text-sm font-semibold text-slate-700">Puntajes por metrica</p>
+            <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+              <p className="text-sm font-semibold text-[#c5d5de]">3. Puntajes por indicador</p>
               {scores.map((score) => (
                 <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700">
-                    {metricMap.get(score.metricId)?.nombre || "Metrica"}
-                  </div>
-                  <select
-                    className="rounded-2xl border border-slate-300 px-4 py-3"
-                    value={score.nivel}
-                    onChange={(event) => updateScore(score.metricId, "nivel", Number(event.target.value))}
-                  >
+                  <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
+                  <select className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={score.nivel} onChange={(event) => updateScore(score.metricId, "nivel", Number(event.target.value))}>
                     {[1, 2, 3, 4, 5].map((nivel) => (
-                      <option key={nivel} value={nivel}>
-                        {nivel}
-                      </option>
+                      <option key={nivel} value={nivel}>{nivel}</option>
                     ))}
                   </select>
-                  <input
-                    className="rounded-2xl border border-slate-300 px-4 py-3"
-                    placeholder="Comentario breve"
-                    value={score.comentario}
-                    onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)}
-                  />
+                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Comentario breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
                 </div>
               ))}
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white">
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
               {isSubmitting ? "Guardando..." : "Crear evaluacion"}
             </button>
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Evaluaciones registradas</h4>
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
           <div className="mt-6 space-y-4">
             {evaluations.length ? (
               evaluations.map((evaluation) => (
-                <article key={evaluation._id} className="rounded-[1.75rem] border border-slate-200 p-5">
+                <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-lg font-semibold text-slate-950">
-                      {evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}
-                    </p>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">{evaluation.tipo}</span>
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">{evaluation.estado}</span>
+                    <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
+                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{evaluation.tipo}</span>
+                    <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{evaluation.estado}</span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-500">
-                    {evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} · Resultado final: {evaluation.resultadoFinal}
-                  </p>
-                  <p className="mt-3 text-sm text-slate-600">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
-                  <button
-                    type="button"
-                    onClick={() => downloadIndividualReport(evaluation._id)}
-                    className="mt-3 rounded-xl border border-slate-200 px-4 py-2 text-sm"
-                  >
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} - Resultado final: {evaluation.resultadoFinal}</p>
+                  <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
+                  <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="mt-3 rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
                     Reporte individual (PDF)
                   </button>
                 </article>
               ))
             ) : (
-              <p className="text-slate-500">
-                {user?.roleCode === "EMPLEADO"
-                  ? "Todavia no tienes evaluaciones cargadas."
-                  : "Todavia no hay evaluaciones registradas."}
+              <p className="text-[#9fb6c4]">
+                {user?.roleCode === "EMPLEADO" ? "Todavia no tienes evaluaciones cargadas." : "Todavia no hay evaluaciones registradas."}
               </p>
             )}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
     </div>
   );
 }
+
