@@ -17,6 +17,8 @@ import EvaluationScore from "../models/EvaluationScore.js";
 import DownloadLog from "../models/DownloadLog.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { Parser } from "json2csv";
+import DevelopmentPlan from "../models/DevelopmentPlan.js";
+import { buildPredictiveInsights, buildLayer3Forecast } from "../utils/predictiveInsights.js";
 
 const router = express.Router();
 
@@ -80,6 +82,7 @@ router.get("/summary", auth, async (req, res) => {
     evaluationScores,
     metricsList,
     competenciesList,
+    planSignalsRaw,
   ] = await Promise.all([
     User.countDocuments({ companyId }),
     User.countDocuments({ companyId, activo: true }),
@@ -127,6 +130,33 @@ router.get("/summary", auth, async (req, res) => {
       .lean(),
     Metric.find({ companyId }).select("_id nombre competencyId").lean(),
     Competency.find({ companyId }).select("_id nombre").lean(),
+    DevelopmentPlan.aggregate([
+      { $match: { companyId: company._id } },
+      {
+        $group: {
+          _id: "$employeeId",
+          open: {
+            $sum: {
+              $cond: [{ $ne: ["$estado", "CERRADO"] }, 1, 0],
+            },
+          },
+          overdue: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $ne: ["$estado", "CERRADO"] },
+                    { $lt: ["$fechaSeguimiento", new Date()] },
+                  ],
+                },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
   ]);
 
   let superAdmin = null;
@@ -238,6 +268,27 @@ router.get("/summary", auth, async (req, res) => {
     .sort((a, b) => a.avgScore - b.avgScore)
     .slice(0, 8);
 
+  const predictiveBase = buildPredictiveInsights({
+    weakestAreas,
+    strongestAreas,
+    riskRanking,
+    trainingRecommendations,
+    pendingEvaluations,
+    evaluationsTotal,
+    employeePlanSignals: planSignalsRaw.map((item) => ({
+      employeeId: String(item._id),
+      open: item.open || 0,
+      overdue: item.overdue || 0,
+    })),
+  });
+
+  const layer3Forecast = await buildLayer3Forecast({
+    companyId: company._id,
+    patterns: predictiveBase.layer1Patterns,
+    predictions: predictiveBase.layer2Predictions,
+    trainingRecommendations,
+  });
+
   res.json({
     cards: [
       { label: "Empleados", value: employeesTotal, hint: `${docentesTotal} docentes registrados` },
@@ -273,6 +324,11 @@ router.get("/summary", auth, async (req, res) => {
       riskRanking,
       trainingRecommendations,
     },
+    predictiveInsights: {
+      layer1Patterns: predictiveBase.layer1Patterns,
+      layer2Predictions: predictiveBase.layer2Predictions,
+      layer3Forecast,
+    },
     educational: {
       schoolsCount,
       usersTotal,
@@ -300,6 +356,128 @@ router.get("/summary", auth, async (req, res) => {
         }
       : null,
     superAdmin,
+  });
+});
+
+router.get("/predictions", auth, async (req, res) => {
+  const { companyId, company } = await resolveCompanyScope(req);
+
+  const [employeesList, evaluationByEmployee, planSignalsRaw, competenciesList, metricsList, evaluationScores, evaluationsTotal, pendingEvaluations] = await Promise.all([
+    Employee.find({ companyId }).select("_id nombre apellido area cargo").lean(),
+    Evaluation.aggregate([
+      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
+    ]),
+    DevelopmentPlan.aggregate([
+      { $match: { companyId: company._id } },
+      {
+        $group: {
+          _id: "$employeeId",
+          open: { $sum: { $cond: [{ $ne: ["$estado", "CERRADO"] }, 1, 0] } },
+          overdue: {
+            $sum: {
+              $cond: [
+                { $and: [{ $ne: ["$estado", "CERRADO"] }, { $lt: ["$fechaSeguimiento", new Date()] }] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+    Competency.find({ companyId }).select("_id nombre").lean(),
+    Metric.find({ companyId }).select("_id competencyId").lean(),
+    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId" }).lean(),
+    Evaluation.countDocuments({ companyId }),
+    Evaluation.countDocuments({ companyId, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
+  ]);
+
+  const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));
+  const riskRanking = evaluationByEmployee
+    .map((item) => {
+      const employee = employeeById.get(String(item._id));
+      return employee
+        ? {
+            employeeId: String(item._id),
+            nombre: `${employee.apellido}, ${employee.nombre}`,
+            area: employee.area || "Sin area",
+            cargo: employee.cargo || "Sin cargo",
+            avgScore: Number(item.avgScore.toFixed(2)),
+            evaluations: item.count,
+          }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 20);
+
+  const metricById = new Map(metricsList.map((item) => [String(item._id), item]));
+  const competencyById = new Map(competenciesList.map((item) => [String(item._id), item.nombre]));
+  const competencyScores = new Map();
+  for (const score of evaluationScores) {
+    const evaluation = score.evaluationId;
+    if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    const metric = metricById.get(String(score.metricId));
+    if (!metric) continue;
+    const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
+    const current = competencyScores.get(compName) || { total: 0, count: 0 };
+    current.total += score.nivel || 0;
+    current.count += 1;
+    competencyScores.set(compName, current);
+  }
+  const trainingRecommendations = [...competencyScores.entries()]
+    .map(([competencia, value]) => ({
+      competencia,
+      avgScore: value.count ? Number((value.total / value.count).toFixed(2)) : 0,
+      priority: value.count && value.total / value.count < 3 ? "ALTA" : value.total / value.count < 3.8 ? "MEDIA" : "BAJA",
+      action:
+        value.count && value.total / value.count < 3
+          ? "Capacitacion intensiva + mentoring"
+          : value.total / value.count < 3.8
+            ? "Refuerzo con talleres practicos"
+            : "Mantener y documentar buenas practicas",
+    }))
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 8);
+
+  const syntheticWeakest = trainingRecommendations.slice(0, 3).map((item) => ({
+    label: item.competencia,
+    value: item.avgScore,
+    employees: 0,
+  }));
+  const syntheticStrongest = [...trainingRecommendations]
+    .sort((a, b) => b.avgScore - a.avgScore)
+    .slice(0, 3)
+    .map((item) => ({ label: item.competencia, value: item.avgScore, employees: 0 }));
+
+  const predictiveBase = buildPredictiveInsights({
+    weakestAreas: syntheticWeakest,
+    strongestAreas: syntheticStrongest,
+    riskRanking,
+    trainingRecommendations,
+    pendingEvaluations,
+    evaluationsTotal,
+    employeePlanSignals: planSignalsRaw.map((item) => ({
+      employeeId: String(item._id),
+      open: item.open || 0,
+      overdue: item.overdue || 0,
+    })),
+  });
+
+  const layer3Forecast = await buildLayer3Forecast({
+    companyId: company._id,
+    patterns: predictiveBase.layer1Patterns,
+    predictions: predictiveBase.layer2Predictions,
+    trainingRecommendations,
+  });
+
+  res.json({
+    companyId: String(company._id),
+    generatedAt: new Date().toISOString(),
+    layer1Patterns: predictiveBase.layer1Patterns,
+    layer2Predictions: predictiveBase.layer2Predictions,
+    layer3Forecast,
   });
 });
 

@@ -144,6 +144,51 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <section className="grid gap-6 xl:grid-cols-3">
+        <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-950">Capa 1: Patrones detectados</h3>
+          <div className="mt-4 space-y-3">
+            {(summary.predictiveInsights?.layer1Patterns || []).slice(0, 4).map((item, idx) => (
+              <div key={`${item.type}-${idx}`} className="rounded-xl border border-slate-200 p-3">
+                <p className="text-sm font-semibold text-slate-900">{item.title}</p>
+                <p className="mt-1 text-xs text-slate-600">{item.evidence}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-950">Capa 2: Prediccion explicable</h3>
+          <div className="mt-4 space-y-3">
+            {(summary.predictiveInsights?.layer2Predictions || []).slice(0, 5).map((item) => (
+              <div key={item.employeeId} className="rounded-xl border border-slate-200 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900">{item.empleado}</p>
+                  <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-700">
+                    Riesgo {item.riskScore}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-slate-600">{item.recommendation}</p>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-lg font-semibold text-slate-950">Capa 3: Forecast estrategico</h3>
+          <p className="mt-1 text-xs text-slate-500">
+            Fuente: {summary.predictiveInsights?.layer3Forecast?.source || "local"}
+          </p>
+          <div className="mt-4 space-y-2">
+            {(summary.predictiveInsights?.layer3Forecast?.strategicActions || []).slice(0, 3).map((action, idx) => (
+              <div key={idx} className="rounded-xl border border-slate-200 p-3 text-sm text-slate-700">
+                {action}
+              </div>
+            ))}
+          </div>
+        </article>
+      </section>
+
     </div>
   );
 }
