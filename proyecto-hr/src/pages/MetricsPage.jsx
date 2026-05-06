@@ -104,6 +104,9 @@ export default function MetricsPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h4 className="text-xl font-semibold">Nueva métrica</h4>
+          <p className="mt-2 text-sm text-slate-500">
+            Crea el indicador puntual que se puntua de 1 a 5 dentro de una competencia.
+          </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <select
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"

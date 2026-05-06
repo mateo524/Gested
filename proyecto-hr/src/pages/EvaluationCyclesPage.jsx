@@ -71,6 +71,9 @@ export default function EvaluationCyclesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
           <h4 className="text-xl font-semibold">Nuevo ciclo</h4>
+          <p className="mt-2 text-sm text-slate-500">
+            Define el periodo, etapa y fechas para ordenar las evaluaciones del colegio.
+          </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <select
               className="w-full rounded-2xl border border-slate-300 px-4 py-3"
