@@ -30,7 +30,6 @@ export default function CompetenciesPage() {
       apiFetch("/schools", { token }),
       apiFetch(`/competencies${params.toString() ? `?${params.toString()}` : ""}`, { token }),
     ]);
-
     setSchools(schoolsData);
     setCompetencies(competenciesData);
     if (!form.schoolId && schoolsData[0]?._id) {
@@ -44,6 +43,10 @@ export default function CompetenciesPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!form.schoolId || !form.nombre) {
+      setMessage("Completa colegio y nombre de competencia para guardar.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       setMessage("");
@@ -56,7 +59,7 @@ export default function CompetenciesPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
       setEditingId("");
-      setMessage(isEditing ? "Competencia actualizada" : "Competencia creada");
+      setMessage(isEditing ? "Competencia actualizada." : "Competencia creada.");
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -74,72 +77,70 @@ export default function CompetenciesPage() {
       tipo: competency.tipo || "DOCENTE",
       componente: competency.componente || "C",
     });
-    setMessage("Editando competencia seleccionada");
+    setMessage("Editando competencia seleccionada.");
   }
 
   function cancelEdit() {
     setEditingId("");
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
-    setMessage("Edicion cancelada");
+    setMessage("Edicion cancelada.");
   }
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Modelo de desempeno</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Competencias</h3>
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Modelo de desempeno</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Competencias</h3>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">{editingId ? "Editar competencia" : "Nueva competencia"}</h4>
-          <p className="mt-2 text-sm text-slate-500">
-            Define la capacidad que vas a evaluar (ej: Trabajo en equipo, Comunicacion).
-          </p>
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-xl font-semibold text-white">{editingId ? "Editar competencia" : "Nueva competencia"}</h4>
+          <p className="mt-2 text-sm text-[#9fb6c4]">Define la capacidad a evaluar y su componente C/A/H.</p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <select className="w-full rounded-2xl border border-slate-300 px-4 py-3" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
               <option value="">Selecciona colegio</option>
               {schools.map((school) => (
                 <option key={school._id} value={school._id}>{school.nombre}</option>
               ))}
             </select>
-            <input className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Nombre de la competencia" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-            <textarea className="min-h-28 w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
+            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre (ej: Trabajo en equipo)" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            <textarea className="min-h-28 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
-              <select className="rounded-2xl border border-slate-300 px-4 py-3" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
                 <option value="TRANSVERSAL">Transversal</option>
                 <option value="DOCENTE">Docente</option>
                 <option value="LIDERAZGO">Liderazgo</option>
                 <option value="PERSONALIZADA">Personalizada</option>
               </select>
-              <select className="rounded-2xl border border-slate-300 px-4 py-3" value={form.componente} onChange={(e) => setForm({ ...form, componente: e.target.value })}>
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.componente} onChange={(e) => setForm({ ...form, componente: e.target.value })}>
                 <option value="C">C - Conceptual</option>
                 <option value="A">A - Actitudinal</option>
                 <option value="H">H - Procedimental</option>
               </select>
             </div>
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white">
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear competencia"}
             </button>
             {editingId ? (
-              <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-slate-300 py-3 font-semibold text-slate-700">
+              <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
                 Cancelar edicion
               </button>
             ) : null}
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <div className="grid gap-4 md:grid-cols-3">
-            <input className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Buscar" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
-            <select className="rounded-2xl border border-slate-300 px-4 py-3" value={filters.tipo} onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}>
+            <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Buscar" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
+            <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.tipo} onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}>
               <option value="">Todos los tipos</option>
               <option value="TRANSVERSAL">Transversal</option>
               <option value="DOCENTE">Docente</option>
               <option value="LIDERAZGO">Liderazgo</option>
               <option value="PERSONALIZADA">Personalizada</option>
             </select>
-            <select className="rounded-2xl border border-slate-300 px-4 py-3" value={filters.componente} onChange={(e) => setFilters({ ...filters, componente: e.target.value })}>
+            <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.componente} onChange={(e) => setFilters({ ...filters, componente: e.target.value })}>
               <option value="">Todos los componentes</option>
               <option value="C">C</option>
               <option value="A">A</option>
@@ -148,23 +149,24 @@ export default function CompetenciesPage() {
           </div>
           <div className="mt-6 space-y-4">
             {competencies.length ? competencies.map((competency) => (
-              <article key={competency._id} className="rounded-[1.75rem] border border-slate-200 p-5">
+              <article key={competency._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-semibold text-slate-950">{competency.nombre}</p>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">{competency.tipo}</span>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">{competency.componente}</span>
+                  <p className="text-lg font-semibold text-white">{competency.nombre}</p>
+                  <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{competency.tipo}</span>
+                  <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{competency.componente}</span>
                 </div>
-                <p className="mt-3 text-sm text-slate-600">{competency.descripcion || "Sin descripcion"}</p>
-                <button type="button" onClick={() => handleEdit(competency)} className="mt-3 rounded-xl border border-emerald-300 px-4 py-2 text-sm text-emerald-700">
+                <p className="mt-3 text-sm text-[#9fb6c4]">{competency.descripcion || "Sin descripcion"}</p>
+                <button type="button" onClick={() => handleEdit(competency)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
                   Editar
                 </button>
               </article>
-            )) : <p className="text-slate-500">Todavia no hay competencias cargadas.</p>}
+            )) : <p className="text-[#9fb6c4]">Todavia no hay competencias cargadas.</p>}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
     </div>
   );
 }
+

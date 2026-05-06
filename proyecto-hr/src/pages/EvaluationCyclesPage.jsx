@@ -39,6 +39,10 @@ export default function EvaluationCyclesPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
+    if (!form.schoolId || !form.periodo || !form.fechaInicio || !form.fechaFin) {
+      setMessage("Completa colegio, periodo y rango de fechas para guardar.");
+      return;
+    }
     try {
       setIsSubmitting(true);
       setMessage("");
@@ -51,7 +55,7 @@ export default function EvaluationCyclesPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, anio: new Date().getFullYear() }));
       setEditingId("");
-      setMessage(isEditing ? "Ciclo actualizado" : "Ciclo creado");
+      setMessage(isEditing ? "Periodo actualizado." : "Periodo creado.");
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -71,90 +75,91 @@ export default function EvaluationCyclesPage() {
       fechaInicio: cycle.fechaInicio ? new Date(cycle.fechaInicio).toISOString().slice(0, 10) : "",
       fechaFin: cycle.fechaFin ? new Date(cycle.fechaFin).toISOString().slice(0, 10) : "",
     });
-    setMessage("Editando ciclo seleccionado");
+    setMessage("Editando periodo seleccionado.");
   }
 
   function cancelEdit() {
     setEditingId("");
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, anio: new Date().getFullYear() }));
-    setMessage("Edicion cancelada");
+    setMessage("Edicion cancelada.");
   }
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Calendario institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Ciclos de evaluacion</h3>
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Periodos de evaluacion</h3>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
-          <p className="mt-2 text-sm text-slate-500">
-            Define periodo, etapa y fechas para ordenar las evaluaciones del colegio.
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-xl font-semibold text-white">{editingId ? "Editar periodo" : "Nuevo periodo"}</h4>
+          <p className="mt-2 text-sm text-[#9fb6c4]">
+            Define etapa, estado y fechas para ordenar todo el ciclo evaluativo.
           </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <select className="w-full rounded-2xl border border-slate-300 px-4 py-3" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
+            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
               <option value="">Selecciona colegio</option>
               {schools.map((school) => (
                 <option key={school._id} value={school._id}>{school.nombre}</option>
               ))}
             </select>
             <div className="grid gap-4 md:grid-cols-2">
-              <input type="number" className="rounded-2xl border border-slate-300 px-4 py-3" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
-              <input className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Periodo" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
+              <input type="number" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
+              <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Periodo (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <select className="rounded-2xl border border-slate-300 px-4 py-3" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
                 <option value="INICIO">Inicio</option>
                 <option value="REVISION_INTERMEDIA">Revision intermedia</option>
                 <option value="EVALUACION_FINAL">Evaluacion final</option>
               </select>
-              <select className="rounded-2xl border border-slate-300 px-4 py-3" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
+              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="BORRADOR">Borrador</option>
                 <option value="ABIERTO">Abierto</option>
                 <option value="CERRADO">Cerrado</option>
               </select>
             </div>
             <div className="grid gap-4 md:grid-cols-2">
-              <input type="date" className="rounded-2xl border border-slate-300 px-4 py-3" value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
-              <input type="date" className="rounded-2xl border border-slate-300 px-4 py-3" value={form.fechaFin} onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
+              <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
+              <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaFin} onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
             </div>
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white">
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear ciclo"}
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear periodo"}
             </button>
             {editingId ? (
-              <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-slate-300 py-3 font-semibold text-slate-700">
+              <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
                 Cancelar edicion
               </button>
             ) : null}
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Ciclos cargados</h4>
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-xl font-semibold text-white">Periodos cargados</h4>
           <div className="mt-6 space-y-4">
             {cycles.length ? cycles.map((cycle) => (
-              <article key={cycle._id} className="rounded-[1.75rem] border border-slate-200 p-5">
+              <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-semibold text-slate-950">{cycle.periodo} {cycle.anio}</p>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-600">{cycle.etapa}</span>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs text-emerald-700">{cycle.estado}</span>
+                  <p className="text-lg font-semibold text-white">{cycle.periodo} {cycle.anio}</p>
+                  <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{cycle.etapa}</span>
+                  <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{cycle.estado}</span>
                 </div>
-                <p className="mt-2 text-sm text-slate-500">
+                <p className="mt-2 text-sm text-[#9fb6c4]">
                   {cycle.fechaInicio ? new Date(cycle.fechaInicio).toLocaleDateString("es-AR") : "-"} al{" "}
                   {cycle.fechaFin ? new Date(cycle.fechaFin).toLocaleDateString("es-AR") : "-"}
                 </p>
-                <button type="button" onClick={() => handleEdit(cycle)} className="mt-3 rounded-xl border border-emerald-300 px-4 py-2 text-sm text-emerald-700">
+                <button type="button" onClick={() => handleEdit(cycle)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
                   Editar
                 </button>
               </article>
-            )) : <p className="text-slate-500">Todavia no hay ciclos definidos.</p>}
+            )) : <p className="text-[#9fb6c4]">Todavia no hay periodos definidos.</p>}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-slate-600">{message}</p> : null}
+      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
     </div>
   );
 }
+

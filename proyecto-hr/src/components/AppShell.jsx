@@ -15,7 +15,17 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
         className="relative rounded-xl border border-white/10 bg-[#142028] px-3 py-2 text-white"
         aria-label="Novedades"
       >
-        🔔
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          className="h-5 w-5"
+        >
+          <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5" />
+          <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
+        </svg>
         {unreadCount ? (
           <span className="absolute -right-1 -top-1 rounded-full bg-[#22c55e] px-1.5 text-xs font-semibold text-white">
             {unreadCount}
@@ -207,7 +217,7 @@ export default function AppShell({ view, setView, children }) {
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
         <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.nombre} · {user?.roleName} · {user?.companyName || "Organizacion"}
+          {user?.nombre} - {user?.roleName} - {user?.companyName || "Organizacion"}
         </div>
         {tokenNearExpiry ? (
           <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -219,3 +229,4 @@ export default function AppShell({ view, setView, children }) {
     </div>
   );
 }
+
