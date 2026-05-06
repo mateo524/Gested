@@ -216,6 +216,17 @@ export default function EducationalExportsPage() {
                 <p className="text-sm text-[#D4E1E8]">Promedio final: {importPreview.extractedSummary.promedioFinal || 0}</p>
               </div>
             ) : null}
+            {importPreview.datasetDetected === "multi" && importPreview.extractedSummary ? (
+              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen multi-modulo</p>
+                <p className="mt-1 text-sm text-[#D4E1E8]">Empleados: {importPreview.extractedSummary.empleados || 0}</p>
+                <p className="text-sm text-[#D4E1E8]">Roles: {importPreview.extractedSummary.roles || 0}</p>
+                <p className="text-sm text-[#D4E1E8]">Competencias: {importPreview.extractedSummary.competencias || 0}</p>
+                <p className="text-sm text-[#D4E1E8]">Metricas: {importPreview.extractedSummary.metricas || 0}</p>
+                <p className="text-sm text-[#D4E1E8]">Ciclos: {importPreview.extractedSummary.ciclos || 0}</p>
+                <p className="text-sm text-[#D4E1E8]">Evaluaciones: {importPreview.extractedSummary.evaluaciones || 0}</p>
+              </div>
+            ) : null}
             {editableErrors.length ? (
               <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">

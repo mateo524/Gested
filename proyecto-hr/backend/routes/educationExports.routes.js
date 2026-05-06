@@ -28,6 +28,10 @@ const upload = multer({
 });
 const importPreviewStore = new Map();
 const MAX_PREVIEW_ROWS = 3000;
+const IMPORT_AI_ENABLED = String(process.env.IMPORT_AI_ENABLED || "").toLowerCase() === "true";
+const IMPORT_AI_WEBHOOK_URL = process.env.IMPORT_AI_WEBHOOK_URL || "";
+const IMPORT_AI_TOKEN = process.env.IMPORT_AI_TOKEN || "";
+const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
 
 const allowedDatasets = {
   employees: {
@@ -603,6 +607,35 @@ function getImportPreview(token) {
   return data;
 }
 
+async function parseWithAiWebhook(file, dataset) {
+  if (!IMPORT_AI_ENABLED || !IMPORT_AI_WEBHOOK_URL) return null;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), IMPORT_AI_TIMEOUT_MS);
+  try {
+    const form = new FormData();
+    const blob = new Blob([file.buffer], { type: file.mimetype || "application/octet-stream" });
+    form.append("file", blob, file.originalname);
+    form.append("dataset", dataset || "auto");
+
+    const response = await fetch(IMPORT_AI_WEBHOOK_URL, {
+      method: "POST",
+      headers: IMPORT_AI_TOKEN ? { Authorization: `Bearer ${IMPORT_AI_TOKEN}` } : {},
+      body: form,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (!data || typeof data !== "object") return null;
+    return data;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 router.get(
   "/overview",
   auth,
@@ -792,6 +825,60 @@ router.post(
     }
 
     const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
+
+    const aiParsed = await parseWithAiWebhook(req.file, requestedDataset);
+    if (aiParsed?.detectedModules && typeof aiParsed.detectedModules === "object") {
+      const detectedModules = aiParsed.detectedModules;
+      const summary = aiParsed.summary || {};
+      const totalDetected =
+        Number(summary.employees || detectedModules.employees?.length || 0) +
+        Number(summary.roles || detectedModules.roles?.length || 0) +
+        Number(summary.competencies || detectedModules.competencies?.length || 0) +
+        Number(summary.metrics || detectedModules.metrics?.length || 0) +
+        Number(summary.cycles || detectedModules.cycles?.length || 0) +
+        Number(summary.evaluations || detectedModules.evaluations?.length || 0) +
+        Number(summary.evaluationScores || detectedModules.evaluationScores?.length || 0) +
+        Number(summary.developmentPlans || detectedModules.developmentPlans?.length || 0);
+
+      const previewToken = saveImportPreview({
+        dataset: "multi",
+        schoolId: req.body.schoolId || req.user.schoolId || null,
+        validRows: [],
+        invalidRows: [],
+        aiParsed,
+        fileMeta: {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          bufferBase64: req.file.buffer.toString("base64"),
+        },
+      });
+
+      return res.json({
+        ok: true,
+        previewToken,
+        datasetDetected: "multi",
+        totalRows: rows.length,
+        validCount: totalDetected,
+        invalidCount: Number(aiParsed.errors?.length || 0),
+        truncated,
+        previewLimit: MAX_PREVIEW_ROWS,
+        extractedSummary: {
+          empleados: Number(summary.employees || detectedModules.employees?.length || 0),
+          roles: Number(summary.roles || detectedModules.roles?.length || 0),
+          competencias: Number(summary.competencies || detectedModules.competencies?.length || 0),
+          metricas: Number(summary.metrics || detectedModules.metrics?.length || 0),
+          ciclos: Number(summary.cycles || detectedModules.cycles?.length || 0),
+          evaluaciones: Number(summary.evaluations || detectedModules.evaluations?.length || 0),
+        },
+        sampleValidRows: [
+          ...(detectedModules.employees || []).slice(0, 3),
+          ...(detectedModules.competencies || []).slice(0, 3),
+          ...(detectedModules.metrics || []).slice(0, 3),
+        ],
+        sampleErrors: Array.isArray(aiParsed.errors) ? aiParsed.errors.slice(0, 20) : [],
+      });
+    }
+
     const detectedDataset = classifyDataset(rows, requestedDataset);
 
     if (detectedDataset === "unknown") {
@@ -1018,6 +1105,128 @@ router.post(
       }
 
       result.created += 1;
+    }
+
+    if (dataset === "multi") {
+      const modules = preview.aiParsed?.detectedModules || {};
+      const byNameCompetency = new Map();
+
+      const employees = Array.isArray(modules.employees) ? modules.employees : [];
+      for (const row of employees) {
+        if (!schoolId) continue;
+        const apellido = String(row.apellido || "").trim() || parseNameParts(row.nombreCompleto || row.nombre || "").apellido || "-";
+        const nombre = String(row.nombre || "").trim() || parseNameParts(row.nombreCompleto || "").nombre || "-";
+        const cargo = String(row.cargo || "").trim() || "Colaborador";
+        const email = String(row.email || "").trim().toLowerCase();
+
+        const existing = email ? await Employee.findOne({ companyId, schoolId, email }) : null;
+        const payload = {
+          companyId,
+          schoolId,
+          apellido,
+          nombre,
+          cargo,
+          area: String(row.area || "General").trim(),
+          tipoEmpleado: "DOCENTE",
+          activo: true,
+        };
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save();
+          result.updated += 1;
+        } else {
+          await Employee.create({ ...payload, email: email || undefined });
+          result.created += 1;
+        }
+      }
+
+      const roles = Array.isArray(modules.roles) ? modules.roles : [];
+      for (const row of roles) {
+        const nombre = String(row.nombre || row.role || "").trim();
+        if (!nombre) continue;
+        const exists = await Role.findOne({ companyId, schoolId: schoolId || null, nombre });
+        if (exists) continue;
+        await Role.create({
+          companyId,
+          schoolId: schoolId || null,
+          nombre,
+          descripcion: "Rol importado automaticamente",
+          permisos: [],
+          scope: schoolId ? "school" : "company",
+          activo: true,
+        });
+        result.created += 1;
+      }
+
+      const competencies = Array.isArray(modules.competencies) ? modules.competencies : [];
+      for (const row of competencies) {
+        if (!schoolId) continue;
+        const nombre = String(row.nombre || row.competencia || "").trim();
+        if (!nombre) continue;
+        const competency = await Competency.findOneAndUpdate(
+          { companyId, schoolId, nombre },
+          {
+            $setOnInsert: {
+              companyId,
+              schoolId,
+              nombre,
+              descripcion: String(row.descripcion || "Importada desde parser AI").trim(),
+              tipo: "TRANSVERSAL",
+              componente: "H",
+              activa: true,
+            },
+          },
+          { upsert: true, new: true }
+        );
+        byNameCompetency.set(normalizeText(nombre), competency);
+      }
+
+      const metrics = Array.isArray(modules.metrics) ? modules.metrics : [];
+      for (const row of metrics) {
+        if (!schoolId) continue;
+        const nombre = String(row.nombre || row.metrica || "").trim();
+        const compName = normalizeText(row.competencia || row.competency || "");
+        const competency = byNameCompetency.get(compName);
+        if (!nombre || !competency) continue;
+        const exists = await Metric.findOne({ companyId, schoolId, competencyId: competency._id, nombre });
+        if (exists) continue;
+        await Metric.create({
+          companyId,
+          schoolId,
+          competencyId: competency._id,
+          nombre,
+          descripcion: String(row.descripcion || "Importada automaticamente").trim(),
+          cargoAplica: [],
+          ponderacion: Number(row.ponderacion || 1) || 1,
+          activa: true,
+        });
+        result.created += 1;
+      }
+
+      const cycles = Array.isArray(modules.cycles) ? modules.cycles : [];
+      for (const row of cycles) {
+        if (!schoolId) continue;
+        const anio = Number(row.anio || new Date().getFullYear());
+        const periodo = String(row.periodo || row.nombre || "Importado").trim();
+        const etapa = ["INICIO", "REVISION_INTERMEDIA", "EVALUACION_FINAL"].includes(String(row.etapa || "").toUpperCase())
+          ? String(row.etapa).toUpperCase()
+          : "EVALUACION_FINAL";
+        const fechaInicio = row.fechaInicio ? new Date(row.fechaInicio) : new Date(anio, 0, 1);
+        const fechaFin = row.fechaFin ? new Date(row.fechaFin) : new Date(anio, 11, 31);
+        const exists = await EvaluationCycle.findOne({ companyId, schoolId, anio, periodo, etapa });
+        if (exists) continue;
+        await EvaluationCycle.create({
+          companyId,
+          schoolId,
+          anio,
+          periodo,
+          etapa,
+          estado: "CERRADO",
+          fechaInicio,
+          fechaFin,
+        });
+        result.created += 1;
+      }
     }
 
     if (dataset === "employees") {
