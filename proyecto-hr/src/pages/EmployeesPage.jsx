@@ -120,10 +120,14 @@ export default function EmployeesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar empleado" : "Nuevo empleado"}</h4>
-          <p className="mt-2 text-sm text-[#9fb6c4]">
-            Paso 1: selecciona colegio. Paso 2: completa datos base. Paso 3: guarda.
-          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Colegio</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Datos personales</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Rol y responsable</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 4: Guardar</span>
+          </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Seleccion institucional</p>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.schoolId} onChange={(event) => setForm({ ...form, schoolId: event.target.value })}>
               <option value="">Selecciona colegio</option>
               {schools.map((school) => (
@@ -133,6 +137,7 @@ export default function EmployeesPage() {
               ))}
             </select>
 
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Identidad del empleado</p>
             <div className="grid gap-4 md:grid-cols-2">
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Apellido" value={form.apellido} onChange={(event) => setForm({ ...form, apellido: event.target.value })} />
@@ -140,6 +145,7 @@ export default function EmployeesPage() {
 
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Email institucional" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
 
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Contexto laboral</p>
             <div className="grid gap-4 md:grid-cols-2">
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargo (ej: Docente de Matematica)" value={form.cargo} onChange={(event) => setForm({ ...form, cargo: event.target.value })} />
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Area / Departamento" value={form.area} onChange={(event) => setForm({ ...form, area: event.target.value })} />
@@ -220,4 +226,3 @@ export default function EmployeesPage() {
     </div>
   );
 }
-

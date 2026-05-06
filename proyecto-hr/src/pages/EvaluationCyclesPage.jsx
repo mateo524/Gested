@@ -94,16 +94,20 @@ export default function EvaluationCyclesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar periodo" : "Nuevo periodo"}</h4>
-          <p className="mt-2 text-sm text-[#9fb6c4]">
-            Define etapa, estado y fechas para ordenar todo el ciclo evaluativo.
-          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Colegio y anio</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Etapa y estado</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Fechas</span>
+          </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Identificacion del periodo</p>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
               <option value="">Selecciona colegio</option>
               {schools.map((school) => (
                 <option key={school._id} value={school._id}>{school.nombre}</option>
               ))}
             </select>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Configuracion operativa</p>
             <div className="grid gap-4 md:grid-cols-2">
               <input type="number" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Periodo (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
@@ -162,4 +166,3 @@ export default function EvaluationCyclesPage() {
     </div>
   );
 }
-
