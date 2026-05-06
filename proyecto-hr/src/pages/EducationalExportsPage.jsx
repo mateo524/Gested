@@ -5,7 +5,7 @@ import { apiFetch, apiUrl } from "../lib/api";
 const datasetLabels = {
   employees: "Empleados",
   evaluations: "Evaluaciones",
-  metrics: "Metricas",
+  metrics: "Indicadores",
   developmentPlans: "Planes",
 };
 
@@ -68,7 +68,7 @@ export default function EducationalExportsPage() {
       const response = await fetch(`${apiUrl}/education-exports/download/${dataset}${suffix}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (!response.ok) throw new Error("No se pudo generar la descarga");
+      if (!response.ok) throw new Error("No se pudo generar la descarga.");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
@@ -76,7 +76,7 @@ export default function EducationalExportsPage() {
       anchor.download = `${dataset}.${format === "xlsx" ? "xlsx" : "csv"}`;
       anchor.click();
       window.URL.revokeObjectURL(url);
-      setMessage("Descarga generada");
+      setMessage("Descarga generada.");
       await loadOverview();
     } catch (error) {
       setMessage(error.message);
@@ -84,7 +84,7 @@ export default function EducationalExportsPage() {
   }
 
   async function previewImport() {
-    if (!importFile) return setMessage("Selecciona un archivo");
+    if (!importFile) return setMessage("Selecciona un archivo.");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45000);
     try {
@@ -104,11 +104,7 @@ export default function EducationalExportsPage() {
       setEditableErrors((data.sampleErrors || []).map((item) => ({ ...item, normalized: { ...(item.normalized || {}) } })));
       setImportResult(null);
     } catch (error) {
-      setMessage(
-        error.name === "AbortError"
-          ? "La validacion demoro demasiado. Proba con un archivo mas chico o separado por modulo."
-          : error.message
-      );
+      setMessage(error.name === "AbortError" ? "La validacion demoro demasiado." : error.message);
       setImportPreview(null);
     } finally {
       clearTimeout(timeout);
@@ -132,7 +128,7 @@ export default function EducationalExportsPage() {
       setImportResult(data);
       setImportPreview(null);
       setImportFile(null);
-      setMessage("Importacion confirmada");
+      setMessage("Importacion confirmada.");
       await Promise.all([loadOverview(), loadDataset()]);
     } catch (error) {
       setMessage(error.message);
@@ -157,111 +153,67 @@ export default function EducationalExportsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="pf-card p-6">
-        <h3 className="text-2xl font-bold text-slate-950">Bases y descargas</h3>
-        <p className="mt-2 text-slate-600">
-          Flujo simple: subir, validar y confirmar. Si el Excel viene desordenado, el sistema intenta reordenarlo.
-        </p>
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <h3 className="text-2xl font-bold text-white">Cargas y descargas</h3>
+        <p className="mt-2 text-[#9fb6c4]">Usa este flujo: subir, validar y confirmar.</p>
       </section>
 
-      <section className="pf-card p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-slate-950">Subida de datos (unificada)</h4>
-        {!canImport ? (
-          <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-            Tu rol no tiene permiso para importar. Entrá con superadmin, director o RRHH con permisos de carga.
-          </div>
-        ) : null}
-        {message ? (
-          <div className="rounded-xl border border-rose-300 bg-rose-50 px-4 py-3 text-sm text-rose-800">
-            {message}
-          </div>
-        ) : null}
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
+        <h4 className="text-lg font-semibold text-white">Subida de datos</h4>
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Subir archivo</span>
+          <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Validar filas</span>
+          <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Confirmar</span>
+        </div>
+
+        {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
+        {message ? <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{message}</div> : null}
+
         <div className="grid gap-3 md:grid-cols-3">
-          <select className="pf-input" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
+          <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
-            <option value="metrics">Metricas</option>
-            <option value="cycles">Ciclos</option>
-            <option value="roles">Roles</option>
+            <option value="metrics">Indicadores</option>
+            <option value="cycles">Periodos</option>
+            <option value="roles">Perfiles</option>
           </select>
-          <input
-            className="pf-input text-sm"
-            type="file"
-            accept=".csv,.xlsx,.xls"
-            onChange={(e) => setImportFile(e.target.files?.[0] || null)}
-          />
+          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-sm text-white" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
           <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile}>
-            {isImporting ? "Procesando..." : "Subir y validar datos"}
+            {isImporting ? "Procesando..." : "Subir y validar"}
           </button>
         </div>
 
         {importPreview ? (
           <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8] space-y-2">
-            <p>Dataset detectado: {importPreview.datasetDetected}</p>
+            <p>Tipo detectado: {importPreview.datasetDetected}</p>
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Validas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
-            {importPreview.truncated ? (
-              <p className="text-xs text-amber-300">
-                Se previsualizaron solo {importPreview.previewLimit} filas para acelerar validacion.
-              </p>
-            ) : null}
-            {importPreview.datasetDetected === "narrative" && importPreview.extractedSummary ? (
-              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen extraido automaticamente</p>
-                <p className="mt-1 text-sm text-[#D4E1E8]">Nombre: {importPreview.extractedSummary.nombre || "-"}</p>
-                <p className="text-sm text-[#D4E1E8]">Cargo: {importPreview.extractedSummary.cargo || "-"}</p>
-                <p className="text-sm text-[#D4E1E8]">Area: {importPreview.extractedSummary.area || "-"}</p>
-                <p className="text-sm text-[#D4E1E8]">Competencias detectadas: {importPreview.extractedSummary.competenciasDetectadas || 0}</p>
-                <p className="text-sm text-[#D4E1E8]">Promedio final: {importPreview.extractedSummary.promedioFinal || 0}</p>
-              </div>
-            ) : null}
-            {importPreview.datasetDetected === "multi" && importPreview.extractedSummary ? (
-              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen multi-modulo</p>
-                <p className="mt-1 text-sm text-[#D4E1E8]">Empleados: {importPreview.extractedSummary.empleados || 0}</p>
-                <p className="text-sm text-[#D4E1E8]">Roles: {importPreview.extractedSummary.roles || 0}</p>
-                <p className="text-sm text-[#D4E1E8]">Competencias: {importPreview.extractedSummary.competencias || 0}</p>
-                <p className="text-sm text-[#D4E1E8]">Metricas: {importPreview.extractedSummary.metricas || 0}</p>
-                <p className="text-sm text-[#D4E1E8]">Ciclos: {importPreview.extractedSummary.ciclos || 0}</p>
-                <p className="text-sm text-[#D4E1E8]">Evaluaciones: {importPreview.extractedSummary.evaluaciones || 0}</p>
-              </div>
-            ) : null}
+
             {editableErrors.length ? (
               <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">
-                  Corregi filas con error antes de confirmar
-                </p>
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Corregir errores antes de confirmar</p>
                 {editableErrors.map((errorRow, index) => (
                   <div key={`${errorRow.row}-${index}`} className="rounded-lg border border-white/10 bg-[#142028] p-2">
                     <p className="mb-2 text-xs text-rose-300">Fila {errorRow.row}: {errorRow.message}</p>
                     <div className="grid gap-2 md:grid-cols-3">
                       {getEditableFields().map((field) => (
-                        <input
-                          key={`${index}-${field}`}
-                          className="pf-input text-sm"
-                          placeholder={field}
-                          value={String(errorRow.normalized?.[field] ?? "")}
-                          onChange={(e) => updateErrorField(index, field, e.target.value)}
-                        />
+                        <input key={`${index}-${field}`} className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-white" placeholder={field} value={String(errorRow.normalized?.[field] ?? "")} onChange={(e) => updateErrorField(index, field, e.target.value)} />
                       ))}
                     </div>
                   </div>
                 ))}
               </div>
             ) : null}
-            <button
-              className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-              onClick={confirmImport}
-              disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0)}
-            >
+
+            <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60" onClick={confirmImport} disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0)}>
               {isImporting ? "Importando..." : "Confirmar importacion"}
             </button>
           </div>
         ) : null}
 
         {importResult ? (
-          <div className="rounded-2xl border border-emerald-300 bg-emerald-50 p-4 text-sm text-slate-800">
+          <div className="rounded-2xl border border-emerald-300/30 bg-emerald-500/10 p-4 text-sm text-[#d3f8e2]">
             <p>Total: {importResult.total}</p>
             <p>Creados: {importResult.created}</p>
             <p>Actualizados: {importResult.updated}</p>
@@ -272,53 +224,52 @@ export default function EducationalExportsPage() {
 
       {overview ? (
         <section className="grid gap-4 md:grid-cols-4">
-          <article className="pf-card p-5"><p className="text-sm text-slate-500">Empleados</p><p className="text-3xl font-bold text-slate-950">{overview.summary.employees}</p></article>
-          <article className="pf-card p-5"><p className="text-sm text-slate-500">Evaluaciones</p><p className="text-3xl font-bold text-slate-950">{overview.summary.evaluations}</p></article>
-          <article className="pf-card p-5"><p className="text-sm text-slate-500">Metricas</p><p className="text-3xl font-bold text-slate-950">{overview.summary.metrics}</p></article>
-          <article className="pf-card p-5"><p className="text-sm text-slate-500">Planes</p><p className="text-3xl font-bold text-slate-950">{overview.summary.developmentPlans}</p></article>
+          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Empleados</p><p className="text-3xl font-bold text-white">{overview.summary.employees}</p></article>
+          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Evaluaciones</p><p className="text-3xl font-bold text-white">{overview.summary.evaluations}</p></article>
+          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Indicadores</p><p className="text-3xl font-bold text-white">{overview.summary.metrics}</p></article>
+          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Planes</p><p className="text-3xl font-bold text-white">{overview.summary.developmentPlans}</p></article>
         </section>
       ) : null}
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="grid gap-3 xl:grid-cols-5">
-          <select className="rounded-2xl border border-slate-300 px-4 py-3" value={dataset} onChange={(e) => setDataset(e.target.value)}>
+          <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={dataset} onChange={(e) => setDataset(e.target.value)}>
             {Object.entries(datasetLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
           </select>
-          <select className="rounded-2xl border border-slate-300 px-4 py-3" value={filters.schoolId} onChange={(e) => setFilters({ ...filters, schoolId: e.target.value })}>
+          <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.schoolId} onChange={(e) => setFilters({ ...filters, schoolId: e.target.value })}>
             <option value="">Todos los colegios</option>
             {(overview?.schools || []).map((school) => <option key={school._id} value={school._id}>{school.nombre}</option>)}
           </select>
-          <input className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Area" value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })} />
-          <input className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Cargo" value={filters.cargo} onChange={(e) => setFilters({ ...filters, cargo: e.target.value })} />
+          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Area" value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })} />
+          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargo" value={filters.cargo} onChange={(e) => setFilters({ ...filters, cargo: e.target.value })} />
           <div className="flex gap-2">
-            <button className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("csv")}>CSV</button>
-            <button className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold text-slate-700 disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("xlsx")}>Excel</button>
+            <button className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("csv")}>CSV</button>
+            <button className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-[#c5d5de] disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("xlsx")}>Excel</button>
           </div>
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-500">
+              <tr className="border-b border-white/10 text-[#9fb6c4]">
                 <th className="px-4 py-3">Detalle</th>
                 <th className="px-4 py-3">Fecha</th>
               </tr>
             </thead>
             <tbody>
               {(overview?.recentDownloads || []).map((download) => (
-                <tr key={download._id} className="border-b border-slate-100">
-                  <td className="px-4 py-3">{datasetLabels[download.exportType] || download.exportType} - {download.role}</td>
-                  <td className="px-4 py-3">{formatDate(download.downloadedAt)}</td>
+                <tr key={download._id} className="border-b border-white/5">
+                  <td className="px-4 py-3 text-white">{datasetLabels[download.exportType] || download.exportType} - {download.role}</td>
+                  <td className="px-4 py-3 text-[#c5d5de]">{formatDate(download.downloadedAt)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </section>
-
-      {!message ? null : <p className="hidden">{message}</p>}
     </div>
   );
 }
+
