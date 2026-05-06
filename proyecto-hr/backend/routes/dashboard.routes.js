@@ -18,7 +18,7 @@ import DownloadLog from "../models/DownloadLog.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { Parser } from "json2csv";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
-import { buildPredictiveInsights, buildLayer3Forecast } from "../utils/predictiveInsights.js";
+import { buildPredictiveInsights, buildLayer3Forecast, simulateTrainingImpact } from "../utils/predictiveInsights.js";
 
 const router = express.Router();
 
@@ -478,6 +478,113 @@ router.get("/predictions", auth, async (req, res) => {
     layer1Patterns: predictiveBase.layer1Patterns,
     layer2Predictions: predictiveBase.layer2Predictions,
     layer3Forecast,
+  });
+});
+
+router.get("/simulate-impact", auth, async (req, res) => {
+  const { companyId, company } = await resolveCompanyScope(req);
+  const competency = String(req.query.competency || "");
+  const investment = String(req.query.investment || "media");
+
+  const [evaluationByEmployee, planSignalsRaw, competenciesList, metricsList, evaluationScores] = await Promise.all([
+    Evaluation.aggregate([
+      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
+    ]),
+    DevelopmentPlan.aggregate([
+      { $match: { companyId: company._id } },
+      {
+        $group: {
+          _id: "$employeeId",
+          open: { $sum: { $cond: [{ $ne: ["$estado", "CERRADO"] }, 1, 0] } },
+          overdue: {
+            $sum: {
+              $cond: [
+                { $and: [{ $ne: ["$estado", "CERRADO"] }, { $lt: ["$fechaSeguimiento", new Date()] }] },
+                1,
+                0,
+              ],
+            },
+          },
+        },
+      },
+    ]),
+    Competency.find({ companyId }).select("_id nombre").lean(),
+    Metric.find({ companyId }).select("_id competencyId").lean(),
+    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId" }).lean(),
+  ]);
+
+  const employeeIds = evaluationByEmployee.map((item) => item._id);
+  const employeesList = await Employee.find({ companyId, _id: { $in: employeeIds } })
+    .select("_id nombre apellido area cargo")
+    .lean();
+  const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));
+  const riskRanking = evaluationByEmployee
+    .map((item) => {
+      const employee = employeeById.get(String(item._id));
+      return employee
+        ? {
+            employeeId: String(item._id),
+            nombre: `${employee.apellido}, ${employee.nombre}`,
+            area: employee.area || "Sin area",
+            cargo: employee.cargo || "Sin cargo",
+            avgScore: Number(item.avgScore.toFixed(2)),
+            evaluations: item.count,
+          }
+        : null;
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 30);
+
+  const metricById = new Map(metricsList.map((item) => [String(item._id), item]));
+  const competencyById = new Map(competenciesList.map((item) => [String(item._id), item.nombre]));
+  const competencyScores = new Map();
+  for (const score of evaluationScores) {
+    const evaluation = score.evaluationId;
+    if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    const metric = metricById.get(String(score.metricId));
+    if (!metric) continue;
+    const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
+    const current = competencyScores.get(compName) || { total: 0, count: 0 };
+    current.total += score.nivel || 0;
+    current.count += 1;
+    competencyScores.set(compName, current);
+  }
+  const trainingRecommendations = [...competencyScores.entries()]
+    .map(([competencia, value]) => ({
+      competencia,
+      avgScore: value.count ? Number((value.total / value.count).toFixed(2)) : 0,
+      priority: value.count && value.total / value.count < 3 ? "ALTA" : value.total / value.count < 3.8 ? "MEDIA" : "BAJA",
+    }))
+    .sort((a, b) => a.avgScore - b.avgScore)
+    .slice(0, 8);
+
+  const predictiveBase = buildPredictiveInsights({
+    weakestAreas: [],
+    strongestAreas: [],
+    riskRanking,
+    trainingRecommendations,
+    pendingEvaluations: 0,
+    evaluationsTotal: evaluationByEmployee.reduce((sum, item) => sum + Number(item.count || 0), 0),
+    employeePlanSignals: planSignalsRaw.map((item) => ({
+      employeeId: String(item._id),
+      open: item.open || 0,
+      overdue: item.overdue || 0,
+    })),
+  });
+
+  const simulation = simulateTrainingImpact({
+    predictions: predictiveBase.layer2Predictions,
+    trainingRecommendations,
+    competency,
+    investment,
+  });
+
+  res.json({
+    companyId: String(company._id),
+    generatedAt: new Date().toISOString(),
+    simulation,
   });
 });
 

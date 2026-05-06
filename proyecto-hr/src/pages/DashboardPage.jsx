@@ -16,6 +16,8 @@ export default function DashboardPage() {
   const { token, activeCompany } = useAuth();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
+  const [simulation, setSimulation] = useState(null);
+  const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
 
   useEffect(() => {
     apiFetch("/dashboard/summary", { token })
@@ -42,6 +44,18 @@ export default function DashboardPage() {
       anchor.download = "reporte-decisiones.csv";
       anchor.click();
       window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function runSimulation() {
+    try {
+      const params = new URLSearchParams();
+      if (simForm.competency) params.set("competency", simForm.competency);
+      params.set("investment", simForm.investment);
+      const data = await apiFetch(`/dashboard/simulate-impact?${params.toString()}`, { token });
+      setSimulation(data.simulation);
     } catch (error) {
       setMessage(error.message);
     }
@@ -187,6 +201,67 @@ export default function DashboardPage() {
             ))}
           </div>
         </article>
+      </section>
+
+      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-xl font-semibold text-slate-950">Simulador de inversion en capacitacion</h3>
+        <p className="mt-1 text-slate-500">
+          Proyecta impacto en riesgo y desempeno antes de decidir presupuesto.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <select
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+            value={simForm.competency}
+            onChange={(e) => setSimForm((prev) => ({ ...prev, competency: e.target.value }))}
+          >
+            <option value="">Competencia prioritaria automatica</option>
+            {(summary.decisionInsights?.trainingRecommendations || []).map((item) => (
+              <option key={item.competencia} value={item.competencia}>
+                {item.competencia}
+              </option>
+            ))}
+          </select>
+          <select
+            className="rounded-2xl border border-slate-300 px-4 py-3"
+            value={simForm.investment}
+            onChange={(e) => setSimForm((prev) => ({ ...prev, investment: e.target.value }))}
+          >
+            <option value="baja">Inversion baja</option>
+            <option value="media">Inversion media</option>
+            <option value="alta">Inversion alta</option>
+          </select>
+          <button
+            type="button"
+            onClick={runSimulation}
+            className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
+          >
+            Simular impacto
+          </button>
+        </div>
+        {simulation ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-xs text-slate-500">Riesgo promedio</p>
+              <p className="text-lg font-bold text-slate-900">
+                {simulation.baseline?.avgRisk} → {simulation.projection?.avgRisk}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-xs text-slate-500">Alto riesgo</p>
+              <p className="text-lg font-bold text-slate-900">
+                {simulation.baseline?.highRiskEmployees} → {simulation.projection?.highRiskEmployees}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-xs text-slate-500">Reduccion proyectada</p>
+              <p className="text-lg font-bold text-emerald-600">{simulation.projection?.riskReductionPct}%</p>
+            </div>
+            <div className="rounded-xl border border-slate-200 p-3">
+              <p className="text-xs text-slate-500">Mejora score</p>
+              <p className="text-lg font-bold text-emerald-600">+{simulation.projection?.avgScoreUplift}</p>
+            </div>
+          </div>
+        ) : null}
       </section>
 
     </div>
