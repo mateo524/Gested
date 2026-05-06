@@ -15,6 +15,7 @@ import EvaluationScore from "../models/EvaluationScore.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Announcement from "../models/Announcement.js";
 import CompanySetting from "../models/CompanySetting.js";
+import ImportJob from "../models/ImportJob.js";
 import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
@@ -607,6 +608,74 @@ function getImportPreview(token) {
   return data;
 }
 
+async function createImportJob({
+  req,
+  companyId,
+  schoolId,
+  previewToken,
+  datasetRequested,
+  datasetDetected,
+  parserType,
+  totalRows,
+  validRows,
+  invalidRows,
+  previewSummary,
+  issues,
+  aiRawSummary,
+  sourceFileName,
+  sourceMimeType,
+  sourceStorageProvider = "local",
+  sourceStorageKey = "",
+  sourcePublicUrl = "",
+}) {
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+  const initialIssues = Array.isArray(issues)
+    ? issues.slice(0, 200).map((issue) => ({
+        rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
+        message: String(issue.message || "Error de validacion"),
+        source: issue.source || "rule",
+        normalized: issue.normalized || null,
+      }))
+    : [];
+
+  return ImportJob.create({
+    companyId,
+    schoolId,
+    createdByUserId: req.user.userId,
+    sourceFileName,
+    sourceMimeType,
+    sourceStorageProvider,
+    sourceStorageKey,
+    sourcePublicUrl,
+    previewToken,
+    stage: "validated",
+    datasetRequested,
+    datasetDetected,
+    parserType,
+    inferenceUsed: parserType !== "rules",
+    totalRows,
+    validRows,
+    invalidRows,
+    errorCount: initialIssues.length,
+    previewSummary: previewSummary || null,
+    issues: initialIssues,
+    aiRawSummary: aiRawSummary || null,
+    auditTrail: [
+      {
+        action: "preview_created",
+        actorUserId: req.user.userId,
+        details: {
+          datasetRequested,
+          datasetDetected,
+          validRows,
+          invalidRows,
+        },
+      },
+    ],
+    expiresAt,
+  });
+}
+
 async function parseWithAiWebhook(file, dataset) {
   if (!IMPORT_AI_ENABLED || !IMPORT_AI_WEBHOOK_URL) return null;
 
@@ -825,6 +894,8 @@ router.post(
     }
 
     const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
+    const { companyId } = await resolveCompanyScope(req);
+    const schoolId = req.body.schoolId || req.user.schoolId || null;
 
     const aiParsed = await parseWithAiWebhook(req.file, requestedDataset);
     if (aiParsed?.detectedModules && typeof aiParsed.detectedModules === "object") {
@@ -842,7 +913,7 @@ router.post(
 
       const previewToken = saveImportPreview({
         dataset: "multi",
-        schoolId: req.body.schoolId || req.user.schoolId || null,
+        schoolId,
         validRows: [],
         invalidRows: [],
         aiParsed,
@@ -852,9 +923,34 @@ router.post(
           bufferBase64: req.file.buffer.toString("base64"),
         },
       });
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken,
+        datasetRequested: requestedDataset,
+        datasetDetected: "multi",
+        parserType: "ai",
+        totalRows: rows.length,
+        validRows: totalDetected,
+        invalidRows: Number(aiParsed.errors?.length || 0),
+        previewSummary: {
+          empleados: Number(summary.employees || detectedModules.employees?.length || 0),
+          roles: Number(summary.roles || detectedModules.roles?.length || 0),
+          competencias: Number(summary.competencies || detectedModules.competencies?.length || 0),
+          metricas: Number(summary.metrics || detectedModules.metrics?.length || 0),
+          ciclos: Number(summary.cycles || detectedModules.cycles?.length || 0),
+          evaluaciones: Number(summary.evaluations || detectedModules.evaluations?.length || 0),
+        },
+        issues: Array.isArray(aiParsed.errors) ? aiParsed.errors : [],
+        aiRawSummary: aiParsed.summary || null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+      });
 
       return res.json({
         ok: true,
+        importJobId: importJob._id,
         previewToken,
         datasetDetected: "multi",
         totalRows: rows.length,
@@ -895,7 +991,7 @@ router.post(
       const nameParts = parseNameParts(narrativeData.fullName);
       const previewToken = saveImportPreview({
         dataset: detectedDataset,
-        schoolId: req.body.schoolId || req.user.schoolId || null,
+        schoolId,
         validRows: [],
         invalidRows: [],
         narrativeData,
@@ -904,6 +1000,26 @@ router.post(
           mimetype: req.file.mimetype,
           bufferBase64: req.file.buffer.toString("base64"),
         },
+      });
+      const narrativeIssues = narrativeData.competencias.length
+        ? []
+        : [{ row: 0, message: "No se detectaron competencias puntuables en el formulario.", source: "rule" }];
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken,
+        datasetRequested: requestedDataset,
+        datasetDetected: "narrative",
+        parserType: "hybrid",
+        totalRows: rows.length,
+        validRows: narrativeData.competencias.length ? 1 : 0,
+        invalidRows: narrativeData.competencias.length ? 0 : 1,
+        previewSummary: extractedSummary,
+        issues: narrativeIssues,
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
       });
 
       const extractedSummary = {
@@ -917,6 +1033,7 @@ router.post(
 
       return res.json({
         ok: true,
+        importJobId: importJob._id,
         previewToken,
         datasetDetected: "narrative",
         totalRows: rows.length,
@@ -935,7 +1052,7 @@ router.post(
     const { validRows, invalidRows } = normalizeRowsForDataset(rows, detectedDataset);
     const previewToken = saveImportPreview({
       dataset: detectedDataset,
-      schoolId: req.body.schoolId || req.user.schoolId || null,
+      schoolId,
       validRows,
       invalidRows,
       fileMeta: {
@@ -944,9 +1061,27 @@ router.post(
         bufferBase64: req.file.buffer.toString("base64"),
       },
     });
+    const importJob = await createImportJob({
+      req,
+      companyId,
+      schoolId,
+      previewToken,
+      datasetRequested: requestedDataset,
+      datasetDetected: detectedDataset,
+      parserType: "rules",
+      totalRows: validRows.length + invalidRows.length,
+      validRows: validRows.length,
+      invalidRows: invalidRows.length,
+      previewSummary: null,
+      issues: invalidRows,
+      aiRawSummary: null,
+      sourceFileName: req.file.originalname,
+      sourceMimeType: req.file.mimetype,
+    });
 
     res.json({
       ok: true,
+      importJobId: importJob._id,
       previewToken,
       datasetDetected: detectedDataset,
       totalRows: validRows.length + invalidRows.length,
@@ -974,6 +1109,11 @@ router.post(
     const dataset = preview.dataset;
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = preview.schoolId || req.user.schoolId || null;
+    const importJob = await ImportJob.findOne({
+      companyId,
+      previewToken,
+      stage: { $in: ["validated", "uploaded"] },
+    }).sort({ createdAt: -1 });
     const rows = [...preview.validRows];
     const correctedRows = Array.isArray(req.body.correctedRows) ? req.body.correctedRows : [];
     const correctedErrors = [];
@@ -988,6 +1128,14 @@ router.post(
       created: 0,
       updated: 0,
       errors: [...preview.invalidRows, ...correctedErrors],
+    };
+    const appendAudit = (action, details = {}) => {
+      if (!importJob) return;
+      importJob.auditTrail.push({
+        action,
+        actorUserId: req.user.userId,
+        details,
+      });
     };
 
     if (dataset === "narrative") {
@@ -1371,8 +1519,86 @@ router.post(
       activa: true,
     });
 
+    if (importJob) {
+      importJob.stage = "confirmed";
+      importJob.datasetDetected = dataset;
+      importJob.validRows = rows.length;
+      importJob.invalidRows = preview.invalidRows.length + correctedErrors.length;
+      importJob.createdCount = result.created;
+      importJob.updatedCount = result.updated;
+      importJob.errorCount = result.errors.length;
+      importJob.confirmedAt = new Date();
+      importJob.expiresAt = null;
+      importJob.issues = result.errors.slice(0, 300).map((issue) => ({
+        rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
+        message: String(issue.message || "Error de importacion"),
+        source: issue.source || "rule",
+        normalized: issue.normalized || null,
+      }));
+      appendAudit("import_confirmed", {
+        dataset,
+        created: result.created,
+        updated: result.updated,
+        errors: result.errors.length,
+      });
+      await importJob.save();
+    }
+
     importPreviewStore.delete(previewToken);
-    res.json({ mensaje: "Importacion confirmada", ...result });
+    res.json({ mensaje: "Importacion confirmada", importJobId: importJob?._id || null, ...result });
+  }
+);
+
+router.get(
+  "/import-jobs",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+    PERMISSIONS.VIEW_AUDIT,
+    PERMISSIONS.READ_ONLY_ACCESS
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    if (!req.user.isSuperAdmin && req.user.schoolId) {
+      filter.schoolId = req.user.schoolId;
+    }
+    if (req.query.stage) filter.stage = req.query.stage;
+    if (req.query.datasetDetected) filter.datasetDetected = req.query.datasetDetected;
+
+    const items = await ImportJob.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .select(
+        "sourceFileName stage datasetRequested datasetDetected parserType totalRows validRows invalidRows createdCount updatedCount errorCount createdAt confirmedAt previewSummary"
+      )
+      .lean();
+
+    res.json({ items });
+  }
+);
+
+router.get(
+  "/import-jobs/:id",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+    PERMISSIONS.VIEW_AUDIT,
+    PERMISSIONS.READ_ONLY_ACCESS
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    filter._id = req.params.id;
+
+    const job = await ImportJob.findOne(filter).lean();
+    if (!job) {
+      return res.status(404).json({ mensaje: "Importacion no encontrada" });
+    }
+
+    res.json({ job });
   }
 );
 
