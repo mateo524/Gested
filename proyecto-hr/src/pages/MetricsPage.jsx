@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
-const defaultLevels = [
+const baseLevels = [
   { nivel: 1, etiqueta: "Insatisfactorio", descripcion: "" },
   { nivel: 2, etiqueta: "Minimo", descripcion: "" },
   { nivel: 3, etiqueta: "En desarrollo", descripcion: "" },
   { nivel: 4, etiqueta: "Competente", descripcion: "" },
   { nivel: 5, etiqueta: "Excepcional", descripcion: "" },
 ];
+
+const buildDefaultLevels = () => baseLevels.map((level) => ({ ...level }));
 
 const emptyForm = {
   schoolId: "",
@@ -17,7 +19,7 @@ const emptyForm = {
   descripcion: "",
   cargoAplica: "",
   ponderacion: 1,
-  levels: defaultLevels,
+  levels: buildDefaultLevels(),
 };
 
 export default function MetricsPage() {
@@ -28,6 +30,7 @@ export default function MetricsPage() {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingId, setEditingId] = useState("");
 
   const visibleCompetencies = useMemo(
     () => competencies.filter((item) => !form.schoolId || item.schoolId === form.schoolId || item.schoolId === null),
@@ -60,28 +63,23 @@ export default function MetricsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-
     try {
       setIsSubmitting(true);
       setMessage("");
-      await apiFetch("/metrics", {
-        method: "POST",
+      const payload = {
+        ...form,
+        cargoAplica: form.cargoAplica.split(",").map((item) => item.trim()).filter(Boolean),
+      };
+      const isEditing = Boolean(editingId);
+      await apiFetch(isEditing ? `/metrics/${editingId}` : "/metrics", {
+        method: isEditing ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          cargoAplica: form.cargoAplica
-            .split(",")
-            .map((item) => item.trim())
-            .filter(Boolean),
-        }),
+        body: JSON.stringify(payload),
       });
-      setForm((current) => ({
-        ...emptyForm,
-        schoolId: current.schoolId,
-        levels: defaultLevels,
-      }));
-      setMessage("Métrica creada");
+      setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
+      setEditingId("");
+      setMessage(isEditing ? "Metrica actualizada" : "Metrica creada");
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -90,130 +88,110 @@ export default function MetricsPage() {
     }
   }
 
+  function handleEdit(metric) {
+    setEditingId(metric._id);
+    setForm({
+      schoolId: metric.schoolId || "",
+      competencyId: metric.competencyId || "",
+      nombre: metric.nombre || "",
+      descripcion: metric.descripcion || "",
+      cargoAplica: (metric.cargoAplica || []).join(", "),
+      ponderacion: Number(metric.ponderacion || 1),
+      levels: (metric.levels?.length
+        ? metric.levels
+        : buildDefaultLevels()
+      ).map((level) => ({
+        nivel: Number(level.nivel),
+        etiqueta: level.etiqueta || "",
+        descripcion: level.descripcion || "",
+      })),
+    });
+    setMessage("Editando metrica seleccionada");
+  }
+
+  function cancelEdit() {
+    setEditingId("");
+    setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
+    setMessage("Edicion cancelada");
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Motor de evaluación</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Métricas y niveles</h3>
-        <p className="mt-3 max-w-3xl text-slate-500">
-          Crea métricas observables asociadas a competencias, con ponderación y niveles claros de
-          evaluación del 1 al 5.
-        </p>
+        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Motor de evaluacion</p>
+        <h3 className="mt-3 text-3xl font-bold text-slate-950">Metricas y niveles</h3>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Nueva métrica</h4>
+          <h4 className="text-xl font-semibold">{editingId ? "Editar metrica" : "Nueva metrica"}</h4>
           <p className="mt-2 text-sm text-slate-500">
             Crea el indicador puntual que se puntua de 1 a 5 dentro de una competencia.
           </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              value={form.schoolId}
-              onChange={(event) => setForm({ ...form, schoolId: event.target.value })}
-            >
+            <select className="w-full rounded-2xl border border-slate-300 px-4 py-3" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
               <option value="">Selecciona colegio</option>
               {schools.map((school) => (
-                <option key={school._id} value={school._id}>
-                  {school.nombre}
-                </option>
+                <option key={school._id} value={school._id}>{school.nombre}</option>
               ))}
             </select>
-            <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              value={form.competencyId}
-              onChange={(event) => setForm({ ...form, competencyId: event.target.value })}
-            >
+            <select className="w-full rounded-2xl border border-slate-300 px-4 py-3" value={form.competencyId} onChange={(e) => setForm({ ...form, competencyId: e.target.value })}>
               <option value="">Selecciona competencia</option>
               {visibleCompetencies.map((competency) => (
-                <option key={competency._id} value={competency._id}>
-                  {competency.nombre}
-                </option>
+                <option key={competency._id} value={competency._id}>{competency.nombre}</option>
               ))}
             </select>
-            <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Nombre de la métrica"
-              value={form.nombre}
-              onChange={(event) => setForm({ ...form, nombre: event.target.value })}
-            />
-            <textarea
-              className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3"
-              placeholder="Descripción"
-              value={form.descripcion}
-              onChange={(event) => setForm({ ...form, descripcion: event.target.value })}
-            />
+            <input className="w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Nombre de la metrica" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            <textarea className="min-h-24 w-full rounded-2xl border border-slate-300 px-4 py-3" placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
-              <input
-                className="rounded-2xl border border-slate-300 px-4 py-3"
-                placeholder="Cargos a los que aplica"
-                value={form.cargoAplica}
-                onChange={(event) => setForm({ ...form, cargoAplica: event.target.value })}
-              />
-              <input
-                type="number"
-                min="1"
-                className="rounded-2xl border border-slate-300 px-4 py-3"
-                placeholder="Ponderación"
-                value={form.ponderacion}
-                onChange={(event) => setForm({ ...form, ponderacion: Number(event.target.value) })}
-              />
+              <input className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Cargos (separados por coma)" value={form.cargoAplica} onChange={(e) => setForm({ ...form, cargoAplica: e.target.value })} />
+              <input type="number" min="1" className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Ponderacion" value={form.ponderacion} onChange={(e) => setForm({ ...form, ponderacion: Number(e.target.value) })} />
             </div>
 
             <div className="space-y-3 rounded-[1.5rem] border border-slate-200 bg-slate-50 p-4">
               <p className="text-sm font-semibold text-slate-700">Niveles 1 a 5</p>
               {form.levels.map((level, index) => (
                 <div key={level.nivel} className="grid gap-3 md:grid-cols-[0.18fr_0.4fr_1fr]">
-                  <input
-                    className="rounded-2xl border border-slate-300 px-4 py-3"
-                    value={level.nivel}
-                    disabled
-                  />
-                  <input
-                    className="rounded-2xl border border-slate-300 px-4 py-3"
-                    value={level.etiqueta}
-                    onChange={(event) => updateLevel(index, "etiqueta", event.target.value)}
-                  />
-                  <input
-                    className="rounded-2xl border border-slate-300 px-4 py-3"
-                    placeholder="Descripción del nivel"
-                    value={level.descripcion}
-                    onChange={(event) => updateLevel(index, "descripcion", event.target.value)}
-                  />
+                  <input className="rounded-2xl border border-slate-300 px-4 py-3" value={level.nivel} disabled />
+                  <input className="rounded-2xl border border-slate-300 px-4 py-3" value={level.etiqueta} onChange={(e) => updateLevel(index, "etiqueta", e.target.value)} />
+                  <input className="rounded-2xl border border-slate-300 px-4 py-3" placeholder="Descripcion del nivel" value={level.descripcion} onChange={(e) => updateLevel(index, "descripcion", e.target.value)} />
                 </div>
               ))}
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white">
-              {isSubmitting ? "Guardando..." : "Crear métrica"}
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear metrica"}
             </button>
+            {editingId ? (
+              <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-slate-300 py-3 font-semibold text-slate-700">
+                Cancelar edicion
+              </button>
+            ) : null}
           </form>
         </section>
 
         <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h4 className="text-xl font-semibold">Métricas cargadas</h4>
+          <h4 className="text-xl font-semibold">Metricas cargadas</h4>
           <div className="mt-6 space-y-4">
-            {metrics.length ? (
-              metrics.map((metric) => (
-                <article key={metric._id} className="rounded-[1.75rem] border border-slate-200 p-5">
-                  <p className="text-lg font-semibold text-slate-950">{metric.nombre}</p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    Ponderación: {metric.ponderacion} · Cargos: {(metric.cargoAplica || []).join(", ") || "General"}
-                  </p>
-                  <div className="mt-4 grid gap-2">
-                    {(metric.levels || []).map((level) => (
-                      <div key={`${metric._id}-${level.nivel}`} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-                        <span className="font-semibold text-slate-900">{level.nivel} - {level.etiqueta}</span>
-                        <p className="mt-1 text-slate-500">{level.descripcion || "Sin descripción"}</p>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-              ))
-            ) : (
-              <p className="text-slate-500">Todavía no hay métricas cargadas.</p>
-            )}
+            {metrics.length ? metrics.map((metric) => (
+              <article key={metric._id} className="rounded-[1.75rem] border border-slate-200 p-5">
+                <p className="text-lg font-semibold text-slate-950">{metric.nombre}</p>
+                <p className="mt-1 text-sm text-slate-500">
+                  Ponderacion: {metric.ponderacion} · Cargos: {(metric.cargoAplica || []).join(", ") || "General"}
+                </p>
+                <div className="mt-4 grid gap-2">
+                  {(metric.levels || []).map((level) => (
+                    <div key={`${metric._id}-${level.nivel}`} className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
+                      <span className="font-semibold text-slate-900">{level.nivel} - {level.etiqueta}</span>
+                      <p className="mt-1 text-slate-500">{level.descripcion || "Sin descripcion"}</p>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => handleEdit(metric)} className="mt-3 rounded-xl border border-emerald-300 px-4 py-2 text-sm text-emerald-700">
+                  Editar
+                </button>
+              </article>
+            )) : <p className="text-slate-500">Todavia no hay metricas cargadas.</p>}
           </div>
         </section>
       </div>
