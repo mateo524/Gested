@@ -2,6 +2,7 @@ import express from "express";
 import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
+import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
@@ -132,14 +133,26 @@ router.get(
 
 router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
   const { companyId, schoolId } = resolveTenantIds(req);
+  let effectiveSchoolId = schoolId;
 
-  if (!companyId || !schoolId || !req.body.nombre || !req.body.apellido || !req.body.cargo) {
-    return res.status(400).json({ mensaje: "Debes indicar colegio, nombre, apellido y cargo" });
+  if (companyId && !effectiveSchoolId) {
+    const defaultSchool = await School.findOne({ companyId, activa: true }).select("_id").lean();
+    if (defaultSchool?._id) {
+      effectiveSchoolId = defaultSchool._id;
+    }
+  }
+
+  if (!companyId || !effectiveSchoolId || !req.body.nombre || !req.body.apellido || !req.body.cargo) {
+    return res.status(400).json({
+      mensaje: !effectiveSchoolId
+        ? "No hay colegio activo asignado. Crea o activa un colegio primero."
+        : "Debes indicar colegio, nombre, apellido y cargo",
+    });
   }
 
   const employee = await Employee.create({
     companyId,
-    schoolId,
+    schoolId: effectiveSchoolId,
     managerId: req.body.managerId || null,
     legajo: req.body.legajo?.trim() || "",
     nombre: req.body.nombre.trim(),
@@ -154,7 +167,7 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
 
   await logAudit({
     companyId,
-    schoolId,
+    schoolId: effectiveSchoolId,
     userId: req.user.userId,
     accion: "create",
     modulo: "employees",
