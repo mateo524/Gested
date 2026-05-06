@@ -11,7 +11,7 @@ import {
   YAxis,
 } from "recharts";
 import { useAuth } from "../context/AuthContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiUrl } from "../lib/api";
 
 function SummaryCard({ label, value, hint }) {
   return (
@@ -83,6 +83,24 @@ export default function DashboardPage() {
       setDemoMessage("Usuarios demo creados/actualizados para la empresa activa.");
     } catch (error) {
       setDemoMessage(error.message);
+    }
+  }
+
+  async function downloadDecisionReport() {
+    try {
+      const response = await fetch(`${apiUrl}/dashboard/decision-report`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) throw new Error("No se pudo descargar el reporte");
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "reporte-decisiones.csv";
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(error.message);
     }
   }
 
@@ -343,6 +361,64 @@ export default function DashboardPage() {
               <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
                 Aun no hay historial de evaluaciones para mostrar.
               </div>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-xl font-semibold">Empleados en riesgo</h3>
+              <p className="mt-1 text-slate-500">Ranking de menor puntaje para accionar con prioridad.</p>
+            </div>
+            <button
+              type="button"
+              onClick={downloadDecisionReport}
+              className="rounded-xl border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700"
+            >
+              Descargar reporte
+            </button>
+          </div>
+          <div className="mt-4 space-y-2">
+            {summary.decisionInsights?.riskRanking?.length ? (
+              summary.decisionInsights.riskRanking.map((item, idx) => (
+                <div key={`${item.employeeId}-${idx}`} className="flex items-center justify-between rounded-xl border border-rose-200 bg-rose-50 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{item.nombre}</p>
+                    <p className="text-xs text-slate-500">{item.area} - {item.cargo}</p>
+                  </div>
+                  <span className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700">
+                    {item.avgScore}
+                  </span>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500">Sin datos suficientes.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+          <h3 className="text-xl font-semibold">Capacitacion recomendada</h3>
+          <p className="mt-1 text-slate-500">Prioridad por competencia segun resultados reales.</p>
+          <div className="mt-4 space-y-2">
+            {summary.decisionInsights?.trainingRecommendations?.length ? (
+              summary.decisionInsights.trainingRecommendations.map((item, idx) => (
+                <div key={`${item.competencia}-${idx}`} className="flex items-center justify-between rounded-xl border border-slate-200 px-3 py-2">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{item.competencia}</p>
+                    <p className="text-xs text-slate-500">{item.action}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-xs text-slate-500">{item.priority}</p>
+                    <p className="text-sm font-semibold text-slate-900">{item.avgScore}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-slate-500">Sin datos suficientes.</p>
             )}
           </div>
         </div>
