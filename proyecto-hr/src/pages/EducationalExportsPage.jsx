@@ -86,6 +86,8 @@ export default function EducationalExportsPage() {
 
   async function previewImport() {
     if (!importFile) return setMessage("Selecciona un archivo");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 45000);
     try {
       setIsImporting(true);
       setMessage("");
@@ -93,15 +95,25 @@ export default function EducationalExportsPage() {
       body.append("file", importFile);
       body.append("dataset", importDataset);
       if (filters.schoolId) body.append("schoolId", filters.schoolId);
-      const data = await apiFetch("/education-exports/import/preview", { method: "POST", token, body });
+      const data = await apiFetch("/education-exports/import/preview", {
+        method: "POST",
+        token,
+        body,
+        signal: controller.signal,
+      });
       setImportPreview(data);
       setEditableErrors((data.sampleErrors || []).map((item) => ({ ...item, normalized: { ...(item.normalized || {}) } })));
       setImportResult(null);
       setImportStep(3);
     } catch (error) {
-      setMessage(error.message);
+      setMessage(
+        error.name === "AbortError"
+          ? "La validacion demoro demasiado. Proba con un archivo mas chico o separado por modulo."
+          : error.message
+      );
       setImportPreview(null);
     } finally {
+      clearTimeout(timeout);
       setIsImporting(false);
     }
   }
@@ -194,6 +206,11 @@ export default function EducationalExportsPage() {
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Validas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
+            {importPreview.truncated ? (
+              <p className="text-xs text-amber-300">
+                Se previsualizaron solo {importPreview.previewLimit} filas para acelerar validacion.
+              </p>
+            ) : null}
             {editableErrors.length ? (
               <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">

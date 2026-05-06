@@ -21,8 +21,12 @@ import { resolveCompanyScope } from "../utils/companyScope.js";
 import { uploadBufferToStorage } from "../utils/storageProvider.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 12 * 1024 * 1024 },
+});
 const importPreviewStore = new Map();
+const MAX_PREVIEW_ROWS = 3000;
 
 const allowedDatasets = {
   employees: {
@@ -248,8 +252,13 @@ async function parseUploadedRows(file) {
     .map((value) => sanitizeHeader(value));
 
   const rows = [];
+  let truncated = false;
   worksheet.eachRow((row, rowNumber) => {
     if (rowNumber === 1) return;
+    if (rows.length >= MAX_PREVIEW_ROWS) {
+      truncated = true;
+      return;
+    }
     const values = row.values.slice(1);
     const item = {};
     headers.forEach((header, index) => {
@@ -258,7 +267,7 @@ async function parseUploadedRows(file) {
     rows.push({ ...item, _rowNumber: rowNumber });
   });
 
-  return rows;
+  return { rows, truncated };
 }
 
 function classifyDataset(rows, requestedDataset) {
@@ -637,7 +646,7 @@ router.post(
       return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
     }
 
-    const rows = await parseUploadedRows(req.file);
+    const { rows, truncated } = await parseUploadedRows(req.file);
     if (!rows.length) {
       return res.status(400).json({ mensaje: "El archivo no tiene datos" });
     }
@@ -674,6 +683,8 @@ router.post(
       totalRows: validRows.length + invalidRows.length,
       validCount: validRows.length,
       invalidCount: invalidRows.length,
+      truncated,
+      previewLimit: MAX_PREVIEW_ROWS,
       sampleValidRows: validRows.slice(0, 20),
       sampleErrors: invalidRows.slice(0, 20),
     });
