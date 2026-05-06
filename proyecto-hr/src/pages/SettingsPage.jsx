@@ -22,6 +22,7 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [quality, setQuality] = useState(null);
   const [latestQualityRun, setLatestQualityRun] = useState(null);
+  const [securityStatus, setSecurityStatus] = useState(null);
   const [message, setMessage] = useState("");
 
   useEffect(() => {
@@ -47,6 +48,12 @@ export default function SettingsPage() {
   useEffect(() => {
     apiFetch("/automation/quality-latest", { token })
       .then((data) => setLatestQualityRun(data?.latest || null))
+      .catch(() => {});
+  }, [token]);
+
+  useEffect(() => {
+    apiFetch("/auth/security-status", { token })
+      .then(setSecurityStatus)
       .catch(() => {});
   }, [token]);
 
@@ -184,6 +191,35 @@ export default function SettingsPage() {
           </button>
           {message ? <p className="mt-3 text-sm text-[#A9BFCA]">{message}</p> : null}
         </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-2">
+        <article className="pf-card p-6">
+          <h3 className="text-xl font-semibold text-slate-950">Guia rapida de modulos</h3>
+          <div className="mt-4 space-y-2 text-sm text-slate-700">
+            <p><strong>Panel:</strong> decisiones recomendadas y foco de capacitacion.</p>
+            <p><strong>Gestion:</strong> personas, perfiles, indicadores y periodos.</p>
+            <p><strong>Evaluacion:</strong> ciclos, evaluaciones y planes de mejora.</p>
+            <p><strong>Datos:</strong> subir, validar y descargar informacion.</p>
+            <p><strong>Comunicados:</strong> solo superadmin envia novedades; receptores las ven en campanita.</p>
+          </div>
+        </article>
+
+        <article className="pf-card p-6">
+          <h3 className="text-xl font-semibold text-slate-950">Seguridad de accesos</h3>
+          {securityStatus ? (
+            <div className="mt-4 space-y-3 text-sm text-slate-700">
+              <p>
+                Politica activa: {securityStatus.policy.maxAttempts} intentos en{" "}
+                {securityStatus.policy.windowMinutes} min, bloqueo por {securityStatus.policy.lockMinutes} min.
+              </p>
+              <p>Logins fallidos recientes: {securityStatus.recentFailedLogins?.length || 0}</p>
+              <p>Logins exitosos recientes: {securityStatus.recentSuccessLogins?.length || 0}</p>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-slate-500">Cargando estado de seguridad...</p>
+          )}
+        </article>
       </section>
     </div>
   );

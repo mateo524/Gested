@@ -4,6 +4,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
+import AuditLog from "../models/AuditLog.js";
 import { auth } from "../middleware/auth.js";
 import { logAudit } from "../utils/audit.js";
 
@@ -223,6 +224,41 @@ router.post("/change-password", auth, async (req, res) => {
     mensaje: "Password actualizada",
     token,
     user: safeUser,
+  });
+});
+
+router.get("/security-status", auth, async (req, res) => {
+  if (!req.user.isSuperAdmin && !req.user.permisos?.includes("manage_settings")) {
+    return res.status(403).json({ mensaje: "No tienes permisos para ver estado de seguridad" });
+  }
+
+  const [failedLogins, successLogins] = await Promise.all([
+    AuditLog.find({
+      companyId: req.user.companyId,
+      modulo: "seguridad",
+      accion: "login_failed",
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean(),
+    AuditLog.find({
+      companyId: req.user.companyId,
+      modulo: "seguridad",
+      accion: "login_success",
+    })
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean(),
+  ]);
+
+  res.json({
+    policy: {
+      windowMinutes: LOGIN_WINDOW_MS / 60000,
+      maxAttempts: LOGIN_MAX_ATTEMPTS,
+      lockMinutes: LOCK_TIME_MS / 60000,
+    },
+    recentFailedLogins: failedLogins,
+    recentSuccessLogins: successLogins,
   });
 });
 
