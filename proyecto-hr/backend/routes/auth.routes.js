@@ -1,12 +1,14 @@
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "node:crypto";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
 import AuditLog from "../models/AuditLog.js";
 import { auth } from "../middleware/auth.js";
 import { logAudit } from "../utils/audit.js";
+import { sendPasswordResetEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 
@@ -84,6 +86,15 @@ function buildToken(user, safeUser) {
     process.env.JWT_SECRET,
     { expiresIn: "8h" }
   );
+}
+
+function hashResetToken(rawToken) {
+  return crypto.createHash("sha256").update(rawToken).digest("hex");
+}
+
+function buildResetUrl(rawToken) {
+  const baseUrl = process.env.FRONTEND_URL || "http://localhost:5173";
+  return `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 }
 
 router.post("/login", async (req, res) => {
@@ -225,6 +236,91 @@ router.post("/change-password", auth, async (req, res) => {
     token,
     user: safeUser,
   });
+});
+
+router.post("/forgot-password", async (req, res) => {
+  const email = req.body.email?.trim().toLowerCase();
+
+  if (!email) {
+    return res.status(400).json({ mensaje: "Debes indicar un email" });
+  }
+
+  const user = await User.findOne({ email, activo: true });
+
+  if (!user) {
+    return res.json({
+      mensaje:
+        "Si el correo existe, enviaremos un enlace para restablecer la contrasena.",
+    });
+  }
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  user.passwordResetTokenHash = hashResetToken(rawToken);
+  user.passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+  await user.save();
+
+  const resetUrl = buildResetUrl(rawToken);
+  const mailResult = await sendPasswordResetEmail({ to: user.email, resetUrl });
+
+  await logAudit({
+    companyId: user.companyId,
+    userId: user._id,
+    accion: "password_reset_requested",
+    modulo: "seguridad",
+    detalle: "Se solicito recuperacion de contrasena",
+    metadata: { email: user.email, sentByEmail: !!mailResult?.sent },
+  });
+
+  res.json({
+    mensaje:
+      "Si el correo existe, enviaremos un enlace para restablecer la contrasena.",
+    delivery:
+      mailResult?.sent
+        ? "email_sent"
+        : "email_not_configured",
+    debugResetToken:
+      mailResult?.sent || process.env.NODE_ENV === "production" ? undefined : rawToken,
+  });
+});
+
+router.post("/reset-password", async (req, res) => {
+  const rawToken = req.body.token?.trim();
+  const newPassword = req.body.newPassword?.trim();
+
+  if (!rawToken || !newPassword) {
+    return res.status(400).json({ mensaje: "Debes indicar token y nueva contrasena" });
+  }
+
+  if (newPassword.length < 8) {
+    return res.status(400).json({ mensaje: "La nueva contrasena debe tener al menos 8 caracteres" });
+  }
+
+  const tokenHash = hashResetToken(rawToken);
+  const user = await User.findOne({
+    passwordResetTokenHash: tokenHash,
+    passwordResetExpiresAt: { $gt: new Date() },
+    activo: true,
+  });
+
+  if (!user) {
+    return res.status(400).json({ mensaje: "El token no es valido o expiro" });
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.mustChangePassword = false;
+  user.passwordResetTokenHash = null;
+  user.passwordResetExpiresAt = null;
+  await user.save();
+
+  await logAudit({
+    companyId: user.companyId,
+    userId: user._id,
+    accion: "password_reset_completed",
+    modulo: "seguridad",
+    detalle: "Contrasena restablecida por token",
+  });
+
+  res.json({ mensaje: "Contrasena actualizada correctamente" });
 });
 
 router.get("/security-status", auth, async (req, res) => {

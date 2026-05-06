@@ -12,6 +12,9 @@ const defaultBranding = {
 export default function LoginPage() {
   const { login } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [resetForm, setResetForm] = useState({ token: "", newPassword: "" });
+  const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
   const [portalBranding] = useState(defaultBranding);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -42,6 +45,57 @@ export default function LoginPage() {
       await login(data);
     } catch (error) {
       setMessage(error.message || "No se pudo iniciar sesion.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (event) => {
+    try {
+      event?.preventDefault();
+      setMessage("");
+      setIsSubmitting(true);
+      const data = await apiFetch("/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+
+      if (data?.debugResetToken) {
+        setResetForm((prev) => ({ ...prev, token: data.debugResetToken }));
+      }
+
+      setMessage(
+        data?.debugResetToken
+          ? `Email no configurado. Token de prueba: ${data.debugResetToken}`
+          : "Si el correo existe, te enviamos un enlace para restablecer la contrasena."
+      );
+      setMode("reset");
+    } catch (error) {
+      setMessage(error.message || "No se pudo enviar la solicitud.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (event) => {
+    try {
+      event?.preventDefault();
+      setMessage("");
+      setIsSubmitting(true);
+      await apiFetch("/auth/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: resetForm.token,
+          newPassword: resetForm.newPassword,
+        }),
+      });
+      setMessage("Contrasena actualizada. Ahora inicia sesion con la nueva clave.");
+      setMode("login");
+      setResetForm({ token: "", newPassword: "" });
+    } catch (error) {
+      setMessage(error.message || "No se pudo restablecer la contrasena.");
     } finally {
       setIsSubmitting(false);
     }
@@ -108,32 +162,123 @@ export default function LoginPage() {
               Gestion del desempeno, control de accesos y operacion interna desde un solo lugar.
             </p>
 
-            <form className="mt-10 space-y-4" onSubmit={handleSubmit}>
-              <input
-                type="email"
-                placeholder="Correo electronico"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
-              />
+            {mode === "login" && (
+              <form className="mt-10 space-y-4" onSubmit={handleSubmit}>
+                <input
+                  type="email"
+                  placeholder="Correo electronico"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
+                />
 
-              <input
-                type="password"
-                placeholder="Contrasena"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
-              />
+                <input
+                  type="password"
+                  placeholder="Contrasena"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
+                />
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
-                style={{ backgroundColor: portalBranding.primaryColor }}
-              >
-                {isSubmitting ? "Ingresando..." : "Iniciar sesion"}
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
+                  style={{ backgroundColor: portalBranding.primaryColor }}
+                >
+                  {isSubmitting ? "Ingresando..." : "Iniciar sesion"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessage("");
+                    setMode("forgot");
+                  }}
+                  className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#AFC3CE] transition hover:border-white/40"
+                >
+                  Olvide mi contrasena
+                </button>
+
+                <button
+                  type="button"
+                  disabled
+                  className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#7A9AAA]"
+                  title="Proximo paso recomendado: login con Google Workspace"
+                >
+                  Iniciar con Google (proximamente)
+                </button>
+              </form>
+            )}
+
+            {mode === "forgot" && (
+              <form className="mt-10 space-y-4" onSubmit={handleForgotPassword}>
+                <input
+                  type="email"
+                  placeholder="Correo registrado"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
+                  style={{ backgroundColor: portalBranding.primaryColor }}
+                >
+                  {isSubmitting ? "Enviando..." : "Enviar enlace o token"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessage("");
+                    setMode("login");
+                  }}
+                  className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#AFC3CE] transition hover:border-white/40"
+                >
+                  Volver al login
+                </button>
+              </form>
+            )}
+
+            {mode === "reset" && (
+              <form className="mt-10 space-y-4" onSubmit={handleResetPassword}>
+                <input
+                  type="text"
+                  placeholder="Token de recuperacion"
+                  value={resetForm.token}
+                  onChange={(e) => setResetForm((prev) => ({ ...prev, token: e.target.value }))}
+                  className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
+                />
+                <input
+                  type="password"
+                  placeholder="Nueva contrasena (min 8)"
+                  value={resetForm.newPassword}
+                  onChange={(e) =>
+                    setResetForm((prev) => ({ ...prev, newPassword: e.target.value }))
+                  }
+                  className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
+                  style={{ backgroundColor: portalBranding.primaryColor }}
+                >
+                  {isSubmitting ? "Actualizando..." : "Restablecer contrasena"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMessage("");
+                    setMode("login");
+                  }}
+                  className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#AFC3CE] transition hover:border-white/40"
+                >
+                  Volver al login
+                </button>
+              </form>
+            )}
 
             {message ? (
               <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">

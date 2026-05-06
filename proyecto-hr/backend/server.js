@@ -2,6 +2,8 @@ import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import compression from "compression";
+import helmet from "helmet";
 
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
@@ -27,9 +29,13 @@ import automationRoutes from "./routes/automation.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
 app.use(cors());
-app.use(express.json());
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(compression());
+app.use(express.json({ limit: "5mb" }));
+app.use(express.urlencoded({ extended: true, limit: "5mb" }));
 
 app.use("/auth", authRoutes);
 app.use("/dashboard", dashboardRoutes);
