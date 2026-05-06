@@ -126,10 +126,13 @@ export default function MetricsPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar indicador" : "Nuevo indicador"}</h4>
-          <p className="mt-2 text-sm text-[#9fb6c4]">
-            Define que se puntua (1 a 5), a que competencia pertenece y para que cargo aplica.
-          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Colegio y competencia</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Definir indicador</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Escala 1-5</span>
+          </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Base de referencia</p>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
               <option value="">Selecciona colegio</option>
               {schools.map((school) => (
@@ -142,6 +145,7 @@ export default function MetricsPage() {
                 <option key={competency._id} value={competency._id}>{competency.nombre}</option>
               ))}
             </select>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definicion del indicador</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
             <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
@@ -201,4 +205,3 @@ export default function MetricsPage() {
     </div>
   );
 }
-
