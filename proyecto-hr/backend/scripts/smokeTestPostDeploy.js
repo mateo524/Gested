@@ -1,4 +1,12 @@
 import "dotenv/config";
+import fs from "node:fs";
+import path from "node:path";
+import dotenv from "dotenv";
+
+const localEnvPath = path.resolve(process.cwd(), ".env");
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath, override: false });
+}
 
 const API_URL = process.env.SMOKE_API_URL || process.env.FRONTEND_API_URL || "http://localhost:3000";
 const EMAIL = process.env.SMOKE_EMAIL || "superadmin@performia.local";
@@ -57,6 +65,10 @@ async function run() {
 }
 
 run().catch((error) => {
-  console.error("Smoke test fallo:", error.message);
+  const extra =
+    API_URL.includes("localhost")
+      ? " Asegurate de tener backend levantado (npm start) o usa SMOKE_API_URL=https://gested-1-backend.onrender.com"
+      : "";
+  console.error("Smoke test fallo:", `${error.message}${extra}`);
   process.exit(1);
 });

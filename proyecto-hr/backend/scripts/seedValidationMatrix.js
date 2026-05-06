@@ -1,6 +1,9 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import fs from "node:fs";
+import path from "node:path";
+import dotenv from "dotenv";
 import Company from "../models/Company.js";
 import School from "../models/School.js";
 import Role from "../models/Role.js";
@@ -8,6 +11,11 @@ import User from "../models/User.js";
 import { ROLE_DEFINITIONS } from "../utils/permissions.js";
 
 const PASSWORD = process.env.SEED_MATRIX_PASSWORD || "Performia#2026!App";
+
+const localEnvPath = path.resolve(process.cwd(), ".env");
+if (fs.existsSync(localEnvPath)) {
+  dotenv.config({ path: localEnvPath, override: false });
+}
 
 function slugify(value) {
   return String(value || "")
@@ -108,6 +116,11 @@ async function ensureUser({
 }
 
 async function run() {
+  if (!process.env.MONGO_URI) {
+    throw new Error(
+      "MONGO_URI no esta definido. Crea backend/.env con MONGO_URI=... o exporta la variable antes de correr seed:validation-matrix."
+    );
+  }
   await mongoose.connect(process.env.MONGO_URI);
 
   const orgA = await ensureCompanyWithSchool("Colegio Norte", "Colegio Norte - Sede Central");
