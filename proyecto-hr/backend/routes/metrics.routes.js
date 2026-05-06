@@ -11,9 +11,10 @@ import { logAudit } from "../utils/audit.js";
 const router = express.Router();
 
 function resolveTenantIds(req) {
+  const companyFromHeader = req.get("X-Company-Id");
   return {
     companyId: req.scope.isSuperAdmin
-      ? req.body.companyId || req.query.companyId
+      ? req.body.companyId || req.query.companyId || companyFromHeader
       : req.scope.companyId || req.body.companyId || req.query.companyId,
     schoolId: req.scope.isSuperAdmin
       ? req.body.schoolId || req.query.schoolId || null
