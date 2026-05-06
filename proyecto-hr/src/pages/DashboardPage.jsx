@@ -17,6 +17,7 @@ export default function DashboardPage() {
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
   const [simulation, setSimulation] = useState(null);
+  const [scenarios, setScenarios] = useState([]);
   const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
 
   useEffect(() => {
@@ -56,6 +57,24 @@ export default function DashboardPage() {
       params.set("investment", simForm.investment);
       const data = await apiFetch(`/dashboard/simulate-impact?${params.toString()}`, { token });
       setSimulation(data.simulation);
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
+  async function runScenarioComparison() {
+    try {
+      const investments = ["baja", "media", "alta"];
+      const results = await Promise.all(
+        investments.map(async (level) => {
+          const params = new URLSearchParams();
+          if (simForm.competency) params.set("competency", simForm.competency);
+          params.set("investment", level);
+          const data = await apiFetch(`/dashboard/simulate-impact?${params.toString()}`, { token });
+          return { level, simulation: data.simulation };
+        })
+      );
+      setScenarios(results);
     } catch (error) {
       setMessage(error.message);
     }
@@ -237,6 +256,13 @@ export default function DashboardPage() {
           >
             Simular impacto
           </button>
+          <button
+            type="button"
+            onClick={runScenarioComparison}
+            className="rounded-2xl border border-slate-300 px-4 py-3 text-sm font-semibold text-slate-700"
+          >
+            Comparar escenarios
+          </button>
         </div>
         {simulation ? (
           <div className="mt-4 grid gap-3 md:grid-cols-4">
@@ -259,6 +285,38 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-slate-200 p-3">
               <p className="text-xs text-slate-500">Mejora score</p>
               <p className="text-lg font-bold text-emerald-600">+{simulation.projection?.avgScoreUplift}</p>
+            </div>
+          </div>
+        ) : null}
+        {scenarios.length ? (
+          <div className="mt-6">
+            <p className="mb-3 text-sm font-semibold text-slate-800">Comparativa ejecutiva de inversion</p>
+            <div className="grid gap-3 md:grid-cols-3">
+              {scenarios.map((scenario) => (
+                <div key={scenario.level} className="rounded-xl border border-slate-200 p-4">
+                  <p className="text-xs uppercase tracking-[0.12em] text-slate-500">
+                    {scenario.level === "baja" ? "Inversion baja" : scenario.level === "media" ? "Inversion media" : "Inversion alta"}
+                  </p>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Riesgo promedio:{" "}
+                    <span className="font-semibold text-slate-900">
+                      {scenario.simulation?.baseline?.avgRisk} → {scenario.simulation?.projection?.avgRisk}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Reduccion:{" "}
+                    <span className="font-semibold text-emerald-600">
+                      {scenario.simulation?.projection?.riskReductionPct}%
+                    </span>
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    Mejora score:{" "}
+                    <span className="font-semibold text-emerald-600">
+                      +{scenario.simulation?.projection?.avgScoreUplift}
+                    </span>
+                  </p>
+                </div>
+              ))}
             </div>
           </div>
         ) : null}
