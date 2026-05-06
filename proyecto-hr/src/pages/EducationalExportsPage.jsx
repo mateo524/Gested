@@ -32,6 +32,7 @@ export default function EducationalExportsPage() {
   const [importFile, setImportFile] = useState(null);
   const [importStep, setImportStep] = useState(1);
   const [importPreview, setImportPreview] = useState(null);
+  const [editableErrors, setEditableErrors] = useState([]);
   const [importResult, setImportResult] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
 
@@ -94,6 +95,7 @@ export default function EducationalExportsPage() {
       if (filters.schoolId) body.append("schoolId", filters.schoolId);
       const data = await apiFetch("/education-exports/import/preview", { method: "POST", token, body });
       setImportPreview(data);
+      setEditableErrors((data.sampleErrors || []).map((item) => ({ ...item, normalized: { ...(item.normalized || {}) } })));
       setImportResult(null);
       setImportStep(3);
     } catch (error) {
@@ -112,7 +114,10 @@ export default function EducationalExportsPage() {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ previewToken: importPreview.previewToken }),
+        body: JSON.stringify({
+          previewToken: importPreview.previewToken,
+          correctedRows: editableErrors.map((item) => item.normalized || {}),
+        }),
       });
       setImportResult(data);
       setImportPreview(null);
@@ -124,6 +129,20 @@ export default function EducationalExportsPage() {
     } finally {
       setIsImporting(false);
     }
+  }
+
+  function updateErrorField(index, field, value) {
+    setEditableErrors((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, normalized: { ...(item.normalized || {}), [field]: value } } : item))
+    );
+  }
+
+  function getEditableFields() {
+    if (importPreview?.datasetDetected === "employees") return ["apellido", "nombre", "email", "cargo", "area"];
+    if (importPreview?.datasetDetected === "metrics") return ["competencia", "nombre", "ponderacion", "descripcion"];
+    if (importPreview?.datasetDetected === "cycles") return ["anio", "periodo", "etapa", "estado", "fechaInicio", "fechaFin"];
+    if (importPreview?.datasetDetected === "roles") return ["nombre"];
+    return [];
   }
 
   return (
@@ -175,7 +194,34 @@ export default function EducationalExportsPage() {
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Validas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
-            <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60" onClick={confirmImport} disabled={isImporting || importPreview.validCount === 0}>
+            {editableErrors.length ? (
+              <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">
+                  Corregi filas con error antes de confirmar
+                </p>
+                {editableErrors.map((errorRow, index) => (
+                  <div key={`${errorRow.row}-${index}`} className="rounded-lg border border-white/10 bg-[#142028] p-2">
+                    <p className="mb-2 text-xs text-rose-300">Fila {errorRow.row}: {errorRow.message}</p>
+                    <div className="grid gap-2 md:grid-cols-3">
+                      {getEditableFields().map((field) => (
+                        <input
+                          key={`${index}-${field}`}
+                          className="pf-input text-sm"
+                          placeholder={field}
+                          value={String(errorRow.normalized?.[field] ?? "")}
+                          onChange={(e) => updateErrorField(index, field, e.target.value)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <button
+              className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+              onClick={confirmImport}
+              disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0)}
+            >
               {isImporting ? "Importando..." : "Confirmar importacion"}
             </button>
           </div>
