@@ -28,6 +28,13 @@ export default function DashboardPage() {
 
   const training = summary?.decisionInsights?.trainingRecommendations || [];
   const risk = summary?.decisionInsights?.riskRanking || [];
+  const criticalCount = training.filter((item) => item.priority === "ALTA").length;
+
+  const priorityStatus = useMemo(() => {
+    if (criticalCount >= 3) return { label: "Prioridad alta", color: "rose", detail: "Intervencion inmediata recomendada." };
+    if (criticalCount >= 1) return { label: "Prioridad media", color: "amber", detail: "Planificar capacitacion en el corto plazo." };
+    return { label: "Prioridad estable", color: "emerald", detail: "Mantener seguimiento mensual." };
+  }, [criticalCount]);
 
   const primaryDecision = useMemo(() => {
     const area = summary?.decisionInsights?.weakestAreas?.[0];
@@ -126,7 +133,46 @@ export default function DashboardPage() {
         <KpiCard title="Promedio general" value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
         <KpiCard title="Evaluaciones pendientes" value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones en BORRADOR o ENVIADA" />
         <KpiCard title="Empleados en riesgo" value={risk.length || 0} hint="Colaboradores con score mas bajo" />
-        <KpiCard title="Competencias criticas" value={training.filter((item) => item.priority === "ALTA").length || 0} hint="Capacitacion urgente recomendada" />
+        <KpiCard title="Competencias criticas" value={criticalCount || 0} hint="Capacitacion urgente recomendada" />
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Accion inmediata sugerida</p>
+          <h3 className="mt-2 text-xl font-semibold text-white">
+            {training[0]?.competencia
+              ? `Iniciar plan en ${training[0].competencia}`
+              : "Sin recomendacion activa"}
+          </h3>
+          <p className="mt-2 text-sm text-[#c5d5de]">
+            {training[0]?.action || "Todavia no hay evidencia suficiente para recomendar una accion inmediata."}
+          </p>
+          {risk[0] ? (
+            <p className="mt-3 text-sm text-[#9fb6c4]">
+              Primer caso sugerido: <span className="font-semibold text-white">{risk[0].nombre}</span> ({risk[0].area} - {risk[0].cargo})
+            </p>
+          ) : null}
+        </article>
+
+        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Semaforo ejecutivo</p>
+          <div className="mt-3 flex items-center gap-3">
+            <span
+              className={`h-3 w-3 rounded-full ${
+                priorityStatus.color === "rose"
+                  ? "bg-rose-400"
+                  : priorityStatus.color === "amber"
+                    ? "bg-amber-400"
+                    : "bg-emerald-400"
+              }`}
+            />
+            <p className="text-lg font-semibold text-white">{priorityStatus.label}</p>
+          </div>
+          <p className="mt-2 text-sm text-[#c5d5de]">{priorityStatus.detail}</p>
+          <p className="mt-3 text-xs text-[#9fb6c4]">
+            Basado en {criticalCount} competencias criticas y {risk.length} colaboradores en riesgo.
+          </p>
+        </article>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
