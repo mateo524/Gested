@@ -27,10 +27,11 @@ async function getTeamEmployeeIds(scope) {
 
 async function buildEvaluationFilter(req) {
   const filter = buildScopedFilter(req, {});
+  let jefeTeamIds = null;
 
   if (req.scope.roleCode === "JEFE") {
-    const teamIds = await getTeamEmployeeIds(req.scope);
-    filter.employeeId = { $in: teamIds };
+    jefeTeamIds = await getTeamEmployeeIds(req.scope);
+    filter.employeeId = { $in: jefeTeamIds };
   }
 
   if (req.scope.roleCode === "EMPLEADO") {
@@ -38,6 +39,15 @@ async function buildEvaluationFilter(req) {
   }
 
   if (req.query.employeeId && req.scope.roleCode !== "EMPLEADO") {
+    if (req.scope.roleCode === "JEFE") {
+      const requested = String(req.query.employeeId);
+      const allowed = (jefeTeamIds || []).some((id) => String(id) === requested);
+      if (!allowed) {
+        const error = new Error("No puedes consultar evaluaciones de empleados fuera de tu equipo");
+        error.status = 403;
+        throw error;
+      }
+    }
     filter.employeeId = req.query.employeeId;
   }
 
@@ -104,7 +114,12 @@ router.get(
     PERMISSIONS.VIEW_REPORTS
   ),
   async (req, res) => {
-    const filter = await buildEvaluationFilter(req);
+    let filter;
+    try {
+      filter = await buildEvaluationFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
     const evaluations = await Evaluation.find(filter)
       .sort({ createdAt: -1 })
       .populate("employeeId", "nombre apellido cargo area")
@@ -126,7 +141,12 @@ router.get(
     PERMISSIONS.VIEW_REPORTS
   ),
   async (req, res) => {
-    const filter = await buildEvaluationFilter(req);
+    let filter;
+    try {
+      filter = await buildEvaluationFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
     filter._id = req.params.id;
 
     const evaluation = await Evaluation.findOne(filter)
@@ -218,7 +238,12 @@ router.put(
     PERMISSIONS.SELF_EVALUATE
   ),
   async (req, res) => {
-    const filter = await buildEvaluationFilter(req);
+    let filter;
+    try {
+      filter = await buildEvaluationFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
     filter._id = req.params.id;
 
     const evaluation = await Evaluation.findOne(filter);

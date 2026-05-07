@@ -33,14 +33,54 @@ export const SUPER_ADMIN_PERMISSIONS = [
   PERMISSIONS.MANAGE_GLOBAL_USERS,
 ];
 
-const DEFAULT_ADMIN = {
-  email: process.env.SEED_ADMIN_EMAIL || "admin@demo.com",
-  password: process.env.SEED_ADMIN_PASSWORD || "123456",
-  nombre: process.env.SEED_ADMIN_NAME || "Administrador General",
-  companyName: process.env.SEED_COMPANY_NAME || "Empresa Demo",
-  companySlug: process.env.SEED_COMPANY_SLUG || "empresa-demo",
-  schoolName: process.env.SEED_SCHOOL_NAME || "Colegio Demo",
+const DEMO_ADMIN = {
+  email: "admin@demo.com",
+  password: "123456",
+  nombre: "Administrador General",
+  companyName: "Empresa Demo",
+  companySlug: "empresa-demo",
+  schoolName: "Colegio Demo",
 };
+
+function resolveSeedAdminConfig() {
+  const isProduction = process.env.NODE_ENV === "production";
+  const email = String(process.env.SEED_ADMIN_EMAIL || "").trim().toLowerCase();
+  const password = String(process.env.SEED_ADMIN_PASSWORD || "").trim();
+  const nombre = String(process.env.SEED_ADMIN_NAME || "").trim();
+  const companyName = String(process.env.SEED_COMPANY_NAME || "").trim();
+  const companySlug = String(process.env.SEED_COMPANY_SLUG || "").trim();
+  const schoolName = String(process.env.SEED_SCHOOL_NAME || "").trim();
+
+  if (isProduction) {
+    if (!email || !password) return null;
+    return {
+      email,
+      password,
+      nombre: nombre || DEMO_ADMIN.nombre,
+      companyName: companyName || DEMO_ADMIN.companyName,
+      companySlug: companySlug || DEMO_ADMIN.companySlug,
+      schoolName: schoolName || DEMO_ADMIN.schoolName,
+    };
+  }
+
+  const allowDemoSeed = String(process.env.ALLOW_DEMO_SEED || "").toLowerCase() === "true";
+  if (email && password) {
+    return {
+      email,
+      password,
+      nombre: nombre || DEMO_ADMIN.nombre,
+      companyName: companyName || DEMO_ADMIN.companyName,
+      companySlug: companySlug || DEMO_ADMIN.companySlug,
+      schoolName: schoolName || DEMO_ADMIN.schoolName,
+    };
+  }
+
+  if (allowDemoSeed) {
+    return { ...DEMO_ADMIN };
+  }
+
+  return null;
+}
 
 async function ensureRole({ companyId, nombre, permisos }) {
   let role = await Role.findOne({ companyId, nombre });
@@ -70,7 +110,7 @@ async function ensureRole({ companyId, nombre, permisos }) {
   return role;
 }
 
-export async function ensureCompanyStructure({ companyName, companySlug, schoolName = DEFAULT_ADMIN.schoolName }) {
+export async function ensureCompanyStructure({ companyName, companySlug, schoolName = DEMO_ADMIN.schoolName }) {
   let company = await Company.findOne({ nombre: companyName });
 
   if (!company) {
@@ -113,10 +153,27 @@ export async function ensureCompanyStructure({ companyName, companySlug, schoolN
 }
 
 export async function ensureInitialAccess() {
+  const seedAdmin = resolveSeedAdminConfig();
   await ensurePermissionsSeed();
+
+  if (!seedAdmin) {
+    console.log("Bootstrap: seed admin omitido (configuracion no definida para este entorno)");
+    return {
+      company: null,
+      adminRole: null,
+      superAdminRole: null,
+      adminUser: null,
+      credentials: {
+        email: null,
+        password: null,
+      },
+    };
+  }
+
   const { company, school, adminRole } = await ensureCompanyStructure({
-    companyName: DEFAULT_ADMIN.companyName,
-    companySlug: DEFAULT_ADMIN.companySlug,
+    companyName: seedAdmin.companyName,
+    companySlug: seedAdmin.companySlug,
+    schoolName: seedAdmin.schoolName,
   });
   await ensureEducationalRoles({ companyId: company._id, schoolId: school._id });
 
@@ -126,15 +183,15 @@ export async function ensureInitialAccess() {
     permisos: SUPER_ADMIN_PERMISSIONS,
   });
 
-  let superAdmin = await User.findOne({ email: DEFAULT_ADMIN.email.toLowerCase() });
+  let superAdmin = await User.findOne({ email: seedAdmin.email });
   if (!superAdmin) {
     superAdmin = await User.create({
       companyId: company._id,
       schoolId: school._id,
       roleId: superAdminRole._id,
-      nombre: DEFAULT_ADMIN.nombre,
-      email: DEFAULT_ADMIN.email.toLowerCase(),
-      passwordHash: await bcrypt.hash(DEFAULT_ADMIN.password, 10),
+      nombre: seedAdmin.nombre,
+      email: seedAdmin.email,
+      passwordHash: await bcrypt.hash(seedAdmin.password, 10),
       activo: true,
       isSuperAdmin: true,
     });
@@ -168,8 +225,8 @@ export async function ensureInitialAccess() {
     superAdminRole,
     adminUser: superAdmin,
     credentials: {
-      email: DEFAULT_ADMIN.email,
-      password: DEFAULT_ADMIN.password,
+      email: seedAdmin.email,
+      password: seedAdmin.password,
     },
   };
 }

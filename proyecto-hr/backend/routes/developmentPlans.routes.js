@@ -25,10 +25,11 @@ async function getTeamEmployeeIds(scope) {
 
 async function buildPlansFilter(req) {
   const filter = buildScopedFilter(req, {});
+  let jefeTeamIds = null;
 
   if (req.scope.roleCode === "JEFE") {
-    const teamIds = await getTeamEmployeeIds(req.scope);
-    filter.employeeId = { $in: teamIds };
+    jefeTeamIds = await getTeamEmployeeIds(req.scope);
+    filter.employeeId = { $in: jefeTeamIds };
   }
 
   if (req.scope.roleCode === "EMPLEADO") {
@@ -36,6 +37,15 @@ async function buildPlansFilter(req) {
   }
 
   if (req.query.employeeId && req.scope.roleCode !== "EMPLEADO") {
+    if (req.scope.roleCode === "JEFE") {
+      const requested = String(req.query.employeeId);
+      const allowed = (jefeTeamIds || []).some((id) => String(id) === requested);
+      if (!allowed) {
+        const error = new Error("No puedes consultar planes de empleados fuera de tu equipo");
+        error.status = 403;
+        throw error;
+      }
+    }
     filter.employeeId = req.query.employeeId;
   }
 
@@ -76,7 +86,12 @@ router.get(
     PERMISSIONS.VIEW_SELF_PROFILE
   ),
   async (req, res) => {
-    const filter = await buildPlansFilter(req);
+    let filter;
+    try {
+      filter = await buildPlansFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
     const plans = await DevelopmentPlan.find(filter)
       .sort({ createdAt: -1 })
       .populate("employeeId", "nombre apellido cargo area")

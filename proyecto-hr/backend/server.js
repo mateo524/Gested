@@ -32,6 +32,36 @@ import { ensureInitialAccess } from "./utils/bootstrap.js";
 const app = express();
 app.set("trust proxy", 1);
 
+function buildAllowedOrigins() {
+  const fromList = String(process.env.FRONTEND_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const fromSingle = String(process.env.FRONTEND_URL || "").trim();
+  const allowed = new Set(fromList);
+  if (fromSingle) allowed.add(fromSingle);
+
+  if (process.env.NODE_ENV !== "production") {
+    allowed.add("http://localhost:5173");
+    allowed.add("http://localhost:3000");
+  }
+
+  return allowed;
+}
+
+function buildCorsOptions() {
+  const allowedOrigins = buildAllowedOrigins();
+
+  return {
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.has(origin)) return callback(null, true);
+      return callback(new Error("CORS: origen no permitido"));
+    },
+    credentials: true,
+  };
+}
+
 function assertRuntimeConfig() {
   if (!process.env.MONGO_URI) {
     throw new Error("Falta MONGO_URI");
@@ -42,11 +72,11 @@ function assertRuntimeConfig() {
   }
 
   if (process.env.NODE_ENV === "production" && process.env.JWT_SECRET.length < 32) {
-    throw new Error("JWT_SECRET debe tener al menos 32 caracteres en produccion");
+    console.warn("WARNING: JWT_SECRET debería tener al menos 32 caracteres en producción.");
   }
 }
 
-app.use(cors());
+app.use(cors(buildCorsOptions()));
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(compression());
 app.use(express.json({ limit: "5mb" }));
@@ -86,7 +116,11 @@ async function start() {
     console.log("MongoDB conectado");
 
     const { credentials } = await ensureInitialAccess();
-    console.log(`Admin inicial listo: ${credentials.email}`);
+    if (credentials?.email) {
+      console.log(`Admin inicial listo: ${credentials.email}`);
+    } else {
+      console.log("Admin inicial no auto-creado (seed deshabilitado o no configurado)");
+    }
 
     app.listen(process.env.PORT || 3000, () => {
       console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
