@@ -14,7 +14,7 @@ function KpiCard({ title, value, hint }) {
 }
 
 export default function DashboardPage() {
-  const { token, activeCompany } = useAuth();
+  const { token, activeCompany, user } = useAuth();
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
@@ -22,6 +22,12 @@ export default function DashboardPage() {
   const [scenarios, setScenarios] = useState([]);
   const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const roleCode = user?.roleCode || "";
+  const isSuperOrDirector = user?.isSuperAdmin || roleCode === "ADMIN_COLEGIO";
+  const isRRHH = roleCode === "RRHH";
+  const isJefe = roleCode === "JEFE";
+  const isEmpleado = roleCode === "EMPLEADO";
+  const isLector = roleCode === "LECTOR_AUDITOR";
 
   useEffect(() => {
     apiFetch("/dashboard/summary", { token })
@@ -151,6 +157,18 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
+        <p className="text-xs uppercase tracking-[0.2em] text-[#9FB6C1]">Vista por rol</p>
+        <h3 className="mt-1 text-xl font-semibold text-white">
+          {isSuperOrDirector && "Directorio: decisiones globales"}
+          {isRRHH && "RRHH: seguimiento operativo"}
+          {isJefe && "Jefatura: equipo a cargo"}
+          {isEmpleado && "Colaborador: evolución personal"}
+          {isLector && "Auditoría: lectura y control"}
+          {!isSuperOrDirector && !isRRHH && !isJefe && !isEmpleado && !isLector && "Panel ejecutivo"}
+        </h3>
+      </section>
+
       <section className="rounded-[2rem] border border-[#1e3a8a]/35 bg-[#0f2230] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -205,12 +223,13 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <KpiCard title="Promedio general" value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
-        <KpiCard title="Evaluaciones pendientes" value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones en BORRADOR o ENVIADA" />
-        <KpiCard title="Empleados en riesgo" value={risk.length || 0} hint="Colaboradores con score mas bajo" />
-        <KpiCard title="Competencias criticas" value={criticalCount || 0} hint="Capacitacion urgente recomendada" />
+        <KpiCard title={isEmpleado ? "Mi score actual" : "Promedio general"} value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
+        <KpiCard title={isJefe ? "Pendientes del equipo" : "Evaluaciones pendientes"} value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones en BORRADOR o ENVIADA" />
+        <KpiCard title={isEmpleado ? "Riesgo personal" : "Empleados en riesgo"} value={risk.length || 0} hint={isEmpleado ? "Tendencia de mejora sugerida" : "Colaboradores con score mas bajo"} />
+        <KpiCard title={isRRHH ? "Brechas de competencias" : "Competencias criticas"} value={criticalCount || 0} hint="Capacitacion urgente recomendada" />
       </section>
 
+      {(isSuperOrDirector || isRRHH) ? (
       <section className="grid gap-4 xl:grid-cols-2">
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Accion inmediata sugerida</p>
@@ -249,10 +268,11 @@ export default function DashboardPage() {
           </p>
         </article>
       </section>
+      ) : null}
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h3 className="text-xl font-semibold text-white">Capacitacion recomendada</h3>
+          <h3 className="text-xl font-semibold text-white">{isEmpleado ? "Recomendaciones para tu desarrollo" : "Capacitacion recomendada"}</h3>
           <p className="mt-1 text-[#9fb6c4]">Ordenada por menor puntaje promedio de competencia.</p>
           <div className="mt-4 space-y-3">
             {training.length ? (
@@ -273,8 +293,8 @@ export default function DashboardPage() {
         </div>
 
         <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h3 className="text-xl font-semibold text-white">Ranking de empleados en riesgo</h3>
-          <p className="mt-1 text-[#9fb6c4]">Top de colaboradores a intervenir primero.</p>
+          <h3 className="text-xl font-semibold text-white">{isJefe ? "Mi equipo en riesgo" : "Ranking de empleados en riesgo"}</h3>
+          <p className="mt-1 text-[#9fb6c4]">{isEmpleado ? "Comparativa de referencia del ciclo actual." : "Top de colaboradores a intervenir primero."}</p>
           <div className="mt-4 space-y-2">
             {risk.length ? (
               risk.map((item, idx) => (
