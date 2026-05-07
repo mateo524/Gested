@@ -114,6 +114,77 @@ export default function DashboardPage() {
   }, [summary]);
 
   const completedSteps = onboardingSteps.filter((s) => s.done).length;
+  const actionsToday = useMemo(() => {
+    const items = [];
+    const pendingEvaluations = Number(summary?.educational?.pendingEvaluations || 0);
+    const activeUsers = Number(summary?.educational?.activeUsers || 0);
+    const lowPerformance = Number(summary?.educational?.lowPerformanceCount || 0);
+    const importsLastHour = Number(opsStatus?.activity?.importsLastHour || 0);
+    const smtpConfigured = Boolean(opsStatus?.integrations?.smtpConfigured);
+    const roleCoverage = Number(roleCheck?.checks?.expectedCoveragePct || 0);
+
+    if (pendingEvaluations > 0) {
+      items.push({
+        priority: "ALTA",
+        title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
+        detail: "Impacta directamente en el dashboard y recomendaciones.",
+        actionLabel: "Ir a Evaluacion",
+        goTo: "evaluaciones",
+      });
+    }
+
+    if (lowPerformance > 0) {
+      items.push({
+        priority: "ALTA",
+        title: `Intervenir ${lowPerformance} casos con desempeno critico`,
+        detail: "Activa plan de desarrollo y seguimiento semanal.",
+        actionLabel: "Ir a Desarrollo",
+        goTo: "planes",
+      });
+    }
+
+    if (importsLastHour === 0) {
+      items.push({
+        priority: "MEDIA",
+        title: "No hubo cargas recientes de datos",
+        detail: "Sube y valida nuevos archivos para mantener el panel actualizado.",
+        actionLabel: "Ir a Cargas y descargas",
+        goTo: "bases-descargas",
+      });
+    }
+
+    if (!smtpConfigured) {
+      items.push({
+        priority: "MEDIA",
+        title: "Configurar SMTP para recuperacion de contrasena",
+        detail: "Evita bloqueos de acceso y reduce soporte manual.",
+        actionLabel: "Ir a Configuracion",
+        goTo: "settings",
+      });
+    }
+
+    if (roleCoverage < 100) {
+      items.push({
+        priority: "MEDIA",
+        title: `Revisar permisos del rol actual (${roleCoverage}% cobertura)`,
+        detail: "Asegura que cada perfil vea solo lo que corresponde.",
+        actionLabel: "Ir a Perfiles",
+        goTo: "roles",
+      });
+    }
+
+    if (activeUsers === 0) {
+      items.push({
+        priority: "ALTA",
+        title: "No hay usuarios activos",
+        detail: "Sin usuarios activos no se puede operar el circuito de evaluacion.",
+        actionLabel: "Ir a Accesos",
+        goTo: "usuarios",
+      });
+    }
+
+    return items.slice(0, 5);
+  }, [summary, opsStatus, roleCheck]);
 
   async function downloadDecisionReport() {
     try {
@@ -247,6 +318,39 @@ export default function DashboardPage() {
             <p className="mt-3 text-xs text-[#9fb6c4]">{roleCheck.recommendations[0]}</p>
           ) : null}
         </article>
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Acciones de hoy</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Que hacer primero para mejorar resultados</h3>
+          </div>
+        </div>
+        <div className="mt-4 space-y-3">
+          {actionsToday.length ? (
+            actionsToday.map((item, index) => (
+              <article key={`${item.title}-${index}`} className="rounded-xl border border-white/10 bg-[#0f1f28] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-white">{item.title}</p>
+                  <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.priority === "ALTA" ? "bg-rose-900/30 text-rose-300 border border-rose-400/30" : "bg-amber-900/30 text-amber-300 border border-amber-400/30"}`}>
+                    {item.priority}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-[#9fb6c4]">{item.detail}</p>
+                <button
+                  type="button"
+                  onClick={() => setView(item.goTo)}
+                  className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+                >
+                  {item.actionLabel}
+                </button>
+              </article>
+            ))
+          ) : (
+            <p className="text-sm text-[#9fb6c4]">No hay alertas urgentes. Mantener monitoreo semanal.</p>
+          )}
+        </div>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
