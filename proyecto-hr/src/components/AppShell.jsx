@@ -114,7 +114,7 @@ export default function AppShell({ view, setView, children }) {
             hasPermission("download_self_report"),
           group: "datos",
         },
-        { key: "novedades", label: "Comunicados", show: user?.isSuperAdmin, group: "datos" },
+        { key: "novedades", label: "Comunicados", show: true, group: "datos" },
         { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
     [hasPermission, user, isBasicUser]
@@ -124,7 +124,11 @@ export default function AppShell({ view, setView, children }) {
     { key: "panel", label: "Panel", defaultView: "dashboard" },
     { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
     { key: "gestion", label: "Gestion", defaultView: "empleados" },
-    { key: "datos", label: "Datos", defaultView: "bases-descargas" },
+    {
+      key: "datos",
+      label: user?.isSuperAdmin ? "Datos" : "Novedades",
+      defaultView: user?.isSuperAdmin ? "bases-descargas" : "novedades",
+    },
   ];
   const visiblePrimaryTabs = primaryTabs.filter((item) => item.show !== false);
 

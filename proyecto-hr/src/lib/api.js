@@ -1,15 +1,54 @@
 export const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
+const DEFAULT_TIMEOUT_MS = 12000;
+
+function withTimeout(promise, timeoutMs = DEFAULT_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  return {
+    signal: controller.signal,
+    promise: promise(controller).finally(() => clearTimeout(timer)),
+  };
+}
+
 export async function apiFetch(path, { token, headers, ...options } = {}) {
   const activeCompanyId = localStorage.getItem("active_company_id");
-  const response = await fetch(`${apiUrl}${path}`, {
+  const isGet = (options.method || "GET").toUpperCase() === "GET";
+
+  const requestInit = (signal) => ({
     ...options,
+    signal,
     headers: {
       ...(headers || {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
     },
   });
+
+  async function doRequest() {
+    const wrapped = withTimeout((controller) => fetch(`${apiUrl}${path}`, requestInit(controller.signal)));
+    return wrapped.promise;
+  }
+
+  let response;
+  try {
+    response = await doRequest();
+  } catch (error) {
+    if (isGet) {
+      try {
+        response = await doRequest();
+      } catch (retryError) {
+        throw new Error(
+          retryError?.name === "AbortError"
+            ? "El servidor demoro en responder"
+            : "No se pudo conectar con el servidor"
+        );
+      }
+    } else {
+      throw new Error(error?.name === "AbortError" ? "La solicitud tardo demasiado" : "No se pudo conectar con el servidor");
+    }
+  }
 
   const text = await response.text();
   let data = null;
