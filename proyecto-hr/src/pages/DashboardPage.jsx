@@ -18,6 +18,8 @@ export default function DashboardPage() {
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
+  const [opsStatus, setOpsStatus] = useState(null);
+  const [roleCheck, setRoleCheck] = useState(null);
   const [simulation, setSimulation] = useState(null);
   const [scenarios, setScenarios] = useState([]);
   const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
@@ -30,8 +32,16 @@ export default function DashboardPage() {
   const isLector = roleCode === "LECTOR_AUDITOR";
 
   useEffect(() => {
-    apiFetch("/dashboard/summary", { token })
-      .then(setSummary)
+    Promise.all([
+      apiFetch("/dashboard/summary", { token }),
+      apiFetch("/dashboard/ops-status", { token }),
+      apiFetch("/dashboard/role-check", { token }),
+    ])
+      .then(([summaryData, opsData, roleData]) => {
+        setSummary(summaryData);
+        setOpsStatus(opsData);
+        setRoleCheck(roleData);
+      })
       .catch((error) => setMessage(error.message));
   }, [token, activeCompany?._id]);
 
@@ -167,6 +177,39 @@ export default function DashboardPage() {
           {isLector && "Auditoría: lectura y control"}
           {!isSuperOrDirector && !isRRHH && !isJefe && !isEmpleado && !isLector && "Panel ejecutivo"}
         </h3>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
+          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Centro de estado operativo</p>
+          <div className="mt-3 grid gap-2 text-sm text-[#d4e1e8]">
+            <p>API: <span className={opsStatus?.runtime?.apiHealthy ? "text-emerald-300" : "text-rose-300"}>{opsStatus?.runtime?.apiHealthy ? "OK" : "Error"}</span></p>
+            <p>Mongo: <span className={opsStatus?.runtime?.mongoConnected ? "text-emerald-300" : "text-rose-300"}>{opsStatus?.runtime?.mongoConnected ? "Conectado" : "Desconectado"}</span></p>
+            <p>Cloudinary: <span className={opsStatus?.integrations?.cloudinaryConfigured ? "text-emerald-300" : "text-amber-300"}>{opsStatus?.integrations?.cloudinaryConfigured ? "Configurado" : "Pendiente"}</span></p>
+            <p>SMTP: <span className={opsStatus?.integrations?.smtpConfigured ? "text-emerald-300" : "text-amber-300"}>{opsStatus?.integrations?.smtpConfigured ? "Configurado" : "Pendiente"}</span></p>
+            <p>Importaciones última hora: <span className="text-white font-semibold">{opsStatus?.activity?.importsLastHour ?? 0}</span></p>
+            <p>Descargas última hora: <span className="text-white font-semibold">{opsStatus?.activity?.downloadsLastHour ?? 0}</span></p>
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
+          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Validación rápida de rol</p>
+          <p className="mt-2 text-sm text-[#c5d5de]">
+            Rol actual: <span className="font-semibold text-white">{roleCheck?.roleCode || "-"}</span>
+          </p>
+          <p className="mt-1 text-sm text-[#c5d5de]">
+            Cobertura de permisos esperados: <span className="font-semibold text-white">{roleCheck?.checks?.expectedCoveragePct ?? 0}%</span>
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs">
+            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessGestion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Gestión</span>
+            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessEvaluacion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Evaluación</span>
+            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessDatos ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Datos</span>
+            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.tenantScoped ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-amber-900/30 text-amber-300 border border-amber-400/30"}`}>{roleCheck?.checks?.tenantScoped ? "Aislado por tenant" : "Global"}</span>
+          </div>
+          {roleCheck?.recommendations?.length ? (
+            <p className="mt-3 text-xs text-[#9fb6c4]">{roleCheck.recommendations[0]}</p>
+          ) : null}
+        </article>
       </section>
 
       <section className="rounded-[2rem] border border-[#1e3a8a]/35 bg-[#0f2230] p-6">

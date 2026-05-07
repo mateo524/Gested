@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import { auth } from "../middleware/auth.js";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
@@ -21,6 +22,15 @@ import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import { buildPredictiveInsights, buildLayer3Forecast, simulateTrainingImpact } from "../utils/predictiveInsights.js";
 
 const router = express.Router();
+
+const roleExpectedPermissions = {
+  SUPER_ADMIN: ["manage_companies", "manage_users", "manage_roles", "view_global_reports"],
+  ADMIN_COLEGIO: ["manage_employees", "manage_metrics", "manage_evaluation_cycles", "view_reports"],
+  RRHH: ["manage_employees", "manage_evaluations", "view_reports"],
+  JEFE: ["evaluate_team", "view_reports"],
+  EMPLEADO: ["self_evaluate"],
+  LECTOR_AUDITOR: ["read_only_access"],
+};
 
 function groupCount(items, key, fallback = "Sin dato") {
   const map = new Map();
@@ -356,6 +366,90 @@ router.get("/summary", auth, async (req, res) => {
         }
       : null,
     superAdmin,
+  });
+});
+
+router.get("/ops-status", auth, async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const now = new Date();
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+
+  const [latestImport, importsLastHour, downloadsLastHour, usersActive] = await Promise.all([
+    DatabaseFile.findOne({ companyId, tipoArchivo: { $regex: "^importacion-" } })
+      .sort({ createdAt: -1, fechaSubida: -1 })
+      .lean(),
+    DatabaseFile.countDocuments({
+      companyId,
+      tipoArchivo: { $regex: "^importacion-" },
+      createdAt: { $gte: oneHourAgo },
+    }),
+    DownloadLog.countDocuments({
+      companyId,
+      downloadedAt: { $gte: oneHourAgo },
+    }),
+    User.countDocuments({ companyId, activo: true }),
+  ]);
+
+  const mongoConnected = mongoose.connection?.readyState === 1;
+  const cloudinaryConfigured = Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
+  );
+
+  res.json({
+    generatedAt: now.toISOString(),
+    runtime: {
+      uptimeSeconds: Math.round(process.uptime()),
+      nodeEnv: process.env.NODE_ENV || "development",
+      mongoConnected,
+      apiHealthy: true,
+    },
+    integrations: {
+      cloudinaryConfigured,
+      smtpConfigured: Boolean(process.env.SMTP_HOST && process.env.SMTP_USER),
+      importAiConfigured: Boolean(process.env.IMPORT_AI_WEBHOOK_URL),
+    },
+    activity: {
+      activeUsers: usersActive,
+      importsLastHour,
+      downloadsLastHour,
+      latestImportAt: latestImport?.createdAt || latestImport?.fechaSubida || null,
+      latestImportName: latestImport?.nombreArchivo || latestImport?.nombreVisible || null,
+    },
+  });
+});
+
+router.get("/role-check", auth, async (req, res) => {
+  const roleCode = req.user?.roleCode || "UNKNOWN";
+  const expected = roleExpectedPermissions[roleCode] || [];
+  const current = Array.isArray(req.user?.permisos) ? req.user.permisos : [];
+  const grantedExpected = expected.filter((perm) => current.includes(perm));
+  const missingExpected = expected.filter((perm) => !current.includes(perm));
+
+  const menuAccess = {
+    gestion: current.some((perm) =>
+      ["manage_employees", "manage_users", "manage_roles", "manage_metrics", "manage_competencies", "manage_settings"].includes(perm)
+    ),
+    evaluacion: current.some((perm) => ["manage_evaluations", "evaluate_team", "self_evaluate", "manage_development_plans"].includes(perm)),
+    datos: current.some((perm) => ["view_reports", "download_reports", "download_team_reports", "download_self_report", "read_only_access"].includes(perm)),
+  };
+
+  res.json({
+    roleCode,
+    isSuperAdmin: Boolean(req.user?.isSuperAdmin),
+    expectedPermissions: expected,
+    grantedExpected,
+    missingExpected,
+    checks: {
+      expectedCoveragePct: expected.length ? Math.round((grantedExpected.length / expected.length) * 100) : 100,
+      canAccessGestion: menuAccess.gestion,
+      canAccessEvaluacion: menuAccess.evaluacion,
+      canAccessDatos: menuAccess.datos,
+      tenantScoped: !req.user?.isSuperAdmin,
+    },
+    recommendations:
+      missingExpected.length > 0
+        ? [`Revisar permisos faltantes para ${roleCode}: ${missingExpected.join(", ")}`]
+        : ["Permisos esperados completos para este rol."],
   });
 });
 
