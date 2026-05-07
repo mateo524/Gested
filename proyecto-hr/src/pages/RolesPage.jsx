@@ -13,6 +13,7 @@ export default function RolesPage() {
   const [permisos, setPermisos] = useState([]);
   const [code, setCode] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
   const [query, setQuery] = useState("");
 
   const filteredRoles = useMemo(() => {
@@ -36,7 +37,10 @@ export default function RolesPage() {
   }
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
+    loadData().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [token]);
 
   function resetForm() {
@@ -76,6 +80,7 @@ export default function RolesPage() {
     event.preventDefault();
     if (!nombre.trim()) {
       setMessage("El nombre del perfil es obligatorio.");
+      setMessageType("warning");
       return;
     }
     try {
@@ -95,8 +100,10 @@ export default function RolesPage() {
       });
       await loadData();
       resetForm();
+      setMessageType("success");
       setMessage(isEditing ? "Perfil actualizado." : "Perfil creado.");
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -105,19 +112,25 @@ export default function RolesPage() {
     try {
       await apiFetch("/roles/sync-defaults", { method: "POST", token });
       await loadData();
+      setMessageType("success");
       setMessage("Perfiles recomendados restaurados.");
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
 
   async function removeRole(roleId) {
+    const confirmed = window.confirm("¿Seguro que querés eliminar este perfil? Esta acción no se puede deshacer.");
+    if (!confirmed) return;
     try {
       await apiFetch(`/roles/${roleId}`, { method: "DELETE", token });
       await loadData();
       if (editingId === roleId) resetForm();
+      setMessageType("success");
       setMessage("Perfil eliminado.");
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -158,8 +171,8 @@ export default function RolesPage() {
               </select>
             ) : null}
 
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre del perfil" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-            <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion del alcance" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+            <input className="pf-input" placeholder="Nombre del perfil (ej: Director)" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            <textarea className="pf-textarea" placeholder="Descripción del alcance y responsabilidades" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
 
             <div className="grid gap-2">
               {permissionsCatalog.map((permission) => (
@@ -175,7 +188,7 @@ export default function RolesPage() {
               ))}
             </div>
 
-            <button type="submit" className="w-full rounded-2xl bg-[#1e3a8a] py-3 text-sm font-semibold text-white">
+            <button type="submit" className="pf-button-primary w-full text-sm">
               {editingId ? "Guardar cambios" : "Crear perfil"}
             </button>
           </form>
@@ -221,7 +234,7 @@ export default function RolesPage() {
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>{message}</p> : null}
     </div>
   );
 }

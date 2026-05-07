@@ -64,52 +64,60 @@ select optgroup {
   .pf-input {
     @apply w-full rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
   }
+
+  .pf-select {
+    @apply w-full appearance-none rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
+  }
+
+  .pf-textarea {
+    @apply w-full min-h-24 resize-y rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
+  }
+
+  .pf-button {
+    @apply rounded-2xl px-4 py-3 font-semibold transition disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .pf-button-primary {
+    @apply rounded-2xl bg-[#1e3a8a] px-4 py-3 font-semibold text-white transition hover:bg-[#1a3278] disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .pf-button-secondary {
+    @apply rounded-2xl border border-white/20 bg-transparent px-4 py-3 font-semibold text-[#c5d5de] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .pf-alert {
+    @apply rounded-xl border px-4 py-3 text-sm;
+  }
+
+  .pf-alert-info {
+    @apply rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200;
+  }
+
+  .pf-alert-success {
+    @apply rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200;
+  }
+
+  .pf-alert-warning {
+    @apply rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200;
+  }
+
+  .pf-alert-error {
+    @apply rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200;
+  }
+
+  .pf-badge {
+    @apply rounded-full border px-3 py-1 text-xs;
+  }
+
+  .pf-table {
+    @apply min-w-full text-left text-sm;
+  }
 }
 
-/* Hotfix visual global: evita cajas blancas invasivas en tema oscuro */
+/* fallback puntual para legibilidad legacy sin forzar todos los componentes */
 @layer utilities {
-  [class*="bg-white"] {
+  [class*="bg-white"]:not(.pf-card):not(.pf-alert) {
     background-color: #142028 !important;
     color: #e8eef1 !important;
-  }
-
-  [class*="bg-gray-50"],
-  [class*="bg-gray-100"] {
-    background-color: #1a2c38 !important;
-    color: #d4e1e8 !important;
-  }
-
-  [class*="border-slate-200"],
-  [class*="border-slate-300"],
-  [class*="border-gray-200"],
-  [class*="border-gray-300"] {
-    border-color: rgba(255, 255, 255, 0.12) !important;
-  }
-
-  [class*="text-black"],
-  [class*="text-gray-950"],
-  [class*="text-gray-900"],
-  [class*="text-slate-950"],
-  [class*="text-slate-900"] {
-    color: #f8fafc !important;
-  }
-
-  [class*="text-gray-700"],
-  [class*="text-gray-600"],
-  [class*="text-gray-500"],
-  [class*="text-slate-700"],
-  [class*="text-slate-600"],
-  [class*="text-slate-500"] {
-    color: #a9bfca !important;
-  }
-
-  [class*="bg-slate-50"],
-  [class*="bg-slate-100"] {
-    background-color: #1a2c38 !important;
-    color: #d4e1e8 !important;
-  }
-
-  [class*="text-slate-400"] {
-    color: #9fb6c1 !important;
   }
 }

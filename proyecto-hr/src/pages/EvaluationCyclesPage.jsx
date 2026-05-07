@@ -18,34 +18,46 @@ export default function EvaluationCyclesPage() {
   const [cycles, setCycles] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
 
   async function loadData() {
-    const [schoolsData, cyclesData] = await Promise.all([
-      apiFetch("/schools", { token }),
-      apiFetch("/evaluation-cycles", { token }),
-    ]);
-    setSchools(schoolsData);
-    setCycles(cyclesData);
-    if (!form.schoolId && schoolsData[0]?._id) {
-      setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
+    try {
+      setIsLoading(true);
+      const [schoolsData, cyclesData] = await Promise.all([
+        apiFetch("/schools", { token }),
+        apiFetch("/evaluation-cycles", { token }),
+      ]);
+      setSchools(schoolsData);
+      setCycles(cyclesData);
+      if (!form.schoolId && schoolsData[0]?._id) {
+        setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
+    loadData().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [token]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.schoolId || !form.periodo || !form.fechaInicio || !form.fechaFin) {
       setMessage("Completa colegio, periodo y rango de fechas para guardar.");
+      setMessageType("warning");
       return;
     }
     try {
       setIsSubmitting(true);
       setMessage("");
+      setMessageType("info");
       const isEditing = Boolean(editingId);
       await apiFetch(isEditing ? `/evaluation-cycles/${editingId}` : "/evaluation-cycles", {
         method: isEditing ? "PUT" : "POST",
@@ -55,9 +67,11 @@ export default function EvaluationCyclesPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, anio: new Date().getFullYear() }));
       setEditingId("");
-      setMessage(isEditing ? "Periodo actualizado." : "Periodo creado.");
+      setMessageType("success");
+      setMessage(isEditing ? "Período actualizado." : "Período creado.");
       await loadData();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
@@ -75,13 +89,15 @@ export default function EvaluationCyclesPage() {
       fechaInicio: cycle.fechaInicio ? new Date(cycle.fechaInicio).toISOString().slice(0, 10) : "",
       fechaFin: cycle.fechaFin ? new Date(cycle.fechaFin).toISOString().slice(0, 10) : "",
     });
-    setMessage("Editando periodo seleccionado.");
+    setMessageType("info");
+    setMessage("Editando período seleccionado.");
   }
 
   function cancelEdit() {
     setEditingId("");
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, anio: new Date().getFullYear() }));
-    setMessage("Edicion cancelada.");
+    setMessageType("info");
+    setMessage("Edición cancelada.");
   }
 
   return (
@@ -128,7 +144,7 @@ export default function EvaluationCyclesPage() {
               <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
               <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaFin} onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
             </div>
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
+            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear periodo"}
             </button>
             {editingId ? (
@@ -142,7 +158,8 @@ export default function EvaluationCyclesPage() {
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">Periodos cargados</h4>
           <div className="mt-6 space-y-4">
-            {cycles.length ? cycles.map((cycle) => (
+            {isLoading ? <p className="pf-alert-info">Cargando períodos...</p> : null}
+            {!isLoading && cycles.length ? cycles.map((cycle) => (
               <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-lg font-semibold text-white">{cycle.periodo} {cycle.anio}</p>
@@ -157,12 +174,13 @@ export default function EvaluationCyclesPage() {
                   Editar
                 </button>
               </article>
-            )) : <p className="text-[#9fb6c4]">Todavia no hay periodos definidos.</p>}
+            )) : null}
+            {!isLoading && !cycles.length ? <p className="pf-alert-warning">Todavía no hay períodos definidos.</p> : null}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>{message}</p> : null}
     </div>
   );
 }

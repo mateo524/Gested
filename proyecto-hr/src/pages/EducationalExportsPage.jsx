@@ -245,21 +245,21 @@ export default function EducationalExportsPage() {
           </button>
         </div>
 
-        {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
-        {message ? <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{message}</div> : null}
+        {!canImport ? <div className="pf-alert-warning">Tu rol no tiene permiso para importar.</div> : null}
+        {message ? <div className={`${message.toLowerCase().includes("confirmada") ? "pf-alert-success" : "pf-alert-error"}`}>{message}</div> : null}
 
         <div className="grid gap-3 md:grid-cols-3">
-          <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
+          <select className="pf-select" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
             <option value="metrics">Indicadores</option>
             <option value="cycles">Periodos</option>
             <option value="roles">Perfiles</option>
           </select>
-          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-sm text-white" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
-          <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile}>
-            {isImporting ? "Procesando..." : "Subir y validar"}
-          </button>
+          <input className="pf-input text-sm" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
+            <button className="pf-button rounded-xl bg-emerald-600 text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile}>
+              {isImporting ? "Procesando..." : "Subir y validar"}
+            </button>
         </div>
         <div className="flex flex-wrap gap-2">
           <button
@@ -343,7 +343,7 @@ export default function EducationalExportsPage() {
               </div>
             ) : null}
 
-            <button className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60" onClick={confirmImport} disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0)}>
+            <button className="pf-button rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60" onClick={confirmImport} disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0)}>
               {isImporting ? "Importando..." : "Confirmar importacion"}
             </button>
           </div>

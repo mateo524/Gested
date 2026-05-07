@@ -121,7 +121,7 @@ export async function ensureCompanyStructure({ companyName, companySlug, schoolN
     });
   }
 
-  const requestedSchoolName = schoolName?.trim() || DEFAULT_ADMIN.schoolName;
+  const requestedSchoolName = schoolName?.trim() || DEMO_ADMIN.schoolName;
   let school = await School.findOne({ companyId: company._id, nombre: requestedSchoolName });
   if (!school) {
     school = await School.create({
