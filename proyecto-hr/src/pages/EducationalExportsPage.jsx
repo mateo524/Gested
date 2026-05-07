@@ -109,8 +109,6 @@ export default function EducationalExportsPage() {
 
   async function previewImport() {
     if (!importFile) return setMessage("Selecciona un archivo.");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000);
     try {
       setIsImporting(true);
       setMessage("");
@@ -122,7 +120,7 @@ export default function EducationalExportsPage() {
         method: "POST",
         token,
         body,
-        signal: controller.signal,
+        timeoutMs: 90000,
       });
       setImportPreview(data);
       if (data.importJobId) {
@@ -134,10 +132,14 @@ export default function EducationalExportsPage() {
       setImportResult(null);
       await loadImportJobs();
     } catch (error) {
-      setMessage(error.name === "AbortError" ? "La validacion demoro demasiado." : error.message);
+      const msg = String(error.message || "");
+      if (msg.toLowerCase().includes("demoro")) {
+        setMessage("La validacion tardo demasiado. Reintenta con un archivo mas chico o vuelve a intentar en unos segundos.");
+      } else {
+        setMessage(msg);
+      }
       setImportPreview(null);
     } finally {
-      clearTimeout(timeout);
       setIsImporting(false);
     }
   }
@@ -175,6 +177,7 @@ export default function EducationalExportsPage() {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
+        timeoutMs: 120000,
         body: JSON.stringify({
           previewToken: importPreview.previewToken,
           correctedRows: editableErrors.map((item) => item.normalized || {}),
@@ -186,7 +189,14 @@ export default function EducationalExportsPage() {
       setMessage("Importacion confirmada.");
       await Promise.all([loadOverview(), loadDataset(), loadImportJobs()]);
     } catch (error) {
-      setMessage(error.message);
+      const msg = String(error.message || "");
+      if (msg.toLowerCase().includes("preview expirada")) {
+        setMessage("La previsualizacion vencio o el servidor se reinicio. Vuelve a subir el archivo para continuar.");
+      } else if (msg.toLowerCase().includes("demoro")) {
+        setMessage("La confirmacion tardo demasiado. Reintenta; si persiste, divide el archivo en lotes.");
+      } else {
+        setMessage(msg);
+      }
     } finally {
       setIsImporting(false);
     }

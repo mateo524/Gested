@@ -15,9 +15,12 @@ function withTimeout(promise, timeoutMs = DEFAULT_TIMEOUT_MS) {
 export async function apiFetch(path, { token, headers, ...options } = {}) {
   const activeCompanyId = localStorage.getItem("active_company_id");
   const isGet = (options.method || "GET").toUpperCase() === "GET";
+  const timeoutMs = Number(options.timeoutMs || DEFAULT_TIMEOUT_MS);
+  const externalSignal = options.signal;
+  const { timeoutMs: _discardTimeout, signal: _discardSignal, ...restOptions } = options;
 
   const requestInit = (signal) => ({
-    ...options,
+    ...restOptions,
     signal,
     headers: {
       ...(headers || {}),
@@ -26,8 +29,22 @@ export async function apiFetch(path, { token, headers, ...options } = {}) {
     },
   });
 
+  function combineSignals(timeoutSignal, passedSignal) {
+    if (!passedSignal) return timeoutSignal;
+    if (passedSignal.aborted) return passedSignal;
+
+    const bridge = new AbortController();
+    const abortBridge = () => bridge.abort();
+    timeoutSignal.addEventListener("abort", abortBridge, { once: true });
+    passedSignal.addEventListener("abort", abortBridge, { once: true });
+    return bridge.signal;
+  }
+
   async function doRequest() {
-    const wrapped = withTimeout((controller) => fetch(`${apiUrl}${path}`, requestInit(controller.signal)));
+    const wrapped = withTimeout(
+      (controller) => fetch(`${apiUrl}${path}`, requestInit(combineSignals(controller.signal, externalSignal))),
+      timeoutMs
+    );
     return wrapped.promise;
   }
 

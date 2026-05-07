@@ -637,6 +637,19 @@ function getImportPreview(token) {
   return data;
 }
 
+function sanitizeIssueNormalized(normalized) {
+  if (!normalized || typeof normalized !== "object") return null;
+  const safe = { ...normalized };
+  if ("email" in safe) safe.email = "[redacted]";
+  if ("correoelectronico" in safe) safe.correoelectronico = "[redacted]";
+  Object.keys(safe).forEach((key) => {
+    if (typeof safe[key] === "string" && safe[key].length > 160) {
+      safe[key] = `${safe[key].slice(0, 160)}...`;
+    }
+  });
+  return safe;
+}
+
 async function createImportJob({
   req,
   companyId,
@@ -664,7 +677,7 @@ async function createImportJob({
         rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
         message: String(issue.message || "Error de validacion"),
         source: issue.source || "rule",
-        normalized: issue.normalized || null,
+        normalized: sanitizeIssueNormalized(issue.normalized || null),
       }))
     : [];
 
@@ -970,7 +983,7 @@ router.post(
         fileMeta: {
           originalname: req.file.originalname,
           mimetype: req.file.mimetype,
-          bufferBase64: req.file.buffer.toString("base64"),
+          binaryBuffer: req.file.buffer,
         },
       });
       const importJob = await createImportJob({
@@ -1067,7 +1080,7 @@ router.post(
         fileMeta: {
           originalname: req.file.originalname,
           mimetype: req.file.mimetype,
-          bufferBase64: req.file.buffer.toString("base64"),
+          binaryBuffer: req.file.buffer,
         },
       });
       const narrativeIssues = narrativeData.competencias.length
@@ -1126,7 +1139,7 @@ router.post(
       fileMeta: {
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
-        bufferBase64: req.file.buffer.toString("base64"),
+        binaryBuffer: req.file.buffer,
       },
     });
     const importJob = await createImportJob({
@@ -1171,7 +1184,10 @@ router.post(
     const previewToken = String(req.body.previewToken || "");
     const preview = getImportPreview(previewToken);
     if (!preview) {
-      return res.status(400).json({ mensaje: "Preview expirada o inexistente. Vuelve a subir el archivo." });
+      return res.status(400).json({
+        mensaje:
+          "Preview expirada o inexistente. Puede haber vencido la sesion de importacion o reiniciado el servidor. Vuelve a subir el archivo.",
+      });
     }
 
     const dataset = preview.dataset;
@@ -1228,7 +1244,7 @@ router.post(
             rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
             message: String(issue.message || "Error de importacion"),
             source: issue.source || "rule",
-            normalized: issue.normalized || null,
+            normalized: sanitizeIssueNormalized(issue.normalized || null),
           }));
         appendAudit("import_failed", { reason: "no_valid_rows" });
         await importJob.save();
@@ -1593,7 +1609,7 @@ router.post(
 
     const school = schoolId ? await School.findById(schoolId).lean() : null;
     const uploaded = await uploadBufferToStorage({
-      buffer: Buffer.from(preview.fileMeta.bufferBase64, "base64"),
+      buffer: preview.fileMeta.binaryBuffer,
       contentType: preview.fileMeta.mimetype,
       originalName: preview.fileMeta.originalname,
       folderPath: `performia/${companyId}/${school?.slug || schoolId || "general"}/${dataset}`,
@@ -1631,7 +1647,7 @@ router.post(
         rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
         message: String(issue.message || "Error de importacion"),
         source: issue.source || "rule",
-        normalized: issue.normalized || null,
+        normalized: sanitizeIssueNormalized(issue.normalized || null),
       }));
       appendAudit("import_confirmed", {
         dataset,
@@ -1706,6 +1722,14 @@ router.post(
   requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES),
   upload.single("file"),
   async (req, res) => {
+    const legacyAllowed = process.env.NODE_ENV !== "production" || req.user.isSuperAdmin;
+    if (!legacyAllowed) {
+      return res.status(403).json({
+        mensaje:
+          "El endpoint legacy de importacion directa esta deshabilitado en produccion. Usa Subir -> Validar -> Confirmar.",
+      });
+    }
+
     const dataset = req.params.dataset;
     if (!["employees", "metrics", "cycles"].includes(dataset)) {
       return res.status(400).json({ mensaje: "Dataset no soportado para importacion" });
