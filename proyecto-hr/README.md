@@ -27,3 +27,12 @@ Actualmente, si es menor, el backend no bloquea el arranque pero emite advertenc
 Debe corregirse antes de una salida productiva formal.
 
 Variables de referencia sin secretos reales: [backend/.env.example](/C:/Dev/Gested/proyecto-hr/backend/.env.example)
+
+## Tests de seguridad backend
+
+Desde `backend/`:
+
+- `npm test`
+- `npm run test:security`
+
+Estos tests cubren regresiones de aislamiento multi-tenant y acceso por rol.
