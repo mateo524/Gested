@@ -104,9 +104,9 @@ export default function AnnouncementsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+      <section className="rounded-[2rem] border border-white/10 bg-[#142028] p-8 shadow-sm">
         <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Comunicación interna</p>
-        <h3 className="mt-3 text-3xl font-bold text-slate-950">Novedades y avisos</h3>
+        <h3 className="mt-3 text-3xl font-bold text-white">Novedades y avisos</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
           Este espacio permite compartir informacion importante dentro de la app. El superadmin
           puede enviar novedades a cada empresa y cada empresa solo ve sus propios mensajes.

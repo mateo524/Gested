@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import AppLogo from "../components/brand/AppLogo";
@@ -18,6 +18,16 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [portalBranding] = useState(defaultBranding);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlToken = params.get("token");
+    if (urlToken) {
+      setResetForm((prev) => ({ ...prev, token: urlToken }));
+      setMode("reset");
+      setMessage("Token detectado. Ingresa tu nueva contrasena para continuar.");
+    }
+  }, []);
 
   const pageStyle = useMemo(
     () => ({
@@ -281,7 +291,7 @@ export default function LoginPage() {
             )}
 
             {message ? (
-              <p className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-600">
+              <p className="mt-4 rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-sm text-[#E8EEF1]">
                 {message}
               </p>
             ) : (

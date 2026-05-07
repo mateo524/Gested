@@ -173,7 +173,7 @@ export function AuthProvider({ children }) {
         ]);
       })
       .catch(() => logout());
-  }, [token, activeCompanyId]);
+  }, [token]);
 
   useEffect(() => {
     const root = document.documentElement;
