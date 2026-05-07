@@ -11,7 +11,7 @@ import { logAudit } from "../utils/audit.js";
 
 const router = express.Router();
 
-async function getTeamEmployeeIds(scope) {
+export async function getTeamEmployeeIds(scope) {
   if (!scope.employeeId) return [];
   const employees = await Employee.find({
     companyId: scope.companyId,
@@ -25,7 +25,7 @@ async function getTeamEmployeeIds(scope) {
   return employees.map((item) => item._id);
 }
 
-async function buildEvaluationFilter(req) {
+export async function buildEvaluationFilter(req) {
   const filter = buildScopedFilter(req, {});
   let jefeTeamIds = null;
 
