@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { useView } from "../context/ViewContext";
 
 const emptyForm = {
   schoolId: "",
@@ -21,6 +22,7 @@ function formatDate(value) {
 
 export default function EmployeesPage() {
   const { token } = useAuth();
+  const { setView } = useView();
   const [employees, setEmployees] = useState([]);
   const [schools, setSchools] = useState([]);
   const [filters, setFilters] = useState({ q: "", schoolId: "" });
@@ -28,6 +30,7 @@ export default function EmployeesPage() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [wizardStep, setWizardStep] = useState(1);
 
   const employeesById = useMemo(
     () => new Map(employees.map((employee) => [employee._id, employee])),
@@ -107,6 +110,26 @@ export default function EmployeesPage() {
     setMessage("Edicion cancelada.");
   }
 
+  function stepReady(step) {
+    if (step === 1) return Boolean(form.schoolId);
+    if (step === 2) return Boolean(form.nombre && form.apellido && form.email);
+    if (step === 3) return Boolean(form.cargo && form.area);
+    return true;
+  }
+
+  function goNextStep() {
+    if (!stepReady(wizardStep)) {
+      setMessage("Completa los campos requeridos del paso actual para continuar.");
+      return;
+    }
+    setMessage("");
+    setWizardStep((s) => Math.min(4, s + 1));
+  }
+
+  function goPrevStep() {
+    setWizardStep((s) => Math.max(1, s - 1));
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
@@ -120,6 +143,32 @@ export default function EmployeesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar empleado" : "Nuevo empleado"}</h4>
+          <div className="mt-3 rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Asistente de alta inicial</p>
+            <div className="mt-2 grid gap-2 md:grid-cols-4">
+              {[
+                { id: 1, label: "Colegio" },
+                { id: 2, label: "Persona" },
+                { id: 3, label: "Rol interno" },
+                { id: 4, label: "Confirmar" },
+              ].map((step) => (
+                <button
+                  key={step.id}
+                  type="button"
+                  onClick={() => setWizardStep(step.id)}
+                  className={`rounded-lg px-2 py-2 text-xs font-semibold transition ${
+                    wizardStep === step.id
+                      ? "bg-[#1e3a8a] text-white"
+                      : stepReady(step.id)
+                        ? "border border-emerald-300/40 bg-emerald-900/20 text-emerald-300"
+                        : "border border-white/15 bg-[#122530] text-[#9fb6c4]"
+                  }`}
+                >
+                  {step.id}. {step.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Colegio</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Datos personales</span>
@@ -171,6 +220,15 @@ export default function EmployeesPage() {
               ))}
             </select>
 
+            <div className="grid gap-2 md:grid-cols-2">
+              <button type="button" onClick={goPrevStep} className="rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
+                Paso anterior
+              </button>
+              <button type="button" onClick={goNextStep} className="rounded-2xl border border-emerald-300/40 bg-emerald-900/20 py-3 font-semibold text-emerald-300">
+                Siguiente paso
+              </button>
+            </div>
+
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white hover:bg-[#1a3278]">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear empleado"}
             </button>
@@ -183,6 +241,15 @@ export default function EmployeesPage() {
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <div className="mb-4 rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Siguiente bloque recomendado</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button type="button" onClick={() => setView("competencias")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Ir a Competencias</button>
+              <button type="button" onClick={() => setView("metricas")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Ir a Indicadores</button>
+              <button type="button" onClick={() => setView("ciclos")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Ir a Períodos</button>
+              <button type="button" onClick={() => setView("evaluaciones")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Ir a Evaluación</button>
+            </div>
+          </div>
           <div className="flex flex-wrap items-end gap-4">
             <input className="min-w-56 flex-1 rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Buscar por nombre, cargo o mail" value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} />
             <select className="min-w-56 rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.schoolId} onChange={(event) => setFilters({ ...filters, schoolId: event.target.value })}>
