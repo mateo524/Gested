@@ -14,10 +14,10 @@ function resolveTenantIds(req) {
   return {
     companyId: req.scope.isSuperAdmin
       ? req.body.companyId || req.query.companyId || companyFromHeader
-      : req.scope.companyId || req.body.companyId || req.query.companyId,
+      : req.scope.companyId,
     schoolId: req.scope.isSuperAdmin
       ? req.body.schoolId || req.query.schoolId || null
-      : req.scope.schoolId || req.body.schoolId || req.query.schoolId || null,
+      : req.scope.schoolId || null,
   };
 }
 
