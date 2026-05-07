@@ -38,6 +38,7 @@ export default function EducationalExportsPage() {
   const [isImporting, setIsImporting] = useState(false);
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -146,6 +147,23 @@ export default function EducationalExportsPage() {
     setMessage("");
   }
 
+  function downloadTemplate(kind) {
+    const templates = {
+      employees: "apellido,nombre,email,cargo,area,tipoempleado,activo\nPerez,Juan,juan@colegio.com,Docente,Matematica,DOCENTE,true\n",
+      metrics: "competencia,nombre,descripcion,ponderacion\nTrabajo en equipo,Colabora con pares,Participa activamente con el equipo,1\n",
+      cycles: "anio,periodo,etapa,estado,fechaInicio,fechaFin\n2026,Marzo,INICIO,BORRADOR,2026-03-01,2026-03-31\n",
+      roles: "rol\nDOCENTE\nRRHH\nJEFE\n",
+    };
+    const text = templates[kind] || templates.employees;
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `plantilla-${kind}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   async function confirmImport() {
     if (!importPreview?.previewToken) return;
     try {
@@ -199,6 +217,20 @@ export default function EducationalExportsPage() {
           <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>2. Validar y corregir</span>
           <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>3. Confirmar lote</span>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("employees")}>
+            Plantilla empleados
+          </button>
+          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("metrics")}>
+            Plantilla metricas
+          </button>
+          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("cycles")}>
+            Plantilla periodos
+          </button>
+          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("roles")}>
+            Plantilla perfiles
+          </button>
+        </div>
 
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
         {message ? <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{message}</div> : null}
@@ -245,6 +277,42 @@ export default function EducationalExportsPage() {
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Validas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
+            {importPreview.extractedSummary ? (
+              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen detectado</p>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {Object.entries(importPreview.extractedSummary).map(([key, value]) => (
+                    <p key={key} className="text-xs text-[#c5d5de]">{key}: <span className="font-semibold text-white">{String(value)}</span></p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+
+            {Array.isArray(importPreview.sampleValidRows) && importPreview.sampleValidRows.length ? (
+              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Vista previa de filas validas</p>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-[#9FB6C1]">
+                        {Object.keys(importPreview.sampleValidRows[0]).map((k) => (
+                          <th key={k} className="px-2 py-1 text-left">{k}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importPreview.sampleValidRows.slice(0, 8).map((row, idx) => (
+                        <tr key={idx} className="border-b border-white/5">
+                          {Object.keys(importPreview.sampleValidRows[0]).map((k) => (
+                            <td key={k} className="px-2 py-1 text-[#D4E1E8]">{String(row[k] ?? "")}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : null}
 
             {editableErrors.length ? (
               <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
@@ -285,6 +353,18 @@ export default function EducationalExportsPage() {
             <p>Parser: {selectedJob.parserType}</p>
             <p>Dataset detectado: {selectedJob.datasetDetected}</p>
             <p>Filas: {selectedJob.totalRows} | Validas: {selectedJob.validRows} | Errores: {selectedJob.errorCount}</p>
+            <button
+              type="button"
+              onClick={() => setShowTechnicalDetails((v) => !v)}
+              className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+            >
+              {showTechnicalDetails ? "Ocultar detalle tecnico" : "Ver detalle tecnico"}
+            </button>
+            {showTechnicalDetails ? (
+              <pre className="mt-2 max-h-56 overflow-auto rounded-xl border border-white/10 bg-[#0f1f28] p-3 text-xs text-[#c5d5de]">
+                {JSON.stringify(selectedJob.previewSummary || {}, null, 2)}
+              </pre>
+            ) : null}
           </div>
         ) : null}
       </section>
