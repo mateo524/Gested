@@ -77,10 +77,15 @@ export async function apiFetch(path, { token, headers, ...options } = {}) {
   }
 
   if (!response.ok) {
-    const message =
-      (typeof data === "object" && data?.mensaje) ||
+    const baseMessage =
+      (typeof data === "object" && (data?.mensaje || data?.message)) ||
       (typeof data === "string" && data) ||
       "Error de servidor";
+    const code =
+      typeof data === "object" && data?.code ? ` [code: ${data.code}]` : "";
+    const request =
+      typeof data === "object" && data?.request ? ` [request: ${data.request}]` : "";
+    const message = `${baseMessage}${code}${request}`;
 
     throw new Error(message);
   }

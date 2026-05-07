@@ -29,6 +29,8 @@ export default function MetricsPage() {
   const [metrics, setMetrics] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
 
@@ -38,21 +40,29 @@ export default function MetricsPage() {
   );
 
   async function loadData() {
-    const [schoolsData, competenciesData, metricsData] = await Promise.all([
-      apiFetch("/schools", { token }),
-      apiFetch("/competencies", { token }),
-      apiFetch("/metrics", { token }),
-    ]);
-    setSchools(schoolsData);
-    setCompetencies(competenciesData);
-    setMetrics(metricsData);
-    if (!form.schoolId && schoolsData[0]?._id) {
-      setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
+    try {
+      setIsLoading(true);
+      const [schoolsData, competenciesData, metricsData] = await Promise.all([
+        apiFetch("/schools", { token }),
+        apiFetch("/competencies", { token }),
+        apiFetch("/metrics", { token }),
+      ]);
+      setSchools(schoolsData);
+      setCompetencies(competenciesData);
+      setMetrics(metricsData);
+      if (!form.schoolId && schoolsData[0]?._id) {
+        setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
+      }
+    } finally {
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
+    loadData().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [token]);
 
   function updateLevel(index, field, value) {
@@ -65,10 +75,12 @@ export default function MetricsPage() {
     event.preventDefault();
     if (!form.schoolId || !form.competencyId || !form.nombre) {
       setMessage("Completa colegio, competencia y nombre de indicador para guardar.");
+      setMessageType("warning");
       return;
     }
     try {
       setIsSubmitting(true);
+      setMessageType("info");
       setMessage("");
       const payload = {
         ...form,
@@ -83,9 +95,11 @@ export default function MetricsPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
       setEditingId("");
+      setMessageType("success");
       setMessage(isEditing ? "Indicador actualizado." : "Indicador creado.");
       await loadData();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
@@ -107,13 +121,15 @@ export default function MetricsPage() {
         descripcion: level.descripcion || "",
       })),
     });
+    setMessageType("info");
     setMessage("Editando indicador seleccionado.");
   }
 
   function cancelEdit() {
     setEditingId("");
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
-    setMessage("Edicion cancelada.");
+    setMessageType("info");
+    setMessage("Edición cancelada.");
   }
 
   return (
@@ -146,8 +162,8 @@ export default function MetricsPage() {
               ))}
             </select>
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definicion del indicador</p>
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-            <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
+            <input className="pf-input" placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            <textarea className="pf-textarea" placeholder="Descripción breve y observable" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargos (separados por coma)" value={form.cargoAplica} onChange={(e) => setForm({ ...form, cargoAplica: e.target.value })} />
               <input type="number" min="1" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Ponderacion" value={form.ponderacion} onChange={(e) => setForm({ ...form, ponderacion: Number(e.target.value) })} />
@@ -164,7 +180,7 @@ export default function MetricsPage() {
               ))}
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
+            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear indicador"}
             </button>
             {editingId ? (
@@ -178,7 +194,8 @@ export default function MetricsPage() {
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">Indicadores cargados</h4>
           <div className="mt-6 space-y-4">
-            {metrics.length ? metrics.map((metric) => (
+            {isLoading ? <p className="pf-alert-info">Cargando indicadores...</p> : null}
+            {!isLoading && metrics.length ? metrics.map((metric) => (
               <article key={metric._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <p className="text-lg font-semibold text-white">{metric.nombre}</p>
                 <p className="mt-1 text-sm text-[#9fb6c4]">
@@ -196,12 +213,13 @@ export default function MetricsPage() {
                   Editar
                 </button>
               </article>
-            )) : <p className="text-[#9fb6c4]">Todavia no hay indicadores cargados.</p>}
+            )) : null}
+            {!isLoading && !metrics.length ? <p className="pf-alert-warning">Todavía no hay indicadores cargados.</p> : null}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>{message}</p> : null}
     </div>
   );
 }
