@@ -40,6 +40,17 @@ function classify(text) {
   return intents.find((intent) => intent.keywords.some((word) => clean.includes(word))) || null;
 }
 
+function buildContextHint(context) {
+  const page = typeof context === "object" ? String(context.page || "") : String(context || "");
+  if (page.includes("contacto")) {
+    return "Si necesitas implementacion o soporte comercial, usa el formulario de contacto y te respondemos por correo.";
+  }
+  if (page.includes("demo")) {
+    return "En la demo te conviene revisar: roles, importacion guiada y panel de decisiones para ver el flujo completo.";
+  }
+  return "Si quieres, te guio paso a paso segun la pantalla en la que estas ahora.";
+}
+
 function getRateKey(req) {
   const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
   return String(ip);
@@ -112,7 +123,7 @@ router.post("/chat", async (req, res) => {
     ? matched.keywords[0] || "matched"
     : "unknown";
   const payload = {
-    answer: baseResponse,
+    answer: `${baseResponse} ${buildContextHint(context)}`.trim(),
     suggestions: [
       "Como recupero mi contrasena?",
       "Como importo un Excel?",

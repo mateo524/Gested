@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [simulation, setSimulation] = useState(null);
   const [scenarios, setScenarios] = useState([]);
   const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   useEffect(() => {
     apiFetch("/dashboard/summary", { token })
@@ -218,6 +219,17 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-4">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="w-full rounded-xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-left text-sm font-semibold text-white"
+        >
+          {showAdvanced ? "Ocultar analitica avanzada" : "Mostrar analitica avanzada (patrones y prediccion)"}
+        </button>
+      </section>
+
+      {showAdvanced ? (
       <section className="grid gap-6 xl:grid-cols-3">
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h3 className="text-lg font-semibold text-white">Capa 1: Patrones detectados</h3>
@@ -258,6 +270,7 @@ export default function DashboardPage() {
           </div>
         </article>
       </section>
+      ) : null}
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-xl font-semibold text-white">Simulador de inversion en capacitacion</h3>
