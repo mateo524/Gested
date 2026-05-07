@@ -23,6 +23,33 @@ function resolveTenantIds(req) {
   };
 }
 
+async function findActiveSchool(companyId, schoolId) {
+  if (!companyId || !schoolId) return null;
+  return School.findOne({ _id: schoolId, companyId, activa: true }).select("_id").lean();
+}
+
+async function validateManager({ managerId, companyId, schoolId, employeeId = null }) {
+  if (!managerId) return { ok: true, value: null };
+  if (employeeId && String(managerId) === String(employeeId)) {
+    return { ok: false, mensaje: "Un empleado no puede ser su propio jefe" };
+  }
+
+  const manager = await Employee.findOne({
+    _id: managerId,
+    companyId,
+    schoolId,
+    activo: true,
+  })
+    .select("_id")
+    .lean();
+
+  if (!manager) {
+    return { ok: false, mensaje: "El jefe seleccionado no pertenece al mismo colegio/organizacion" };
+  }
+
+  return { ok: true, value: manager._id };
+}
+
 router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
   const filter = buildScopedFilter(req, {});
 
@@ -151,10 +178,24 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     });
   }
 
+  const school = await findActiveSchool(companyId, effectiveSchoolId);
+  if (!school) {
+    return res.status(400).json({ mensaje: "El colegio seleccionado no existe o no pertenece a tu organizacion" });
+  }
+
+  const managerValidation = await validateManager({
+    managerId: req.body.managerId || null,
+    companyId,
+    schoolId: effectiveSchoolId,
+  });
+  if (!managerValidation.ok) {
+    return res.status(400).json({ mensaje: managerValidation.mensaje });
+  }
+
   const employee = await Employee.create({
     companyId,
     schoolId: effectiveSchoolId,
-    managerId: req.body.managerId || null,
+    managerId: managerValidation.value,
     legajo: req.body.legajo?.trim() || "",
     nombre: req.body.nombre.trim(),
     apellido: req.body.apellido.trim(),
@@ -201,9 +242,26 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
 
   editableFields.forEach((field) => {
     if (field in req.body) {
-      employee[field] = req.body[field];
+      if (field === "email") {
+        employee[field] = req.body[field]?.trim().toLowerCase() || "";
+      } else if (field === "managerId") {
+        employee[field] = req.body[field] || null;
+      } else {
+        employee[field] = req.body[field];
+      }
     }
   });
+
+  const managerValidation = await validateManager({
+    managerId: employee.managerId,
+    companyId: employee.companyId,
+    schoolId: employee.schoolId,
+    employeeId: employee._id,
+  });
+  if (!managerValidation.ok) {
+    return res.status(400).json({ mensaje: managerValidation.mensaje });
+  }
+  employee.managerId = managerValidation.value;
 
   await employee.save();
 

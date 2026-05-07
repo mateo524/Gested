@@ -1,5 +1,6 @@
 import express from "express";
 import Competency from "../models/Competency.js";
+import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requirePermission } from "../middleware/rbac.js";
@@ -18,6 +19,12 @@ function resolveTenantIds(req) {
       ? req.body.schoolId || req.query.schoolId || null
       : req.scope.schoolId || req.body.schoolId || req.query.schoolId || null,
   };
+}
+
+async function assertSchoolInCompany(companyId, schoolId) {
+  if (!schoolId) return true;
+  const school = await School.findOne({ _id: schoolId, companyId, activa: true }).select("_id").lean();
+  return Boolean(school);
 }
 
 router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_COMPETENCIES), async (req, res) => {
@@ -40,6 +47,10 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_C
 
   if (!companyId || !req.body.nombre || !req.body.tipo || !req.body.componente) {
     return res.status(400).json({ mensaje: "Debes indicar nombre, tipo y componente" });
+  }
+
+  if (!(await assertSchoolInCompany(companyId, schoolId))) {
+    return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
   }
 
   const competency = await Competency.create({

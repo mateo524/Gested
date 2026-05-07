@@ -17,7 +17,7 @@ export function auth(req, res, next) {
     req.user = payload;
 
     next();
-  } catch (error) {
+  } catch {
     return res.status(401).json({ mensaje: "Token inválido" });
   }
 }

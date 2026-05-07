@@ -75,7 +75,7 @@ export default function AppShell({ view, setView, children }) {
   } = useAuth();
 
   const roleCode = user?.roleCode || "";
-  const isBasicUser = ["EMPLEADO", "LECTOR_AUDITOR"].includes(roleCode);
+  const isBasicUser = ["EMPLEADO", "LECTOR", "LECTOR_AUDITOR"].includes(roleCode);
   const isManagerUser = ["JEFE", "RRHH", "ADMIN_COLEGIO"].includes(roleCode);
 
   const allViews = useMemo(

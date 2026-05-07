@@ -4,7 +4,7 @@
 
 - [ ] Backend desplegado en Render (estado verde).
 - [ ] Frontend desplegado en Vercel (estado verde).
-- [ ] Variables de entorno cargadas (`MONGO_URI`, `JWT_SECRET`, `CLOUDINARY_*`, `SMTP_*`, `AUTOMATION_TOKEN`).
+- [ ] Variables de entorno cargadas (`MONGO_URI`, `JWT_SECRET` con 32+ caracteres, `CLOUDINARY_*`, `SMTP_*`, `AUTOMATION_TOKEN`).
 - [ ] Ejecutado `npm run seed:validation-matrix` en backend.
 
 ## 2) Matriz de perfiles y aislamiento

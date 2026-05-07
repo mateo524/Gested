@@ -32,6 +32,20 @@ import { ensureInitialAccess } from "./utils/bootstrap.js";
 const app = express();
 app.set("trust proxy", 1);
 
+function assertRuntimeConfig() {
+  if (!process.env.MONGO_URI) {
+    throw new Error("Falta MONGO_URI");
+  }
+
+  if (!process.env.JWT_SECRET) {
+    throw new Error("Falta JWT_SECRET");
+  }
+
+  if (process.env.NODE_ENV === "production" && process.env.JWT_SECRET.length < 32) {
+    throw new Error("JWT_SECRET debe tener al menos 32 caracteres en produccion");
+  }
+}
+
 app.use(cors());
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(compression());
@@ -67,6 +81,7 @@ app.get("/", (req, res) => {
 
 async function start() {
   try {
+    assertRuntimeConfig();
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB conectado");
 

@@ -30,6 +30,8 @@ const UserSchema = new mongoose.Schema(
     activo: { type: Boolean, default: true },
     isSuperAdmin: { type: Boolean, default: false },
     mustChangePassword: { type: Boolean, default: false },
+    passwordResetTokenHash: { type: String, default: null },
+    passwordResetExpiresAt: { type: Date, default: null, index: true },
   },
   { timestamps: true }
 );

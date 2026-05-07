@@ -89,8 +89,6 @@ export async function uploadToStorage({ localPath, contentType, originalName }) 
 
 export async function uploadBufferToStorage({
   buffer,
-  contentType,
-  originalName,
   folderPath = "performia",
 }) {
   if (isCloudinaryEnabled()) {

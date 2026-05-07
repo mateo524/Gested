@@ -1,5 +1,7 @@
 export const PERMISSIONS = {
   MANAGE_COMPANIES: "manage_companies",
+  MANAGE_USERS: "manage_users",
+  MANAGE_ROLES: "manage_roles",
   VIEW_GLOBAL_REPORTS: "view_global_reports",
   DOWNLOAD_GLOBAL_DATA: "download_global_data",
   MANAGE_GLOBAL_USERS: "manage_global_users",
@@ -30,6 +32,8 @@ export const PERMISSIONS = {
 
 export const PERMISSION_SEED = [
   { code: PERMISSIONS.MANAGE_COMPANIES, label: "Gestionar colegios/empresas", module: "companies" },
+  { code: PERMISSIONS.MANAGE_USERS, label: "Gestionar usuarios", module: "users" },
+  { code: PERMISSIONS.MANAGE_ROLES, label: "Gestionar perfiles y permisos", module: "roles" },
   { code: PERMISSIONS.VIEW_GLOBAL_REPORTS, label: "Ver reportes globales", module: "reports" },
   { code: PERMISSIONS.DOWNLOAD_GLOBAL_DATA, label: "Descargar base global", module: "exports" },
   { code: PERMISSIONS.MANAGE_GLOBAL_USERS, label: "Gestionar usuarios globales", module: "users" },
@@ -61,6 +65,8 @@ export const ROLE_DEFINITIONS = [
     scope: "global",
     permisos: [
       PERMISSIONS.MANAGE_COMPANIES,
+      PERMISSIONS.MANAGE_USERS,
+      PERMISSIONS.MANAGE_ROLES,
       PERMISSIONS.VIEW_GLOBAL_REPORTS,
       PERMISSIONS.DOWNLOAD_GLOBAL_DATA,
       PERMISSIONS.MANAGE_GLOBAL_USERS,
@@ -84,6 +90,8 @@ export const ROLE_DEFINITIONS = [
     scope: "school",
     permisos: [
       PERMISSIONS.MANAGE_SCHOOLS,
+      PERMISSIONS.MANAGE_USERS,
+      PERMISSIONS.MANAGE_ROLES,
       PERMISSIONS.MANAGE_SCHOOL_USERS,
       PERMISSIONS.MANAGE_EMPLOYEES,
       PERMISSIONS.MANAGE_COMPETENCIES,
