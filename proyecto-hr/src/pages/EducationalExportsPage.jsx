@@ -15,7 +15,7 @@ function formatDate(value) {
 }
 
 export default function EducationalExportsPage() {
-  const { token, user } = useAuth();
+  const { token, user, activeCompanyId } = useAuth();
   const canImport =
     user?.isSuperAdmin ||
     user?.permisos?.includes("manage_employees") ||
@@ -77,17 +77,20 @@ export default function EducationalExportsPage() {
   useEffect(() => {
     loadOverview().catch((error) => setMessage(error.message));
     loadImportJobs().catch((error) => setMessage(error.message));
-  }, []);
+  }, [token, activeCompanyId]);
 
   useEffect(() => {
     loadDataset().catch((error) => setMessage(error.message));
-  }, [dataset, queryString]);
+  }, [token, dataset, queryString, activeCompanyId]);
 
   async function downloadDataset(format) {
     try {
       const suffix = queryString ? `${queryString}&format=${format}` : `?format=${format}`;
       const response = await fetch(`${apiUrl}/education-exports/download/${dataset}${suffix}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
+        },
       });
       if (!response.ok) throw new Error("No se pudo generar la descarga.");
       const blob = await response.blob();

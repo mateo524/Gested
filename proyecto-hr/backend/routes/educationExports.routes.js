@@ -73,6 +73,12 @@ function buildBaseFilter(req) {
   return filter;
 }
 
+async function validateImportSchool(companyId, schoolId) {
+  if (!schoolId) return true;
+  const school = await School.findOne({ _id: schoolId, companyId, activa: true }).select("_id").lean();
+  return Boolean(school);
+}
+
 async function buildScopedFilter(req, dataset) {
   const filter = buildBaseFilter(req);
 
@@ -255,6 +261,24 @@ function getRowValues(row) {
     .filter((value) => value !== undefined && value !== null && String(value).trim() !== "");
 }
 
+function getWorksheetRowValues(row) {
+  return row.values
+    .slice(1)
+    .map((value) => (value && typeof value === "object" && "text" in value ? value.text : value));
+}
+
+function sanitizeWorksheetHeaders(row) {
+  return getWorksheetRowValues(row).map((value, index) => {
+    const clean = sanitizeHeader(value);
+    return clean || `col_${index + 1}`;
+  });
+}
+
+function scoreHeaderRow(row) {
+  const aliases = new Set(Object.values(fieldAliases).flat());
+  return sanitizeWorksheetHeaders(row).filter((header) => aliases.has(header)).length;
+}
+
 function parseNameParts(fullName) {
   const clean = String(fullName || "").trim();
   if (!clean) return { nombre: "", apellido: "" };
@@ -386,25 +410,30 @@ async function parseUploadedRows(file) {
   }
 
   const worksheet = workbook.worksheets[0];
-  if (!worksheet) return [];
+  if (!worksheet) return { rows: [], truncated: false };
 
-  const headers = worksheet
-    .getRow(1)
-    .values.slice(1)
-    .map((value, index) => {
-      const clean = sanitizeHeader(value);
-      return clean || `col_${index + 1}`;
-    });
+  let headerRowNumber = 1;
+  let bestHeaderScore = 0;
+  const maxHeaderScan = Math.min(20, worksheet.rowCount || 1);
+  for (let rowNumber = 1; rowNumber <= maxHeaderScan; rowNumber += 1) {
+    const score = scoreHeaderRow(worksheet.getRow(rowNumber));
+    if (score > bestHeaderScore) {
+      bestHeaderScore = score;
+      headerRowNumber = rowNumber;
+    }
+  }
+
+  const headers = sanitizeWorksheetHeaders(worksheet.getRow(headerRowNumber));
 
   const rows = [];
   let truncated = false;
   worksheet.eachRow((row, rowNumber) => {
-    if (rowNumber === 1) return;
+    if (rowNumber <= headerRowNumber) return;
     if (rows.length >= MAX_PREVIEW_ROWS) {
       truncated = true;
       return;
     }
-    const values = row.values.slice(1);
+    const values = getWorksheetRowValues(row);
     const item = {};
     headers.forEach((header, index) => {
       item[header] = values[index];
@@ -627,6 +656,7 @@ async function createImportJob({
   sourceStorageProvider = "local",
   sourceStorageKey = "",
   sourcePublicUrl = "",
+  stage = "validated",
 }) {
   const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
   const initialIssues = Array.isArray(issues)
@@ -648,7 +678,7 @@ async function createImportJob({
     sourceStorageKey,
     sourcePublicUrl,
     previewToken,
-    stage: "validated",
+    stage,
     datasetRequested,
     datasetDetected,
     parserType,
@@ -819,7 +849,7 @@ router.get(
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=\"${config.filename}.xlsx\"`
+      `attachment; filename="${config.filename}.xlsx"`
     );
     await workbook.xlsx.write(res);
     res.end();
@@ -888,14 +918,34 @@ router.post(
       return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
     }
 
-    const { rows, truncated } = await parseUploadedRows(req.file);
-    if (!rows.length) {
-      return res.status(400).json({ mensaje: "El archivo no tiene datos" });
-    }
-
     const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = req.body.schoolId || req.user.schoolId || null;
+    if (!(await validateImportSchool(companyId, schoolId))) {
+      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+    }
+    const { rows, truncated } = await parseUploadedRows(req.file);
+    if (!rows.length) {
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken: "",
+        datasetRequested: requestedDataset,
+        datasetDetected: "unknown",
+        parserType: "rules",
+        totalRows: 0,
+        validRows: 0,
+        invalidRows: 1,
+        previewSummary: null,
+        issues: [{ row: 0, message: "El archivo no tiene datos", source: "rule" }],
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+        stage: "failed",
+      });
+      return res.status(400).json({ mensaje: "El archivo no tiene datos", importJobId: importJob._id });
+    }
 
     const aiParsed = await parseWithAiWebhook(req.file, requestedDataset);
     if (aiParsed?.detectedModules && typeof aiParsed.detectedModules === "object") {
@@ -978,9 +1028,28 @@ router.post(
     const detectedDataset = classifyDataset(rows, requestedDataset);
 
     if (detectedDataset === "unknown") {
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken: "",
+        datasetRequested: requestedDataset,
+        datasetDetected: "unknown",
+        parserType: "rules",
+        totalRows: rows.length,
+        validRows: 0,
+        invalidRows: rows.length,
+        previewSummary: null,
+        issues: [{ row: 0, message: "No se reconocieron encabezados o estructura importable", source: "rule" }],
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+        stage: "failed",
+      });
       return res.status(422).json({
         ok: false,
         status: "rejected_unrecognized_file",
+        importJobId: importJob._id,
         detectedDataset,
         mensaje: "No se pudo reconocer la estructura del archivo para importacion.",
       });
@@ -1004,6 +1073,14 @@ router.post(
       const narrativeIssues = narrativeData.competencias.length
         ? []
         : [{ row: 0, message: "No se detectaron competencias puntuables en el formulario.", source: "rule" }];
+      const extractedSummary = {
+        nombre: narrativeData.fullName || "",
+        apellido: nameParts.apellido || "",
+        cargo: narrativeData.cargo || "",
+        area: narrativeData.area || "",
+        competenciasDetectadas: narrativeData.competencias.length,
+        promedioFinal: narrativeData.promedioFinal || 0,
+      };
       const importJob = await createImportJob({
         req,
         companyId,
@@ -1021,15 +1098,6 @@ router.post(
         sourceFileName: req.file.originalname,
         sourceMimeType: req.file.mimetype,
       });
-
-      const extractedSummary = {
-        nombre: narrativeData.fullName || "",
-        apellido: nameParts.apellido || "",
-        cargo: narrativeData.cargo || "",
-        area: narrativeData.area || "",
-        competenciasDetectadas: narrativeData.competencias.length,
-        promedioFinal: narrativeData.promedioFinal || 0,
-      };
 
       return res.json({
         ok: true,
@@ -1109,6 +1177,9 @@ router.post(
     const dataset = preview.dataset;
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = preview.schoolId || req.user.schoolId || null;
+    if (!(await validateImportSchool(companyId, schoolId))) {
+      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+    }
     const importJob = await ImportJob.findOne({
       companyId,
       previewToken,
@@ -1116,18 +1187,27 @@ router.post(
     }).sort({ createdAt: -1 });
     const rows = [...preview.validRows];
     const correctedRows = Array.isArray(req.body.correctedRows) ? req.body.correctedRows : [];
+    const originalInvalidRows = Array.isArray(preview.invalidRows) ? preview.invalidRows : [];
     const correctedErrors = [];
     correctedRows.forEach((item, index) => {
       const checked = validateCorrectedRow(dataset, item);
       if (checked.ok) rows.push(checked.row);
-      else correctedErrors.push({ row: item.row || `manual-${index + 1}`, message: checked.message });
+      else {
+        const original = originalInvalidRows[index] || {};
+        correctedErrors.push({
+          row: item.row || original.row || `manual-${index + 1}`,
+          message: checked.message,
+          normalized: item,
+        });
+      }
     });
+    const unresolvedInvalidRows = originalInvalidRows.slice(correctedRows.length);
 
     const result = {
-      total: rows.length + preview.invalidRows.length,
+      total: rows.length + unresolvedInvalidRows.length + correctedErrors.length,
       created: 0,
       updated: 0,
-      errors: [...preview.invalidRows, ...correctedErrors],
+      errors: [...unresolvedInvalidRows, ...correctedErrors],
     };
     const appendAudit = (action, details = {}) => {
       if (!importJob) return;
@@ -1137,6 +1217,24 @@ router.post(
         details,
       });
     };
+
+    if (["employees", "metrics", "cycles", "roles"].includes(dataset) && !rows.length) {
+      if (importJob) {
+        importJob.stage = "failed";
+        importJob.errorCount = result.errors.length || 1;
+        importJob.issues = (result.errors.length ? result.errors : [{ row: "-", message: "No hay filas validas para confirmar" }])
+          .slice(0, 300)
+          .map((issue) => ({
+            rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
+            message: String(issue.message || "Error de importacion"),
+            source: issue.source || "rule",
+            normalized: issue.normalized || null,
+          }));
+        appendAudit("import_failed", { reason: "no_valid_rows" });
+        await importJob.save();
+      }
+      return res.status(400).json({ mensaje: "No hay filas validas para confirmar", errors: result.errors });
+    }
 
     if (dataset === "narrative") {
       if (!schoolId) {
@@ -1523,7 +1621,7 @@ router.post(
       importJob.stage = "confirmed";
       importJob.datasetDetected = dataset;
       importJob.validRows = rows.length;
-      importJob.invalidRows = preview.invalidRows.length + correctedErrors.length;
+      importJob.invalidRows = result.errors.length;
       importJob.createdCount = result.created;
       importJob.updatedCount = result.updated;
       importJob.errorCount = result.errors.length;
@@ -1619,7 +1717,10 @@ router.post(
 
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = req.body.schoolId || req.user.schoolId || null;
-    const rows = await parseUploadedRows(req.file);
+    if (!(await validateImportSchool(companyId, schoolId))) {
+      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+    }
+    const { rows } = await parseUploadedRows(req.file);
 
     if (!rows.length) {
       return res.status(400).json({ mensaje: "El archivo no tiene datos" });
@@ -1705,7 +1806,7 @@ router.post(
         return res.status(400).json({ mensaje: "Debes indicar colegio para importar ciclos" });
       }
       for (const row of rows) {
-        const anio = Number(row.anio || row.año);
+        const anio = Number(row.anio || row.ano);
         const periodo = String(row.periodo || "").trim();
         const etapa = String(row.etapa || "").trim().toUpperCase();
         const fechaInicio = row.fechainicio ? new Date(row.fechainicio) : null;

@@ -14,7 +14,7 @@ function KpiCard({ title, value, hint }) {
 }
 
 export default function DashboardPage() {
-  const { token, activeCompany, user } = useAuth();
+  const { token, activeCompany, activeCompanyId, user } = useAuth();
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
@@ -30,7 +30,7 @@ export default function DashboardPage() {
   const isRRHH = roleCode === "RRHH";
   const isJefe = roleCode === "JEFE";
   const isEmpleado = roleCode === "EMPLEADO";
-  const isLector = roleCode === "LECTOR_AUDITOR";
+  const isLector = ["LECTOR", "LECTOR_AUDITOR"].includes(roleCode);
 
   useEffect(() => {
     Promise.all([
@@ -290,7 +290,10 @@ export default function DashboardPage() {
   async function downloadDecisionReport() {
     try {
       const response = await fetch(`${apiUrl}/dashboard/decision-report`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
+        },
       });
       if (!response.ok) throw new Error("No se pudo descargar el reporte.");
       const blob = await response.blob();

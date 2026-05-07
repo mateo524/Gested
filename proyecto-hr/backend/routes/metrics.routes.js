@@ -2,6 +2,7 @@ import express from "express";
 import Metric from "../models/Metric.js";
 import MetricLevel from "../models/MetricLevel.js";
 import Competency from "../models/Competency.js";
+import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requirePermission } from "../middleware/rbac.js";
@@ -20,6 +21,34 @@ function resolveTenantIds(req) {
       ? req.body.schoolId || req.query.schoolId || null
       : req.scope.schoolId || req.body.schoolId || req.query.schoolId || null,
   };
+}
+
+async function assertSchoolInCompany(companyId, schoolId) {
+  if (!schoolId) return true;
+  const school = await School.findOne({ _id: schoolId, companyId, activa: true }).select("_id").lean();
+  return Boolean(school);
+}
+
+function normalizeLevels(levels) {
+  if (!Array.isArray(levels)) return { levels: [] };
+
+  const seen = new Set();
+  const normalized = [];
+  for (const level of levels) {
+    const nivel = Number(level.nivel);
+    const etiqueta = String(level.etiqueta || "").trim();
+    if (!Number.isInteger(nivel) || nivel < 1 || nivel > 5 || !etiqueta || seen.has(nivel)) {
+      return { error: "Los niveles deben ser 1 a 5, sin duplicados y con etiqueta" };
+    }
+    seen.add(nivel);
+    normalized.push({
+      nivel,
+      etiqueta,
+      descripcion: String(level.descripcion || "").trim(),
+    });
+  }
+
+  return { levels: normalized };
 }
 
 router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_METRICS), async (req, res) => {
@@ -62,9 +91,23 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_M
     return res.status(404).json({ mensaje: "Competencia no encontrada" });
   }
 
+  const effectiveSchoolId = schoolId || competency.schoolId || null;
+  if (!(await assertSchoolInCompany(companyId, effectiveSchoolId))) {
+    return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+  }
+
+  if (competency.schoolId && effectiveSchoolId && String(competency.schoolId) !== String(effectiveSchoolId)) {
+    return res.status(400).json({ mensaje: "La competencia seleccionada pertenece a otro colegio" });
+  }
+
+  const normalizedLevels = normalizeLevels(req.body.levels);
+  if (normalizedLevels.error) {
+    return res.status(400).json({ mensaje: normalizedLevels.error });
+  }
+
   const metric = await Metric.create({
     companyId,
-    schoolId,
+    schoolId: effectiveSchoolId,
     competencyId: req.body.competencyId,
     nombre: req.body.nombre.trim(),
     descripcion: req.body.descripcion?.trim() || "",
@@ -73,7 +116,7 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_M
     activa: req.body.activa !== false,
   });
 
-  const incomingLevels = Array.isArray(req.body.levels) ? req.body.levels : [];
+  const incomingLevels = normalizedLevels.levels;
 
   if (incomingLevels.length) {
     await MetricLevel.insertMany(
@@ -81,14 +124,14 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_M
         metricId: metric._id,
         nivel: level.nivel,
         etiqueta: level.etiqueta,
-        descripcion: level.descripcion || "",
+        descripcion: level.descripcion,
       }))
     );
   }
 
   await logAudit({
     companyId,
-    schoolId,
+    schoolId: effectiveSchoolId,
     userId: req.user.userId,
     accion: "create",
     modulo: "metrics",
@@ -106,6 +149,20 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
     return res.status(404).json({ mensaje: "Metrica no encontrada" });
   }
 
+  if (req.body.competencyId && String(req.body.competencyId) !== String(metric.competencyId)) {
+    const competency = await Competency.findOne({
+      _id: req.body.competencyId,
+      companyId: metric.companyId,
+      $or: [{ schoolId: metric.schoolId }, { schoolId: null }],
+    }).lean();
+
+    if (!competency) {
+      return res.status(400).json({ mensaje: "La competencia seleccionada no pertenece al alcance de la metrica" });
+    }
+
+    metric.competencyId = competency._id;
+  }
+
   ["nombre", "descripcion", "cargoAplica", "ponderacion", "activa"].forEach((field) => {
     if (field in req.body) {
       metric[field] = req.body[field];
@@ -115,14 +172,19 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
   await metric.save();
 
   if (Array.isArray(req.body.levels)) {
+    const normalizedLevels = normalizeLevels(req.body.levels);
+    if (normalizedLevels.error) {
+      return res.status(400).json({ mensaje: normalizedLevels.error });
+    }
+
     await MetricLevel.deleteMany({ metricId: metric._id });
-    if (req.body.levels.length) {
+    if (normalizedLevels.levels.length) {
       await MetricLevel.insertMany(
-        req.body.levels.map((level) => ({
+        normalizedLevels.levels.map((level) => ({
           metricId: metric._id,
           nivel: level.nivel,
           etiqueta: level.etiqueta,
-          descripcion: level.descripcion || "",
+          descripcion: level.descripcion,
         }))
       );
     }

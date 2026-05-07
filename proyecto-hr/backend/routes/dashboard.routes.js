@@ -29,8 +29,14 @@ const roleExpectedPermissions = {
   RRHH: ["manage_employees", "manage_evaluations", "view_reports"],
   JEFE: ["evaluate_team", "view_reports"],
   EMPLEADO: ["self_evaluate"],
+  LECTOR: ["read_only_access"],
   LECTOR_AUDITOR: ["read_only_access"],
 };
+
+function toObjectId(value) {
+  if (!value || !mongoose.Types.ObjectId.isValid(String(value))) return null;
+  return new mongoose.Types.ObjectId(String(value));
+}
 
 function groupCount(items, key, fallback = "Sin dato") {
   const map = new Map();
@@ -59,8 +65,66 @@ function groupTimeline(items) {
     .sort((a, b) => a.label.localeCompare(b.label));
 }
 
+async function buildDashboardDataScope(req, company) {
+  const companyObjectId = company._id;
+  const roleCode = req.user?.roleCode || "";
+  const schoolObjectId = !req.user?.isSuperAdmin ? toObjectId(req.user?.schoolId) : null;
+  const employeeObjectId = toObjectId(req.user?.employeeId);
+
+  const baseFilter = { companyId: companyObjectId };
+  if (schoolObjectId) {
+    baseFilter.schoolId = schoolObjectId;
+  }
+
+  const employeeFilter = { ...baseFilter };
+  const evaluationFilter = { ...baseFilter };
+  const planFilter = { ...baseFilter };
+
+  if (roleCode === "JEFE") {
+    if (!employeeObjectId) {
+      employeeFilter._id = { $in: [] };
+      evaluationFilter.employeeId = { $in: [] };
+      planFilter.employeeId = { $in: [] };
+    } else {
+      const team = await Employee.find({
+        ...baseFilter,
+        managerId: employeeObjectId,
+        activo: true,
+      })
+        .select("_id")
+        .lean();
+      const teamIds = team.map((item) => item._id);
+      employeeFilter._id = { $in: teamIds };
+      evaluationFilter.employeeId = { $in: teamIds };
+      planFilter.employeeId = { $in: teamIds };
+    }
+  }
+
+  if (roleCode === "EMPLEADO") {
+    const selfIds = employeeObjectId ? [employeeObjectId] : [];
+    employeeFilter._id = { $in: selfIds };
+    evaluationFilter.employeeId = { $in: selfIds };
+    planFilter.employeeId = { $in: selfIds };
+  }
+
+  return {
+    baseFilter,
+    employeeFilter,
+    evaluationFilter,
+    planFilter,
+    schoolObjectId,
+  };
+}
+
 router.get("/summary", auth, async (req, res) => {
-  const { companyId, company } = await resolveCompanyScope(req);
+  const { company } = await resolveCompanyScope(req);
+  const dataScope = await buildDashboardDataScope(req, company);
+  const { baseFilter, employeeFilter, evaluationFilter, planFilter } = dataScope;
+  const userFilter = { ...baseFilter };
+  const auditFilter = { ...baseFilter };
+  const fileFilter = { ...baseFilter };
+  const recordFilter = { ...baseFilter };
+  const roleFilter = { companyId: company._id };
 
   const [
     usersTotal,
@@ -94,54 +158,54 @@ router.get("/summary", auth, async (req, res) => {
     competenciesList,
     planSignalsRaw,
   ] = await Promise.all([
-    User.countDocuments({ companyId }),
-    User.countDocuments({ companyId, activo: true }),
-    Role.countDocuments({ companyId }),
-    AuditLog.countDocuments({ companyId }),
-    DatabaseFile.countDocuments({ companyId, activa: true }),
-    DatabaseFile.countDocuments({ companyId }),
-    Record.countDocuments({ companyId }),
-    CompanySetting.findOne({ companyId }).lean(),
-    AuditLog.find({ companyId }).sort({ createdAt: -1 }).limit(6).lean(),
-    Record.find({ companyId }).sort({ createdAt: -1 }).limit(2000).lean(),
-    DatabaseFile.find({ companyId }).sort({ fechaSubida: -1 }).limit(20).lean(),
-    School.countDocuments({ companyId }),
-    Employee.countDocuments({ companyId }),
-    Employee.countDocuments({ companyId, tipoEmpleado: "DOCENTE" }),
-    Competency.countDocuments({ companyId }),
-    Metric.countDocuments({ companyId }),
-    EvaluationCycle.countDocuments({ companyId, estado: "ABIERTO" }),
-    Evaluation.countDocuments({ companyId }),
-    Evaluation.countDocuments({ companyId, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
-    Evaluation.countDocuments({ companyId, resultadoFinal: { $lt: 3 } }),
+    User.countDocuments(userFilter),
+    User.countDocuments({ ...userFilter, activo: true }),
+    Role.countDocuments(roleFilter),
+    AuditLog.countDocuments(auditFilter),
+    DatabaseFile.countDocuments({ ...fileFilter, activa: true }),
+    DatabaseFile.countDocuments(fileFilter),
+    Record.countDocuments(recordFilter),
+    CompanySetting.findOne({ companyId: company._id }).lean(),
+    AuditLog.find(auditFilter).sort({ createdAt: -1 }).limit(6).lean(),
+    Record.find(recordFilter).sort({ createdAt: -1 }).limit(2000).lean(),
+    DatabaseFile.find(fileFilter).sort({ fechaSubida: -1 }).limit(20).lean(),
+    School.countDocuments(baseFilter),
+    Employee.countDocuments(employeeFilter),
+    Employee.countDocuments({ ...employeeFilter, tipoEmpleado: "DOCENTE" }),
+    Competency.countDocuments(baseFilter),
+    Metric.countDocuments(baseFilter),
+    EvaluationCycle.countDocuments({ ...baseFilter, estado: "ABIERTO" }),
+    Evaluation.countDocuments(evaluationFilter),
+    Evaluation.countDocuments({ ...evaluationFilter, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
+    Evaluation.countDocuments({ ...evaluationFilter, resultadoFinal: { $lt: 3 } }),
     Evaluation.aggregate([
-      { $match: { companyId: company._id } },
+      { $match: evaluationFilter },
       { $group: { _id: null, avg: { $avg: "$resultadoFinal" } } },
     ]),
-    Evaluation.find({ companyId }).sort({ createdAt: -1 }).limit(200).lean(),
-    DownloadLog.countDocuments({ companyId }),
+    Evaluation.find(evaluationFilter).sort({ createdAt: -1 }).limit(200).lean(),
+    DownloadLog.countDocuments(fileFilter),
     AuditLog.findOne({
-      companyId,
+      ...auditFilter,
       modulo: "automation",
       accion: "automation_quality_check",
     })
       .sort({ createdAt: -1 })
       .lean(),
-    Employee.find({ companyId }).select("_id area cargo nombre apellido").lean(),
+    Employee.find(employeeFilter).select("_id area cargo nombre apellido").lean(),
     Evaluation.aggregate([
-      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $match: { ...evaluationFilter, resultadoFinal: { $gt: 0 } } },
       { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
     ]),
     EvaluationScore.find({})
       .populate({
         path: "evaluationId",
-        select: "companyId employeeId",
+        select: "companyId schoolId employeeId",
       })
       .lean(),
-    Metric.find({ companyId }).select("_id nombre competencyId").lean(),
-    Competency.find({ companyId }).select("_id nombre").lean(),
+    Metric.find(baseFilter).select("_id nombre competencyId").lean(),
+    Competency.find(baseFilter).select("_id nombre").lean(),
     DevelopmentPlan.aggregate([
-      { $match: { companyId: company._id } },
+      { $match: planFilter },
       {
         $group: {
           _id: "$employeeId",
@@ -254,6 +318,13 @@ router.get("/summary", auth, async (req, res) => {
   for (const score of evaluationScores) {
     const evaluation = score.evaluationId;
     if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    if (baseFilter.schoolId && String(evaluation.schoolId) !== String(baseFilter.schoolId)) continue;
+    if (
+      Array.isArray(evaluationFilter.employeeId?.$in) &&
+      !evaluationFilter.employeeId.$in.some((id) => String(id) === String(evaluation.employeeId))
+    ) {
+      continue;
+    }
     const metric = metricById.get(String(score.metricId));
     if (!metric) continue;
     const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
@@ -370,24 +441,25 @@ router.get("/summary", auth, async (req, res) => {
 });
 
 router.get("/ops-status", auth, async (req, res) => {
-  const { companyId } = await resolveCompanyScope(req);
+  const { company } = await resolveCompanyScope(req);
+  const { baseFilter } = await buildDashboardDataScope(req, company);
   const now = new Date();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
 
   const [latestImport, importsLastHour, downloadsLastHour, usersActive] = await Promise.all([
-    DatabaseFile.findOne({ companyId, tipoArchivo: { $regex: "^importacion-" } })
+    DatabaseFile.findOne({ ...baseFilter, tipoArchivo: { $regex: "^importacion-" } })
       .sort({ createdAt: -1, fechaSubida: -1 })
       .lean(),
     DatabaseFile.countDocuments({
-      companyId,
+      ...baseFilter,
       tipoArchivo: { $regex: "^importacion-" },
       createdAt: { $gte: oneHourAgo },
     }),
     DownloadLog.countDocuments({
-      companyId,
+      ...baseFilter,
       downloadedAt: { $gte: oneHourAgo },
     }),
-    User.countDocuments({ companyId, activo: true }),
+    User.countDocuments({ ...baseFilter, activo: true }),
   ]);
 
   const mongoConnected = mongoose.connection?.readyState === 1;
@@ -454,16 +526,17 @@ router.get("/role-check", auth, async (req, res) => {
 });
 
 router.get("/predictions", auth, async (req, res) => {
-  const { companyId, company } = await resolveCompanyScope(req);
+  const { company } = await resolveCompanyScope(req);
+  const { baseFilter, employeeFilter, evaluationFilter, planFilter } = await buildDashboardDataScope(req, company);
 
   const [employeesList, evaluationByEmployee, planSignalsRaw, competenciesList, metricsList, evaluationScores, evaluationsTotal, pendingEvaluations] = await Promise.all([
-    Employee.find({ companyId }).select("_id nombre apellido area cargo").lean(),
+    Employee.find(employeeFilter).select("_id nombre apellido area cargo").lean(),
     Evaluation.aggregate([
-      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $match: { ...evaluationFilter, resultadoFinal: { $gt: 0 } } },
       { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
     ]),
     DevelopmentPlan.aggregate([
-      { $match: { companyId: company._id } },
+      { $match: planFilter },
       {
         $group: {
           _id: "$employeeId",
@@ -480,11 +553,11 @@ router.get("/predictions", auth, async (req, res) => {
         },
       },
     ]),
-    Competency.find({ companyId }).select("_id nombre").lean(),
-    Metric.find({ companyId }).select("_id competencyId").lean(),
-    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId" }).lean(),
-    Evaluation.countDocuments({ companyId }),
-    Evaluation.countDocuments({ companyId, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
+    Competency.find(baseFilter).select("_id nombre").lean(),
+    Metric.find(baseFilter).select("_id competencyId").lean(),
+    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId schoolId employeeId" }).lean(),
+    Evaluation.countDocuments(evaluationFilter),
+    Evaluation.countDocuments({ ...evaluationFilter, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
   ]);
 
   const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));
@@ -512,6 +585,13 @@ router.get("/predictions", auth, async (req, res) => {
   for (const score of evaluationScores) {
     const evaluation = score.evaluationId;
     if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    if (baseFilter.schoolId && String(evaluation.schoolId) !== String(baseFilter.schoolId)) continue;
+    if (
+      Array.isArray(evaluationFilter.employeeId?.$in) &&
+      !evaluationFilter.employeeId.$in.some((id) => String(id) === String(evaluation.employeeId))
+    ) {
+      continue;
+    }
     const metric = metricById.get(String(score.metricId));
     if (!metric) continue;
     const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
@@ -576,17 +656,18 @@ router.get("/predictions", auth, async (req, res) => {
 });
 
 router.get("/simulate-impact", auth, async (req, res) => {
-  const { companyId, company } = await resolveCompanyScope(req);
+  const { company } = await resolveCompanyScope(req);
+  const { baseFilter, evaluationFilter, planFilter } = await buildDashboardDataScope(req, company);
   const competency = String(req.query.competency || "");
   const investment = String(req.query.investment || "media");
 
   const [evaluationByEmployee, planSignalsRaw, competenciesList, metricsList, evaluationScores] = await Promise.all([
     Evaluation.aggregate([
-      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $match: { ...evaluationFilter, resultadoFinal: { $gt: 0 } } },
       { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
     ]),
     DevelopmentPlan.aggregate([
-      { $match: { companyId: company._id } },
+      { $match: planFilter },
       {
         $group: {
           _id: "$employeeId",
@@ -603,13 +684,13 @@ router.get("/simulate-impact", auth, async (req, res) => {
         },
       },
     ]),
-    Competency.find({ companyId }).select("_id nombre").lean(),
-    Metric.find({ companyId }).select("_id competencyId").lean(),
-    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId" }).lean(),
+    Competency.find(baseFilter).select("_id nombre").lean(),
+    Metric.find(baseFilter).select("_id competencyId").lean(),
+    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId schoolId employeeId" }).lean(),
   ]);
 
   const employeeIds = evaluationByEmployee.map((item) => item._id);
-  const employeesList = await Employee.find({ companyId, _id: { $in: employeeIds } })
+  const employeesList = await Employee.find({ ...baseFilter, _id: { $in: employeeIds } })
     .select("_id nombre apellido area cargo")
     .lean();
   const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));
@@ -637,6 +718,13 @@ router.get("/simulate-impact", auth, async (req, res) => {
   for (const score of evaluationScores) {
     const evaluation = score.evaluationId;
     if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    if (baseFilter.schoolId && String(evaluation.schoolId) !== String(baseFilter.schoolId)) continue;
+    if (
+      Array.isArray(evaluationFilter.employeeId?.$in) &&
+      !evaluationFilter.employeeId.$in.some((id) => String(id) === String(evaluation.employeeId))
+    ) {
+      continue;
+    }
     const metric = metricById.get(String(score.metricId));
     if (!metric) continue;
     const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
@@ -683,22 +771,32 @@ router.get("/simulate-impact", auth, async (req, res) => {
 });
 
 router.get("/decision-report", auth, async (req, res) => {
+  const canDownload =
+    req.user?.isSuperAdmin ||
+    req.user?.permisos?.some((permission) =>
+      ["view_reports", "download_reports", "download_team_reports", "download_self_report"].includes(permission)
+    );
+  if (!canDownload) {
+    return res.status(403).json({ mensaje: "No tienes permiso para descargar este reporte" });
+  }
+
   const summaryReq = {
     ...req,
     query: req.query,
   };
-  const { companyId, company } = await resolveCompanyScope(summaryReq);
+  const { company } = await resolveCompanyScope(summaryReq);
+  const { baseFilter, employeeFilter, evaluationFilter } = await buildDashboardDataScope(req, company);
 
   const [employeesList, evaluationByEmployee, competenciesList, metricsList, evaluationScores] = await Promise.all([
-    Employee.find({ companyId }).select("_id nombre apellido area cargo").lean(),
+    Employee.find(employeeFilter).select("_id nombre apellido area cargo").lean(),
     Evaluation.aggregate([
-      { $match: { companyId: company._id, resultadoFinal: { $gt: 0 } } },
+      { $match: { ...evaluationFilter, resultadoFinal: { $gt: 0 } } },
       { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
     ]),
-    Competency.find({ companyId }).select("_id nombre").lean(),
-    Metric.find({ companyId }).select("_id competencyId").lean(),
+    Competency.find(baseFilter).select("_id nombre").lean(),
+    Metric.find(baseFilter).select("_id competencyId").lean(),
     EvaluationScore.find({})
-      .populate({ path: "evaluationId", select: "companyId" })
+      .populate({ path: "evaluationId", select: "companyId schoolId employeeId" })
       .lean(),
   ]);
 
@@ -728,6 +826,13 @@ router.get("/decision-report", auth, async (req, res) => {
   for (const score of evaluationScores) {
     const evaluation = score.evaluationId;
     if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
+    if (baseFilter.schoolId && String(evaluation.schoolId) !== String(baseFilter.schoolId)) continue;
+    if (
+      Array.isArray(evaluationFilter.employeeId?.$in) &&
+      !evaluationFilter.employeeId.$in.some((id) => String(id) === String(evaluation.employeeId))
+    ) {
+      continue;
+    }
     const metric = metricById.get(String(score.metricId));
     if (!metric) continue;
     const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
