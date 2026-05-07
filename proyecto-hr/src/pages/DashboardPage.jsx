@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
+import { useView } from "../context/ViewContext";
 
 function KpiCard({ title, value, hint }) {
   return (
@@ -14,6 +15,7 @@ function KpiCard({ title, value, hint }) {
 
 export default function DashboardPage() {
   const { token, activeCompany } = useAuth();
+  const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
   const [simulation, setSimulation] = useState(null);
@@ -55,6 +57,46 @@ export default function DashboardPage() {
       "Medir impacto a 30 dias con el simulador para decidir escalado de presupuesto.",
     ];
   }, [training, risk]);
+
+  const onboardingSteps = useMemo(() => {
+    const employeesCount = Number(summary?.educational?.employees || 0);
+    const metricsCount = Number(summary?.educational?.metrics || 0);
+    const evaluationsCount = Number(summary?.educational?.evaluations || 0);
+    const plansCount = Number(summary?.educational?.developmentPlans || 0);
+
+    return [
+      {
+        id: "empleados",
+        title: "1. Cargar plantilla inicial",
+        detail: "Da de alta colaboradores y responsables por colegio.",
+        done: employeesCount > 0,
+        actionLabel: "Ir a Plantilla",
+      },
+      {
+        id: "metricas",
+        title: "2. Definir competencias e indicadores",
+        detail: "Configura métricas para poder evaluar y comparar.",
+        done: metricsCount > 0,
+        actionLabel: "Ir a Indicadores",
+      },
+      {
+        id: "evaluaciones",
+        title: "3. Registrar evaluaciones",
+        detail: "Carga resultados para comenzar el seguimiento real.",
+        done: evaluationsCount > 0,
+        actionLabel: "Ir a Evaluación",
+      },
+      {
+        id: "planes",
+        title: "4. Activar planes de desarrollo",
+        detail: "Convierte resultados en acciones concretas de mejora.",
+        done: plansCount > 0,
+        actionLabel: "Ir a Desarrollo",
+      },
+    ];
+  }, [summary]);
+
+  const completedSteps = onboardingSteps.filter((s) => s.done).length;
 
   async function downloadDecisionReport() {
     try {
@@ -109,6 +151,38 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-[2rem] border border-[#1e3a8a]/35 bg-[#0f2230] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.2em] text-[#9FB6C1]">Onboarding guiado</p>
+            <h2 className="mt-1 text-2xl font-bold text-white">Primeros 4 pasos para operar sin fricción</h2>
+          </div>
+          <span className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-sm text-[#CFE0E8]">
+            {completedSteps}/4 completados
+          </span>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {onboardingSteps.map((step) => (
+            <article key={step.id} className="rounded-xl border border-white/10 bg-[#122530] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-base font-semibold text-white">{step.title}</p>
+                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${step.done ? "bg-emerald-900/40 text-emerald-300 border border-emerald-400/30" : "bg-amber-900/40 text-amber-300 border border-amber-400/30"}`}>
+                  {step.done ? "Completado" : "Pendiente"}
+                </span>
+              </div>
+              <p className="mt-1 text-sm text-[#9fb6c4]">{step.detail}</p>
+              <button
+                type="button"
+                onClick={() => setView(step.id)}
+                className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+              >
+                {step.actionLabel}
+              </button>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section className="rounded-[2rem] border border-emerald-300/30 bg-emerald-500/10 p-7">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Vista principal</p>
         <h2 className="mt-2 text-3xl font-bold text-white">Decisiones recomendadas</h2>

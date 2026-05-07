@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ViewProvider } from "./context/ViewContext";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
@@ -85,22 +86,24 @@ function AppContent() {
 
   return (
     <AppShell view={view} setView={setView}>
-      <Suspense fallback={<ViewLoader />}>
-        {view === "dashboard" && <DashboardPage />}
-        {view === "novedades" && <AnnouncementsPage />}
-        {view === "organizaciones" && <OrganizationsPage />}
-        {view === "empleados" && <EmployeesPage />}
-        {view === "competencias" && <CompetenciesPage />}
-        {view === "metricas" && <MetricsPage />}
-        {view === "ciclos" && <EvaluationCyclesPage />}
-        {view === "evaluaciones" && <EvaluationsPage />}
-        {view === "planes" && <DevelopmentPlansPage />}
-        {view === "bases-descargas" && <EducationalExportsPage />}
-        {view === "archivo-central" && <StorageCenterPage />}
-        {view === "usuarios" && <UsersPage />}
-        {view === "roles" && <RolesPage />}
-        {view === "settings" && <SettingsPage />}
-      </Suspense>
+      <ViewProvider value={{ view, setView }}>
+        <Suspense fallback={<ViewLoader />}>
+          {view === "dashboard" && <DashboardPage />}
+          {view === "novedades" && <AnnouncementsPage />}
+          {view === "organizaciones" && <OrganizationsPage />}
+          {view === "empleados" && <EmployeesPage />}
+          {view === "competencias" && <CompetenciesPage />}
+          {view === "metricas" && <MetricsPage />}
+          {view === "ciclos" && <EvaluationCyclesPage />}
+          {view === "evaluaciones" && <EvaluationsPage />}
+          {view === "planes" && <DevelopmentPlansPage />}
+          {view === "bases-descargas" && <EducationalExportsPage />}
+          {view === "archivo-central" && <StorageCenterPage />}
+          {view === "usuarios" && <UsersPage />}
+          {view === "roles" && <RolesPage />}
+          {view === "settings" && <SettingsPage />}
+        </Suspense>
+      </ViewProvider>
     </AppShell>
   );
 }
