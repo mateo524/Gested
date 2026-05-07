@@ -36,6 +36,8 @@ export default function EducationalExportsPage() {
   const [importJobs, setImportJobs] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [isLoadingDataset, setIsLoadingDataset] = useState(false);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -44,16 +46,26 @@ export default function EducationalExportsPage() {
   }, [filters]);
 
   async function loadOverview() {
-    const data = await apiFetch("/education-exports/overview", { token });
-    setOverview(data);
-    if (!filters.schoolId && data.schools?.[0]?._id) {
-      setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
+    try {
+      setIsLoadingOverview(true);
+      const data = await apiFetch("/education-exports/overview", { token });
+      setOverview(data);
+      if (!filters.schoolId && data.schools?.[0]?._id) {
+        setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
+      }
+    } finally {
+      setIsLoadingOverview(false);
     }
   }
 
   async function loadDataset() {
-    const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
-    setDatasetData(data);
+    try {
+      setIsLoadingDataset(true);
+      const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
+      setDatasetData(data);
+    } finally {
+      setIsLoadingDataset(false);
+    }
   }
 
   async function loadImportJobs() {
@@ -126,6 +138,14 @@ export default function EducationalExportsPage() {
     }
   }
 
+  function resetImportFlow() {
+    setImportPreview(null);
+    setEditableErrors([]);
+    setImportResult(null);
+    setSelectedJob(null);
+    setMessage("");
+  }
+
   async function confirmImport() {
     if (!importPreview?.previewToken) return;
     try {
@@ -168,16 +188,16 @@ export default function EducationalExportsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <h3 className="text-2xl font-bold text-white">Cargas y descargas</h3>
-        <p className="mt-2 text-[#9fb6c4]">Usa este flujo: subir, validar y confirmar.</p>
+        <h3 className="text-2xl font-bold text-white">Centro de datos</h3>
+        <p className="mt-2 text-[#9fb6c4]">Un solo lugar para subir, validar, confirmar y descargar.</p>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-white">Subida de datos</h4>
+        <h4 className="text-lg font-semibold text-white">Flujo de importacion guiado</h4>
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Subir archivo</span>
-          <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>Paso 2: Validar filas</span>
-          <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>Paso 3: Confirmar</span>
+          <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">1. Subir archivo</span>
+          <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>2. Validar y corregir</span>
+          <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>3. Confirmar lote</span>
         </div>
 
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
@@ -195,6 +215,28 @@ export default function EducationalExportsPage() {
           <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile}>
             {isImporting ? "Procesando..." : "Subir y validar"}
           </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={resetImportFlow}
+            className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+          >
+            Limpiar flujo
+          </button>
+          {selectedJob?._id ? (
+            <button
+              type="button"
+              onClick={() =>
+                apiFetch(`/education-exports/import-jobs/${selectedJob._id}`, { token })
+                  .then((detail) => setSelectedJob(detail.job || null))
+                  .catch((error) => setMessage(error.message))
+              }
+              className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+            >
+              Reintentar lectura del job
+            </button>
+          ) : null}
         </div>
 
         {importPreview ? (
@@ -310,6 +352,9 @@ export default function EducationalExportsPage() {
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        {isLoadingDataset || isLoadingOverview ? (
+          <p className="mb-3 text-xs text-[#9fb6c4]">Actualizando vista de datos...</p>
+        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>

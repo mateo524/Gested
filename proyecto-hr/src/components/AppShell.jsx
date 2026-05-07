@@ -74,22 +74,26 @@ export default function AppShell({ view, setView, children }) {
     tokenNearExpiry,
   } = useAuth();
 
+  const roleCode = user?.roleCode || "";
+  const isBasicUser = ["EMPLEADO", "LECTOR_AUDITOR"].includes(roleCode);
+  const isManagerUser = ["JEFE", "RRHH", "ADMIN_COLEGIO"].includes(roleCode);
+
   const allViews = useMemo(
     () =>
       [
         { key: "dashboard", label: "Panel", show: true, group: "panel" },
-        { key: "empleados", label: "Plantilla", show: hasPermission("manage_employees"), group: "gestion" },
+        {
+          key: "empleados",
+          label: isBasicUser ? "Mi ficha" : "Plantilla",
+          show: hasPermission("manage_employees"),
+          group: "gestion",
+        },
         { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), group: "gestion" },
         { key: "metricas", label: "Indicadores", show: hasPermission("manage_metrics"), group: "gestion" },
         { key: "ciclos", label: "Periodos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
         { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
         { key: "roles", label: "Perfiles", show: hasPermission("manage_roles"), group: "gestion" },
-        {
-          key: "settings",
-          label: "Configuracion",
-          show: hasPermission("manage_settings") || user?.isSuperAdmin,
-          group: "gestion",
-        },
+        { key: "settings", label: "Configuracion", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
         {
           key: "evaluaciones",
           label: "Evaluacion",
@@ -110,10 +114,10 @@ export default function AppShell({ view, setView, children }) {
             hasPermission("download_self_report"),
           group: "datos",
         },
-        { key: "novedades", label: "Comunicados", show: user?.isSuperAdmin, group: "novedades" },
+        { key: "novedades", label: "Comunicados", show: user?.isSuperAdmin, group: "datos" },
         { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
-    [hasPermission, user]
+    [hasPermission, user, isBasicUser]
   );
 
   const primaryTabs = [
@@ -121,7 +125,6 @@ export default function AppShell({ view, setView, children }) {
     { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
     { key: "gestion", label: "Gestion", defaultView: "empleados" },
     { key: "datos", label: "Datos", defaultView: "bases-descargas" },
-    { key: "novedades", label: "Comunicados", defaultView: "novedades", show: user?.isSuperAdmin },
   ];
   const visiblePrimaryTabs = primaryTabs.filter((item) => item.show !== false);
 
@@ -138,9 +141,12 @@ export default function AppShell({ view, setView, children }) {
     const priorityByGroup = {
       panel: ["dashboard"],
       evaluacion: ["evaluaciones", "planes"],
-      gestion: ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
-      datos: ["bases-descargas", "organizaciones"],
-      novedades: ["novedades"],
+      gestion: isBasicUser
+        ? ["empleados", "evaluaciones", "planes"]
+        : isManagerUser
+          ? ["empleados", "competencias", "metricas", "ciclos", "usuarios", "roles", "settings"]
+          : ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
+      datos: ["bases-descargas", "organizaciones", "novedades"],
     };
 
     const groupViews = allViews.filter((item) => item.group === groupKey).map((item) => item.key);
@@ -150,13 +156,19 @@ export default function AppShell({ view, setView, children }) {
     if (first) setView(first);
   }
 
+  const contextualSubtitle = user?.isSuperAdmin
+    ? "Gestion global multi-organizacion"
+    : user?.companyName
+      ? `Operacion en ${user.companyName}`
+      : "Gestion de desempeno institucional";
+
   return (
     <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/95 backdrop-blur">
         <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-4 py-4">
           <div className="min-w-0">
             <AppLogo variant="dark" />
-            <p className="mt-1 text-sm text-[#7A9AAA]">Gestion de desempeno institucional</p>
+            <p className="mt-1 text-sm text-[#7A9AAA]">{contextualSubtitle}</p>
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
