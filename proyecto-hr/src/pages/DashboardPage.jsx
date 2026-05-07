@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [scenarios, setScenarios] = useState([]);
   const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [launchAudit, setLaunchAudit] = useState({ running: false, done: false, score: 0, checks: [] });
   const roleCode = user?.roleCode || "";
   const isSuperOrDirector = user?.isSuperAdmin || roleCode === "ADMIN_COLEGIO";
   const isRRHH = roleCode === "RRHH";
@@ -162,6 +163,42 @@ export default function DashboardPage() {
     }
   }
 
+  async function runLaunchAudit() {
+    setLaunchAudit({ running: true, done: false, score: 0, checks: [] });
+    const checks = [];
+    const addCheck = (id, ok, detail) => checks.push({ id, ok, detail });
+
+    try {
+      const [me, ops, role, exportsOverview, supportHealth] = await Promise.all([
+        apiFetch("/auth/me", { token }).catch(() => null),
+        apiFetch("/dashboard/ops-status", { token }).catch(() => null),
+        apiFetch("/dashboard/role-check", { token }).catch(() => null),
+        apiFetch("/education-exports/overview", { token }).catch(() => null),
+        apiFetch("/support/health", { token }).catch(() => null),
+      ]);
+
+      addCheck("Login y sesión", Boolean(me?._id || me?.email), me ? "Sesión válida." : "No se pudo validar la sesión.");
+      addCheck("Mongo/API", Boolean(ops?.runtime?.mongoConnected && ops?.runtime?.apiHealthy), ops?.runtime?.mongoConnected ? "Conectado." : "Sin conexión estable.");
+      addCheck("Aislamiento por rol", Boolean(role?.checks?.tenantScoped || role?.isSuperAdmin), role?.isSuperAdmin ? "Rol global superadmin." : role?.checks?.tenantScoped ? "Tenant aislado activo." : "Sin aislamiento por tenant.");
+      addCheck("Permisos mínimos", Number(role?.checks?.expectedCoveragePct || 0) >= 70, `Cobertura ${role?.checks?.expectedCoveragePct ?? 0}%`);
+      addCheck("Módulo datos/importación", Boolean(exportsOverview?.summary), exportsOverview?.summary ? "Overview de datos disponible." : "No responde módulo de datos.");
+      addCheck("Soporte/chat backend", Boolean(supportHealth?.ok), supportHealth?.ok ? "Servicio de soporte activo." : "No responde soporte.");
+      addCheck("Cloudinary configurado", Boolean(ops?.integrations?.cloudinaryConfigured), ops?.integrations?.cloudinaryConfigured ? "Configurado." : "Pendiente configurar.");
+      addCheck("Reset password (infra)", Boolean(ops?.integrations?.smtpConfigured), ops?.integrations?.smtpConfigured ? "SMTP listo." : "SMTP no configurado.");
+
+      const passed = checks.filter((c) => c.ok).length;
+      const score = Math.round((passed / checks.length) * 100);
+      setLaunchAudit({ running: false, done: true, score, checks });
+    } catch {
+      setLaunchAudit({
+        running: false,
+        done: true,
+        score: 0,
+        checks: [{ id: "Ejecución de auditoría", ok: false, detail: "No se pudo completar la auditoría." }],
+      });
+    }
+  }
+
   if (message) return <p className="text-rose-300">{message}</p>;
   if (!summary) return <p className="text-[#9fb6c4]">Cargando panel ejecutivo...</p>;
 
@@ -210,6 +247,42 @@ export default function DashboardPage() {
             <p className="mt-3 text-xs text-[#9fb6c4]">{roleCheck.recommendations[0]}</p>
           ) : null}
         </article>
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo auditoría de lanzamiento</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Checklist técnico en un clic</h3>
+          </div>
+          <button
+            type="button"
+            onClick={runLaunchAudit}
+            disabled={launchAudit.running}
+            className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          >
+            {launchAudit.running ? "Auditando..." : "Ejecutar auditoría"}
+          </button>
+        </div>
+
+        {launchAudit.done ? (
+          <div className="mt-4">
+            <p className="text-sm text-[#c5d5de]">
+              Puntaje final:{" "}
+              <span className={`font-bold ${launchAudit.score >= 85 ? "text-emerald-300" : launchAudit.score >= 65 ? "text-amber-300" : "text-rose-300"}`}>
+                {launchAudit.score}%
+              </span>
+            </p>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {launchAudit.checks.map((item) => (
+                <div key={item.id} className={`rounded-xl border px-3 py-2 text-sm ${item.ok ? "border-emerald-400/30 bg-emerald-900/20 text-emerald-200" : "border-rose-400/30 bg-rose-900/20 text-rose-200"}`}>
+                  <p className="font-semibold">{item.id}</p>
+                  <p className="text-xs opacity-90">{item.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
 
       <section className="rounded-[2rem] border border-[#1e3a8a]/35 bg-[#0f2230] p-6">
