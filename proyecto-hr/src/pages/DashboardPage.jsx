@@ -122,69 +122,170 @@ export default function DashboardPage() {
     const importsLastHour = Number(opsStatus?.activity?.importsLastHour || 0);
     const smtpConfigured = Boolean(opsStatus?.integrations?.smtpConfigured);
     const roleCoverage = Number(roleCheck?.checks?.expectedCoveragePct || 0);
+    const newestRisk = risk[0];
+    const topTraining = training[0];
 
-    if (pendingEvaluations > 0) {
+    if (isSuperOrDirector) {
+      if (pendingEvaluations > 0) {
+        items.push({
+          priority: "ALTA",
+          title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
+          detail: "Destraba decisiones de gestion y mejora la calidad del dashboard.",
+          actionLabel: "Ir a Evaluacion",
+          goTo: "evaluaciones",
+        });
+      }
+      if (lowPerformance > 0) {
+        items.push({
+          priority: "ALTA",
+          title: `Definir intervencion para ${lowPerformance} casos criticos`,
+          detail: "Prioriza acompanamiento y presupuesto de capacitacion.",
+          actionLabel: "Ir a Desarrollo",
+          goTo: "planes",
+        });
+      }
+      if (importsLastHour === 0) {
+        items.push({
+          priority: "MEDIA",
+          title: "No hubo cargas recientes de datos",
+          detail: "Actualiza la base para decisiones con evidencia vigente.",
+          actionLabel: "Ir a Cargas y descargas",
+          goTo: "bases-descargas",
+        });
+      }
+      if (roleCoverage < 100) {
+        items.push({
+          priority: "MEDIA",
+          title: `Ajustar cobertura de permisos (${roleCoverage}%)`,
+          detail: "Asegura que cada rol vea solo su alcance operativo.",
+          actionLabel: "Ir a Perfiles",
+          goTo: "roles",
+        });
+      }
+      if (!smtpConfigured) {
+        items.push({
+          priority: "BAJA",
+          title: "Configurar recuperacion de contrasena (SMTP)",
+          detail: "Reduce bloqueos de acceso y tickets manuales.",
+          actionLabel: "Ir a Configuracion",
+          goTo: "settings",
+        });
+      }
+    } else if (isRRHH) {
+      if (pendingEvaluations > 0) {
+        items.push({
+          priority: "ALTA",
+          title: `Completar ${pendingEvaluations} evaluaciones pendientes`,
+          detail: "Sin evaluaciones completas no hay lectura real de desempeno.",
+          actionLabel: "Ir a Evaluacion",
+          goTo: "evaluaciones",
+        });
+      }
+      if (lowPerformance > 0) {
+        items.push({
+          priority: "ALTA",
+          title: `Abrir planes para ${lowPerformance} colaboradores en riesgo`,
+          detail: "Activa seguimiento quincenal con foco por competencia.",
+          actionLabel: "Ir a Desarrollo",
+          goTo: "planes",
+        });
+      }
+      if (activeUsers === 0) {
+        items.push({
+          priority: "MEDIA",
+          title: "No hay usuarios activos",
+          detail: "Crea accesos para habilitar autoevaluaciones y feedback.",
+          actionLabel: "Ir a Accesos",
+          goTo: "usuarios",
+        });
+      }
+      if (importsLastHour === 0) {
+        items.push({
+          priority: "MEDIA",
+          title: "Validar nueva carga de plantilla",
+          detail: "Sube datos de empleados y metricas para mantener trazabilidad.",
+          actionLabel: "Ir a Cargas y descargas",
+          goTo: "bases-descargas",
+        });
+      }
+      if (roleCoverage < 100) {
+        items.push({
+          priority: "BAJA",
+          title: "Revisar matriz de permisos",
+          detail: "Evita fricciones operativas por accesos incompletos.",
+          actionLabel: "Ir a Perfiles",
+          goTo: "roles",
+        });
+      }
+    } else if (isJefe) {
+      if (pendingEvaluations > 0) {
+        items.push({
+          priority: "ALTA",
+          title: `Finalizar ${pendingEvaluations} evaluaciones de equipo`,
+          detail: "Permite habilitar planes de mejora personalizados.",
+          actionLabel: "Ir a Evaluacion",
+          goTo: "evaluaciones",
+        });
+      }
+      if (newestRisk?.nombre) {
+        items.push({
+          priority: "ALTA",
+          title: `Agendar 1:1 con ${newestRisk.nombre}`,
+          detail: "Caso con mayor urgencia de acompanamiento en tu equipo.",
+          actionLabel: "Ir a Desarrollo",
+          goTo: "planes",
+        });
+      }
       items.push({
-        priority: "ALTA",
-        title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
-        detail: "Impacta directamente en el dashboard y recomendaciones.",
-        actionLabel: "Ir a Evaluacion",
-        goTo: "evaluaciones",
-      });
-    }
-
-    if (lowPerformance > 0) {
-      items.push({
-        priority: "ALTA",
-        title: `Intervenir ${lowPerformance} casos con desempeno critico`,
-        detail: "Activa plan de desarrollo y seguimiento semanal.",
+        priority: "MEDIA",
+        title: "Actualizar acuerdos de seguimiento",
+        detail: "Deja objetivos semanales claros para cada colaborador.",
         actionLabel: "Ir a Desarrollo",
         goTo: "planes",
       });
-    }
-
-    if (importsLastHour === 0) {
+    } else if (isEmpleado) {
+      if (topTraining) {
+        items.push({
+          priority: topTraining.priority === "ALTA" ? "ALTA" : "MEDIA",
+          title: `Trabajar competencia: ${topTraining.competencia}`,
+          detail: "Registra evidencia concreta para tu proxima revision.",
+          actionLabel: "Ir a Evaluacion",
+          goTo: "evaluaciones",
+        });
+      }
       items.push({
         priority: "MEDIA",
-        title: "No hubo cargas recientes de datos",
-        detail: "Sube y valida nuevos archivos para mantener el panel actualizado.",
+        title: "Completar autoevaluacion actual",
+        detail: "Mejora la calidad de feedback con tu jefatura.",
+        actionLabel: "Ir a Evaluacion",
+        goTo: "evaluaciones",
+      });
+      items.push({
+        priority: "BAJA",
+        title: "Actualizar plan de desarrollo personal",
+        detail: "Define una accion concreta para los proximos 30 dias.",
+        actionLabel: "Ir a Desarrollo",
+        goTo: "planes",
+      });
+    } else if (isLector) {
+      items.push({
+        priority: "MEDIA",
+        title: "Revisar consistencia de reportes",
+        detail: "Controla que indicadores y descargas coincidan por periodo.",
+        actionLabel: "Ir a Cargas y descargas",
+        goTo: "bases-descargas",
+      });
+      items.push({
+        priority: "BAJA",
+        title: "Verificar trazabilidad de exportaciones",
+        detail: "Audita responsable, fecha y filtros utilizados en cada descarga.",
         actionLabel: "Ir a Cargas y descargas",
         goTo: "bases-descargas",
       });
     }
 
-    if (!smtpConfigured) {
-      items.push({
-        priority: "MEDIA",
-        title: "Configurar SMTP para recuperacion de contrasena",
-        detail: "Evita bloqueos de acceso y reduce soporte manual.",
-        actionLabel: "Ir a Configuracion",
-        goTo: "settings",
-      });
-    }
-
-    if (roleCoverage < 100) {
-      items.push({
-        priority: "MEDIA",
-        title: `Revisar permisos del rol actual (${roleCoverage}% cobertura)`,
-        detail: "Asegura que cada perfil vea solo lo que corresponde.",
-        actionLabel: "Ir a Perfiles",
-        goTo: "roles",
-      });
-    }
-
-    if (activeUsers === 0) {
-      items.push({
-        priority: "ALTA",
-        title: "No hay usuarios activos",
-        detail: "Sin usuarios activos no se puede operar el circuito de evaluacion.",
-        actionLabel: "Ir a Accesos",
-        goTo: "usuarios",
-      });
-    }
-
     return items.slice(0, 5);
-  }, [summary, opsStatus, roleCheck]);
+  }, [summary, opsStatus, roleCheck, isSuperOrDirector, isRRHH, isJefe, isEmpleado, isLector, risk, training]);
 
   async function downloadDecisionReport() {
     try {
