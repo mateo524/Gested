@@ -196,7 +196,7 @@ export default function LoginPage() {
                   className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
                   style={{ backgroundColor: portalBranding.primaryColor }}
                 >
-                  {isSubmitting ? "Ingresando..." : "Iniciar sesion"}
+                  {isSubmitting ? "Ingresando..." : "Iniciar sesi?n"}
                 </button>
 
                 <button
@@ -275,7 +275,7 @@ export default function LoginPage() {
                   className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
                   style={{ backgroundColor: portalBranding.primaryColor }}
                 >
-                  {isSubmitting ? "Actualizando..." : "Restablecer contrasena"}
+                  {isSubmitting ? "Actualizando..." : "Restablecer contrase?a"}
                 </button>
                 <button
                   type="button"
