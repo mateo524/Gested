@@ -1,13 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
 const baseLevels = [
-  { nivel: 1, etiqueta: "Insatisfactorio", descripcion: "" },
-  { nivel: 2, etiqueta: "Minimo", descripcion: "" },
-  { nivel: 3, etiqueta: "En desarrollo", descripcion: "" },
-  { nivel: 4, etiqueta: "Competente", descripcion: "" },
-  { nivel: 5, etiqueta: "Excepcional", descripcion: "" },
+  { nivel: 1, etiqueta: "Insatisfactorio", descripción: "" },
+  { nivel: 2, etiqueta: "Mínimo", descripción: "" },
+  { nivel: 3, etiqueta: "En desarrollo", descripción: "" },
+  { nivel: 4, etiqueta: "Competente", descripción: "" },
+  { nivel: 5, etiqueta: "Excepcional", descripción: "" },
 ];
 
 const buildDefaultLevels = () => baseLevels.map((level) => ({ ...level }));
@@ -16,7 +16,7 @@ const emptyForm = {
   schoolId: "",
   competencyId: "",
   nombre: "",
-  descripcion: "",
+  descripción: "",
   cargoAplica: "",
   ponderacion: 1,
   levels: buildDefaultLevels(),
@@ -45,7 +45,7 @@ export default function MetricsPage() {
     const term = query.trim().toLowerCase();
     if (!term) return metrics;
     return metrics.filter((metric) =>
-      [metric.nombre, metric.descripcion, ...(metric.cargoAplica || [])]
+      [metric.nombre, metric.descripción, ...(metric.cargoAplica || [])]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
     );
@@ -130,13 +130,13 @@ export default function MetricsPage() {
       schoolId: metric.schoolId || "",
       competencyId: metric.competencyId || "",
       nombre: metric.nombre || "",
-      descripcion: metric.descripcion || "",
+      descripción: metric.descripción || "",
       cargoAplica: (metric.cargoAplica || []).join(", "),
       ponderacion: Number(metric.ponderacion || 1),
       levels: (metric.levels?.length ? metric.levels : buildDefaultLevels()).map((level) => ({
         nivel: Number(level.nivel),
         etiqueta: level.etiqueta || "",
-        descripcion: level.descripcion || "",
+        descripción: level.descripción || "",
       })),
     });
     setMessageType("info");
@@ -155,7 +155,7 @@ export default function MetricsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Motor de evaluacion</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Motor de evaluación</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Indicadores y niveles</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Define indicadores claros por competencia y usa la misma escala para comparar resultados.
@@ -171,7 +171,7 @@ export default function MetricsPage() {
           </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
               <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
             </div>
             {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
@@ -185,10 +185,10 @@ export default function MetricsPage() {
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Definicion del indicador</p>
             <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
             {fieldErrors.nombre ? <p className="text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
-            <textarea className="pf-textarea" placeholder="Descripción breve y observable" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
+            <textarea className="pf-textarea" placeholder="Descripción breve y observable" value={form.descripción} onChange={(e) => setForm({ ...form, descripción: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargos (separados por coma)" value={form.cargoAplica} onChange={(e) => setForm({ ...form, cargoAplica: e.target.value })} />
-              <input type="number" min="1" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Ponderacion" value={form.ponderacion} onChange={(e) => setForm({ ...form, ponderacion: Number(e.target.value) })} />
+              <input type="number" min="1" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Ponderación" value={form.ponderacion} onChange={(e) => setForm({ ...form, ponderacion: Number(e.target.value) })} />
             </div>
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
@@ -197,7 +197,7 @@ export default function MetricsPage() {
                 <div key={level.nivel} className="grid gap-3 md:grid-cols-[0.18fr_0.4fr_1fr]">
                   <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={level.nivel} disabled />
                   <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={level.etiqueta} onChange={(e) => updateLevel(index, "etiqueta", e.target.value)} />
-                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Descripcion del nivel" value={level.descripcion} onChange={(e) => updateLevel(index, "descripcion", e.target.value)} />
+                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Descripcion del nivel" value={level.descripción} onChange={(e) => updateLevel(index, "descripción", e.target.value)} />
                 </div>
               ))}
             </div>
@@ -207,7 +207,7 @@ export default function MetricsPage() {
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edicion
+                Cancelar edición
               </button>
             ) : null}
           </form>
@@ -229,13 +229,13 @@ export default function MetricsPage() {
               <article key={metric._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <p className="text-lg font-semibold text-white">{metric.nombre}</p>
                 <p className="mt-1 text-sm text-[#9fb6c4]">
-                  Ponderacion: {metric.ponderacion} - Cargos: {(metric.cargoAplica || []).join(", ") || "General"}
+                  Ponderación: {metric.ponderacion} - Cargos: {(metric.cargoAplica || []).join(", ") || "General"}
                 </p>
                 <div className="mt-4 grid gap-2">
                   {(metric.levels || []).map((level) => (
                     <div key={`${metric._id}-${level.nivel}`} className="rounded-2xl bg-[#122530] px-4 py-3 text-sm">
                       <span className="font-semibold text-white">{level.nivel} - {level.etiqueta}</span>
-                      <p className="mt-1 text-[#9fb6c4]">{level.descripcion || "Sin descripcion"}</p>
+                      <p className="mt-1 text-[#9fb6c4]">{level.descripción || "Sin descripción"}</p>
                     </div>
                   ))}
                 </div>
@@ -253,3 +253,5 @@ export default function MetricsPage() {
     </div>
   );
 }
+
+

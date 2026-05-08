@@ -25,7 +25,7 @@ export default function LoginPage() {
     if (urlToken) {
       setResetForm((prev) => ({ ...prev, token: urlToken }));
       setMode("reset");
-      setMessage("Token detectado. Ingresa tu nueva contrasena para continuar.");
+      setMessage("Token detectado. Ingresa tu nueva contraseña para continuar.");
     }
   }, []);
 
@@ -54,7 +54,7 @@ export default function LoginPage() {
 
       await login(data);
     } catch (error) {
-      setMessage(error.message || "No se pudo iniciar sesion.");
+      setMessage(error.message || "No se pudo iniciar sesión.");
     } finally {
       setIsSubmitting(false);
     }
@@ -78,7 +78,7 @@ export default function LoginPage() {
       setMessage(
         data?.debugResetToken
           ? `Email no configurado. Token de prueba: ${data.debugResetToken}`
-          : "Si el correo existe, te enviamos un enlace para restablecer la contrasena."
+          : "Si el correo existe, te enviamos un enlace para restablecer la contraseña."
       );
       setMode("reset");
     } catch (error) {
@@ -101,11 +101,11 @@ export default function LoginPage() {
           newPassword: resetForm.newPassword,
         }),
       });
-      setMessage("Contrasena actualizada. Ahora inicia sesion con la nueva clave.");
+      setMessage("Contraseña actualizada. Ahora inicia sesión con la nueva clave.");
       setMode("login");
       setResetForm({ token: "", newPassword: "" });
     } catch (error) {
-      setMessage(error.message || "No se pudo restablecer la contrasena.");
+      setMessage(error.message || "No se pudo restablecer la contraseña.");
     } finally {
       setIsSubmitting(false);
     }
@@ -137,24 +137,24 @@ export default function LoginPage() {
                 Plataforma interna
               </p>
               <h1 className="mt-4 text-5xl leading-[0.95] md:text-6xl" style={{ fontFamily: "Instrument Serif, serif" }}>
-                Datos mejor organizados para tomar decisiones con mas claridad
+                Datos mejor organizados para tomar decisiones con más claridad
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#AFC3CE] md:text-lg">
-                Performia concentra acceso, control, seguridad y operacion diaria en una
-                experiencia mas ordenada y profesional para gestionar informacion.
+                Performia concentra acceso, control, seguridad y operación diaria en una
+                experiencia más ordenada y profesional para gestionar información.
               </p>
 
               <div className="mt-8 grid gap-3 md:grid-cols-3">
                 <article className="rounded-2xl border border-white/10 bg-[#142028] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Gestion</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Gestión</p>
                   <p className="mt-2 text-2xl font-semibold text-white">Centralizada</p>
                 </article>
                 <article className="rounded-2xl border border-white/10 bg-[#142028] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Auditoria</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Auditoría</p>
                   <p className="mt-2 text-2xl font-semibold text-white">Activa</p>
                 </article>
                 <article className="rounded-2xl border border-white/10 bg-[#142028] p-4">
-                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Operacion</p>
+                  <p className="text-xs uppercase tracking-[0.18em] text-[#7A9AAA]">Operación</p>
                   <p className="mt-2 text-2xl font-semibold text-white">Ordenada</p>
                 </article>
               </div>
@@ -169,14 +169,14 @@ export default function LoginPage() {
               Entrar a {portalBranding.nombreVisible}
             </h2>
             <p className="mt-3 text-base leading-7 text-[#AFC3CE]">
-              Gestion del desempeno, control de accesos y operacion interna desde un solo lugar.
+              Gestión del desempeño, control de accesos y operación interna desde un solo lugar.
             </p>
 
             {mode === "login" && (
               <form className="mt-10 space-y-4" onSubmit={handleSubmit}>
                 <input
                   type="email"
-                  placeholder="Correo electronico"
+                  placeholder="Correo electrónico"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
@@ -184,7 +184,7 @@ export default function LoginPage() {
 
                 <input
                   type="password"
-                  placeholder="Contrasena"
+                  placeholder="Contraseña"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
@@ -196,7 +196,7 @@ export default function LoginPage() {
                   className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
                   style={{ backgroundColor: portalBranding.primaryColor }}
                 >
-                  {isSubmitting ? "Ingresando..." : "Iniciar sesion"}
+                  {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
                 </button>
 
                 <button
@@ -207,14 +207,14 @@ export default function LoginPage() {
                   }}
                   className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#AFC3CE] transition hover:border-white/40"
                 >
-                  Olvide mi contrasena
+                  Olvidé mi contraseña
                 </button>
 
                 <button
                   type="button"
                   disabled
                   className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#7A9AAA]"
-                  title="Proximo paso recomendado: login con Google Workspace"
+                  title="Próximo paso recomendado: login con Google Workspace"
                 >
                   Iniciar con Google (proximamente)
                 </button>
@@ -255,14 +255,14 @@ export default function LoginPage() {
               <form className="mt-10 space-y-4" onSubmit={handleResetPassword}>
                 <input
                   type="text"
-                  placeholder="Token de recuperacion"
+                  placeholder="Token de recuperación"
                   value={resetForm.token}
                   onChange={(e) => setResetForm((prev) => ({ ...prev, token: e.target.value }))}
                   className="w-full rounded-[1.25rem] border border-white/15 bg-[#0E1A20] px-4 py-3.5 text-white outline-none transition focus:border-[#28964D]"
                 />
                 <input
                   type="password"
-                  placeholder="Nueva contrasena (min 8)"
+                  placeholder="Nueva contraseña (mín. 8)"
                   value={resetForm.newPassword}
                   onChange={(e) =>
                     setResetForm((prev) => ({ ...prev, newPassword: e.target.value }))
@@ -275,7 +275,7 @@ export default function LoginPage() {
                   className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
                   style={{ backgroundColor: portalBranding.primaryColor }}
                 >
-                  {isSubmitting ? "Actualizando..." : "Restablecer contrase?a"}
+                  {isSubmitting ? "Actualizando..." : "Restablecer contraseña"}
                 </button>
                 <button
                   type="button"

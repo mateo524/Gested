@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
 const emptyForm = {
   schoolId: "",
   nombre: "",
-  descripcion: "",
+  descripción: "",
   tipo: "DOCENTE",
   componente: "C",
 };
@@ -74,7 +74,7 @@ export default function CompetenciesPage() {
     setForm({
       schoolId: competency.schoolId || "",
       nombre: competency.nombre || "",
-      descripcion: competency.descripcion || "",
+      descripción: competency.descripción || "",
       tipo: competency.tipo || "DOCENTE",
       componente: competency.componente || "C",
     });
@@ -90,7 +90,7 @@ export default function CompetenciesPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Modelo de desempeno</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Modelo de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Competencias</h3>
       </section>
 
@@ -103,12 +103,12 @@ export default function CompetenciesPage() {
           </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
               <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
             </div>
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Descripcion de la competencia</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre (ej: Trabajo en equipo)" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-            <textarea className="min-h-28 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
+            <textarea className="min-h-28 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion" value={form.descripción} onChange={(e) => setForm({ ...form, descripción: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
                 <option value="TRANSVERSAL">Transversal</option>
@@ -127,7 +127,7 @@ export default function CompetenciesPage() {
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edicion
+                Cancelar edición
               </button>
             ) : null}
           </form>
@@ -158,12 +158,12 @@ export default function CompetenciesPage() {
                   <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{competency.tipo}</span>
                   <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{competency.componente}</span>
                 </div>
-                <p className="mt-3 text-sm text-[#9fb6c4]">{competency.descripcion || "Sin descripcion"}</p>
+                <p className="mt-3 text-sm text-[#9fb6c4]">{competency.descripción || "Sin descripción"}</p>
                 <button type="button" onClick={() => handleEdit(competency)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
                   Editar
                 </button>
               </article>
-            )) : <p className="text-[#9fb6c4]">Todavia no hay competencias cargadas.</p>}
+            )) : <p className="text-[#9fb6c4]">Todavía no hay competencias cargadas.</p>}
           </div>
         </section>
       </div>
@@ -172,3 +172,5 @@ export default function CompetenciesPage() {
     </div>
   );
 }
+
+
