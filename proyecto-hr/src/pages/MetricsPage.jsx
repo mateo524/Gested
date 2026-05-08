@@ -34,6 +34,7 @@ export default function MetricsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [query, setQuery] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
   const selectedSchool = schools.find((school) => school._id === form.schoolId) || null;
 
   const visibleCompetencies = useMemo(
@@ -84,7 +85,12 @@ export default function MetricsPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.schoolId || !form.competencyId || !form.nombre) {
+    const nextErrors = {};
+    if (!form.schoolId) nextErrors.schoolId = "No hay institucion asignada.";
+    if (!form.competencyId) nextErrors.competencyId = "Selecciona una competencia.";
+    if (!form.nombre?.trim()) nextErrors.nombre = "El nombre del indicador es obligatorio.";
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
       setMessage("Completa colegio, competencia y nombre de indicador para guardar.");
       setMessageType("warning");
       return;
@@ -106,6 +112,7 @@ export default function MetricsPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
       setEditingId("");
+      setFieldErrors({});
       setMessageType("success");
       setMessage(isEditing ? "Indicador actualizado." : "Indicador creado.");
       await loadData();
@@ -134,6 +141,7 @@ export default function MetricsPage() {
     });
     setMessageType("info");
     setMessage("Editando indicador seleccionado.");
+    setFieldErrors({});
   }
 
   function cancelEdit() {
@@ -141,6 +149,7 @@ export default function MetricsPage() {
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
     setMessageType("info");
     setMessage("Edición cancelada.");
+    setFieldErrors({});
   }
 
   return (
@@ -165,14 +174,17 @@ export default function MetricsPage() {
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
               <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
             </div>
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.competencyId} onChange={(e) => setForm({ ...form, competencyId: e.target.value })}>
+            {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
+            <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.competencyId ? "border-rose-400/70" : "border-white/15"}`} value={form.competencyId} onChange={(e) => setForm({ ...form, competencyId: e.target.value })}>
               <option value="">Selecciona competencia</option>
               {visibleCompetencies.map((competency) => (
                 <option key={competency._id} value={competency._id}>{competency.nombre}</option>
               ))}
             </select>
+            {fieldErrors.competencyId ? <p className="text-xs text-rose-300">{fieldErrors.competencyId}</p> : null}
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Definicion del indicador</p>
-            <input className="pf-input" placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            {fieldErrors.nombre ? <p className="text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
             <textarea className="pf-textarea" placeholder="Descripción breve y observable" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
               <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargos (separados por coma)" value={form.cargoAplica} onChange={(e) => setForm({ ...form, cargoAplica: e.target.value })} />

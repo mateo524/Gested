@@ -21,6 +21,7 @@ export default function UsersPage() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkPasswords, setBulkPasswords] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const filteredUsers = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -51,6 +52,7 @@ export default function UsersPage() {
   function resetForm() {
     setEditingId("");
     setForm(emptyForm);
+    setFieldErrors({});
   }
 
   function startEdit(user) {
@@ -63,11 +65,17 @@ export default function UsersPage() {
       activo: Boolean(user.activo),
     });
     setMessage("Editando usuario seleccionado.");
+    setFieldErrors({});
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.nombre || !form.email || !form.roleId) {
+    const nextErrors = {};
+    if (!form.nombre?.trim()) nextErrors.nombre = "El nombre es obligatorio.";
+    if (!form.email?.trim()) nextErrors.email = "El email es obligatorio.";
+    if (!form.roleId) nextErrors.roleId = "Selecciona un rol.";
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
       setMessage("Completa nombre, email y rol para guardar.");
       return;
     }
@@ -96,6 +104,7 @@ export default function UsersPage() {
       const wasEditing = Boolean(editingId);
       resetForm();
       setMessage(wasEditing ? "Usuario actualizado." : "Usuario creado.");
+      setFieldErrors({});
 
       if (!wasEditing && data?.temporaryPassword) {
         setBulkPasswords([
@@ -139,6 +148,12 @@ export default function UsersPage() {
       setMessage("Selecciona al menos un usuario.");
       return;
     }
+    if (action === "delete") {
+      const approved = window.confirm(
+        `Vas a eliminar ${selectedIds.length} usuario(s). Esta accion es irreversible.`
+      );
+      if (!approved) return;
+    }
     try {
       const data = await apiFetch("/users/bulk", {
         method: "POST",
@@ -156,6 +171,8 @@ export default function UsersPage() {
   }
 
   async function removeUser(userId) {
+    const approved = window.confirm("Eliminar usuario? Esta accion no se puede deshacer.");
+    if (!approved) return;
     try {
       await apiFetch(`/users/${userId}`, { method: "DELETE", token });
       await loadData();
@@ -188,10 +205,12 @@ export default function UsersPage() {
           </div>
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre completo" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            <input className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.nombre ? "border-rose-400/70" : "border-white/15"}`} placeholder="Nombre completo" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+            {fieldErrors.nombre ? <p className="text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
+            <input className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.email ? "border-rose-400/70" : "border-white/15"}`} placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            {fieldErrors.email ? <p className="text-xs text-rose-300">{fieldErrors.email}</p> : null}
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" type="password" placeholder={editingId ? "Nueva password (opcional)" : "Password inicial (opcional)"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
+            <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.roleId ? "border-rose-400/70" : "border-white/15"}`} value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
               <option value="">Selecciona un rol</option>
               {roles.map((role) => (
                 <option key={role._id} value={role._id}>
@@ -199,6 +218,7 @@ export default function UsersPage() {
                 </option>
               ))}
             </select>
+            {fieldErrors.roleId ? <p className="text-xs text-rose-300">{fieldErrors.roleId}</p> : null}
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-[#c5d5de]">
               <input type="checkbox" checked={form.activo} onChange={(event) => setForm({ ...form, activo: event.target.checked })} />
               <span>Usuario activo</span>

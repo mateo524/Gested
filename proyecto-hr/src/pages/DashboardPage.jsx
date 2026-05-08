@@ -81,6 +81,18 @@ export default function DashboardPage() {
     ];
   }, [training, risk]);
 
+  const financialKpi = useMemo(() => {
+    if (!simulation) return null;
+    const amount = Number(simForm.amount || 0);
+    const baselineRisk = Number(simulation?.baseline?.avgRisk || 0);
+    const projectedRisk = Number(simulation?.projection?.avgRisk || 0);
+    const reduction = Math.max(0, baselineRisk - projectedRisk);
+    const uplift = Number(simulation?.projection?.avgScoreUplift || 0);
+    const costPerRiskPoint = reduction > 0 ? Math.round(amount / reduction) : null;
+    const costPerScorePoint = uplift > 0 ? Math.round(amount / uplift) : null;
+    return { amount, costPerRiskPoint, costPerScorePoint, reduction, uplift };
+  }, [simulation, simForm.amount]);
+
   const alertasUtiles = useMemo(() => {
     const alertas = [];
     const pendingEvaluations = Number(summary?.educational?.pendingEvaluations || 0);
@@ -739,6 +751,27 @@ export default function DashboardPage() {
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
               <p className="text-xs text-[#9fb6c4]">Mejora score</p>
               <p className="text-lg font-bold text-emerald-400">+{simulation.projection?.avgScoreUplift}</p>
+            </div>
+          </div>
+        ) : null}
+
+        {financialKpi ? (
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+              <p className="text-xs text-[#9fb6c4]">Inversion estimada</p>
+              <p className="text-lg font-bold text-white">ARS {financialKpi.amount.toLocaleString("es-AR")}</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+              <p className="text-xs text-[#9fb6c4]">Costo por punto de riesgo reducido</p>
+              <p className="text-lg font-bold text-white">
+                {financialKpi.costPerRiskPoint ? `ARS ${financialKpi.costPerRiskPoint.toLocaleString("es-AR")}` : "Sin reduccion"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+              <p className="text-xs text-[#9fb6c4]">Costo por punto de mejora (score)</p>
+              <p className="text-lg font-bold text-white">
+                {financialKpi.costPerScorePoint ? `ARS ${financialKpi.costPerScorePoint.toLocaleString("es-AR")}` : "Sin mejora"}
+              </p>
             </div>
           </div>
         ) : null}

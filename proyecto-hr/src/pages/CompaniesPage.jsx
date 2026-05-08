@@ -101,6 +101,13 @@ export default function CompaniesPage() {
       return;
     }
 
+    if (action === "deactivate") {
+      const approved = window.confirm(
+        `Vas a desactivar ${selectedIds.length} empresa(s). Confirma para continuar.`
+      );
+      if (!approved) return;
+    }
+
     try {
       const data = await apiFetch("/companies/bulk", {
         method: "POST",
@@ -192,8 +199,13 @@ export default function CompaniesPage() {
   }
 
   async function deleteCompany(company) {
-    const ok = window.confirm(`Eliminar empresa ${company.nombre}? Esta accion no se puede deshacer.`);
-    if (!ok) return;
+    const confirmation = window.prompt(
+      `Para eliminar "${company.nombre}" escribe ELIMINAR en mayusculas.`
+    );
+    if (confirmation !== "ELIMINAR") {
+      setMessage("Eliminacion cancelada por seguridad.");
+      return;
+    }
 
     try {
       setMessage("");
