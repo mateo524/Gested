@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -22,16 +22,17 @@ export default function UsersPage() {
   const [bulkPasswords, setBulkPasswords] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const deferredQuery = useDeferredValue(query);
 
   const filteredUsers = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const term = deferredQuery.trim().toLowerCase();
     if (!term) return users;
     return users.filter((user) =>
       [user.nombre, user.email, user.roleId?.nombre]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
     );
-  }, [users, query]);
+  }, [users, deferredQuery]);
 
   const allVisibleSelected =
     filteredUsers.length > 0 && filteredUsers.every((user) => selectedIds.includes(user._id));
@@ -238,6 +239,9 @@ export default function UsersPage() {
             <h3 className="text-xl font-semibold text-white">Usuarios creados</h3>
             <input className="w-full max-w-xs rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Buscar usuario o rol" value={query} onChange={(event) => setQuery(event.target.value)} />
           </div>
+          {query !== deferredQuery ? (
+            <p className="mt-2 text-xs text-[#9fb6c4]">Actualizando búsqueda...</p>
+          ) : null}
 
           <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
             <div className="flex flex-wrap items-center gap-3">

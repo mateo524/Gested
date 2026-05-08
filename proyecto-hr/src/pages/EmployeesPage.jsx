@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
@@ -33,6 +33,11 @@ export default function EmployeesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const deferredSearch = useDeferredValue(filters.q);
+  const appliedFilters = useMemo(
+    () => ({ ...filters, q: deferredSearch }),
+    [filters, deferredSearch]
+  );
 
   const employeesById = useMemo(
     () => new Map(employees.map((employee) => [employee._id, employee])),
@@ -56,7 +61,7 @@ export default function EmployeesPage() {
       setIsLoading(true);
       const [schoolsData, employeesData] = await Promise.all([
         apiFetch("/schools", { token }),
-        apiFetch(`/employees${buildEmployeeQuery(filters)}`, { token }),
+        apiFetch(`/employees${buildEmployeeQuery(appliedFilters)}`, { token }),
       ]);
       setSchools(schoolsData);
       setEmployees(employeesData);
@@ -66,7 +71,7 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [filters, form.schoolId, token]);
+  }, [appliedFilters, form.schoolId, token]);
 
   useEffect(() => {
     loadBase().catch((error) => {
@@ -251,6 +256,9 @@ export default function EmployeesPage() {
               ))}
             </select>
           </div>
+          {filters.q !== deferredSearch ? (
+            <p className="mt-2 text-xs text-[#9fb6c4]">Actualizando búsqueda...</p>
+          ) : null}
 
           <div className="mt-5 space-y-3">
             {isLoading ? <p className="pf-alert-info">Cargando empleados...</p> : null}
@@ -289,4 +297,3 @@ export default function EmployeesPage() {
     </div>
   );
 }
-
