@@ -20,6 +20,7 @@ export default function UsersPage() {
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkPasswords, setBulkPasswords] = useState([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredUsers = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -73,6 +74,7 @@ export default function UsersPage() {
     try {
       setMessage("");
       setBulkPasswords([]);
+      setIsSubmitting(true);
       const path = editingId ? `/users/${editingId}` : "/users";
       const method = editingId ? "PUT" : "POST";
       const payload = {
@@ -107,6 +109,8 @@ export default function UsersPage() {
       }
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -199,8 +203,12 @@ export default function UsersPage() {
               <input type="checkbox" checked={form.activo} onChange={(event) => setForm({ ...form, activo: event.target.checked })} />
               <span>Usuario activo</span>
             </label>
-            <button type="submit" className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
-              {editingId ? "Guardar cambios" : "Crear usuario"}
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white disabled:cursor-wait disabled:opacity-70"
+            >
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear usuario"}
             </button>
           </form>
         </section>
