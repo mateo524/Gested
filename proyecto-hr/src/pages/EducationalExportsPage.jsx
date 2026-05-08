@@ -4,7 +4,7 @@ import { apiFetch, apiUrl } from "../lib/api";
 
 const datasetLabels = {
   employees: "Empleados",
-  evaluations: "Evaluaciones",
+  evaluations: "Evaluaci?nes",
   metrics: "Indicadores",
   developmentPlans: "Planes",
 };
@@ -156,7 +156,7 @@ export default function EducationalExportsPage() {
     const templates = {
       employees: "apellido,nombre,email,cargo,area,tipoempleado,activo\nPerez,Juan,juan@colegio.com,Docente,Matematica,DOCENTE,true\n",
       metrics: "competencia,nombre,descripcion,ponderacion\nTrabajo en equipo,Colabora con pares,Participa activamente con el equipo,1\n",
-      cycles: "anio,periodo,etapa,estado,fechaInicio,fechaFin\n2026,Marzo,INICIO,BORRADOR,2026-03-01,2026-03-31\n",
+      cycles: "anio,per?odo,etapa,estado,fechaInicio,fechaFin\n2026,Marzo,INICIO,BORRADOR,2026-03-01,2026-03-31\n",
       roles: "rol\nDOCENTE\nRRHH\nJEFE\n",
     };
     const text = templates[kind] || templates.employees;
@@ -208,10 +208,28 @@ export default function EducationalExportsPage() {
     );
   }
 
+  function reintentarSoloFilasConError() {
+    if (!editableErrors.length) {
+      setMessage("No hay filas con error para reintentar.");
+      return;
+    }
+    setImportPreview((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        totalRows: editableErrors.length,
+        validCount: 0,
+        invalidCount: editableErrors.length,
+        sampleValidRows: [],
+      };
+    });
+    setMessage("Reintento preparado: corrige filas con error y confirma importacion.");
+  }
+
   function getEditableFields() {
     if (importPreview?.datasetDetected === "employees") return ["apellido", "nombre", "email", "cargo", "area"];
     if (importPreview?.datasetDetected === "metrics") return ["competencia", "nombre", "ponderacion", "descripcion"];
-    if (importPreview?.datasetDetected === "cycles") return ["anio", "periodo", "etapa", "estado", "fechaInicio", "fechaFin"];
+    if (importPreview?.datasetDetected === "cycles") return ["anio", "per?odo", "etapa", "estado", "fechaInicio", "fechaFin"];
     if (importPreview?.datasetDetected === "roles") return ["nombre"];
     return [];
   }
@@ -225,6 +243,9 @@ export default function EducationalExportsPage() {
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
         <h4 className="text-lg font-semibold text-white">Flujo de importacion guiado</h4>
+        <p className="text-sm text-[#9fb6c4]">
+          Carga una vez, valida con reglas, corrige errores puntuales y confirma el lote final.
+        </p>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">1. Subir archivo</span>
           <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>2. Validar y corregir</span>
@@ -235,10 +256,10 @@ export default function EducationalExportsPage() {
             Plantilla empleados
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("metrics")}>
-            Plantilla metricas
+            Plantilla m?tricas
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("cycles")}>
-            Plantilla periodos
+            Plantilla per?odos
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("roles")}>
             Plantilla perfiles
@@ -253,7 +274,7 @@ export default function EducationalExportsPage() {
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
             <option value="metrics">Indicadores</option>
-            <option value="cycles">Periodos</option>
+            <option value="cycles">Per?odos</option>
             <option value="roles">Perfiles</option>
           </select>
           <input className="pf-input text-sm" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
@@ -280,6 +301,15 @@ export default function EducationalExportsPage() {
               className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
             >
               Reintentar lectura del job
+            </button>
+          ) : null}
+          {editableErrors.length ? (
+            <button
+              type="button"
+              onClick={reintentarSoloFilasConError}
+              className="rounded-xl border border-amber-300/40 bg-amber-900/20 px-3 py-2 text-xs font-semibold text-amber-200"
+            >
+              Reintentar solo filas con error
             </button>
           ) : null}
         </div>
@@ -371,7 +401,7 @@ export default function EducationalExportsPage() {
               onClick={() => setShowTechnicalDetails((v) => !v)}
               className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
             >
-              {showTechnicalDetails ? "Ocultar detalle tecnico" : "Ver detalle tecnico"}
+              {showTechnicalDetails ? "Ocultar detalle t?cnico" : "Ver detalle t?cnico"}
             </button>
             {showTechnicalDetails ? (
               <pre className="mt-2 max-h-56 overflow-auto rounded-xl border border-white/10 bg-[#0f1f28] p-3 text-xs text-[#c5d5de]">
@@ -409,7 +439,7 @@ export default function EducationalExportsPage() {
               ))}
               {!importJobs.length ? (
                 <tr>
-                  <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>Todavia no hay importaciones registradas.</td>
+                  <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>Todav?a no hay importaciones registradas.</td>
                 </tr>
               ) : null}
             </tbody>
@@ -420,7 +450,7 @@ export default function EducationalExportsPage() {
       {overview ? (
         <section className="grid gap-4 md:grid-cols-4">
           <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Empleados</p><p className="text-3xl font-bold text-white">{overview.summary.employees}</p></article>
-          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Evaluaciones</p><p className="text-3xl font-bold text-white">{overview.summary.evaluations}</p></article>
+          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Evaluaci?nes</p><p className="text-3xl font-bold text-white">{overview.summary.evaluations}</p></article>
           <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Indicadores</p><p className="text-3xl font-bold text-white">{overview.summary.metrics}</p></article>
           <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Planes</p><p className="text-3xl font-bold text-white">{overview.summary.developmentPlans}</p></article>
         </section>
