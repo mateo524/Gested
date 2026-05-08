@@ -40,11 +40,13 @@ export default function LoginPage() {
   const handleSubmit = async (event) => {
     try {
       event?.preventDefault();
+      if (isSubmitting) return;
       setMessage("");
       setIsSubmitting(true);
 
       const data = await apiFetch("/auth/login", {
         method: "POST",
+        timeoutMs: 30000,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: form.email,
