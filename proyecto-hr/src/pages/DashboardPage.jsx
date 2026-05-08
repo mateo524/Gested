@@ -57,15 +57,15 @@ export default function DashboardPage() {
   const criticalCount = training.filter((item) => item.priority === "ALTA").length;
 
   const priorityStatus = useMemo(() => {
-    if (criticalCount >= 3) return { label: "Prioridad alta", color: "rose", detail: "Intervencion inmediata recomendada." };
-    if (criticalCount >= 1) return { label: "Prioridad media", color: "amber", detail: "Planificar capacitacion en el corto plazo." };
+    if (criticalCount >= 3) return { label: "Prioridad alta", color: "rose", detail: "Intervención inmediata recomendada." };
+    if (criticalCount >= 1) return { label: "Prioridad media", color: "amber", detail: "Planificar capacitación en el corto plazo." };
     return { label: "Prioridad estable", color: "emerald", detail: "Mantener seguimiento mensual." };
   }, [criticalCount]);
 
   const primaryDecision = useMemo(() => {
     const area = summary?.decisionInsights?.weakestAreas?.[0];
-    if (!area) return "Sin datos suficientes para recomendar una inversion en capacitacion.";
-    return `Prioriza inversion en ${area.label}: promedio ${area.value} sobre ${area.employees} colaboradores evaluados.`;
+    if (!area) return "Sin datos suficientes para recomendar una inversión en capacitación.";
+    return `Prioriza inversión en ${area.label}: promedio ${area.value} sobre ${area.employees} colaboradores evaluados.`;
   }, [summary]);
 
   const quickPlan = useMemo(() => {
@@ -77,7 +77,7 @@ export default function DashboardPage() {
       topEmployees.length
         ? `Iniciar seguimiento con: ${topEmployees.join(", ")}.`
         : "Definir primeros colaboradores de seguimiento con menor score.",
-      "Medir impacto a 30 dias con el simulador para decidir escalado de presupuesto.",
+      "Medir impacto a 30 días con el simulador para decidir escalado de presupuesto.",
     ];
   }, [training, risk]);
 
@@ -106,7 +106,7 @@ export default function DashboardPage() {
         tipo: "ALTA",
         titulo: "Evaluaciones pendientes",
         detalle: `${pendingEvaluations} evaluaciones esperan cierre.`,
-        accion: "Ir a Evaluacion",
+        accion: "Ir a Evaluación",
         goTo: "evaluaciones",
       });
     }
@@ -123,7 +123,7 @@ export default function DashboardPage() {
       alertas.push({
         tipo: "MEDIA",
         titulo: "Sin carga de datos reciente",
-        detalle: "No hubo importaciones en la ultima hora.",
+        detalle: "No hubo importaciones en la última hora.",
         accion: "Ir a Cargas y descargas",
         goTo: "bases-descargas",
       });
@@ -140,9 +140,9 @@ export default function DashboardPage() {
     if (!smtpConfigured) {
       alertas.push({
         tipo: "MEDIA",
-        titulo: "Recuperacion de contrasena incompleta",
-        detalle: "SMTP no esta configurado para recuperacion automatica.",
-        accion: "Ir a Configuracion",
+        titulo: "Recuperación de contraseña incompleta",
+        detalle: "SMTP no está configurado para recuperación automática.",
+        accion: "Ir a Configuración",
         goTo: "settings",
       });
     }
@@ -154,8 +154,8 @@ export default function DashboardPage() {
     const riesgoPrincipal = risk[0];
     return [
       {
-        titulo: "Plan de capacitacion sugerido",
-        impacto: principal ? `Prioridad ${principal.priority} en ${principal.competencia}` : "Sin recomendacion activa",
+        titulo: "Plan de capacitación sugerido",
+        impacto: principal ? `Prioridad ${principal.priority} en ${principal.competencia}` : "Sin recomendación activa",
         estado: principal ? "Listo para ejecutar" : "Pendiente de datos",
         accion: "Ver desarrollo",
         goTo: "planes",
@@ -165,7 +165,7 @@ export default function DashboardPage() {
         impacto: riesgoPrincipal
           ? `${riesgoPrincipal.nombre} con score ${riesgoPrincipal.avgScore}`
           : "Sin casos de riesgo detectados",
-        estado: riesgoPrincipal ? "Intervencion recomendada" : "En monitoreo",
+        estado: riesgoPrincipal ? "Intervención recomendada" : "En monitoreo",
         accion: "Ver evaluaciones",
         goTo: "evaluaciones",
       },
@@ -194,16 +194,16 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
-          detail: "Destraba decisiones de gestion y mejora la calidad del dashboard.",
-          actionLabel: "Ir a Evaluacion",
+          detail: "Destraba decisiones de gestión y mejora la calidad del dashboard.",
+          actionLabel: "Ir a Evaluación",
           goTo: "evaluaciones",
         });
       }
       if (lowPerformance > 0) {
         items.push({
           priority: "ALTA",
-          title: `Definir intervencion para ${lowPerformance} casos criticos`,
-          detail: "Prioriza acompanamiento y presupuesto de capacitacion.",
+          title: `Definir intervención para ${lowPerformance} casos críticos`,
+          detail: "Prioriza acompañamiento y presupuesto de capacitación.",
           actionLabel: "Ir a Desarrollo",
           goTo: "planes",
         });
@@ -229,7 +229,7 @@ export default function DashboardPage() {
       if (!smtpConfigured) {
         items.push({
           priority: "BAJA",
-          title: "Configurar recuperacion de contrasena (SMTP)",
+          title: "Configurar recuperación de contraseña (SMTP)",
           detail: "Reduce bloqueos de acceso y tickets manuales.",
           actionLabel: "Ir a Configuracion",
           goTo: "settings",
@@ -240,8 +240,8 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Completar ${pendingEvaluations} evaluaciones pendientes`,
-          detail: "Sin evaluaciones completas no hay lectura real de desempeno.",
-          actionLabel: "Ir a Evaluacion",
+          detail: "Sin evaluaciones completas no hay lectura real de desempeño.",
+          actionLabel: "Ir a Evaluación",
           goTo: "evaluaciones",
         });
       }
@@ -267,7 +267,7 @@ export default function DashboardPage() {
         items.push({
           priority: "MEDIA",
           title: "Validar nueva carga de plantilla",
-          detail: "Sube datos de empleados y metricas para mantener trazabilidad.",
+          detail: "Sube datos de empleados y métricas para mantener trazabilidad.",
           actionLabel: "Ir a Cargas y descargas",
           goTo: "bases-descargas",
         });
@@ -287,7 +287,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Finalizar ${pendingEvaluations} evaluaciones de equipo`,
           detail: "Permite habilitar planes de mejora personalizados.",
-          actionLabel: "Ir a Evaluacion",
+          actionLabel: "Ir a Evaluación",
           goTo: "evaluaciones",
         });
       }
@@ -295,7 +295,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Agendar 1:1 con ${newestRisk.nombre}`,
-          detail: "Caso con mayor urgencia de acompanamiento en tu equipo.",
+          detail: "Caso con mayor urgencia de acompañamiento en tu equipo.",
           actionLabel: "Ir a Desarrollo",
           goTo: "planes",
         });
@@ -312,16 +312,16 @@ export default function DashboardPage() {
         items.push({
           priority: topTraining.priority === "ALTA" ? "ALTA" : "MEDIA",
           title: `Trabajar competencia: ${topTraining.competencia}`,
-          detail: "Registra evidencia concreta para tu proxima revision.",
-          actionLabel: "Ir a Evaluacion",
+          detail: "Registra evidencia concreta para tu próxima revisión.",
+          actionLabel: "Ir a Evaluación",
           goTo: "evaluaciones",
         });
       }
       items.push({
         priority: "MEDIA",
-        title: "Completar autoevaluacion actual",
+        title: "Completar autoevaluación actual",
         detail: "Mejora la calidad de feedback con tu jefatura.",
-          actionLabel: "Ir a Evaluacion",
+          actionLabel: "Ir a Evaluación",
         goTo: "evaluaciones",
       });
       items.push({
@@ -414,14 +414,14 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Vista</p>
-            <p className="text-sm text-white">{meetingMode ? "Modo reunion activado" : "Modo operativo activado"}</p>
+            <p className="text-sm text-white">{meetingMode ? "Modo reunión activado" : "Modo operativo activado"}</p>
           </div>
           <button
             type="button"
             onClick={() => setMeetingMode((v) => !v)}
             className="rounded-xl border border-white/20 bg-[#0f1f28] px-4 py-2 text-sm font-semibold text-[#c5d5de]"
           >
-            {meetingMode ? "Volver a modo operativo" : "Activar modo reunion"}
+            {meetingMode ? "Volver a modo operativo" : "Activar modo reunión"}
           </button>
         </div>
       </section>
@@ -450,7 +450,7 @@ export default function DashboardPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo reunion directiva</p>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo reunión directiva</p>
             <h3 className="mt-1 text-xl font-semibold text-white">Resumen en una pantalla</h3>
           </div>
         </div>
@@ -458,7 +458,7 @@ export default function DashboardPage() {
           <KpiCard title="Promedio" value={summary.cards?.[3]?.value || "0.00"} hint="General" />
           <KpiCard title="Pendientes" value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones" />
           <KpiCard title="Riesgo" value={risk.length || 0} hint="Casos" />
-          <KpiCard title="Criticas" value={criticalCount || 0} hint="Competencias" />
+          <KpiCard title="Críticas" value={criticalCount || 0} hint="Competencias" />
           <KpiCard title="Cobertura rol" value={`${roleCheck?.checks?.expectedCoveragePct ?? 0}%`} hint="Permisos" />
         </div>
       </section>
@@ -486,8 +486,8 @@ export default function DashboardPage() {
         </article>
 
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Alertas utiles</p>
-          <h3 className="mt-1 text-xl font-semibold text-white">Solo lo que requiere accion</h3>
+          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Alertas útiles</p>
+          <h3 className="mt-1 text-xl font-semibold text-white">Solo lo que requiere acción</h3>
           <div className="mt-4 space-y-3">
             {alertasUtiles.length ? (
               alertasUtiles.map((item) => (
@@ -558,21 +558,21 @@ export default function DashboardPage() {
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title={isEmpleado ? "Mi score actual" : "Promedio general"} value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
         <KpiCard title={isJefe ? "Pendientes del equipo" : "Evaluaciones pendientes"} value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones en BORRADOR o ENVIADA" />
-        <KpiCard title={isEmpleado ? "Riesgo personal" : "Empleados en riesgo"} value={risk.length || 0} hint={isEmpleado ? "Tendencia de mejora sugerida" : "Colaboradores con score mas bajo"} />
-        <KpiCard title={isRRHH ? "Brechas de competencias" : "Competencias criticas"} value={criticalCount || 0} hint="Capacitacion urgente recomendada" />
+        <KpiCard title={isEmpleado ? "Riesgo personal" : "Empleados en riesgo"} value={risk.length || 0} hint={isEmpleado ? "Tendencia de mejora sugerida" : "Colaboradores con score más bajo"} />
+        <KpiCard title={isRRHH ? "Brechas de competencias" : "Competencias críticas"} value={criticalCount || 0} hint="Capacitación urgente recomendada" />
       </section>
 
       {(isSuperOrDirector || isRRHH) ? (
       <section className="grid gap-4 xl:grid-cols-2">
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Accion inmediata sugerida</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Acción inmediata sugerida</p>
           <h3 className="mt-2 text-xl font-semibold text-white">
             {training[0]?.competencia
               ? `Iniciar plan en ${training[0].competencia}`
-              : "Sin recomendacion activa"}
+              : "Sin recomendación activa"}
           </h3>
           <p className="mt-2 text-sm text-[#c5d5de]">
-            {training[0]?.action || "Todavia no hay evidencia suficiente para recomendar una accion inmediata."}
+            {training[0]?.action || "Todavía no hay evidencia suficiente para recomendar una acción inmediata."}
           </p>
           {risk[0] ? (
             <p className="mt-3 text-sm text-[#9fb6c4]">
@@ -582,7 +582,7 @@ export default function DashboardPage() {
         </article>
 
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Semaforo ejecutivo</p>
+          <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Semáforo ejecutivo</p>
           <div className="mt-3 flex items-center gap-3">
             <span
               className={`h-3 w-3 rounded-full ${
@@ -597,7 +597,7 @@ export default function DashboardPage() {
           </div>
           <p className="mt-2 text-sm text-[#c5d5de]">{priorityStatus.detail}</p>
           <p className="mt-3 text-xs text-[#9fb6c4]">
-            Basado en {criticalCount} competencias criticas y {risk.length} colaboradores en riesgo.
+            Basado en {criticalCount} competencias críticas y {risk.length} colaboradores en riesgo.
           </p>
         </article>
       </section>
@@ -605,7 +605,7 @@ export default function DashboardPage() {
 
       <section className="grid gap-6 xl:grid-cols-2">
         <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h3 className="text-xl font-semibold text-white">{isEmpleado ? "Recomendaciones para tu desarrollo" : "Capacitacion recomendada"}</h3>
+          <h3 className="text-xl font-semibold text-white">{isEmpleado ? "Recomendaciones para tu desarrollo" : "Capacitación recomendada"}</h3>
           <p className="mt-1 text-[#9fb6c4]">Ordenada por menor puntaje promedio de competencia.</p>
           <div className="mt-4 space-y-3">
             {training.length ? (
@@ -653,7 +653,7 @@ export default function DashboardPage() {
           onClick={() => setShowAdvanced((v) => !v)}
           className="w-full rounded-xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-left text-sm font-semibold text-white"
         >
-          {showAdvanced ? "Ocultar analitica avanzada" : "Mostrar analitica avanzada (patrones y prediccion)"}
+          {showAdvanced ? "Ocultar analítica avanzada" : "Mostrar analítica avanzada (patrones y predicción)"}
         </button>
       </section>
       ) : null}
@@ -673,7 +673,7 @@ export default function DashboardPage() {
         </article>
 
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h3 className="text-lg font-semibold text-white">Capa 2: Prediccion explicable</h3>
+          <h3 className="text-lg font-semibold text-white">Capa 2: Predicción explicable</h3>
           <div className="mt-4 space-y-3">
             {(summary.predictiveInsights?.layer2Predictions || []).slice(0, 5).map((item) => (
               <div key={item.employeeId} className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
@@ -688,7 +688,7 @@ export default function DashboardPage() {
         </article>
 
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h3 className="text-lg font-semibold text-white">Capa 3: Forecast estrategico</h3>
+          <h3 className="text-lg font-semibold text-white">Capa 3: Forecast estratégico</h3>
           <p className="mt-1 text-xs text-[#9fb6c4]">Fuente: {summary.predictiveInsights?.layer3Forecast?.source || "local"}</p>
           <div className="mt-4 space-y-2">
             {(summary.predictiveInsights?.layer3Forecast?.strategicActions || []).slice(0, 3).map((action, idx) => (
@@ -703,19 +703,19 @@ export default function DashboardPage() {
 
       {!meetingMode ? (
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <h3 className="text-xl font-semibold text-white">Simulador de inversion en capacitacion</h3>
-        <p className="mt-1 text-[#9fb6c4]">Proyecta impacto en riesgo y desempeno antes de decidir presupuesto.</p>
+        <h3 className="text-xl font-semibold text-white">Simulador de inversión en capacitación</h3>
+        <p className="mt-1 text-[#9fb6c4]">Proyecta impacto en riesgo y desempeño antes de decidir presupuesto.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-5">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={simForm.competency} onChange={(e) => setSimForm((prev) => ({ ...prev, competency: e.target.value }))}>
-            <option value="">Competencia prioritaria automatica</option>
+            <option value="">Competencia prioritaria automática</option>
             {training.map((item) => (
               <option key={item.competencia} value={item.competencia}>{item.competencia}</option>
             ))}
           </select>
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={simForm.investment} onChange={(e) => setSimForm((prev) => ({ ...prev, investment: e.target.value }))}>
-            <option value="baja">Inversion baja</option>
-            <option value="media">Inversion media</option>
-            <option value="alta">Inversion alta</option>
+            <option value="baja">Inversión baja</option>
+            <option value="media">Inversión media</option>
+            <option value="alta">Inversión alta</option>
           </select>
           <input
             type="number"
@@ -745,7 +745,7 @@ export default function DashboardPage() {
               <p className="text-lg font-bold text-white">{simulation.baseline?.highRiskEmployees} {"->"} {simulation.projection?.highRiskEmployees}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
-              <p className="text-xs text-[#9fb6c4]">Reduccion proyectada</p>
+              <p className="text-xs text-[#9fb6c4]">Reducción proyectada</p>
               <p className="text-lg font-bold text-emerald-400">{simulation.projection?.riskReductionPct}%</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
@@ -758,13 +758,13 @@ export default function DashboardPage() {
         {financialKpi ? (
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
-              <p className="text-xs text-[#9fb6c4]">Inversion estimada</p>
+              <p className="text-xs text-[#9fb6c4]">Inversión estimada</p>
               <p className="text-lg font-bold text-white">ARS {financialKpi.amount.toLocaleString("es-AR")}</p>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
               <p className="text-xs text-[#9fb6c4]">Costo por punto de riesgo reducido</p>
               <p className="text-lg font-bold text-white">
-                {financialKpi.costPerRiskPoint ? `ARS ${financialKpi.costPerRiskPoint.toLocaleString("es-AR")}` : "Sin reduccion"}
+                {financialKpi.costPerRiskPoint ? `ARS ${financialKpi.costPerRiskPoint.toLocaleString("es-AR")}` : "Sin reducción"}
               </p>
             </div>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
@@ -778,18 +778,18 @@ export default function DashboardPage() {
 
         {scenarios.length ? (
           <div className="mt-6">
-            <p className="mb-3 text-sm font-semibold text-white">Comparativa ejecutiva de inversion</p>
+            <p className="mb-3 text-sm font-semibold text-white">Comparativa ejecutiva de inversión</p>
             <div className="grid gap-3 md:grid-cols-3">
               {scenarios.map((scenario) => (
                 <div key={scenario.level} className="rounded-xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.12em] text-[#9fb6c4]">
-                    {scenario.level === "baja" ? "Inversion baja" : scenario.level === "media" ? "Inversion media" : "Inversion alta"}
+                    {scenario.level === "baja" ? "Inversión baja" : scenario.level === "media" ? "Inversión media" : "Inversión alta"}
                   </p>
                   <p className="mt-2 text-sm text-[#c5d5de]">
                     Riesgo promedio: <span className="font-semibold text-white">{scenario.simulation?.baseline?.avgRisk} {"->"} {scenario.simulation?.projection?.avgRisk}</span>
                   </p>
                   <p className="mt-1 text-sm text-[#c5d5de]">
-                    Reduccion: <span className="font-semibold text-emerald-400">{scenario.simulation?.projection?.riskReductionPct}%</span>
+                    Reducción: <span className="font-semibold text-emerald-400">{scenario.simulation?.projection?.riskReductionPct}%</span>
                   </p>
                   <p className="mt-1 text-sm text-[#c5d5de]">
                     Mejora score: <span className="font-semibold text-emerald-400">+{scenario.simulation?.projection?.avgScoreUplift}</span>

@@ -93,10 +93,10 @@ export default function AppShell({ view, setView, children }) {
         { key: "ciclos", label: "Periodos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
         { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
         { key: "roles", label: "Perfiles", show: hasPermission("manage_roles"), group: "gestion" },
-        { key: "settings", label: "Configuracion", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
+        { key: "settings", label: "Configuración", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
         {
           key: "evaluaciones",
-          label: "Evaluacion",
+          label: "Evaluación",
           show:
             hasPermission("manage_evaluations") ||
             hasPermission("evaluate_team") ||
@@ -115,15 +115,15 @@ export default function AppShell({ view, setView, children }) {
           group: "datos",
         },
         { key: "novedades", label: "Comunicados", show: true, group: "datos" },
-        { key: "organizaciones", label: "Organizacion", show: user?.isSuperAdmin, group: "datos" },
+        { key: "organizaciones", label: "Organización", show: user?.isSuperAdmin, group: "datos" },
       ].filter((item) => item.show),
     [hasPermission, user, isBasicUser]
   );
 
   const primaryTabs = [
     { key: "panel", label: "Panel", defaultView: "dashboard" },
-    { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
-    { key: "gestion", label: "Gestion", defaultView: "empleados" },
+    { key: "evaluacion", label: "Evaluación", defaultView: "evaluaciones" },
+    { key: "gestion", label: "Gestión", defaultView: "empleados" },
     {
       key: "datos",
       label: user?.isSuperAdmin ? "Datos" : "Novedades",
@@ -161,10 +161,10 @@ export default function AppShell({ view, setView, children }) {
   }
 
   const contextualSubtitle = user?.isSuperAdmin
-    ? "Gestion global multi-organizacion"
+    ? "Gestión global multi-organización"
     : user?.companyName
-      ? `Operacion en ${user.companyName}`
-      : "Gestion de desempeno institucional";
+      ? `Operación en ${user.companyName}`
+      : "Gestión de desempeño institucional";
 
   return (
     <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
@@ -233,11 +233,11 @@ export default function AppShell({ view, setView, children }) {
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
         <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.nombre} - {user?.roleName} - {user?.companyName || "Organizacion"}
+          {user?.nombre} - {user?.roleName} - {user?.companyName || "Organización"}
         </div>
         {tokenNearExpiry ? (
           <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
+            Tu sesión vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesión.
           </div>
         ) : null}
         {children}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -31,7 +31,7 @@ function buildPrintableReport(data) {
       </head>
       <body>
         <h1>Performia</h1>
-        <p class="muted">Reporte individual de evaluacion</p>
+        <p class="muted">Reporte individual de evaluación</p>
         <p class="muted">Generado: ${new Date(data.generatedAt).toLocaleString("es-AR")}</p>
 
         <h2>Empleado</h2>
@@ -100,7 +100,7 @@ export default function EvaluationsPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.employeeId || !form.cycleId) {
-      setMessage("Selecciona empleado y periodo para guardar la evaluacion.");
+      setMessage("Selecciona empleado y periodo para guardar la evaluación.");
       return;
     }
     try {
@@ -146,16 +146,16 @@ export default function EvaluationsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeno</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Evaluaciones</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Crea evaluaciones por empleado, por periodo y con puntaje por indicador.
+          Crea evaluaciónes por empleado, por periodo y con puntaje por indicador.
         </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Nueva evaluacion</h4>
+          <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado y periodo</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Tipo y estado</span>
@@ -183,7 +183,7 @@ export default function EvaluationsPage() {
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Contexto evaluativo</p>
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
-                <option value="AUTOEVALUACION">Autoevaluacion</option>
+                <option value="AUTOEVALUACION">Autoevaluación</option>
                 <option value="JEFATURA">Jefatura</option>
                 <option value="FINAL">Final</option>
               </select>
@@ -212,7 +212,7 @@ export default function EvaluationsPage() {
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
-              {isSubmitting ? "Guardando..." : "Crear evaluacion"}
+              {isSubmitting ? "Guardando..." : "Crear evaluación"}
             </button>
           </form>
         </section>
@@ -237,7 +237,7 @@ export default function EvaluationsPage() {
               ))
             ) : (
               <p className="text-[#9fb6c4]">
-                {user?.roleCode === "EMPLEADO" ? "Todavia no tienes evaluaciones cargadas." : "Todavia no hay evaluaciones registradas."}
+                {user?.roleCode === "EMPLEADO" ? "Todavía no tienes evaluaciónes cargadas." : "Todavía no hay evaluaciónes registradas."}
               </p>
             )}
           </div>
@@ -248,4 +248,6 @@ export default function EvaluationsPage() {
     </div>
   );
 }
+
+
 

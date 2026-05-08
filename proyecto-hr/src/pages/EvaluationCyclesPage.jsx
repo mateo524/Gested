@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -52,13 +52,13 @@ export default function EvaluationCyclesPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = {};
-    if (!form.schoolId) nextErrors.schoolId = "No hay institucion asignada.";
-    if (!form.periodo?.trim()) nextErrors.periodo = "El periodo es obligatorio.";
+    if (!form.schoolId) nextErrors.schoolId = "No hay institución asignada.";
+    if (!form.periodo?.trim()) nextErrors.periodo = "El período es obligatorio.";
     if (!form.fechaInicio) nextErrors.fechaInicio = "Fecha de inicio obligatoria.";
     if (!form.fechaFin) nextErrors.fechaFin = "Fecha de cierre obligatoria.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
-      setMessage("Completa colegio, periodo y rango de fechas para guardar.");
+      setMessage("Completa colegio, período y rango de fechas para guardar.");
       setMessageType("warning");
       return;
     }
@@ -115,36 +115,36 @@ export default function EvaluationCyclesPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Periodos de evaluacion</h3>
+        <h3 className="mt-3 text-3xl font-bold text-white">Períodos de evaluación</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Define periodos claros para ordenar altas, evaluaciones y reportes por etapa.
+          Define períodos claros para ordenar altas, evaluaciones y reportes por etapa.
         </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">{editingId ? "Editar periodo" : "Nuevo periodo"}</h4>
+          <h4 className="text-xl font-semibold text-white">{editingId ? "Editar período" : "Nuevo período"}</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Etapa y estado</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Fechas</span>
           </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
               <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
             </div>
             {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Configuracion operativa</p>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Configuración operativa</p>
             <div className="grid gap-4 md:grid-cols-2">
               <input type="number" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
-              <input className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"}`} placeholder="Periodo (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
+              <input className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"}`} placeholder="Período (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
             </div>
             {fieldErrors.periodo ? <p className="text-xs text-rose-300">{fieldErrors.periodo}</p> : null}
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
                 <option value="INICIO">Inicio</option>
-                <option value="REVISION_INTERMEDIA">Revision intermedia</option>
-                <option value="EVALUACION_FINAL">Evaluacion final</option>
+                <option value="REVISION_INTERMEDIA">Revisión intermedia</option>
+                <option value="EVALUACION_FINAL">Evaluación final</option>
               </select>
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="BORRADOR">Borrador</option>
@@ -158,18 +158,18 @@ export default function EvaluationCyclesPage() {
             </div>
             {(fieldErrors.fechaInicio || fieldErrors.fechaFin) ? <p className="text-xs text-rose-300">{fieldErrors.fechaInicio || fieldErrors.fechaFin}</p> : null}
             <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full disabled:opacity-60">
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear periodo"}
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear período"}
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edicion
+                Cancelar edición
               </button>
             ) : null}
           </form>
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Periodos cargados</h4>
+          <h4 className="text-xl font-semibold text-white">Períodos cargados</h4>
           <div className="mt-6 space-y-4">
             {isLoading ? <p className="pf-alert-info">Cargando períodos...</p> : null}
             {!isLoading && cycles.length ? cycles.map((cycle) => (
@@ -197,3 +197,5 @@ export default function EvaluationCyclesPage() {
     </div>
   );
 }
+
+
