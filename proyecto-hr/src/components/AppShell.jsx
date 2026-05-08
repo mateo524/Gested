@@ -233,7 +233,7 @@ export default function AppShell({ view, setView, children }) {
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
         <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.nombre} - {user?.roleName} - {user?.companyName || "Organización"}
+          {user?.companyName || "Organización"} - {user?.roleName}
         </div>
         {tokenNearExpiry ? (
           <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
