@@ -37,6 +37,10 @@ export default function EmployeesPage() {
     () => new Map(employees.map((employee) => [employee._id, employee])),
     [employees]
   );
+  const selectedSchool = useMemo(
+    () => schools.find((school) => school._id === form.schoolId) || null,
+    [schools, form.schoolId]
+  );
 
   function buildEmployeeQuery(nextFilters) {
     const params = new URLSearchParams();
@@ -140,15 +144,10 @@ export default function EmployeesPage() {
           <p className="mt-2 text-sm text-[#9fb6c4]">Completá los datos mínimos y guardá. Luego podés editar cuando quieras.</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <label className="text-sm text-[#c5d5de]">Colegio</label>
-            <select className="pf-select" value={form.schoolId} onChange={(event) => setForm({ ...form, schoolId: event.target.value })}>
-              <option value="">Selecciona colegio</option>
-              {schools.map((school) => (
-                <option key={school._id} value={school._id}>
-                  {school.nombre}
-                </option>
-              ))}
-            </select>
+            <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
+              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
               <input className="pf-input" placeholder="Nombre" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />

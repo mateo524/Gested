@@ -34,6 +34,7 @@ export default function MetricsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [query, setQuery] = useState("");
+  const selectedSchool = schools.find((school) => school._id === form.schoolId) || null;
 
   const visibleCompetencies = useMemo(
     () => competencies.filter((item) => !form.schoolId || item.schoolId === form.schoolId || item.schoolId === null),
@@ -156,25 +157,21 @@ export default function MetricsPage() {
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar indicador" : "Nuevo indicador"}</h4>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Colegio y competencia</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Definir indicador</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Escala 1-5</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Definir indicador</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Escala 1-5</span>
           </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Base de referencia</p>
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.schoolId} onChange={(e) => setForm({ ...form, schoolId: e.target.value })}>
-              <option value="">Selecciona colegio</option>
-              {schools.map((school) => (
-                <option key={school._id} value={school._id}>{school.nombre}</option>
-              ))}
-            </select>
+            <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
+              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
+            </div>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.competencyId} onChange={(e) => setForm({ ...form, competencyId: e.target.value })}>
               <option value="">Selecciona competencia</option>
               {visibleCompetencies.map((competency) => (
                 <option key={competency._id} value={competency._id}>{competency.nombre}</option>
               ))}
             </select>
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definicion del indicador</p>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Definicion del indicador</p>
             <input className="pf-input" placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
             <textarea className="pf-textarea" placeholder="Descripción breve y observable" value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
             <div className="grid gap-4 md:grid-cols-2">
