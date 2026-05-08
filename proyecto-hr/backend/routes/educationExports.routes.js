@@ -45,6 +45,26 @@ const IMPORT_AI_WEBHOOK_URL = process.env.IMPORT_AI_WEBHOOK_URL || "";
 const IMPORT_AI_TOKEN = process.env.IMPORT_AI_TOKEN || "";
 const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
 
+function getImportErrorPayload(error, fallbackMessage) {
+  const raw = String(error?.message || "");
+  if (/zip|central directory|end of central directory|corrupt/i.test(raw)) {
+    return {
+      mensaje: "El archivo Excel parece dañado o no tiene un formato válido (.xlsx).",
+      code: "IMPORT_INVALID_XLSX",
+    };
+  }
+  if (/CSV vacio o invalido/i.test(raw)) {
+    return {
+      mensaje: "El CSV está vacío o tiene formato inválido.",
+      code: "IMPORT_INVALID_CSV",
+    };
+  }
+  return {
+    mensaje: fallbackMessage,
+    code: "IMPORT_PROCESSING_ERROR",
+  };
+}
+
 const allowedDatasets = {
   employees: {
     model: Employee,
@@ -1011,9 +1031,9 @@ router.post(
       });
     } catch (error) {
       console.error("Error import/preview:", error);
-      return res.status(500).json({
-        mensaje: "No se pudo procesar el archivo. Verifica el formato e intenta nuevamente.",
-      });
+      return res.status(500).json(
+        getImportErrorPayload(error, "No se pudo procesar el archivo. Verifica el formato e intenta nuevamente.")
+      );
     }
   }
 );
@@ -1656,9 +1676,9 @@ router.post(
     });
     } catch (error) {
       console.error("Error import legacy:", error);
-      return res.status(500).json({
-        mensaje: "No se pudo procesar la importacion del archivo.",
-      });
+      return res.status(500).json(
+        getImportErrorPayload(error, "No se pudo procesar la importación del archivo.")
+      );
     }
   }
 );
