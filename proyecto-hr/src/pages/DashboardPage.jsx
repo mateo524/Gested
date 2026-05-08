@@ -385,16 +385,41 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
-        <p className="text-xs uppercase tracking-[0.2em] text-[#9FB6C1]">Vista por rol</p>
-        <h3 className="mt-1 text-xl font-semibold text-white">
-          {isSuperOrDirector && "Directorio: decisiones globales"}
-          {isRRHH && "RRHH: seguimiento operativo"}
-          {isJefe && "Jefatura: equipo a cargo"}
-          {isEmpleado && "Colaborador: evoluciÃ³n personal"}
-          {isLector && "AuditorÃ­a: lectura y control"}
-          {!isSuperOrDirector && !isRRHH && !isJefe && !isEmpleado && !isLector && "Panel ejecutivo"}
-        </h3>
+      <section className="rounded-[2rem] border border-emerald-300/30 bg-emerald-500/10 p-7">
+        <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Vista principal</p>
+        <h2 className="mt-2 text-3xl font-bold text-white">Decisiones recomendadas</h2>
+        <p className="mt-3 text-lg text-emerald-100">{primaryDecision}</p>
+        {quickPlan.length ? (
+          <div className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-900/20 p-4">
+            <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Plan rapido (30 dias)</p>
+            <div className="mt-2 space-y-1 text-sm text-emerald-100">
+              {quickPlan.map((step, index) => (
+                <p key={index}>{index + 1}. {step}</p>
+              ))}
+            </div>
+          </div>
+        ) : null}
+        <div className="mt-5 flex flex-wrap gap-3">
+          <button type="button" onClick={downloadDecisionReport} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900">
+            Descargar reporte de decisiones
+          </button>
+        </div>
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo reunion directiva</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Resumen en una pantalla</h3>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 md:grid-cols-5">
+          <KpiCard title="Promedio" value={summary.cards?.[3]?.value || "0.00"} hint="General" />
+          <KpiCard title="Pendientes" value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones" />
+          <KpiCard title="Riesgo" value={risk.length || 0} hint="Casos" />
+          <KpiCard title="Criticas" value={criticalCount || 0} hint="Competencias" />
+          <KpiCard title="Cobertura rol" value={`${roleCheck?.checks?.expectedCoveragePct ?? 0}%`} hint="Permisos" />
+        </div>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
@@ -433,8 +458,8 @@ export default function DashboardPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Acciones de hoy</p>
-            <h3 className="mt-1 text-xl font-semibold text-white">Que hacer primero para mejorar resultados</h3>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Bandeja</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Bandeja de acciones prioritarias</h3>
           </div>
         </div>
         <div className="mt-4 space-y-3">
@@ -528,27 +553,6 @@ export default function DashboardPage() {
               </button>
             </article>
           ))}
-        </div>
-      </section>
-
-      <section className="rounded-[2rem] border border-emerald-300/30 bg-emerald-500/10 p-7">
-        <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Vista principal</p>
-        <h2 className="mt-2 text-3xl font-bold text-white">Decisiones recomendadas</h2>
-        <p className="mt-3 text-lg text-emerald-100">{primaryDecision}</p>
-        {quickPlan.length ? (
-          <div className="mt-4 rounded-xl border border-emerald-200/20 bg-emerald-900/20 p-4">
-            <p className="text-xs uppercase tracking-[0.14em] text-emerald-200">Plan rapido (30 dias)</p>
-            <div className="mt-2 space-y-1 text-sm text-emerald-100">
-              {quickPlan.map((step, index) => (
-                <p key={index}>{index + 1}. {step}</p>
-              ))}
-            </div>
-          </div>
-        ) : null}
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button type="button" onClick={downloadDecisionReport} className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-900">
-            Descargar reporte de decisiones
-          </button>
         </div>
       </section>
 
