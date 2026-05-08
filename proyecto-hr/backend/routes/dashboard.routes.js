@@ -153,9 +153,7 @@ router.get("/summary", auth, async (req, res) => {
     latestQualityRun,
     employeesList,
     evaluationByEmployee,
-    evaluationScores,
-    metricsList,
-    competenciesList,
+    competencyScoreSummary,
     planSignalsRaw,
   ] = await Promise.all([
     User.countDocuments(userFilter),
@@ -167,7 +165,7 @@ router.get("/summary", auth, async (req, res) => {
     Record.countDocuments(recordFilter),
     CompanySetting.findOne({ companyId: company._id }).lean(),
     AuditLog.find(auditFilter).sort({ createdAt: -1 }).limit(6).lean(),
-    Record.find(recordFilter).sort({ createdAt: -1 }).limit(2000).lean(),
+    Record.find(recordFilter).sort({ createdAt: -1 }).limit(600).lean(),
     DatabaseFile.find(fileFilter).sort({ fechaSubida: -1 }).limit(20).lean(),
     School.countDocuments(baseFilter),
     Employee.countDocuments(employeeFilter),
@@ -196,14 +194,57 @@ router.get("/summary", auth, async (req, res) => {
       { $match: { ...evaluationFilter, resultadoFinal: { $gt: 0 } } },
       { $group: { _id: "$employeeId", avgScore: { $avg: "$resultadoFinal" }, count: { $sum: 1 } } },
     ]),
-    EvaluationScore.find({})
-      .populate({
-        path: "evaluationId",
-        select: "companyId schoolId employeeId",
-      })
-      .lean(),
-    Metric.find(baseFilter).select("_id nombre competencyId").lean(),
-    Competency.find(baseFilter).select("_id nombre").lean(),
+    EvaluationScore.aggregate([
+      {
+        $lookup: {
+          from: "evaluations",
+          localField: "evaluationId",
+          foreignField: "_id",
+          as: "evaluation",
+        },
+      },
+      { $unwind: "$evaluation" },
+      {
+        $match: {
+          "evaluation.companyId": companyObjectId,
+          ...(baseFilter.schoolId ? { "evaluation.schoolId": baseFilter.schoolId } : {}),
+          ...(Array.isArray(evaluationFilter.employeeId?.$in)
+            ? { "evaluation.employeeId": { $in: evaluationFilter.employeeId.$in } }
+            : {}),
+        },
+      },
+      {
+        $lookup: {
+          from: "metrics",
+          localField: "metricId",
+          foreignField: "_id",
+          as: "metric",
+        },
+      },
+      { $unwind: "$metric" },
+      {
+        $lookup: {
+          from: "competencies",
+          localField: "metric.competencyId",
+          foreignField: "_id",
+          as: "competency",
+        },
+      },
+      {
+        $unwind: {
+          path: "$competency",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $group: {
+          _id: "$competency._id",
+          competencia: { $first: { $ifNull: ["$competency.nombre", "Competencia"] } },
+          total: { $sum: "$nivel" },
+          count: { $sum: 1 },
+        },
+      },
+    ]),
     DevelopmentPlan.aggregate([
       { $match: planFilter },
       {
@@ -311,41 +352,21 @@ router.get("/summary", auth, async (req, res) => {
     .sort((a, b) => a.avgScore - b.avgScore)
     .slice(0, 10);
 
-  const metricById = new Map(metricsList.map((item) => [String(item._id), item]));
-  const competencyById = new Map(competenciesList.map((item) => [String(item._id), item.nombre]));
-  const competencyScores = new Map();
-
-  for (const score of evaluationScores) {
-    const evaluation = score.evaluationId;
-    if (!evaluation || String(evaluation.companyId) !== String(company._id)) continue;
-    if (baseFilter.schoolId && String(evaluation.schoolId) !== String(baseFilter.schoolId)) continue;
-    if (
-      Array.isArray(evaluationFilter.employeeId?.$in) &&
-      !evaluationFilter.employeeId.$in.some((id) => String(id) === String(evaluation.employeeId))
-    ) {
-      continue;
-    }
-    const metric = metricById.get(String(score.metricId));
-    if (!metric) continue;
-    const compName = competencyById.get(String(metric.competencyId)) || "Competencia";
-    const current = competencyScores.get(compName) || { total: 0, count: 0 };
-    current.total += score.nivel || 0;
-    current.count += 1;
-    competencyScores.set(compName, current);
-  }
-
-  const trainingRecommendations = [...competencyScores.entries()]
-    .map(([competencia, value]) => ({
-      competencia,
-      avgScore: value.count ? Number((value.total / value.count).toFixed(2)) : 0,
-      priority: value.count && value.total / value.count < 3 ? "ALTA" : value.total / value.count < 3.8 ? "MEDIA" : "BAJA",
-      action:
-        value.count && value.total / value.count < 3
-          ? "Capacitacion intensiva + mentoring"
-          : value.total / value.count < 3.8
-            ? "Refuerzo con talleres practicos"
-            : "Mantener y documentar buenas practicas",
-    }))
+  const trainingRecommendations = competencyScoreSummary
+    .map((item) => {
+      const avg = item.count ? item.total / item.count : 0;
+      return {
+        competencia: item.competencia || "Competencia",
+        avgScore: Number(avg.toFixed(2)),
+        priority: item.count && avg < 3 ? "ALTA" : avg < 3.8 ? "MEDIA" : "BAJA",
+        action:
+          item.count && avg < 3
+            ? "Capacitacion intensiva + mentoring"
+            : avg < 3.8
+              ? "Refuerzo con talleres practicos"
+              : "Mantener y documentar buenas practicas",
+      };
+    })
     .sort((a, b) => a.avgScore - b.avgScore)
     .slice(0, 8);
 
