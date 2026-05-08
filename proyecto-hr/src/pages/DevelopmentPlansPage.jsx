@@ -157,7 +157,7 @@ export default function DevelopmentPlansPage() {
                     <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{plan.estado}</span>
                   </div>
                   <p className="mt-2 text-sm text-[#c5d5de]">{plan.aspectoDesarrollar}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Medicion: {plan.medicion || "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Medici?n: {plan.medicion || "-"}</p>
                   <p className="mt-1 text-sm text-[#9fb6c4]">Seguimiento: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
                 </article>
               ))

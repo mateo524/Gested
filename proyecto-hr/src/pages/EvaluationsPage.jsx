@@ -43,7 +43,7 @@ function buildPrintableReport(data) {
           <p><strong>Colegio:</strong> ${data.schoolName || "-"}</p>
         </div>
 
-        <h2>Evaluacion</h2>
+        <h2>Evaluaci?n</h2>
         <div class="card">
           <p><strong>Tipo:</strong> ${data.evaluation?.tipo || "-"}</p>
           <p><strong>Estado:</strong> ${data.evaluation?.estado || "-"}</p>
@@ -114,7 +114,7 @@ export default function EvaluationsPage() {
       });
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
-      setMessage("Evaluacion creada.");
+      setMessage("Evaluaci?n creada.");
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -147,7 +147,7 @@ export default function EvaluationsPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeno</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Evaluaciones</h3>
+        <h3 className="mt-3 text-3xl font-bold text-white">Evaluaci?nes</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Crea evaluaciones por empleado, por periodo y con puntaje por indicador.
         </p>
@@ -218,7 +218,7 @@ export default function EvaluationsPage() {
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
+          <h4 className="text-xl font-semibold text-white">Evaluaci?nes registradas</h4>
           <div className="mt-6 space-y-4">
             {evaluations.length ? (
               evaluations.map((evaluation) => (

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { useView } from "../context/ViewContext";
@@ -98,7 +98,7 @@ export default function DashboardPage() {
       {
         id: "metricas",
         title: "2. Definir competencias e indicadores",
-        detail: "Configura métricas para poder evaluar y comparar.",
+        detail: "Configura mÃ©tricas para poder evaluar y comparar.",
         done: metricsCount > 0,
         actionLabel: "Ir a Indicadores",
       },
@@ -107,7 +107,7 @@ export default function DashboardPage() {
         title: "3. Registrar evaluaciones",
         detail: "Carga resultados para comenzar el seguimiento real.",
         done: evaluationsCount > 0,
-        actionLabel: "Ir a Evaluación",
+        actionLabel: "Ir a EvaluaciÃ³n",
       },
       {
         id: "planes",
@@ -137,7 +137,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
           detail: "Destraba decisiones de gestion y mejora la calidad del dashboard.",
-          actionLabel: "Ir a Evaluacion",
+          actionLabel: "Ir a Evaluaci?n",
           goTo: "evaluaciones",
         });
       }
@@ -183,7 +183,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Completar ${pendingEvaluations} evaluaciones pendientes`,
           detail: "Sin evaluaciones completas no hay lectura real de desempeno.",
-          actionLabel: "Ir a Evaluacion",
+          actionLabel: "Ir a Evaluaci?n",
           goTo: "evaluaciones",
         });
       }
@@ -229,7 +229,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Finalizar ${pendingEvaluations} evaluaciones de equipo`,
           detail: "Permite habilitar planes de mejora personalizados.",
-          actionLabel: "Ir a Evaluacion",
+          actionLabel: "Ir a Evaluaci?n",
           goTo: "evaluaciones",
         });
       }
@@ -255,7 +255,7 @@ export default function DashboardPage() {
           priority: topTraining.priority === "ALTA" ? "ALTA" : "MEDIA",
           title: `Trabajar competencia: ${topTraining.competencia}`,
           detail: "Registra evidencia concreta para tu proxima revision.",
-          actionLabel: "Ir a Evaluacion",
+          actionLabel: "Ir a Evaluaci?n",
           goTo: "evaluaciones",
         });
       }
@@ -263,13 +263,13 @@ export default function DashboardPage() {
         priority: "MEDIA",
         title: "Completar autoevaluacion actual",
         detail: "Mejora la calidad de feedback con tu jefatura.",
-        actionLabel: "Ir a Evaluacion",
+        actionLabel: "Ir a Evaluaci?n",
         goTo: "evaluaciones",
       });
       items.push({
         priority: "BAJA",
         title: "Actualizar plan de desarrollo personal",
-        detail: "Define una accion concreta para los proximos 30 dias.",
+        detail: "Define una accion concreta para los pr?ximos 30 dias.",
         actionLabel: "Ir a Desarrollo",
         goTo: "planes",
       });
@@ -358,11 +358,11 @@ export default function DashboardPage() {
         apiFetch("/support/health", { token }).catch(() => null),
       ]);
 
-      addCheck("Login y sesión", Boolean(me?._id || me?.email), me ? "Sesión válida." : "No se pudo validar la sesión.");
-      addCheck("Mongo/API", Boolean(ops?.runtime?.mongoConnected && ops?.runtime?.apiHealthy), ops?.runtime?.mongoConnected ? "Conectado." : "Sin conexión estable.");
+      addCheck("Login y sesiÃ³n", Boolean(me?._id || me?.email), me ? "SesiÃ³n vÃ¡lida." : "No se pudo validar la sesiÃ³n.");
+      addCheck("Mongo/API", Boolean(ops?.runtime?.mongoConnected && ops?.runtime?.apiHealthy), ops?.runtime?.mongoConnected ? "Conectado." : "Sin conexiÃ³n estable.");
       addCheck("Aislamiento por rol", Boolean(role?.checks?.tenantScoped || role?.isSuperAdmin), role?.isSuperAdmin ? "Rol global superadmin." : role?.checks?.tenantScoped ? "Tenant aislado activo." : "Sin aislamiento por tenant.");
-      addCheck("Permisos mínimos", Number(role?.checks?.expectedCoveragePct || 0) >= 70, `Cobertura ${role?.checks?.expectedCoveragePct ?? 0}%`);
-      addCheck("Módulo datos/importación", Boolean(exportsOverview?.summary), exportsOverview?.summary ? "Overview de datos disponible." : "No responde módulo de datos.");
+      addCheck("Permisos mÃ­nimos", Number(role?.checks?.expectedCoveragePct || 0) >= 70, `Cobertura ${role?.checks?.expectedCoveragePct ?? 0}%`);
+      addCheck("MÃ³dulo datos/importaciÃ³n", Boolean(exportsOverview?.summary), exportsOverview?.summary ? "Overview de datos disponible." : "No responde mÃ³dulo de datos.");
       addCheck("Soporte/chat backend", Boolean(supportHealth?.ok), supportHealth?.ok ? "Servicio de soporte activo." : "No responde soporte.");
       addCheck("Cloudinary configurado", Boolean(ops?.integrations?.cloudinaryConfigured), ops?.integrations?.cloudinaryConfigured ? "Configurado." : "Pendiente configurar.");
       addCheck("Reset password (infra)", Boolean(ops?.integrations?.smtpConfigured), ops?.integrations?.smtpConfigured ? "SMTP listo." : "SMTP no configurado.");
@@ -375,7 +375,7 @@ export default function DashboardPage() {
         running: false,
         done: true,
         score: 0,
-        checks: [{ id: "Ejecución de auditoría", ok: false, detail: "No se pudo completar la auditoría." }],
+        checks: [{ id: "EjecuciÃ³n de auditorÃ­a", ok: false, detail: "No se pudo completar la auditorÃ­a." }],
       });
     }
   }
@@ -391,8 +391,8 @@ export default function DashboardPage() {
           {isSuperOrDirector && "Directorio: decisiones globales"}
           {isRRHH && "RRHH: seguimiento operativo"}
           {isJefe && "Jefatura: equipo a cargo"}
-          {isEmpleado && "Colaborador: evolución personal"}
-          {isLector && "Auditoría: lectura y control"}
+          {isEmpleado && "Colaborador: evoluciÃ³n personal"}
+          {isLector && "AuditorÃ­a: lectura y control"}
           {!isSuperOrDirector && !isRRHH && !isJefe && !isEmpleado && !isLector && "Panel ejecutivo"}
         </h3>
       </section>
@@ -405,13 +405,13 @@ export default function DashboardPage() {
             <p>Mongo: <span className={opsStatus?.runtime?.mongoConnected ? "text-emerald-300" : "text-rose-300"}>{opsStatus?.runtime?.mongoConnected ? "Conectado" : "Desconectado"}</span></p>
             <p>Cloudinary: <span className={opsStatus?.integrations?.cloudinaryConfigured ? "text-emerald-300" : "text-amber-300"}>{opsStatus?.integrations?.cloudinaryConfigured ? "Configurado" : "Pendiente"}</span></p>
             <p>SMTP: <span className={opsStatus?.integrations?.smtpConfigured ? "text-emerald-300" : "text-amber-300"}>{opsStatus?.integrations?.smtpConfigured ? "Configurado" : "Pendiente"}</span></p>
-            <p>Importaciones última hora: <span className="text-white font-semibold">{opsStatus?.activity?.importsLastHour ?? 0}</span></p>
-            <p>Descargas última hora: <span className="text-white font-semibold">{opsStatus?.activity?.downloadsLastHour ?? 0}</span></p>
+            <p>Importaciones Ãºltima hora: <span className="text-white font-semibold">{opsStatus?.activity?.importsLastHour ?? 0}</span></p>
+            <p>Descargas Ãºltima hora: <span className="text-white font-semibold">{opsStatus?.activity?.downloadsLastHour ?? 0}</span></p>
           </div>
         </article>
 
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
-          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Validación rápida de rol</p>
+          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">ValidaciÃ³n rÃ¡pida de rol</p>
           <p className="mt-2 text-sm text-[#c5d5de]">
             Rol actual: <span className="font-semibold text-white">{roleCheck?.roleCode || "-"}</span>
           </p>
@@ -419,8 +419,8 @@ export default function DashboardPage() {
             Cobertura de permisos esperados: <span className="font-semibold text-white">{roleCheck?.checks?.expectedCoveragePct ?? 0}%</span>
           </p>
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessGestion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Gestión</span>
-            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessEvaluacion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Evaluación</span>
+            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessGestion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>GestiÃ³n</span>
+            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessEvaluacion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>EvaluaciÃ³n</span>
             <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessDatos ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Datos</span>
             <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.tenantScoped ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-amber-900/30 text-amber-300 border border-amber-400/30"}`}>{roleCheck?.checks?.tenantScoped ? "Aislado por tenant" : "Global"}</span>
           </div>
@@ -466,8 +466,8 @@ export default function DashboardPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo auditoría de lanzamiento</p>
-            <h3 className="mt-1 text-xl font-semibold text-white">Checklist técnico en un clic</h3>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo auditorÃ­a de lanzamiento</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">Checklist tÃ©cnico en un clic</h3>
           </div>
           <button
             type="button"
@@ -475,7 +475,7 @@ export default function DashboardPage() {
             disabled={launchAudit.running}
             className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
           >
-            {launchAudit.running ? "Auditando..." : "Ejecutar auditoría"}
+            {launchAudit.running ? "Auditando..." : "Ejecutar auditorÃ­a"}
           </button>
         </div>
 
@@ -503,7 +503,7 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <p className="text-xs uppercase tracking-[0.2em] text-[#9FB6C1]">Onboarding guiado</p>
-            <h2 className="mt-1 text-2xl font-bold text-white">Primeros 4 pasos para operar sin fricción</h2>
+            <h2 className="mt-1 text-2xl font-bold text-white">Primeros 4 pasos para operar sin fricciÃ³n</h2>
           </div>
           <span className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-sm text-[#CFE0E8]">
             {completedSteps}/4 completados
@@ -554,7 +554,7 @@ export default function DashboardPage() {
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title={isEmpleado ? "Mi score actual" : "Promedio general"} value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
-        <KpiCard title={isJefe ? "Pendientes del equipo" : "Evaluaciones pendientes"} value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones en BORRADOR o ENVIADA" />
+        <KpiCard title={isJefe ? "Pendientes del equipo" : "Evaluaci?nes pendientes"} value={summary.educational?.pendingEvaluations || 0} hint="Evaluaci?nes en BORRADOR o ENVIADA" />
         <KpiCard title={isEmpleado ? "Riesgo personal" : "Empleados en riesgo"} value={risk.length || 0} hint={isEmpleado ? "Tendencia de mejora sugerida" : "Colaboradores con score mas bajo"} />
         <KpiCard title={isRRHH ? "Brechas de competencias" : "Competencias criticas"} value={criticalCount || 0} hint="Capacitacion urgente recomendada" />
       </section>
@@ -649,7 +649,7 @@ export default function DashboardPage() {
           onClick={() => setShowAdvanced((v) => !v)}
           className="w-full rounded-xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-left text-sm font-semibold text-white"
         >
-          {showAdvanced ? "Ocultar analitica avanzada" : "Mostrar analitica avanzada (patrones y prediccion)"}
+          {showAdvanced ? "Ocultar anal?tica avanzada" : "Mostrar anal?tica avanzada (patrones y prediccion)"}
         </button>
       </section>
 
@@ -701,7 +701,7 @@ export default function DashboardPage() {
         <p className="mt-1 text-[#9fb6c4]">Proyecta impacto en riesgo y desempeno antes de decidir presupuesto.</p>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={simForm.competency} onChange={(e) => setSimForm((prev) => ({ ...prev, competency: e.target.value }))}>
-            <option value="">Competencia prioritaria automatica</option>
+            <option value="">Competencia prioritaria autom?tica</option>
             {training.map((item) => (
               <option key={item.competencia} value={item.competencia}>{item.competencia}</option>
             ))}
@@ -767,3 +767,6 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+
+

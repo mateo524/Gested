@@ -126,13 +126,13 @@ export default function EvaluationCyclesPage() {
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Configuracion operativa</p>
             <div className="grid gap-4 md:grid-cols-2">
               <input type="number" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
-              <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Periodo (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
+              <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Per?odo (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
             </div>
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
                 <option value="INICIO">Inicio</option>
                 <option value="REVISION_INTERMEDIA">Revision intermedia</option>
-                <option value="EVALUACION_FINAL">Evaluacion final</option>
+                <option value="EVALUACION_FINAL">Evaluaci?n final</option>
               </select>
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="BORRADOR">Borrador</option>
@@ -149,7 +149,7 @@ export default function EvaluationCyclesPage() {
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edicion
+                Cancelar edici?n
               </button>
             ) : null}
           </form>
