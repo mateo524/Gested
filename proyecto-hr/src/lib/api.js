@@ -1,6 +1,10 @@
 export const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
 const DEFAULT_TIMEOUT_MS = 12000;
+const NETWORK_ERROR_MESSAGE =
+  "No se pudo conectar con el servidor. Verifica conexión o intenta nuevamente.";
+const TIMEOUT_ERROR_MESSAGE =
+  "La solicitud está demorando más de lo esperado. Intenta nuevamente en unos segundos.";
 
 function withTimeout(fetcher, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -45,22 +49,15 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
   try {
     response = await doRequest();
   } catch (error) {
+    const isTimeout = error?.name === "AbortError";
     if (isGet) {
       try {
         response = await doRequest();
       } catch (retryError) {
-        throw new Error(
-          retryError?.name === "AbortError"
-            ? "El servidor demoro en responder"
-            : "No se pudo conectar con el servidor"
-        );
+        throw new Error(retryError?.name === "AbortError" ? TIMEOUT_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE);
       }
     } else {
-      throw new Error(
-        error?.name === "AbortError"
-          ? "La solicitud tardo demasiado"
-          : "No se pudo conectar con el servidor"
-      );
+      throw new Error(isTimeout ? TIMEOUT_ERROR_MESSAGE : NETWORK_ERROR_MESSAGE);
     }
   }
 
@@ -76,7 +73,7 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
     const baseMessage =
       (typeof data === "object" && (data?.mensaje || data?.message)) ||
       (typeof data === "string" && data) ||
-      "Error de servidor";
+      "Ocurrió un error del servidor.";
     const code = typeof data === "object" && data?.code ? ` [code: ${data.code}]` : "";
     const request = typeof data === "object" && data?.request ? ` [request: ${data.request}]` : "";
     throw new Error(`${baseMessage}${code}${request}`);
