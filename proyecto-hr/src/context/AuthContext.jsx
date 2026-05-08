@@ -40,6 +40,7 @@ export function AuthProvider({ children }) {
   const [activeCompanyId, setActiveCompanyIdState] = useState(
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
   );
+  const [sessionHydrating, setSessionHydrating] = useState(false);
 
   const setActiveCompanyId = useCallback((companyId) => {
     if (!companyId) {
@@ -128,23 +129,26 @@ export function AuthProvider({ children }) {
     }
   }, [setActiveCompanyId]);
 
-  const login = useCallback(async ({ token: nextToken, user: nextUser }) => {
-    applySession(nextToken, nextUser);
-    await Promise.all([
+  const hydrateSessionData = useCallback(async (nextToken, nextUser) => {
+    await Promise.allSettled([
       fetchCompanies(nextToken, nextUser),
       fetchBranding(nextToken),
       fetchAnnouncementSummary(nextToken),
     ]);
-  }, [applySession, fetchAnnouncementSummary, fetchBranding, fetchCompanies]);
+  }, [fetchAnnouncementSummary, fetchBranding, fetchCompanies]);
+
+  const login = useCallback(async ({ token: nextToken, user: nextUser }) => {
+    applySession(nextToken, nextUser);
+    setSessionHydrating(true);
+    hydrateSessionData(nextToken, nextUser).finally(() => setSessionHydrating(false));
+  }, [applySession, hydrateSessionData]);
 
   const updateSession = useCallback(async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken || token, nextUser);
-    await Promise.all([
-      fetchCompanies(nextToken || token, nextUser),
-      fetchBranding(nextToken || token),
-      fetchAnnouncementSummary(nextToken || token),
-    ]);
-  }, [applySession, fetchAnnouncementSummary, fetchBranding, fetchCompanies, token]);
+    setSessionHydrating(true);
+    await hydrateSessionData(nextToken || token, nextUser);
+    setSessionHydrating(false);
+  }, [applySession, hydrateSessionData, token]);
 
   const logout = useCallback(() => {
     localStorage.removeItem("token");
@@ -160,20 +164,18 @@ export function AuthProvider({ children }) {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!token || sessionHydrating) return;
 
     apiFetch("/auth/me", { token })
       .then(async (nextUser) => {
         localStorage.setItem("user", JSON.stringify(nextUser));
         setUser(nextUser);
-        await Promise.all([
-          fetchCompanies(token, nextUser),
-          fetchBranding(token),
-          fetchAnnouncementSummary(token),
-        ]);
+        if (!user) {
+          await hydrateSessionData(token, nextUser);
+        }
       })
       .catch(() => logout());
-  }, [fetchAnnouncementSummary, fetchBranding, fetchCompanies, logout, token]);
+  }, [hydrateSessionData, logout, sessionHydrating, token, user]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -215,6 +217,7 @@ export function AuthProvider({ children }) {
       logout,
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
+      sessionHydrating,
     }),
     [
       activeCompany,
@@ -235,6 +238,7 @@ export function AuthProvider({ children }) {
       tokenNearExpiry,
       updateSession,
       user,
+      sessionHydrating,
     ]
   );
 
