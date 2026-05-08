@@ -96,7 +96,7 @@ export default function AppShell({ view, setView, children }) {
         { key: "settings", label: "Configuracion", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
         {
           key: "evaluaciones",
-          label: "Evaluaci?n",
+          label: "Evaluacion",
           show:
             hasPermission("manage_evaluations") ||
             hasPermission("evaluate_team") ||
@@ -122,7 +122,7 @@ export default function AppShell({ view, setView, children }) {
 
   const primaryTabs = [
     { key: "panel", label: "Panel", defaultView: "dashboard" },
-    { key: "evaluacion", label: "Evaluaci?n", defaultView: "evaluaciones" },
+    { key: "evaluacion", label: "Evaluacion", defaultView: "evaluaciones" },
     { key: "gestion", label: "Gestion", defaultView: "empleados" },
     {
       key: "datos",
@@ -237,7 +237,7 @@ export default function AppShell({ view, setView, children }) {
         </div>
         {tokenNearExpiry ? (
           <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Tu sesi?n vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesi?n.
+            Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
           </div>
         ) : null}
         {children}

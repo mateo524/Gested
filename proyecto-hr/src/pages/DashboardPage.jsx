@@ -22,10 +22,9 @@ export default function DashboardPage() {
   const [roleCheck, setRoleCheck] = useState(null);
   const [simulation, setSimulation] = useState(null);
   const [scenarios, setScenarios] = useState([]);
-  const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
+  const [simForm, setSimForm] = useState({ competency: "", investment: "media", amount: 250000 });
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [meetingMode, setMeetingMode] = useState(false);
-  const [launchAudit, setLaunchAudit] = useState({ running: false, done: false, score: 0, checks: [] });
   const roleCode = user?.roleCode || "";
   const isSuperOrDirector = user?.isSuperAdmin || roleCode === "ADMIN_COLEGIO";
   const isRRHH = roleCode === "RRHH";
@@ -82,45 +81,6 @@ export default function DashboardPage() {
     ];
   }, [training, risk]);
 
-  const onboardingSteps = useMemo(() => {
-    const employeesCount = Number(summary?.educational?.employees || 0);
-    const metricsCount = Number(summary?.educational?.metrics || 0);
-    const evaluationsCount = Number(summary?.educational?.evaluations || 0);
-    const plansCount = Number(summary?.educational?.developmentPlans || 0);
-
-    return [
-      {
-        id: "empleados",
-        title: "1. Cargar plantilla inicial",
-        detail: "Da de alta colaboradores y responsables por colegio.",
-        done: employeesCount > 0,
-        actionLabel: "Ir a Plantilla",
-      },
-      {
-        id: "metricas",
-        title: "2. Definir competencias e indicadores",
-        detail: "Configura mÃ©tricas para poder evaluar y comparar.",
-        done: metricsCount > 0,
-        actionLabel: "Ir a Indicadores",
-      },
-      {
-        id: "evaluaciones",
-        title: "3. Registrar evaluaciones",
-        detail: "Carga resultados para comenzar el seguimiento real.",
-        done: evaluationsCount > 0,
-        actionLabel: "Ir a EvaluaciÃ³n",
-      },
-      {
-        id: "planes",
-        title: "4. Activar planes de desarrollo",
-        detail: "Convierte resultados en acciones concretas de mejora.",
-        done: plansCount > 0,
-        actionLabel: "Ir a Desarrollo",
-      },
-    ];
-  }, [summary]);
-
-  const completedSteps = onboardingSteps.filter((s) => s.done).length;
   const alertasUtiles = useMemo(() => {
     const alertas = [];
     const pendingEvaluations = Number(summary?.educational?.pendingEvaluations || 0);
@@ -223,7 +183,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
           detail: "Destraba decisiones de gestion y mejora la calidad del dashboard.",
-          actionLabel: "Ir a Evaluaci?n",
+          actionLabel: "Ir a Evaluacion",
           goTo: "evaluaciones",
         });
       }
@@ -269,7 +229,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Completar ${pendingEvaluations} evaluaciones pendientes`,
           detail: "Sin evaluaciones completas no hay lectura real de desempeno.",
-          actionLabel: "Ir a Evaluaci?n",
+          actionLabel: "Ir a Evaluacion",
           goTo: "evaluaciones",
         });
       }
@@ -315,7 +275,7 @@ export default function DashboardPage() {
           priority: "ALTA",
           title: `Finalizar ${pendingEvaluations} evaluaciones de equipo`,
           detail: "Permite habilitar planes de mejora personalizados.",
-          actionLabel: "Ir a Evaluaci?n",
+          actionLabel: "Ir a Evaluacion",
           goTo: "evaluaciones",
         });
       }
@@ -341,7 +301,7 @@ export default function DashboardPage() {
           priority: topTraining.priority === "ALTA" ? "ALTA" : "MEDIA",
           title: `Trabajar competencia: ${topTraining.competencia}`,
           detail: "Registra evidencia concreta para tu proxima revision.",
-          actionLabel: "Ir a Evaluaci?n",
+          actionLabel: "Ir a Evaluacion",
           goTo: "evaluaciones",
         });
       }
@@ -349,13 +309,13 @@ export default function DashboardPage() {
         priority: "MEDIA",
         title: "Completar autoevaluacion actual",
         detail: "Mejora la calidad de feedback con tu jefatura.",
-        actionLabel: "Ir a Evaluaci?n",
+          actionLabel: "Ir a Evaluacion",
         goTo: "evaluaciones",
       });
       items.push({
         priority: "BAJA",
         title: "Actualizar plan de desarrollo personal",
-        detail: "Define una accion concreta para los pr?ximos 30 dias.",
+        detail: "Define una accion concreta para los proximos 30 dias.",
         actionLabel: "Ir a Desarrollo",
         goTo: "planes",
       });
@@ -405,6 +365,7 @@ export default function DashboardPage() {
       const params = new URLSearchParams();
       if (simForm.competency) params.set("competency", simForm.competency);
       params.set("investment", simForm.investment);
+      params.set("amount", String(simForm.amount || 0));
       const data = await apiFetch(`/dashboard/simulate-impact?${params.toString()}`, { token });
       setSimulation(data.simulation);
     } catch (error) {
@@ -420,6 +381,7 @@ export default function DashboardPage() {
           const params = new URLSearchParams();
           if (simForm.competency) params.set("competency", simForm.competency);
           params.set("investment", level);
+          params.set("amount", String(simForm.amount || 0));
           const data = await apiFetch(`/dashboard/simulate-impact?${params.toString()}`, { token });
           return { level, simulation: data.simulation };
         })
@@ -430,41 +392,6 @@ export default function DashboardPage() {
     }
   }
 
-  async function runLaunchAudit() {
-    setLaunchAudit({ running: true, done: false, score: 0, checks: [] });
-    const checks = [];
-    const addCheck = (id, ok, detail) => checks.push({ id, ok, detail });
-
-    try {
-      const [me, ops, role, exportsOverview, supportHealth] = await Promise.all([
-        apiFetch("/auth/me", { token }).catch(() => null),
-        apiFetch("/dashboard/ops-status", { token }).catch(() => null),
-        apiFetch("/dashboard/role-check", { token }).catch(() => null),
-        apiFetch("/education-exports/overview", { token }).catch(() => null),
-        apiFetch("/support/health", { token }).catch(() => null),
-      ]);
-
-      addCheck("Login y sesiÃ³n", Boolean(me?._id || me?.email), me ? "SesiÃ³n vÃ¡lida." : "No se pudo validar la sesiÃ³n.");
-      addCheck("Mongo/API", Boolean(ops?.runtime?.mongoConnected && ops?.runtime?.apiHealthy), ops?.runtime?.mongoConnected ? "Conectado." : "Sin conexiÃ³n estable.");
-      addCheck("Aislamiento por rol", Boolean(role?.checks?.tenantScoped || role?.isSuperAdmin), role?.isSuperAdmin ? "Rol global superadmin." : role?.checks?.tenantScoped ? "Tenant aislado activo." : "Sin aislamiento por tenant.");
-      addCheck("Permisos mÃ­nimos", Number(role?.checks?.expectedCoveragePct || 0) >= 70, `Cobertura ${role?.checks?.expectedCoveragePct ?? 0}%`);
-      addCheck("MÃ³dulo datos/importaciÃ³n", Boolean(exportsOverview?.summary), exportsOverview?.summary ? "Overview de datos disponible." : "No responde mÃ³dulo de datos.");
-      addCheck("Soporte/chat backend", Boolean(supportHealth?.ok), supportHealth?.ok ? "Servicio de soporte activo." : "No responde soporte.");
-      addCheck("Cloudinary configurado", Boolean(ops?.integrations?.cloudinaryConfigured), ops?.integrations?.cloudinaryConfigured ? "Configurado." : "Pendiente configurar.");
-      addCheck("Reset password (infra)", Boolean(ops?.integrations?.smtpConfigured), ops?.integrations?.smtpConfigured ? "SMTP listo." : "SMTP no configurado.");
-
-      const passed = checks.filter((c) => c.ok).length;
-      const score = Math.round((passed / checks.length) * 100);
-      setLaunchAudit({ running: false, done: true, score, checks });
-    } catch {
-      setLaunchAudit({
-        running: false,
-        done: true,
-        score: 0,
-        checks: [{ id: "EjecuciÃ³n de auditorÃ­a", ok: false, detail: "No se pudo completar la auditorÃ­a." }],
-      });
-    }
-  }
 
   if (message) return <p className="text-rose-300">{message}</p>;
   if (!summary) return <p className="text-[#9fb6c4]">Cargando panel ejecutivo...</p>;
@@ -580,40 +507,7 @@ export default function DashboardPage() {
         </article>
       </section>
 
-      {!meetingMode ? (
-      <section className="grid gap-4 xl:grid-cols-2">
-        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
-          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Centro de estado operativo</p>
-          <div className="mt-3 grid gap-2 text-sm text-[#d4e1e8]">
-            <p>API: <span className={opsStatus?.runtime?.apiHealthy ? "text-emerald-300" : "text-rose-300"}>{opsStatus?.runtime?.apiHealthy ? "OK" : "Error"}</span></p>
-            <p>Mongo: <span className={opsStatus?.runtime?.mongoConnected ? "text-emerald-300" : "text-rose-300"}>{opsStatus?.runtime?.mongoConnected ? "Conectado" : "Desconectado"}</span></p>
-            <p>Cloudinary: <span className={opsStatus?.integrations?.cloudinaryConfigured ? "text-emerald-300" : "text-amber-300"}>{opsStatus?.integrations?.cloudinaryConfigured ? "Configurado" : "Pendiente"}</span></p>
-            <p>SMTP: <span className={opsStatus?.integrations?.smtpConfigured ? "text-emerald-300" : "text-amber-300"}>{opsStatus?.integrations?.smtpConfigured ? "Configurado" : "Pendiente"}</span></p>
-            <p>Importaciones Ãºltima hora: <span className="text-white font-semibold">{opsStatus?.activity?.importsLastHour ?? 0}</span></p>
-            <p>Descargas Ãºltima hora: <span className="text-white font-semibold">{opsStatus?.activity?.downloadsLastHour ?? 0}</span></p>
-          </div>
-        </article>
-
-        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
-          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">ValidaciÃ³n rÃ¡pida de rol</p>
-          <p className="mt-2 text-sm text-[#c5d5de]">
-            Rol actual: <span className="font-semibold text-white">{roleCheck?.roleCode || "-"}</span>
-          </p>
-          <p className="mt-1 text-sm text-[#c5d5de]">
-            Cobertura de permisos esperados: <span className="font-semibold text-white">{roleCheck?.checks?.expectedCoveragePct ?? 0}%</span>
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessGestion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>GestiÃ³n</span>
-            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessEvaluacion ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>EvaluaciÃ³n</span>
-            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.canAccessDatos ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-slate-900/30 text-slate-300 border border-slate-400/30"}`}>Datos</span>
-            <span className={`rounded-full px-2 py-1 ${roleCheck?.checks?.tenantScoped ? "bg-emerald-900/30 text-emerald-300 border border-emerald-400/30" : "bg-amber-900/30 text-amber-300 border border-amber-400/30"}`}>{roleCheck?.checks?.tenantScoped ? "Aislado por tenant" : "Global"}</span>
-          </div>
-          {roleCheck?.recommendations?.length ? (
-            <p className="mt-3 text-xs text-[#9fb6c4]">{roleCheck.recommendations[0]}</p>
-          ) : null}
-        </article>
-      </section>
-      ) : null}
+      
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex items-center justify-between gap-3">
@@ -648,81 +542,10 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {!meetingMode ? (
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Modo auditorÃ­a de lanzamiento</p>
-            <h3 className="mt-1 text-xl font-semibold text-white">Checklist tÃ©cnico en un clic</h3>
-          </div>
-          <button
-            type="button"
-            onClick={runLaunchAudit}
-            disabled={launchAudit.running}
-            className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-          >
-            {launchAudit.running ? "Auditando..." : "Ejecutar auditorÃ­a"}
-          </button>
-        </div>
-
-        {launchAudit.done ? (
-          <div className="mt-4">
-            <p className="text-sm text-[#c5d5de]">
-              Puntaje final:{" "}
-              <span className={`font-bold ${launchAudit.score >= 85 ? "text-emerald-300" : launchAudit.score >= 65 ? "text-amber-300" : "text-rose-300"}`}>
-                {launchAudit.score}%
-              </span>
-            </p>
-            <div className="mt-3 grid gap-2 md:grid-cols-2">
-              {launchAudit.checks.map((item) => (
-                <div key={item.id} className={`rounded-xl border px-3 py-2 text-sm ${item.ok ? "border-emerald-400/30 bg-emerald-900/20 text-emerald-200" : "border-rose-400/30 bg-rose-900/20 text-rose-200"}`}>
-                  <p className="font-semibold">{item.id}</p>
-                  <p className="text-xs opacity-90">{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-      </section>
-      ) : null}
-
-      {!meetingMode ? (
-      <section className="rounded-[2rem] border border-[#1e3a8a]/35 bg-[#0f2230] p-6">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <p className="text-xs uppercase tracking-[0.2em] text-[#9FB6C1]">Onboarding guiado</p>
-            <h2 className="mt-1 text-2xl font-bold text-white">Primeros 4 pasos para operar sin fricciÃ³n</h2>
-          </div>
-          <span className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-sm text-[#CFE0E8]">
-            {completedSteps}/4 completados
-          </span>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {onboardingSteps.map((step) => (
-            <article key={step.id} className="rounded-xl border border-white/10 bg-[#122530] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-base font-semibold text-white">{step.title}</p>
-                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${step.done ? "bg-emerald-900/40 text-emerald-300 border border-emerald-400/30" : "bg-amber-900/40 text-amber-300 border border-amber-400/30"}`}>
-                  {step.done ? "Completado" : "Pendiente"}
-                </span>
-              </div>
-              <p className="mt-1 text-sm text-[#9fb6c4]">{step.detail}</p>
-              <button
-                type="button"
-                onClick={() => setView(step.id)}
-                className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
-              >
-                {step.actionLabel}
-              </button>
-            </article>
-          ))}
-        </div>
-      </section>
-      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title={isEmpleado ? "Mi score actual" : "Promedio general"} value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
-        <KpiCard title={isJefe ? "Pendientes del equipo" : "Evaluaci?nes pendientes"} value={summary.educational?.pendingEvaluations || 0} hint="Evaluaci?nes en BORRADOR o ENVIADA" />
+        <KpiCard title={isJefe ? "Pendientes del equipo" : "Evaluaciones pendientes"} value={summary.educational?.pendingEvaluations || 0} hint="Evaluaciones en BORRADOR o ENVIADA" />
         <KpiCard title={isEmpleado ? "Riesgo personal" : "Empleados en riesgo"} value={risk.length || 0} hint={isEmpleado ? "Tendencia de mejora sugerida" : "Colaboradores con score mas bajo"} />
         <KpiCard title={isRRHH ? "Brechas de competencias" : "Competencias criticas"} value={criticalCount || 0} hint="Capacitacion urgente recomendada" />
       </section>
@@ -818,7 +641,7 @@ export default function DashboardPage() {
           onClick={() => setShowAdvanced((v) => !v)}
           className="w-full rounded-xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-left text-sm font-semibold text-white"
         >
-          {showAdvanced ? "Ocultar anal?tica avanzada" : "Mostrar anal?tica avanzada (patrones y prediccion)"}
+          {showAdvanced ? "Ocultar analitica avanzada" : "Mostrar analitica avanzada (patrones y prediccion)"}
         </button>
       </section>
       ) : null}
@@ -870,9 +693,9 @@ export default function DashboardPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-xl font-semibold text-white">Simulador de inversion en capacitacion</h3>
         <p className="mt-1 text-[#9fb6c4]">Proyecta impacto en riesgo y desempeno antes de decidir presupuesto.</p>
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <div className="mt-4 grid gap-3 md:grid-cols-5">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={simForm.competency} onChange={(e) => setSimForm((prev) => ({ ...prev, competency: e.target.value }))}>
-            <option value="">Competencia prioritaria autom?tica</option>
+            <option value="">Competencia prioritaria automatica</option>
             {training.map((item) => (
               <option key={item.competencia} value={item.competencia}>{item.competencia}</option>
             ))}
@@ -882,6 +705,15 @@ export default function DashboardPage() {
             <option value="media">Inversion media</option>
             <option value="alta">Inversion alta</option>
           </select>
+          <input
+            type="number"
+            min="0"
+            step="1000"
+            className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+            value={simForm.amount}
+            onChange={(e) => setSimForm((prev) => ({ ...prev, amount: Number(e.target.value || 0) }))}
+            placeholder="Monto a invertir (ARS)"
+          />
           <button type="button" onClick={runSimulation} className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white">
             Simular impacto
           </button>
