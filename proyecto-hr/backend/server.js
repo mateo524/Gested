@@ -51,11 +51,26 @@ function buildAllowedOrigins() {
 
 function buildCorsOptions() {
   const allowedOrigins = buildAllowedOrigins();
+  const allowVercelPreview =
+    process.env.NODE_ENV === "production" &&
+    String(process.env.ALLOW_VERCEL_PREVIEWS || "true").toLowerCase() !== "false";
+
+  function isAllowedOrigin(origin) {
+    if (allowedOrigins.has(origin)) return true;
+    if (!allowVercelPreview) return false;
+
+    try {
+      const parsed = new URL(origin);
+      return parsed.hostname.endsWith(".vercel.app");
+    } catch {
+      return false;
+    }
+  }
 
   return {
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      if (allowedOrigins.has(origin)) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
       return callback(new Error("CORS: origen no permitido"));
     },
     credentials: true,
