@@ -145,7 +145,7 @@ export default function MetricsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Motor de evaluaci?n</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Motor de evaluacion</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Indicadores y niveles</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Define indicadores claros por competencia y usa la misma escala para comparar resultados.
@@ -198,7 +198,7 @@ export default function MetricsPage() {
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edici?n
+                Cancelar edicion
               </button>
             ) : null}
           </form>

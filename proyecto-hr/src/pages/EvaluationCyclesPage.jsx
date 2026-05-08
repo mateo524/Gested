@@ -135,7 +135,7 @@ export default function EvaluationCyclesPage() {
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
                 <option value="INICIO">Inicio</option>
                 <option value="REVISION_INTERMEDIA">Revision intermedia</option>
-                <option value="EVALUACION_FINAL">Evaluaci?n final</option>
+                <option value="EVALUACION_FINAL">Evaluacion final</option>
               </select>
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
                 <option value="BORRADOR">Borrador</option>
@@ -152,7 +152,7 @@ export default function EvaluationCyclesPage() {
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edici?n
+                Cancelar edicion
               </button>
             ) : null}
           </form>
