@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -29,14 +29,14 @@ export default function AnnouncementsPage() {
   const [form, setForm] = useState(emptyForm);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     const next = await apiFetch("/announcements", { token });
     setData(next);
-  }
+  }, [token]);
 
   useEffect(() => {
     loadData().catch((error) => setMessage(error.message));
-  }, [token]);
+  }, [loadData]);
 
   async function sendAnnouncement(event) {
     event.preventDefault();

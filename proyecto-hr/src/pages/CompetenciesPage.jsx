@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -20,7 +20,7 @@ export default function CompetenciesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     const params = new URLSearchParams();
     if (filters.q.trim()) params.set("q", filters.q.trim());
     if (filters.tipo) params.set("tipo", filters.tipo);
@@ -35,11 +35,11 @@ export default function CompetenciesPage() {
     if (!form.schoolId && schoolsData[0]?._id) {
       setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
     }
-  }
+  }, [filters.componente, filters.q, filters.tipo, form.schoolId, token]);
 
   useEffect(() => {
     loadData().catch((error) => setMessage(error.message));
-  }, [token, filters.q, filters.tipo, filters.componente]);
+  }, [loadData]);
 
   async function handleSubmit(event) {
     event.preventDefault();

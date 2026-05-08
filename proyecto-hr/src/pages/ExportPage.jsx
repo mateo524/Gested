@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -48,14 +48,14 @@ export default function ExportPage() {
   });
   const [uploadResult, setUploadResult] = useState(null);
 
-  async function loadOverview() {
+  const loadOverview = useCallback(async () => {
     const data = await apiFetch("/export/overview", { token });
     setOverview(data);
-  }
+  }, [token]);
 
   useEffect(() => {
     loadOverview().catch((error) => setMessage(error.message));
-  }, [token, activeCompanyId]);
+  }, [activeCompanyId, loadOverview]);
 
   useEffect(() => {
     if (!compare.left || !compare.right || compare.left === compare.right) {

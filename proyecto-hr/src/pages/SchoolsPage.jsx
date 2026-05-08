@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -19,24 +19,24 @@ export default function SchoolsPage() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function loadSchools() {
+  const loadSchools = useCallback(async () => {
     const params = new URLSearchParams();
     if (query.trim()) params.set("q", query.trim());
     if (user?.isSuperAdmin && form.companyId) params.set("companyId", form.companyId);
     const queryString = params.toString() ? `?${params.toString()}` : "";
     const data = await apiFetch(`/schools${queryString}`, { token });
     setSchools(data);
-  }
+  }, [form.companyId, query, token, user?.isSuperAdmin]);
 
   useEffect(() => {
     loadSchools().catch((error) => setMessage(error.message));
-  }, [token, query, form.companyId]);
+  }, [loadSchools]);
 
   useEffect(() => {
     if (activeCompanyId && !form.companyId) {
       setForm((current) => ({ ...current, companyId: activeCompanyId }));
     }
-  }, [activeCompanyId]);
+  }, [activeCompanyId, form.companyId]);
 
   async function handleSubmit(event) {
     event.preventDefault();

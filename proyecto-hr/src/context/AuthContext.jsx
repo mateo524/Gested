@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 const AuthContext = createContext(null);
@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
   );
 
-  const setActiveCompanyId = (companyId) => {
+  const setActiveCompanyId = useCallback((companyId) => {
     if (!companyId) {
       localStorage.removeItem(ACTIVE_COMPANY_KEY);
       setActiveCompanyIdState("");
@@ -50,16 +50,16 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem(ACTIVE_COMPANY_KEY, companyId);
     setActiveCompanyIdState(companyId);
-  };
+  }, []);
 
-  const applySession = (nextToken, nextUser) => {
+  const applySession = useCallback((nextToken, nextUser) => {
     localStorage.setItem("token", nextToken);
     localStorage.setItem("user", JSON.stringify(nextUser));
     setToken(nextToken);
     setUser(nextUser);
-  };
+  }, []);
 
-  const fetchBranding = async (nextToken) => {
+  const fetchBranding = useCallback(async (nextToken) => {
     if (!nextToken) {
       setBranding(defaultBranding);
       return;
@@ -71,9 +71,9 @@ export function AuthProvider({ children }) {
     } catch {
       setBranding(defaultBranding);
     }
-  };
+  }, []);
 
-  const fetchAnnouncementSummary = async (nextToken) => {
+  const fetchAnnouncementSummary = useCallback(async (nextToken) => {
     if (!nextToken) {
       setAnnouncementSummary({ unreadCount: 0, latest: [] });
       return;
@@ -88,9 +88,9 @@ export function AuthProvider({ children }) {
     } catch {
       setAnnouncementSummary({ unreadCount: 0, latest: [] });
     }
-  };
+  }, []);
 
-  const searchGlobally = async (q) => {
+  const searchGlobally = useCallback(async (q) => {
     if (!token || !user?.isSuperAdmin || !q?.trim()) {
       setGlobalSearchResults({ companies: [], files: [], announcements: [] });
       return;
@@ -102,9 +102,9 @@ export function AuthProvider({ children }) {
     } catch {
       setGlobalSearchResults({ companies: [], files: [], announcements: [] });
     }
-  };
+  }, [token, user?.isSuperAdmin]);
 
-  const fetchCompanies = async (nextToken, nextUser) => {
+  const fetchCompanies = useCallback(async (nextToken, nextUser) => {
     if (!nextToken || !nextUser?.permisos?.includes("manage_companies")) {
       setCompanies([]);
       return;
@@ -126,27 +126,27 @@ export function AuthProvider({ children }) {
     } catch {
       setCompanies([]);
     }
-  };
+  }, [setActiveCompanyId]);
 
-  const login = async ({ token: nextToken, user: nextUser }) => {
+  const login = useCallback(async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken, nextUser);
     await Promise.all([
       fetchCompanies(nextToken, nextUser),
       fetchBranding(nextToken),
       fetchAnnouncementSummary(nextToken),
     ]);
-  };
+  }, [applySession, fetchAnnouncementSummary, fetchBranding, fetchCompanies]);
 
-  const updateSession = async ({ token: nextToken, user: nextUser }) => {
+  const updateSession = useCallback(async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken || token, nextUser);
     await Promise.all([
       fetchCompanies(nextToken || token, nextUser),
       fetchBranding(nextToken || token),
       fetchAnnouncementSummary(nextToken || token),
     ]);
-  };
+  }, [applySession, fetchAnnouncementSummary, fetchBranding, fetchCompanies, token]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem(ACTIVE_COMPANY_KEY);
@@ -157,7 +157,7 @@ export function AuthProvider({ children }) {
     setAnnouncementSummary({ unreadCount: 0, latest: [] });
     setGlobalSearchResults({ companies: [], files: [], announcements: [] });
     setActiveCompanyIdState("");
-  };
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -173,7 +173,7 @@ export function AuthProvider({ children }) {
         ]);
       })
       .catch(() => logout());
-  }, [token]);
+  }, [fetchAnnouncementSummary, fetchBranding, fetchCompanies, logout, token]);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -181,9 +181,15 @@ export function AuthProvider({ children }) {
     root.style.setProperty("--performia-primary-soft", `${branding.primaryColor || "#10b981"}22`);
   }, [branding.primaryColor]);
 
-  const activeCompany = companies.find((company) => company._id === activeCompanyId) || null;
-  const tokenPayload = token ? decodeTokenPayload(token) : null;
-  const tokenExpiresAt = tokenPayload?.exp ? new Date(tokenPayload.exp * 1000) : null;
+  const activeCompany = useMemo(
+    () => companies.find((company) => company._id === activeCompanyId) || null,
+    [activeCompanyId, companies]
+  );
+  const tokenPayload = useMemo(() => (token ? decodeTokenPayload(token) : null), [token]);
+  const tokenExpiresAt = useMemo(
+    () => (tokenPayload?.exp ? new Date(tokenPayload.exp * 1000) : null),
+    [tokenPayload]
+  );
   const tokenRemainingMs = tokenExpiresAt ? tokenExpiresAt.getTime() - Date.now() : 0;
   const tokenNearExpiry = tokenExpiresAt ? tokenRemainingMs <= 60 * 60 * 1000 : false;
 
@@ -210,7 +216,26 @@ export function AuthProvider({ children }) {
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
     }),
-    [token, user, companies, branding, announcementSummary, globalSearchResults, activeCompanyId, tokenExpiresAt, tokenNearExpiry]
+    [
+      activeCompany,
+      activeCompanyId,
+      announcementSummary,
+      branding,
+      companies,
+      fetchAnnouncementSummary,
+      fetchBranding,
+      fetchCompanies,
+      globalSearchResults,
+      login,
+      logout,
+      searchGlobally,
+      setActiveCompanyId,
+      token,
+      tokenExpiresAt,
+      tokenNearExpiry,
+      updateSession,
+      user,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

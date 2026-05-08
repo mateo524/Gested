@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
@@ -46,7 +46,7 @@ export default function EmployeesPage() {
     return query ? `?${query}` : "";
   }
 
-  async function loadBase() {
+  const loadBase = useCallback(async () => {
     try {
       setIsLoading(true);
       const [schoolsData, employeesData] = await Promise.all([
@@ -61,14 +61,14 @@ export default function EmployeesPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [filters, form.schoolId, token]);
 
   useEffect(() => {
     loadBase().catch((error) => {
       setMessageType("error");
       setMessage(error.message);
     });
-  }, [token, filters.q, filters.schoolId]);
+  }, [loadBase]);
 
   async function handleSubmit(event) {
     event.preventDefault();

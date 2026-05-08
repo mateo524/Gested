@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -34,18 +34,18 @@ export default function UsersPage() {
   const allVisibleSelected =
     filteredUsers.length > 0 && filteredUsers.every((user) => selectedIds.includes(user._id));
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     const [usersData, rolesData] = await Promise.all([
       apiFetch("/users", { token }),
       apiFetch("/roles", { token }),
     ]);
     setUsers(usersData);
     setRoles(rolesData);
-  }
+  }, [token]);
 
   useEffect(() => {
     loadData().catch((error) => setMessage(error.message));
-  }, [token]);
+  }, [loadData]);
 
   function resetForm() {
     setEditingId("");
