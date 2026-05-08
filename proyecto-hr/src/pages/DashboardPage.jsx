@@ -120,6 +120,91 @@ export default function DashboardPage() {
   }, [summary]);
 
   const completedSteps = onboardingSteps.filter((s) => s.done).length;
+  const alertasUtiles = useMemo(() => {
+    const alertas = [];
+    const pendingEvaluations = Number(summary?.educational?.pendingEvaluations || 0);
+    const lowPerformance = Number(summary?.educational?.lowPerformanceCount || 0);
+    const importsLastHour = Number(opsStatus?.activity?.importsLastHour || 0);
+    const smtpConfigured = Boolean(opsStatus?.integrations?.smtpConfigured);
+    const roleCoverage = Number(roleCheck?.checks?.expectedCoveragePct || 0);
+
+    if (pendingEvaluations > 0) {
+      alertas.push({
+        tipo: "ALTA",
+        titulo: "Evaluaciones pendientes",
+        detalle: `${pendingEvaluations} evaluaciones esperan cierre.`,
+        accion: "Ir a Evaluacion",
+        goTo: "evaluaciones",
+      });
+    }
+    if (lowPerformance > 0) {
+      alertas.push({
+        tipo: "ALTA",
+        titulo: "Colaboradores en riesgo",
+        detalle: `${lowPerformance} casos requieren plan de desarrollo inmediato.`,
+        accion: "Ir a Desarrollo",
+        goTo: "planes",
+      });
+    }
+    if (importsLastHour === 0) {
+      alertas.push({
+        tipo: "MEDIA",
+        titulo: "Sin carga de datos reciente",
+        detalle: "No hubo importaciones en la ultima hora.",
+        accion: "Ir a Cargas y descargas",
+        goTo: "bases-descargas",
+      });
+    }
+    if (roleCoverage < 100) {
+      alertas.push({
+        tipo: "MEDIA",
+        titulo: "Cobertura de permisos incompleta",
+        detalle: `Cobertura actual: ${roleCoverage}%.`,
+        accion: "Ir a Perfiles",
+        goTo: "roles",
+      });
+    }
+    if (!smtpConfigured) {
+      alertas.push({
+        tipo: "MEDIA",
+        titulo: "Recuperacion de contrasena incompleta",
+        detalle: "SMTP no esta configurado para recuperacion automatica.",
+        accion: "Ir a Configuracion",
+        goTo: "settings",
+      });
+    }
+    return alertas.slice(0, 5);
+  }, [summary, opsStatus, roleCheck]);
+
+  const reportesAccionables = useMemo(() => {
+    const principal = training[0];
+    const riesgoPrincipal = risk[0];
+    return [
+      {
+        titulo: "Plan de capacitacion sugerido",
+        impacto: principal ? `Prioridad ${principal.priority} en ${principal.competencia}` : "Sin recomendacion activa",
+        estado: principal ? "Listo para ejecutar" : "Pendiente de datos",
+        accion: "Ver desarrollo",
+        goTo: "planes",
+      },
+      {
+        titulo: "Seguimiento de alto riesgo",
+        impacto: riesgoPrincipal
+          ? `${riesgoPrincipal.nombre} con score ${riesgoPrincipal.avgScore}`
+          : "Sin casos de riesgo detectados",
+        estado: riesgoPrincipal ? "Intervencion recomendada" : "En monitoreo",
+        accion: "Ver evaluaciones",
+        goTo: "evaluaciones",
+      },
+      {
+        titulo: "Trazabilidad y evidencia",
+        impacto: `Cobertura de permisos ${roleCheck?.checks?.expectedCoveragePct ?? 0}%`,
+        estado: (roleCheck?.checks?.expectedCoveragePct ?? 0) >= 90 ? "Estable" : "Requiere ajuste",
+        accion: "Ver perfiles",
+        goTo: "roles",
+      },
+    ];
+  }, [training, risk, roleCheck]);
   const actionsToday = useMemo(() => {
     const items = [];
     const pendingEvaluations = Number(summary?.educational?.pendingEvaluations || 0);
@@ -420,6 +505,62 @@ export default function DashboardPage() {
           <KpiCard title="Criticas" value={criticalCount || 0} hint="Competencias" />
           <KpiCard title="Cobertura rol" value={`${roleCheck?.checks?.expectedCoveragePct ?? 0}%`} hint="Permisos" />
         </div>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Reportes ejecutivos</p>
+          <h3 className="mt-1 text-xl font-semibold text-white">Reportes accionables</h3>
+          <div className="mt-4 space-y-3">
+            {reportesAccionables.map((item) => (
+              <div key={item.titulo} className="rounded-xl border border-white/10 bg-[#0f1f28] p-4">
+                <p className="text-sm font-semibold text-white">{item.titulo}</p>
+                <p className="mt-1 text-sm text-[#9fb6c4]">{item.impacto}</p>
+                <p className="mt-1 text-xs text-[#c5d5de]">Estado: {item.estado}</p>
+                <button
+                  type="button"
+                  onClick={() => setView(item.goTo)}
+                  className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+                >
+                  {item.accion}
+                </button>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Alertas utiles</p>
+          <h3 className="mt-1 text-xl font-semibold text-white">Solo lo que requiere accion</h3>
+          <div className="mt-4 space-y-3">
+            {alertasUtiles.length ? (
+              alertasUtiles.map((item) => (
+                <div key={item.titulo} className="rounded-xl border border-white/10 bg-[#0f1f28] p-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-sm font-semibold text-white">{item.titulo}</p>
+                    <span className={`rounded-full px-2 py-1 text-xs font-semibold ${
+                      item.tipo === "ALTA"
+                        ? "bg-rose-900/30 text-rose-300 border border-rose-400/30"
+                        : "bg-amber-900/30 text-amber-300 border border-amber-400/30"
+                    }`}>
+                      {item.tipo}
+                    </span>
+                  </div>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">{item.detalle}</p>
+                  <button
+                    type="button"
+                    onClick={() => setView(item.goTo)}
+                    className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
+                  >
+                    {item.accion}
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-[#9fb6c4]">No hay alertas accionables por ahora.</p>
+            )}
+          </div>
+        </article>
       </section>
 
       <section className="grid gap-4 xl:grid-cols-2">
