@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
@@ -15,7 +15,7 @@ function formatDate(value) {
 }
 
 export default function EducationalExportsPage() {
-  const { token, user, activeCompanyId } = useAuth();
+  const { token, user } = useAuth();
   const canImport =
     user?.isSuperAdmin ||
     user?.permisos?.includes("manage_employees") ||
@@ -25,20 +25,18 @@ export default function EducationalExportsPage() {
   const [overview, setOverview] = useState(null);
   const [dataset, setDataset] = useState("employees");
   const [datasetData, setDatasetData] = useState({ items: [], canDownload: false });
-  const [filters, setFilters] = useState({ schoolId: "", area: "", cargo: "", estado: "", tipo: "" });
+  const [filters, setFilters] = useState({ schoolId: "", area: "", cargo: "" });
   const [message, setMessage] = useState("");
 
   const [importDataset, setImportDataset] = useState("auto");
   const [importFile, setImportFile] = useState(null);
+  const [manualMapping, setManualMapping] = useState({});
   const [importPreview, setImportPreview] = useState(null);
   const [editableErrors, setEditableErrors] = useState([]);
   const [importResult, setImportResult] = useState(null);
-  const [importJobs, setImportJobs] = useState([]);
-  const [selectedJob, setSelectedJob] = useState(null);
+  const [confirmMapping, setConfirmMapping] = useState(false);
+  const [confirmWarnings, setConfirmWarnings] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [isLoadingDataset, setIsLoadingDataset] = useState(false);
-  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
-  const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -46,51 +44,32 @@ export default function EducationalExportsPage() {
     return params.toString() ? `?${params.toString()}` : "";
   }, [filters]);
 
-  const loadOverview = useCallback(async () => {
-    try {
-      setIsLoadingOverview(true);
-      const data = await apiFetch("/education-exports/overview", { token });
-      setOverview(data);
-      if (!filters.schoolId && data.schools?.[0]?._id) {
-        setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
-      }
-    } finally {
-      setIsLoadingOverview(false);
+  async function loadOverview() {
+    const data = await apiFetch("/education-exports/overview", { token });
+    setOverview(data);
+    if (!filters.schoolId && data.schools?.[0]?._id) {
+      setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
     }
-  }, [filters.schoolId, token]);
+  }
 
-  const loadDataset = useCallback(async () => {
-    try {
-      setIsLoadingDataset(true);
-      const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
-      setDatasetData(data);
-    } finally {
-      setIsLoadingDataset(false);
-    }
-  }, [dataset, queryString, token]);
-
-  const loadImportJobs = useCallback(async () => {
-    const data = await apiFetch("/education-exports/import-jobs", { token });
-    setImportJobs(data.items || []);
-  }, [token]);
+  async function loadDataset() {
+    const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
+    setDatasetData(data);
+  }
 
   useEffect(() => {
     loadOverview().catch((error) => setMessage(error.message));
-    loadImportJobs().catch((error) => setMessage(error.message));
-  }, [activeCompanyId, loadImportJobs, loadOverview]);
+  }, []);
 
   useEffect(() => {
     loadDataset().catch((error) => setMessage(error.message));
-  }, [activeCompanyId, loadDataset]);
+  }, [dataset, queryString]);
 
   async function downloadDataset(format) {
     try {
       const suffix = queryString ? `${queryString}&format=${format}` : `?format=${format}`;
       const response = await fetch(`${apiUrl}/education-exports/download/${dataset}${suffix}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
       if (!response.ok) throw new Error("No se pudo generar la descarga.");
       const blob = await response.blob();
@@ -107,96 +86,70 @@ export default function EducationalExportsPage() {
     }
   }
 
-  async function previewImport() {
+  async function previewImport(mode = "preview") {
     if (!importFile) return setMessage("Selecciona un archivo.");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
     try {
       setIsImporting(true);
       setMessage("");
       const body = new FormData();
       body.append("file", importFile);
       body.append("dataset", importDataset);
+      body.append("mode", mode);
+      body.append("manualMapping", JSON.stringify(manualMapping));
       if (filters.schoolId) body.append("schoolId", filters.schoolId);
       const data = await apiFetch("/education-exports/import/preview", {
         method: "POST",
         token,
         body,
-        timeoutMs: 90000,
+        signal: controller.signal,
       });
       setImportPreview(data);
-      if (data.importJobId) {
-        apiFetch(`/education-exports/import-jobs/${data.importJobId}`, { token })
-          .then((detail) => setSelectedJob(detail.job || null))
-          .catch(() => setSelectedJob(null));
-      }
       setEditableErrors((data.sampleErrors || []).map((item) => ({ ...item, normalized: { ...(item.normalized || {}) } })));
       setImportResult(null);
-      await loadImportJobs();
+      setConfirmMapping(false);
+      setConfirmWarnings(false);
+      if (mode === "analyze") setMessage("Analisis completado. Revisa detecciones antes de confirmar.");
     } catch (error) {
-      const msg = String(error.message || "");
-      if (msg.toLowerCase().includes("demoro")) {
-        setMessage("La validacion tardo demasiado. Reintenta con un archivo mas chico o vuelve a intentar en unos segundos.");
-      } else {
-        setMessage(msg);
-      }
       setImportPreview(null);
+      if (error.name === "AbortError") {
+        setMessage("La validacion demoro demasiado. Intenta con un archivo mas chico o usa 'Analizar sin importar'.");
+      } else {
+        setMessage(error.message);
+      }
     } finally {
+      clearTimeout(timeout);
       setIsImporting(false);
     }
   }
 
-  function resetImportFlow() {
-    setImportPreview(null);
-    setEditableErrors([]);
-    setImportResult(null);
-    setSelectedJob(null);
-    setMessage("");
-  }
-
-  function downloadTemplate(kind) {
-    const templates = {
-      employees: "apellido,nombre,email,cargo,area,tipoempleado,activo\nPerez,Juan,juan@colegio.com,Docente,Matematica,DOCENTE,true\n",
-      metrics: "competencia,nombre,descripcion,ponderacion\nTrabajo en equipo,Colabora con pares,Participa activamente con el equipo,1\n",
-      cycles: "anio,periodo,etapa,estado,fechaInicio,fechaFin\n2026,Marzo,INICIO,BORRADOR,2026-03-01,2026-03-31\n",
-      roles: "rol\nDOCENTE\nRRHH\nJEFE\n",
-    };
-    const text = templates[kind] || templates.employees;
-    const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `plantilla-${kind}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async function confirmImport() {
-    if (!importPreview?.previewToken) return;
+    if (!importPreview?.previewToken) {
+      setMessage("No hay preview activo para confirmar.");
+      return;
+    }
     try {
       setIsImporting(true);
       const data = await apiFetch("/education-exports/import/confirm", {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        timeoutMs: 120000,
         body: JSON.stringify({
           previewToken: importPreview.previewToken,
           correctedRows: editableErrors.map((item) => item.normalized || {}),
+          confirmMapping,
+          confirmWarnings,
         }),
       });
       setImportResult(data);
       setImportPreview(null);
       setImportFile(null);
+      setManualMapping({});
       setMessage("Importacion confirmada.");
-      await Promise.all([loadOverview(), loadDataset(), loadImportJobs()]);
+      await Promise.all([loadOverview(), loadDataset()]);
     } catch (error) {
-      const msg = String(error.message || "");
-      if (msg.toLowerCase().includes("preview expirada")) {
-        setMessage("La previsualizacion vencio o el servidor se reinicio. Vuelve a subir el archivo para continuar.");
-      } else if (msg.toLowerCase().includes("demoro")) {
-        setMessage("La confirmacion tardo demasiado. Reintenta; si persiste, divide el archivo en lotes.");
-      } else {
-        setMessage(msg);
-      }
+      setMessage(error.message);
     } finally {
       setIsImporting(false);
     }
@@ -208,164 +161,122 @@ export default function EducationalExportsPage() {
     );
   }
 
-  function reintentarSoloFilasConError() {
-    if (!editableErrors.length) {
-      setMessage("No hay filas con error para reintentar.");
-      return;
-    }
-    setImportPreview((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        totalRows: editableErrors.length,
-        validCount: 0,
-        invalidCount: editableErrors.length,
-        sampleValidRows: [],
-      };
-    });
-    setMessage("Reintento preparado: corrige filas con error y confirma importacion.");
+  function updateMapping(field, value) {
+    setManualMapping((prev) => ({ ...prev, [field]: value }));
   }
 
   function getEditableFields() {
-    if (importPreview?.datasetDetected === "employees") return ["apellido", "nombre", "email", "cargo", "area"];
+    if (importPreview?.datasetDetected === "employees") return ["apellido", "nombre", "email", "cargo", "area", "legajo"];
     if (importPreview?.datasetDetected === "metrics") return ["competencia", "nombre", "ponderacion", "descripcion"];
     if (importPreview?.datasetDetected === "cycles") return ["anio", "periodo", "etapa", "estado", "fechaInicio", "fechaFin"];
     if (importPreview?.datasetDetected === "roles") return ["nombre"];
     return [];
   }
 
+  const mappingFields = importPreview?.analysis?.lowConfidenceFields || [];
+  const detectionEntries = Object.entries(importPreview?.analysis?.detections || {});
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <h3 className="text-2xl font-bold text-white">Centro de datos</h3>
-        <p className="mt-2 text-[#9fb6c4]">Un solo lugar para subir, validar, confirmar y descargar.</p>
+        <h3 className="text-2xl font-bold text-white">Cargas y descargas</h3>
+        <p className="mt-2 text-[#9fb6c4]">Flujo seguro: subir, validar, revisar advertencias y confirmar.</p>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-white">Flujo de importacion guiado</h4>
-        <p className="text-sm text-[#9fb6c4]">
-          Carga una vez, valida con reglas, corrige errores puntuales y confirma el lote final.
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">1. Subir archivo</span>
-          <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>2. Validar y corregir</span>
-          <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>3. Confirmar lote</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("employees")}>
-            Plantilla empleados
-          </button>
-          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("metrics")}>
-            Plantilla metricas
-          </button>
-          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("cycles")}>
-            Plantilla periodos
-          </button>
-          <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("roles")}>
-            Plantilla perfiles
-          </button>
-        </div>
+        <h4 className="text-lg font-semibold text-white">Subida de datos (sin plantilla fija)</h4>
+        {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
+        {message ? <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{message}</div> : null}
 
-        {!canImport ? <div className="pf-alert-warning">Tu rol no tiene permiso para importar.</div> : null}
-        {message ? <div className={`${message.toLowerCase().includes("confirmada") ? "pf-alert-success" : "pf-alert-error"}`}>{message}</div> : null}
-
-        <div className="grid gap-3 md:grid-cols-3">
-          <select className="pf-select" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
+        <div className="grid gap-3 md:grid-cols-4">
+          <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
             <option value="metrics">Indicadores</option>
             <option value="cycles">Periodos</option>
             <option value="roles">Perfiles</option>
           </select>
-          <input className="pf-input text-sm" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
-            <button className="pf-button rounded-xl bg-emerald-600 text-white disabled:opacity-60" onClick={previewImport} disabled={!canImport || isImporting || !importFile}>
-              {isImporting ? "Procesando..." : "Subir y validar"}
-            </button>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={resetImportFlow}
-            className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
-          >
-            Limpiar flujo
+          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-sm text-white" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
+          <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={() => previewImport("preview")} disabled={!canImport || isImporting || !importFile}>
+            {isImporting ? "Procesando..." : "Subir y validar"}
           </button>
-          {selectedJob?._id ? (
-            <button
-              type="button"
-              onClick={() =>
-                apiFetch(`/education-exports/import-jobs/${selectedJob._id}`, { token })
-                  .then((detail) => setSelectedJob(detail.job || null))
-                  .catch((error) => setMessage(error.message))
-              }
-              className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
-            >
-              Reintentar lectura del job
-            </button>
-          ) : null}
-          {editableErrors.length ? (
-            <button
-              type="button"
-              onClick={reintentarSoloFilasConError}
-              className="rounded-xl border border-amber-300/40 bg-amber-900/20 px-3 py-2 text-xs font-semibold text-amber-200"
-            >
-              Reintentar solo filas con error
-            </button>
-          ) : null}
+          <button className="rounded-xl border border-white/25 bg-[#0f1f28] px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={() => previewImport("analyze")} disabled={!canImport || isImporting || !importFile}>
+            Analizar sin importar
+          </button>
         </div>
 
         {importPreview ? (
-          <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8] space-y-2">
+          <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8] space-y-3">
             <p>Tipo detectado: {importPreview.datasetDetected}</p>
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Validas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
-            {importPreview.extractedSummary ? (
+            <p>Advertencias: {importPreview.warningCount || 0}</p>
+            {importPreview.analysis?.sheetName ? <p>Hoja detectada: {importPreview.analysis.sheetName} (encabezado fila {importPreview.analysis.headerRowNumber})</p> : null}
+
+            {detectionEntries.length ? (
               <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen detectado</p>
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Columnas detectadas con confianza</p>
                 <div className="grid gap-2 md:grid-cols-3">
-                  {Object.entries(importPreview.extractedSummary).map(([key, value]) => (
-                    <p key={key} className="text-xs text-[#c5d5de]">{key}: <span className="font-semibold text-white">{String(value)}</span></p>
+                  {detectionEntries.map(([field, info]) => (
+                    <div key={field} className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2">
+                      <p className="text-xs text-[#9fb6c4]">{field}</p>
+                      <p className="font-semibold text-white">{info.header}</p>
+                      <p className="text-xs text-[#9fb6c4]">Confianza: {Math.round((info.confidence || 0) * 100)}%</p>
+                    </div>
                   ))}
                 </div>
               </div>
             ) : null}
 
-            {Array.isArray(importPreview.sampleValidRows) && importPreview.sampleValidRows.length ? (
-              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Vista previa de filas validas</p>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-xs">
-                    <thead>
-                      <tr className="border-b border-white/10 text-[#9FB6C1]">
-                        {Object.keys(importPreview.sampleValidRows[0]).map((k) => (
-                          <th key={k} className="px-2 py-1 text-left">{k}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {importPreview.sampleValidRows.slice(0, 8).map((row, idx) => (
-                        <tr key={idx} className="border-b border-white/5">
-                          {Object.keys(importPreview.sampleValidRows[0]).map((k) => (
-                            <td key={k} className="px-2 py-1 text-[#D4E1E8]">{String(row[k] ?? "")}</td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+            {mappingFields.length ? (
+              <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 p-3">
+                <p className="mb-2 text-sm font-semibold text-amber-200">Mapeo manual requerido</p>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {mappingFields.map((field) => (
+                    <input
+                      key={field}
+                      className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-white"
+                      placeholder={`Encabezado para ${field}`}
+                      value={manualMapping[field] || ""}
+                      onChange={(e) => updateMapping(field, e.target.value)}
+                    />
+                  ))}
                 </div>
+                <button className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-white" onClick={() => previewImport("preview")} disabled={isImporting}>
+                  Reanalizar con mapeo manual
+                </button>
+              </div>
+            ) : null}
+
+            {(importPreview.sampleWarnings || []).length ? (
+              <div className="rounded-xl border border-yellow-300/30 bg-yellow-500/10 p-3">
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-yellow-200">Advertencias</p>
+                {(importPreview.sampleWarnings || []).slice(0, 10).map((warning, index) => (
+                  <p key={`${warning.row}-${index}`} className="text-xs text-yellow-100">
+                    Fila {warning.row}: {warning.message}
+                  </p>
+                ))}
               </div>
             ) : null}
 
             {editableErrors.length ? (
-              <div className="mt-3 space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+              <div className="space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Corregir errores antes de confirmar</p>
                 {editableErrors.map((errorRow, index) => (
                   <div key={`${errorRow.row}-${index}`} className="rounded-lg border border-white/10 bg-[#142028] p-2">
-                    <p className="mb-2 text-xs text-rose-300">Fila {errorRow.row}: {errorRow.message}</p>
+                    <p className="mb-2 text-xs text-rose-300">
+                      Fila {errorRow.row}: {errorRow.message}
+                    </p>
                     <div className="grid gap-2 md:grid-cols-3">
                       {getEditableFields().map((field) => (
-                        <input key={`${index}-${field}`} className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-white" placeholder={field} value={String(errorRow.normalized?.[field] ?? "")} onChange={(e) => updateErrorField(index, field, e.target.value)} />
+                        <input
+                          key={`${index}-${field}`}
+                          className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-white"
+                          placeholder={field}
+                          value={String(errorRow.normalized?.[field] ?? "")}
+                          onChange={(e) => updateErrorField(index, field, e.target.value)}
+                        />
                       ))}
                     </div>
                   </div>
@@ -373,9 +284,34 @@ export default function EducationalExportsPage() {
               </div>
             ) : null}
 
-            <button className="pf-button rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60" onClick={confirmImport} disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0)}>
-              {isImporting ? "Importando..." : "Confirmar importacion"}
-            </button>
+            {!importPreview.analyzeOnly ? (
+              <div className="space-y-2">
+                {mappingFields.length ? (
+                  <label className="flex items-center gap-2 text-xs text-[#c9d9e1]">
+                    <input type="checkbox" checked={confirmMapping} onChange={(e) => setConfirmMapping(e.target.checked)} />
+                    Confirmo mapeo manual de columnas detectadas
+                  </label>
+                ) : null}
+                {(importPreview.sampleWarnings || []).length ? (
+                  <label className="flex items-center gap-2 text-xs text-[#c9d9e1]">
+                    <input type="checkbox" checked={confirmWarnings} onChange={(e) => setConfirmWarnings(e.target.checked)} />
+                    Confirmo advertencias (roles, jefe o sede ambiguos)
+                  </label>
+                ) : null}
+                <button
+                  className="rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+                  onClick={confirmImport}
+                  disabled={
+                    isImporting ||
+                    (importPreview.validCount === 0 && editableErrors.length === 0) ||
+                    (mappingFields.length > 0 && !confirmMapping) ||
+                    ((importPreview.sampleWarnings || []).length > 0 && !confirmWarnings)
+                  }
+                >
+                  {isImporting ? "Importando..." : "Confirmar importacion"}
+                </button>
+              </div>
+            ) : null}
           </div>
         ) : null}
 
@@ -385,66 +321,9 @@ export default function EducationalExportsPage() {
             <p>Creados: {importResult.created}</p>
             <p>Actualizados: {importResult.updated}</p>
             <p>Errores: {importResult.errors?.length || 0}</p>
+            <p>Advertencias: {importResult.warnings?.length || 0}</p>
           </div>
         ) : null}
-
-        {selectedJob ? (
-          <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
-            <p className="font-semibold text-white">Trazabilidad de importacion</p>
-            <p className="mt-1">Archivo: {selectedJob.sourceFileName}</p>
-            <p>Estado: {selectedJob.stage}</p>
-            <p>Parser: {selectedJob.parserType}</p>
-            <p>Dataset detectado: {selectedJob.datasetDetected}</p>
-            <p>Filas: {selectedJob.totalRows} | Validas: {selectedJob.validRows} | Errores: {selectedJob.errorCount}</p>
-            <button
-              type="button"
-              onClick={() => setShowTechnicalDetails((v) => !v)}
-              className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
-            >
-              {showTechnicalDetails ? "Ocultar detalle tecnico" : "Ver detalle tecnico"}
-            </button>
-            {showTechnicalDetails ? (
-              <pre className="mt-2 max-h-56 overflow-auto rounded-xl border border-white/10 bg-[#0f1f28] p-3 text-xs text-[#c5d5de]">
-                {JSON.stringify(selectedJob.previewSummary || {}, null, 2)}
-              </pre>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <h4 className="text-lg font-semibold text-white">Historial de importaciones</h4>
-        <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full text-left text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-[#9fb6c4]">
-                <th className="px-3 py-2">Fecha</th>
-                <th className="px-3 py-2">Archivo</th>
-                <th className="px-3 py-2">Dataset</th>
-                <th className="px-3 py-2">Estado</th>
-                <th className="px-3 py-2">Filas</th>
-                <th className="px-3 py-2">Errores</th>
-              </tr>
-            </thead>
-            <tbody>
-              {importJobs.map((job) => (
-                <tr key={job._id} className="border-b border-white/5 text-[#d4e1e8]">
-                  <td className="px-3 py-2">{formatDate(job.createdAt)}</td>
-                  <td className="px-3 py-2">{job.sourceFileName}</td>
-                  <td className="px-3 py-2">{job.datasetDetected || job.datasetRequested}</td>
-                  <td className="px-3 py-2">{job.stage}</td>
-                  <td className="px-3 py-2">{job.totalRows}</td>
-                  <td className="px-3 py-2">{job.errorCount}</td>
-                </tr>
-              ))}
-              {!importJobs.length ? (
-                <tr>
-                  <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>Todav?a no hay importaciones registradas.</td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
       </section>
 
       {overview ? (
@@ -475,9 +354,6 @@ export default function EducationalExportsPage() {
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        {isLoadingDataset || isLoadingOverview ? (
-          <p className="mb-3 text-xs text-[#9fb6c4]">Actualizando vista de datos...</p>
-        ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
@@ -500,4 +376,3 @@ export default function EducationalExportsPage() {
     </div>
   );
 }
-
