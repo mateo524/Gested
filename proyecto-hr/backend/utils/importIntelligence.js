@@ -1,0 +1,316 @@
+import ExcelJS from "exceljs";
+
+export const IMPORT_CONFIDENCE_THRESHOLD = 0.7;
+const MAX_PREVIEW_ROWS = 3000;
+
+export function normalizeText(value) {
+  return String(value || "").trim().toLowerCase();
+}
+
+export function sanitizeHeader(value) {
+  return normalizeText(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+
+const aliasMap = {
+  apellido: ["apellido", "apellidos", "last_name", "lastname", "surname"],
+  nombre: ["nombre", "nombres", "first_name", "firstname", "name"],
+  email: ["email", "correo", "mail", "correoelectronico"],
+  cargo: ["cargo", "puesto", "posicion", "rolcargo", "position"],
+  area: ["area", "departamento", "sector"],
+  role: ["rol", "role", "perfil"],
+  managerRef: ["jefe", "supervisor", "manager", "responsable", "encargado"],
+  sede: ["sede", "colegio", "school", "institucion", "campus"],
+  legajo: ["legajo", "employeeid", "employee_id", "idempleado", "dni"],
+  competencia: ["competencia", "competency"],
+  metrica: ["metrica", "indicador", "metric", "kpi", "nombre"],
+  ponderacion: ["ponderacion", "peso", "weight"],
+  anio: ["anio", "ano", "year"],
+  periodo: ["periodo", "mes", "quarter", "trimestre"],
+  etapa: ["etapa", "fase", "stage"],
+  fechainicio: ["fechainicio", "inicio", "startdate"],
+  fechafin: ["fechafin", "fin", "enddate"],
+};
+
+const expectedByDataset = {
+  employees: ["apellido", "nombre", "cargo", "email", "role", "managerRef", "sede", "legajo"],
+  metrics: ["competencia", "metrica", "ponderacion"],
+  cycles: ["anio", "periodo", "etapa", "fechainicio", "fechafin"],
+  roles: ["role"],
+};
+
+function confidenceByHeader(sanitizedHeader, field) {
+  const aliases = aliasMap[field] || [];
+  if (aliases.includes(sanitizedHeader)) return 0.95;
+  if (aliases.some((alias) => sanitizedHeader.includes(alias) || alias.includes(sanitizedHeader))) return 0.8;
+  return 0;
+}
+
+function confidenceByContent(samples, field) {
+  const vals = samples.map((v) => String(v || "").trim()).filter(Boolean);
+  if (!vals.length) return 0;
+  const sample = vals.slice(0, 20);
+  if (field === "email") {
+    const hit = sample.filter((v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)).length;
+    return hit / sample.length;
+  }
+  if (field === "ponderacion") {
+    const hit = sample.filter((v) => !Number.isNaN(Number(v))).length;
+    return hit / sample.length;
+  }
+  if (field === "fechainicio" || field === "fechafin") {
+    const hit = sample.filter((v) => !Number.isNaN(new Date(v).getTime())).length;
+    return hit / sample.length;
+  }
+  if (field === "role") {
+    const roleWords = ["super_admin", "admin", "rrhh", "jefe", "empleado", "auditor", "lector", "director"];
+    const hit = sample.filter((v) => roleWords.some((word) => normalizeText(v).includes(word))).length;
+    return hit / sample.length;
+  }
+  return 0.2;
+}
+
+function scoreRows(rows, headers) {
+  let nonEmptyRows = 0;
+  for (const row of rows) {
+    const rowValues = headers.map((header) => row[header]).filter((value) => String(value || "").trim() !== "");
+    if (rowValues.length >= 2) nonEmptyRows += 1;
+  }
+  return nonEmptyRows;
+}
+
+export async function parseWorkbookRows(file) {
+  const workbook = new ExcelJS.Workbook();
+  const fileName = String(file.originalname || "").toLowerCase();
+  if (fileName.endsWith(".csv")) {
+    await workbook.csv.readBuffer(file.buffer);
+  } else {
+    await workbook.xlsx.load(file.buffer);
+  }
+  return workbook;
+}
+
+export function extractRowsFromSheet(worksheet, headerRowNumber) {
+  const headerRow = worksheet.getRow(headerRowNumber);
+  const headers = headerRow.values.slice(1).map((value, index) => sanitizeHeader(value) || `col_${index + 1}`);
+  const rows = [];
+  let truncated = false;
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber <= headerRowNumber) return;
+    if (rows.length >= MAX_PREVIEW_ROWS) {
+      truncated = true;
+      return;
+    }
+    const values = row.values.slice(1);
+    const item = {};
+    headers.forEach((header, index) => {
+      item[header] = values[index];
+    });
+    const empty = Object.values(item).every((value) => String(value || "").trim() === "");
+    if (!empty) rows.push({ ...item, _rowNumber: rowNumber });
+  });
+  return { headers, rows, truncated };
+}
+
+export function detectBestSheet(workbook) {
+  const candidates = [];
+  for (const worksheet of workbook.worksheets) {
+    let best = { sheetName: worksheet.name, headerRowNumber: 1, score: -1, rows: [], headers: [] };
+    for (let rowNumber = 1; rowNumber <= Math.min(25, worksheet.rowCount || 25); rowNumber += 1) {
+      const { headers, rows } = extractRowsFromSheet(worksheet, rowNumber);
+      const score = scoreRows(rows.slice(0, 60), headers);
+      if (score > best.score) best = { sheetName: worksheet.name, headerRowNumber: rowNumber, score, rows, headers };
+    }
+    candidates.push(best);
+  }
+  candidates.sort((a, b) => b.score - a.score);
+  const selected = candidates[0] || { sheetName: "", headerRowNumber: 1, rows: [], headers: [], score: 0 };
+  return { selected, candidates };
+}
+
+export function buildColumnDetections(rows, headers, manualMapping = {}) {
+  const detections = {};
+  const usedHeaders = new Set();
+
+  const samplesByHeader = new Map();
+  headers.forEach((header) => {
+    samplesByHeader.set(
+      header,
+      rows
+        .slice(0, 120)
+        .map((row) => row[header])
+        .filter((value) => String(value || "").trim() !== "")
+    );
+  });
+
+  for (const [field, mappedHeader] of Object.entries(manualMapping || {})) {
+    const sanitized = sanitizeHeader(mappedHeader);
+    if (!sanitized || !headers.includes(sanitized)) continue;
+    detections[field] = { header: sanitized, confidence: 1, source: "manual" };
+    usedHeaders.add(sanitized);
+  }
+
+  const allFields = Object.keys(aliasMap);
+  for (const field of allFields) {
+    if (detections[field]) continue;
+    let bestHeader = null;
+    let bestScore = 0;
+    for (const header of headers) {
+      if (usedHeaders.has(header)) continue;
+      const headerScore = confidenceByHeader(header, field);
+      const contentScore = confidenceByContent(samplesByHeader.get(header) || [], field) * 0.65;
+      const score = Math.max(headerScore, contentScore);
+      if (score > bestScore) {
+        bestHeader = header;
+        bestScore = score;
+      }
+    }
+    if (bestHeader && bestScore >= 0.35) {
+      detections[field] = {
+        header: bestHeader,
+        confidence: Number(bestScore.toFixed(2)),
+        source: bestScore >= 0.8 ? "alias" : "content",
+      };
+      usedHeaders.add(bestHeader);
+    }
+  }
+
+  return detections;
+}
+
+export function classifyDatasetByDetections(detections, requestedDataset = "auto") {
+  if (requestedDataset && requestedDataset !== "auto") return requestedDataset;
+  let best = { dataset: "unknown", score: 0 };
+  for (const [dataset, fields] of Object.entries(expectedByDataset)) {
+    const scores = fields.map((field) => detections[field]?.confidence || 0);
+    const score = scores.reduce((acc, item) => acc + item, 0) / fields.length;
+    if (score > best.score) best = { dataset, score };
+  }
+  return best.score >= 0.5 ? best.dataset : "unknown";
+}
+
+function getMappedValue(row, detections, field) {
+  const header = detections[field]?.header;
+  return header ? row[header] : "";
+}
+
+export function mapRowsByDetections(rows, detections, dataset) {
+  return rows.map((row) => {
+    if (dataset === "employees") {
+      return {
+        _rowNumber: row._rowNumber,
+        apellido: String(getMappedValue(row, detections, "apellido") || "").trim(),
+        nombre: String(getMappedValue(row, detections, "nombre") || "").trim(),
+        email: String(getMappedValue(row, detections, "email") || "").trim().toLowerCase(),
+        cargo: String(getMappedValue(row, detections, "cargo") || "").trim(),
+        area: String(getMappedValue(row, detections, "area") || "").trim(),
+        roleCode: String(getMappedValue(row, detections, "role") || "").trim(),
+        managerRef: String(getMappedValue(row, detections, "managerRef") || "").trim(),
+        sede: String(getMappedValue(row, detections, "sede") || "").trim(),
+        legajo: String(getMappedValue(row, detections, "legajo") || "").trim(),
+      };
+    }
+    if (dataset === "metrics") {
+      return {
+        _rowNumber: row._rowNumber,
+        competencia: String(getMappedValue(row, detections, "competencia") || "").trim(),
+        nombre: String(getMappedValue(row, detections, "metrica") || "").trim(),
+        ponderacion: Number(getMappedValue(row, detections, "ponderacion") || 0) || 0,
+        descripcion: String(getMappedValue(row, detections, "descripcion") || "").trim(),
+      };
+    }
+    if (dataset === "cycles") {
+      return {
+        _rowNumber: row._rowNumber,
+        anio: Number(getMappedValue(row, detections, "anio") || 0) || 0,
+        periodo: String(getMappedValue(row, detections, "periodo") || "").trim(),
+        etapa: String(getMappedValue(row, detections, "etapa") || "").trim(),
+        fechaInicio: getMappedValue(row, detections, "fechainicio"),
+        fechaFin: getMappedValue(row, detections, "fechafin"),
+      };
+    }
+    if (dataset === "roles") {
+      return {
+        _rowNumber: row._rowNumber,
+        nombre: String(getMappedValue(row, detections, "role") || "").trim(),
+      };
+    }
+    return { ...row };
+  });
+}
+
+function normalizeRoleCode(raw) {
+  const value = normalizeText(raw).replace(/\s+/g, "_");
+  if (!value) return "";
+  if (value.includes("super")) return "SUPER_ADMIN";
+  if (value.includes("admin") && value.includes("coleg")) return "ADMIN_COLEGIO";
+  if (value.includes("director")) return "DIRECTOR";
+  if (value.includes("rrhh")) return "RRHH";
+  if (value.includes("jefe")) return "JEFE";
+  if (value.includes("auditor") || value.includes("lector")) return "AUDITOR";
+  if (value.includes("empleado") || value.includes("docente")) return "EMPLEADO";
+  return raw ? String(raw).trim().toUpperCase() : "";
+}
+
+export function validateRowsForDataset(mappedRows, dataset) {
+  const validRows = [];
+  const invalidRows = [];
+  const warnings = [];
+  const duplicates = [];
+  const emailSeen = new Set();
+  const legajoSeen = new Set();
+
+  for (const row of mappedRows) {
+    const errors = [];
+
+    if (dataset === "employees") {
+      if (!row.apellido) errors.push("Falta apellido");
+      if (!row.nombre) errors.push("Falta nombre");
+      if (!row.cargo) errors.push("Falta cargo");
+      if (!row.email && !row.legajo) errors.push("Falta email o legajo");
+      if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) errors.push("Email invalido");
+
+      const roleCode = normalizeRoleCode(row.roleCode);
+      if (roleCode === "SUPER_ADMIN") errors.push("No se permite SUPER_ADMIN por importacion");
+      if (row.email && emailSeen.has(row.email)) duplicates.push(`Email duplicado: ${row.email}`);
+      if (row.legajo && legajoSeen.has(row.legajo)) duplicates.push(`Legajo duplicado: ${row.legajo}`);
+      if (row.email) emailSeen.add(row.email);
+      if (row.legajo) legajoSeen.add(row.legajo);
+
+      if (row.roleCode && !["ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR"].includes(roleCode)) {
+        warnings.push({ row: row._rowNumber, field: "roleCode", message: "Rol ambiguo, requiere confirmacion", value: row.roleCode });
+      }
+      if (row.managerRef) {
+        warnings.push({ row: row._rowNumber, field: "managerRef", message: "Jefe requiere confirmacion de referencia", value: row.managerRef });
+      }
+      if (row.sede) {
+        warnings.push({ row: row._rowNumber, field: "sede", message: "Sede requiere confirmacion con colegio activo", value: row.sede });
+      }
+    }
+
+    if (dataset === "metrics") {
+      if (!row.competencia) errors.push("Falta competencia");
+      if (!row.nombre) errors.push("Falta metrica");
+      if (!Number.isFinite(row.ponderacion) || row.ponderacion <= 0) errors.push("Ponderacion invalida");
+    }
+
+    if (dataset === "cycles") {
+      if (!row.anio) errors.push("Falta anio");
+      if (!row.periodo) errors.push("Falta periodo");
+      if (!row.etapa) errors.push("Falta etapa");
+    }
+
+    if (dataset === "roles") {
+      if (!row.nombre) errors.push("Falta nombre de rol");
+      if (normalizeRoleCode(row.nombre) === "SUPER_ADMIN") errors.push("No se permite SUPER_ADMIN por importacion");
+    }
+
+    if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized: row });
+    else validRows.push(row);
+  }
+
+  return { validRows, invalidRows, warnings, duplicates };
+}
+

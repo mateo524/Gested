@@ -19,6 +19,10 @@ const CompanySettingSchema = new mongoose.Schema({
     autoAssignDefaultRole: { type: Boolean, default: true },
     notifyOnImportErrors: { type: Boolean, default: true },
   },
+  importProfiles: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
 });
 
 export default mongoose.model("CompanySetting", CompanySettingSchema);
