@@ -824,11 +824,11 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
     }
-
-    const { rows, truncated, sheetName, headerRowNumber, headers, worksheetsMeta } = await parseUploadedRows(req.file);
-    if (!rows.length) {
-      return res.status(400).json({ mensaje: "El archivo no tiene datos" });
-    }
+    try {
+      const { rows, truncated, sheetName, headerRowNumber, headers, worksheetsMeta } = await parseUploadedRows(req.file);
+      if (!rows.length) {
+        return res.status(400).json({ mensaje: "El archivo no tiene datos" });
+      }
 
     const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
     const manualMappingRaw = req.body.manualMapping;
@@ -987,28 +987,34 @@ router.post(
       },
     });
 
-    res.json({
-      ok: true,
-      previewToken,
-      datasetDetected: detectedDataset,
-      totalRows: validRows.length + invalidRows.length,
-      validCount: validRows.length,
-      invalidCount: invalidRows.length,
-      truncated,
-      previewLimit: MAX_PREVIEW_ROWS,
-      sampleValidRows: validRows.slice(0, 20),
-      sampleErrors: invalidRows.slice(0, 20),
-      warningCount: warnings.length + duplicates.length,
-      sampleWarnings: [...warnings, ...duplicates.map((message) => ({ row: "-", message }))].slice(0, 20),
-      analysis: {
-        sheetName,
-        headerRowNumber,
-        worksheetsMeta,
-        detections,
-        lowConfidenceFields,
-        requiresManualMapping,
-      },
-    });
+      res.json({
+        ok: true,
+        previewToken,
+        datasetDetected: detectedDataset,
+        totalRows: validRows.length + invalidRows.length,
+        validCount: validRows.length,
+        invalidCount: invalidRows.length,
+        truncated,
+        previewLimit: MAX_PREVIEW_ROWS,
+        sampleValidRows: validRows.slice(0, 20),
+        sampleErrors: invalidRows.slice(0, 20),
+        warningCount: warnings.length + duplicates.length,
+        sampleWarnings: [...warnings, ...duplicates.map((message) => ({ row: "-", message }))].slice(0, 20),
+        analysis: {
+          sheetName,
+          headerRowNumber,
+          worksheetsMeta,
+          detections,
+          lowConfidenceFields,
+          requiresManualMapping,
+        },
+      });
+    } catch (error) {
+      console.error("Error import/preview:", error);
+      return res.status(500).json({
+        mensaje: "No se pudo procesar el archivo. Verifica el formato e intenta nuevamente.",
+      });
+    }
   }
 );
 
@@ -1474,6 +1480,7 @@ router.post(
   requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES),
   upload.single("file"),
   async (req, res) => {
+    try {
     const dataset = req.params.dataset;
     if (!["employees", "metrics", "cycles"].includes(dataset)) {
       return res.status(400).json({ mensaje: "Dataset no soportado para importacion" });
@@ -1643,10 +1650,16 @@ router.post(
       });
     }
 
-    res.json({
+    return res.json({
       mensaje: "Importacion completada",
       ...result,
     });
+    } catch (error) {
+      console.error("Error import legacy:", error);
+      return res.status(500).json({
+        mensaje: "No se pudo procesar la importacion del archivo.",
+      });
+    }
   }
 );
 
