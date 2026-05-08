@@ -32,6 +32,7 @@ export default function EmployeesPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
 
   const employeesById = useMemo(
     () => new Map(employees.map((employee) => [employee._id, employee])),
@@ -76,7 +77,13 @@ export default function EmployeesPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.schoolId || !form.nombre || !form.apellido || !form.cargo) {
+    const nextErrors = {};
+    if (!form.schoolId) nextErrors.schoolId = "No hay institucion asignada.";
+    if (!form.nombre?.trim()) nextErrors.nombre = "Nombre obligatorio.";
+    if (!form.apellido?.trim()) nextErrors.apellido = "Apellido obligatorio.";
+    if (!form.cargo?.trim()) nextErrors.cargo = "Cargo obligatorio.";
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
       setMessageType("warning");
       setMessage("Completa colegio, nombre, apellido y cargo para guardar.");
       return;
@@ -93,6 +100,7 @@ export default function EmployeesPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
       setEditingId("");
+      setFieldErrors({});
       setMessageType("success");
       setMessage(isEditing ? "Empleado actualizado correctamente." : "Empleado creado correctamente.");
       await loadBase();
@@ -119,6 +127,7 @@ export default function EmployeesPage() {
     });
     setMessageType("info");
     setMessage("Editando empleado seleccionado.");
+    setFieldErrors({});
   }
 
   function cancelEdit() {
@@ -126,6 +135,7 @@ export default function EmployeesPage() {
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
     setMessageType("info");
     setMessage("Edición cancelada.");
+    setFieldErrors({});
   }
 
   return (
@@ -148,18 +158,21 @@ export default function EmployeesPage() {
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
               <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
             </div>
+            {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="pf-input" placeholder="Nombre" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
-              <input className="pf-input" placeholder="Apellido" value={form.apellido} onChange={(event) => setForm({ ...form, apellido: event.target.value })} />
+              <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Nombre" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+              <input className={`pf-input ${fieldErrors.apellido ? "border-rose-400/70" : ""}`} placeholder="Apellido" value={form.apellido} onChange={(event) => setForm({ ...form, apellido: event.target.value })} />
             </div>
+            {(fieldErrors.nombre || fieldErrors.apellido) ? <p className="text-xs text-rose-300">{fieldErrors.nombre || fieldErrors.apellido}</p> : null}
 
             <input className="pf-input" placeholder="Email institucional" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="pf-input" placeholder="Cargo (ej: Docente de Matemática)" value={form.cargo} onChange={(event) => setForm({ ...form, cargo: event.target.value })} />
+              <input className={`pf-input ${fieldErrors.cargo ? "border-rose-400/70" : ""}`} placeholder="Cargo (ej: Docente de Matematica)" value={form.cargo} onChange={(event) => setForm({ ...form, cargo: event.target.value })} />
               <input className="pf-input" placeholder="Área / Departamento" value={form.area} onChange={(event) => setForm({ ...form, area: event.target.value })} />
             </div>
+            {fieldErrors.cargo ? <p className="text-xs text-rose-300">{fieldErrors.cargo}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <select className="pf-select" value={form.tipoEmpleado} onChange={(event) => setForm({ ...form, tipoEmpleado: event.target.value })}>
