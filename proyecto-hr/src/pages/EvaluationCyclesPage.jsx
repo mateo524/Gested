@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -58,7 +58,7 @@ export default function EvaluationCyclesPage() {
     if (!form.fechaFin) nextErrors.fechaFin = "Fecha de cierre obligatoria.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
-      setMessage("Completa colegio, período y rango de fechas para guardar.");
+      setMessage("Completa institución, período y rango de fechas para guardar.");
       setMessageType("warning");
       return;
     }
@@ -124,39 +124,59 @@ export default function EvaluationCyclesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar período" : "Nuevo período"}</h4>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Etapa y estado</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Fechas</span>
-          </div>
+          <p className="mt-2 text-sm text-[#9fb6c4]">
+            Carga un período por institución, define su estado y marca fechas de inicio y cierre.
+          </p>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
-              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
+              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin institución asignada"}</p>
             </div>
             {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Configuración operativa</p>
+
             <div className="grid gap-4 md:grid-cols-2">
-              <input type="number" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
-              <input className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"}`} placeholder="Período (ej: 1er trimestre)" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Año</label>
+                <input type="number" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.anio} onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Período</label>
+                <input className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"}`} placeholder="Ej: 1er trimestre" value={form.periodo} onChange={(e) => setForm({ ...form, periodo: e.target.value })} />
+              </div>
             </div>
             {fieldErrors.periodo ? <p className="text-xs text-rose-300">{fieldErrors.periodo}</p> : null}
+
             <div className="grid gap-4 md:grid-cols-2">
-              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
-                <option value="INICIO">Inicio</option>
-                <option value="REVISION_INTERMEDIA">Revisión intermedia</option>
-                <option value="EVALUACION_FINAL">Evaluación final</option>
-              </select>
-              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
-                <option value="BORRADOR">Borrador</option>
-                <option value="ABIERTO">Abierto</option>
-                <option value="CERRADO">Cerrado</option>
-              </select>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Etapa</label>
+                <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.etapa} onChange={(e) => setForm({ ...form, etapa: e.target.value })}>
+                  <option value="INICIO">Inicio</option>
+                  <option value="REVISION_INTERMEDIA">Revisión intermedia</option>
+                  <option value="EVALUACION_FINAL">Evaluación final</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Estado</label>
+                <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(e) => setForm({ ...form, estado: e.target.value })}>
+                  <option value="BORRADOR">Borrador</option>
+                  <option value="ABIERTO">Abierto</option>
+                  <option value="CERRADO">Cerrado</option>
+                </select>
+              </div>
             </div>
+
             <div className="grid gap-4 md:grid-cols-2">
-              <input type="date" className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.fechaInicio ? "border-rose-400/70" : "border-white/15"}`} value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
-              <input type="date" className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.fechaFin ? "border-rose-400/70" : "border-white/15"}`} value={form.fechaFin} onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de inicio</label>
+                <input type="date" className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.fechaInicio ? "border-rose-400/70" : "border-white/15"}`} value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de cierre</label>
+                <input type="date" className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.fechaFin ? "border-rose-400/70" : "border-white/15"}`} value={form.fechaFin} onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
+              </div>
             </div>
             {(fieldErrors.fechaInicio || fieldErrors.fechaFin) ? <p className="text-xs text-rose-300">{fieldErrors.fechaInicio || fieldErrors.fechaFin}</p> : null}
+
             <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full disabled:opacity-60">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear período"}
             </button>
@@ -197,5 +217,4 @@ export default function EvaluationCyclesPage() {
     </div>
   );
 }
-
 

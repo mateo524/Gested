@@ -16,6 +16,7 @@ export default function RolesPage() {
   const [messageType, setMessageType] = useState("info");
   const [query, setQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const filteredRoles = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -75,6 +76,8 @@ export default function RolesPage() {
     setDescripcion(role.descripcion || "");
     setPermisos(role.permisos || []);
     setCode(role.code || "");
+    setMessageType("info");
+    setMessage("Editando perfil seleccionado.");
   }
 
   async function handleSubmit(event) {
@@ -114,6 +117,7 @@ export default function RolesPage() {
 
   async function syncDefaults() {
     try {
+      setIsSyncing(true);
       await apiFetch("/roles/sync-defaults", { method: "POST", token });
       await loadData();
       setMessageType("success");
@@ -121,11 +125,13 @@ export default function RolesPage() {
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setIsSyncing(false);
     }
   }
 
   async function removeRole(roleId) {
-    const confirmed = window.confirm("¿Seguro que querés eliminar este perfil? Esta acción no se puede deshacer.");
+    const confirmed = window.confirm("¿Seguro que quieres eliminar este perfil? Esta acción no se puede deshacer.");
     if (!confirmed) return;
     try {
       await apiFetch(`/roles/${roleId}`, { method: "DELETE", token });
@@ -145,10 +151,15 @@ export default function RolesPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Gobernanza de accesos</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Perfiles y permisos</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Define exactamente que puede ver y hacer cada tipo de usuario.
+          Define de forma clara qué puede ver y hacer cada tipo de usuario.
         </p>
-        <button type="button" onClick={syncDefaults} className="mt-4 rounded-xl border border-[#22c55e]/40 px-4 py-2 text-sm text-[#8be6ac]">
-          Restaurar perfiles recomendados
+        <button
+          type="button"
+          onClick={syncDefaults}
+          disabled={isSyncing}
+          className="mt-4 rounded-xl border border-[#22c55e]/40 px-4 py-2 text-sm text-[#8be6ac] disabled:opacity-60"
+        >
+          {isSyncing ? "Restaurando..." : "Restaurar perfiles recomendados"}
         </button>
       </section>
 
@@ -162,28 +173,33 @@ export default function RolesPage() {
               </button>
             ) : null}
           </div>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Elegir base</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Describir perfil</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Asignar permisos</span>
-          </div>
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             {!editingId ? (
-              <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={code} onChange={(e) => applyTemplate(e.target.value)}>
-                <option value="">Plantilla opcional</option>
-                {templates.map((template) => (
-                  <option key={template.code} value={template.code}>
-                    {template.nombre} ({template.code})
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Plantilla base (opcional)</label>
+                <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={code} onChange={(e) => applyTemplate(e.target.value)}>
+                  <option value="">Selecciona una plantilla</option>
+                  {templates.map((template) => (
+                    <option key={template.code} value={template.code}>
+                      {template.nombre} ({template.code})
+                    </option>
+                  ))}
+                </select>
+              </div>
             ) : null}
 
-            <input className="pf-input" placeholder="Nombre del perfil (ej: Director)" value={nombre} onChange={(e) => setNombre(e.target.value)} />
-            <textarea className="pf-textarea" placeholder="Descripción del alcance y responsabilidades" value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Nombre del perfil</label>
+              <input className="pf-input" placeholder="Ej: Director, Jefe de área" value={nombre} onChange={(e) => setNombre(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Descripción (opcional)</label>
+              <textarea className="pf-textarea" placeholder="Describe alcance y responsabilidades." value={descripcion} onChange={(e) => setDescripcion(e.target.value)} />
+            </div>
 
             <div className="grid gap-2">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Permisos del perfil</p>
               {permissionsCatalog.map((permission) => (
                 <label key={permission.code} className="rounded-xl border border-white/10 bg-[#0f1f28] px-3 py-3">
                   <div className="flex items-start gap-3">
