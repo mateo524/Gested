@@ -21,27 +21,84 @@ export default function DevelopmentPlansPage() {
   const [filters, setFilters] = useState({ employeeId: "", estado: "" });
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingBase, setIsLoadingBase] = useState(false);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
+  const baseCacheKey = `pf_plans_base_${roleScope}`;
+  const plansCacheKey = `pf_plans_list_${roleScope}_${filters.employeeId || "all"}_${filters.estado || "all"}`;
 
-  const loadData = useCallback(async () => {
+  const loadPlans = useCallback(async (signal) => {
     const params = new URLSearchParams();
     if (filters.employeeId) params.set("employeeId", filters.employeeId);
     if (filters.estado) params.set("estado", filters.estado);
     const query = params.toString() ? `?${params.toString()}` : "";
+    setIsLoadingPlans(true);
+    try {
+      const plansData = await apiFetch(`/development-plans${query}`, {
+        token,
+        signal,
+        timeoutMs: 20000,
+      });
+      setPlans(plansData);
+      sessionStorage.setItem(plansCacheKey, JSON.stringify(plansData));
+    } finally {
+      setIsLoadingPlans(false);
+    }
+  }, [filters.employeeId, filters.estado, token, plansCacheKey]);
 
-    const [plansData, employeesData, evaluationsData] = await Promise.all([
-      apiFetch(`/development-plans${query}`, { token }),
-      apiFetch("/employees", { token }),
-      apiFetch("/evaluations", { token }),
-    ]);
-
-    setPlans(plansData);
-    setEmployees(employeesData);
-    setEvaluations(evaluationsData);
-  }, [filters.employeeId, filters.estado, token]);
+  const loadBaseData = useCallback(async (signal) => {
+    setIsLoadingBase(true);
+    try {
+      const [employeesData, evaluationsData] = await Promise.all([
+        apiFetch("/employees", { token, signal, timeoutMs: 20000 }),
+        apiFetch("/evaluations", { token, signal, timeoutMs: 20000 }),
+      ]);
+      setEmployees(employeesData);
+      setEvaluations(evaluationsData);
+      sessionStorage.setItem(
+        baseCacheKey,
+        JSON.stringify({ employees: employeesData, evaluations: evaluationsData })
+      );
+    } finally {
+      setIsLoadingBase(false);
+    }
+  }, [baseCacheKey, token]);
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
-  }, [loadData]);
+    const cachedBase = sessionStorage.getItem(baseCacheKey);
+    if (cachedBase) {
+      try {
+        const parsed = JSON.parse(cachedBase);
+        setEmployees(parsed.employees || []);
+        setEvaluations(parsed.evaluations || []);
+      } catch {
+        sessionStorage.removeItem(baseCacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    loadBaseData(controller.signal).catch((error) => {
+      if (!controller.signal.aborted) setMessage(error.message);
+    });
+    return () => controller.abort();
+  }, [baseCacheKey, loadBaseData]);
+
+  useEffect(() => {
+    const cachedPlans = sessionStorage.getItem(plansCacheKey);
+    if (cachedPlans) {
+      try {
+        setPlans(JSON.parse(cachedPlans) || []);
+      } catch {
+        sessionStorage.removeItem(plansCacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    loadPlans(controller.signal).catch((error) => {
+      if (!controller.signal.aborted) setMessage(error.message);
+    });
+    return () => controller.abort();
+  }, [loadPlans, plansCacheKey]);
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -65,7 +122,7 @@ export default function DevelopmentPlansPage() {
       });
       setForm(emptyForm);
       setMessage("Plan de desarrollo creado.");
-      await loadData();
+      await loadPlans();
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -79,6 +136,9 @@ export default function DevelopmentPlansPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento profesional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Planes de desarrollo</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">Define fortalezas, objetivo de mejora, medicion y fecha de seguimiento.</p>
+        {isLoadingBase || isLoadingPlans ? (
+          <p className="mt-3 text-xs text-[#9fb6c4]">Actualizando datos...</p>
+        ) : null}
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
