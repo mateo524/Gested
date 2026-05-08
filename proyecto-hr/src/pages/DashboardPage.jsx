@@ -341,23 +341,6 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <details>
-          <summary className="cursor-pointer text-sm font-semibold text-white">
-            Ver datos secundarios
-          </summary>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
-              <p className="text-xs text-[#9fb6c4]">Organización activa</p>
-              <p className="text-sm text-white">{activeCompany?.nombre || user?.companyName || "No definida"}</p>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
-              <p className="text-xs text-[#9fb6c4]">Usuarios activos</p>
-              <p className="text-sm text-white">{summary.educational?.activeUsers || 0}</p>
-            </div>
-          </div>
-        </details>
-      </section>
     </div>
   );
 }

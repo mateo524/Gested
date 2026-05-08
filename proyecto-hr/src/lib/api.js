@@ -6,6 +6,15 @@ const NETWORK_ERROR_MESSAGE =
 const TIMEOUT_ERROR_MESSAGE =
   "La solicitud está demorando más de lo esperado. Intenta nuevamente en unos segundos.";
 
+function sanitizeServerMessage(raw) {
+  const value = String(raw || "").trim();
+  if (!value) return "";
+  if (value.startsWith("<!DOCTYPE") || value.startsWith("<html")) {
+    return "Error interno del servidor. Intenta nuevamente en unos segundos.";
+  }
+  return value.replace(/<[^>]*>/g, "").trim();
+}
+
 function withTimeout(fetcher, timeoutMs = DEFAULT_TIMEOUT_MS) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -72,7 +81,7 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
   if (!response.ok) {
     const baseMessage =
       (typeof data === "object" && (data?.mensaje || data?.message)) ||
-      (typeof data === "string" && data) ||
+      (typeof data === "string" && sanitizeServerMessage(data)) ||
       "Ocurrió un error del servidor.";
     const code = typeof data === "object" && data?.code ? ` [code: ${data.code}]` : "";
     const request = typeof data === "object" && data?.request ? ` [request: ${data.request}]` : "";
