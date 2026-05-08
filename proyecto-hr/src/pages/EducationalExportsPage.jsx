@@ -4,7 +4,7 @@ import { apiFetch, apiUrl } from "../lib/api";
 
 const datasetLabels = {
   employees: "Empleados",
-  evaluations: "Evaluaci?nes",
+  evaluations: "Evaluaciones",
   metrics: "Indicadores",
   developmentPlans: "Planes",
 };
@@ -156,7 +156,7 @@ export default function EducationalExportsPage() {
     const templates = {
       employees: "apellido,nombre,email,cargo,area,tipoempleado,activo\nPerez,Juan,juan@colegio.com,Docente,Matematica,DOCENTE,true\n",
       metrics: "competencia,nombre,descripcion,ponderacion\nTrabajo en equipo,Colabora con pares,Participa activamente con el equipo,1\n",
-      cycles: "anio,per?odo,etapa,estado,fechaInicio,fechaFin\n2026,Marzo,INICIO,BORRADOR,2026-03-01,2026-03-31\n",
+      cycles: "anio,periodo,etapa,estado,fechaInicio,fechaFin\n2026,Marzo,INICIO,BORRADOR,2026-03-01,2026-03-31\n",
       roles: "rol\nDOCENTE\nRRHH\nJEFE\n",
     };
     const text = templates[kind] || templates.employees;
@@ -229,7 +229,7 @@ export default function EducationalExportsPage() {
   function getEditableFields() {
     if (importPreview?.datasetDetected === "employees") return ["apellido", "nombre", "email", "cargo", "area"];
     if (importPreview?.datasetDetected === "metrics") return ["competencia", "nombre", "ponderacion", "descripcion"];
-    if (importPreview?.datasetDetected === "cycles") return ["anio", "per?odo", "etapa", "estado", "fechaInicio", "fechaFin"];
+    if (importPreview?.datasetDetected === "cycles") return ["anio", "periodo", "etapa", "estado", "fechaInicio", "fechaFin"];
     if (importPreview?.datasetDetected === "roles") return ["nombre"];
     return [];
   }
@@ -256,10 +256,10 @@ export default function EducationalExportsPage() {
             Plantilla empleados
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("metrics")}>
-            Plantilla m?tricas
+            Plantilla metricas
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("cycles")}>
-            Plantilla per?odos
+            Plantilla periodos
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("roles")}>
             Plantilla perfiles
@@ -274,7 +274,7 @@ export default function EducationalExportsPage() {
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
             <option value="metrics">Indicadores</option>
-            <option value="cycles">Per?odos</option>
+            <option value="cycles">Periodos</option>
             <option value="roles">Perfiles</option>
           </select>
           <input className="pf-input text-sm" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
@@ -401,7 +401,7 @@ export default function EducationalExportsPage() {
               onClick={() => setShowTechnicalDetails((v) => !v)}
               className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
             >
-              {showTechnicalDetails ? "Ocultar detalle t?cnico" : "Ver detalle t?cnico"}
+              {showTechnicalDetails ? "Ocultar detalle tecnico" : "Ver detalle tecnico"}
             </button>
             {showTechnicalDetails ? (
               <pre className="mt-2 max-h-56 overflow-auto rounded-xl border border-white/10 bg-[#0f1f28] p-3 text-xs text-[#c5d5de]">
