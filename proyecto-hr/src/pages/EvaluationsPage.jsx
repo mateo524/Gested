@@ -67,25 +67,79 @@ export default function EvaluationsPage() {
   const [scores, setScores] = useState([]);
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingBase, setIsLoadingBase] = useState(false);
+  const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
 
   const metricMap = useMemo(() => new Map(metrics.map((metric) => [metric._id, metric])), [metrics]);
+  const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
+  const baseCacheKey = `pf_eval_base_${roleScope}`;
+  const evaluationsCacheKey = `pf_eval_list_${roleScope}`;
+  const loadBaseData = useCallback(async (signal) => {
+    setIsLoadingBase(true);
+    try {
+      const [employeesData, cyclesData, metricsData] = await Promise.all([
+        apiFetch("/employees", { token, signal, timeoutMs: 20000 }),
+        apiFetch("/evaluation-cycles", { token, signal, timeoutMs: 20000 }),
+        apiFetch("/metrics", { token, signal, timeoutMs: 20000 }),
+      ]);
+      setEmployees(employeesData);
+      setCycles(cyclesData);
+      setMetrics(metricsData);
+      sessionStorage.setItem(
+        baseCacheKey,
+        JSON.stringify({ employees: employeesData, cycles: cyclesData, metrics: metricsData })
+      );
+    } finally {
+      setIsLoadingBase(false);
+    }
+  }, [baseCacheKey, token]);
 
-  const loadData = useCallback(async () => {
-    const [employeesData, cyclesData, metricsData, evaluationsData] = await Promise.all([
-      apiFetch("/employees", { token }),
-      apiFetch("/evaluation-cycles", { token }),
-      apiFetch("/metrics", { token }),
-      apiFetch("/evaluations", { token }),
-    ]);
-    setEmployees(employeesData);
-    setCycles(cyclesData);
-    setMetrics(metricsData);
-    setEvaluations(evaluationsData);
-  }, [token]);
+  const loadEvaluations = useCallback(async (signal) => {
+    setIsLoadingEvaluations(true);
+    try {
+      const evaluationsData = await apiFetch("/evaluations", {
+        token,
+        signal,
+        timeoutMs: 20000,
+      });
+      setEvaluations(evaluationsData);
+      sessionStorage.setItem(evaluationsCacheKey, JSON.stringify(evaluationsData));
+    } finally {
+      setIsLoadingEvaluations(false);
+    }
+  }, [evaluationsCacheKey, token]);
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
-  }, [loadData]);
+    const cachedBase = sessionStorage.getItem(baseCacheKey);
+    if (cachedBase) {
+      try {
+        const parsed = JSON.parse(cachedBase);
+        setEmployees(parsed.employees || []);
+        setCycles(parsed.cycles || []);
+        setMetrics(parsed.metrics || []);
+      } catch {
+        sessionStorage.removeItem(baseCacheKey);
+      }
+    }
+
+    const cachedEvaluations = sessionStorage.getItem(evaluationsCacheKey);
+    if (cachedEvaluations) {
+      try {
+        setEvaluations(JSON.parse(cachedEvaluations) || []);
+      } catch {
+        sessionStorage.removeItem(evaluationsCacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    loadBaseData(controller.signal).catch((error) => {
+      if (!controller.signal.aborted) setMessage(error.message);
+    });
+    loadEvaluations(controller.signal).catch((error) => {
+      if (!controller.signal.aborted) setMessage(error.message);
+    });
+    return () => controller.abort();
+  }, [baseCacheKey, evaluationsCacheKey, loadBaseData, loadEvaluations]);
 
   useEffect(() => {
     setScores(metrics.map((metric) => defaultScore(metric._id)));
@@ -115,7 +169,7 @@ export default function EvaluationsPage() {
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
       setMessage("Evaluacion creada.");
-      await loadData();
+      await loadEvaluations();
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -151,6 +205,9 @@ export default function EvaluationsPage() {
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Crea evaluaciónes por empleado, por periodo y con puntaje por indicador.
         </p>
+        {isLoadingBase || isLoadingEvaluations ? (
+          <p className="mt-3 text-xs text-[#9fb6c4]">Actualizando datos...</p>
+        ) : null}
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
