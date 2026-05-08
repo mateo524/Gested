@@ -66,7 +66,7 @@ router.get("/qa/status", auth, permit("manage_roles"), async (req, res) => {
   res.json({ items });
 });
 
-router.get("/", auth, async (req, res) => {
+router.get("/", auth, permit("manage_roles"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
   const roles = await Role.find({ companyId }).lean();
   const users = await User.find({ companyId, isSuperAdmin: false }).select("roleId").lean();

@@ -645,13 +645,17 @@ router.get(
   ),
   async (req, res) => {
     const filter = buildBaseFilter(req);
+    const downloadFilter = { ...filter };
+    if (req.user.roleCode === "EMPLEADO") {
+      downloadFilter.userId = req.user.userId;
+    }
     const [schools, employees, evaluations, metrics, plans, downloads] = await Promise.all([
       School.find(filter).sort({ nombre: 1 }).lean(),
       Employee.countDocuments(filter),
       Evaluation.countDocuments(filter),
       Metric.countDocuments(filter),
       DevelopmentPlan.countDocuments(filter),
-      DownloadLog.find(filter).sort({ downloadedAt: -1 }).limit(12).lean(),
+      DownloadLog.find(downloadFilter).sort({ downloadedAt: -1 }).limit(12).lean(),
     ]);
 
     res.json({
