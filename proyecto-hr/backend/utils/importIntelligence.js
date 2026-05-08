@@ -87,13 +87,24 @@ export async function parseWorkbookRows(file) {
   const mimeType = String(file.mimetype || "").toLowerCase();
   const buffer = Buffer.from(file.buffer || []);
 
-  const loadAsCsv = () => {
-    const text = buffer.toString("utf8");
+  const loadAsDelimited = (text) => {
     const rows = parseCsvText(text);
     if (!rows.length) {
-      throw new Error("CSV vacio o invalido");
+      throw new Error("DELIMITED vacio o invalido");
     }
     const sheet = workbook.addWorksheet("CSV");
+    rows.forEach((row) => sheet.addRow(row));
+  };
+
+  const loadAsLooseText = () => {
+    const utf8 = buffer.toString("utf8");
+    const latin1 = buffer.toString("latin1");
+    const text = looksMostlyPrintable(utf8) ? utf8 : latin1;
+    const rows = parseLooseTextRows(text);
+    if (!rows.length) {
+      throw new Error("TEXT vacio o invalido");
+    }
+    const sheet = workbook.addWorksheet("TEXT");
     rows.forEach((row) => sheet.addRow(row));
   };
 
@@ -103,7 +114,7 @@ export async function parseWorkbookRows(file) {
     mimeType.includes("application/csv");
 
   if (looksLikeCsv) {
-    loadAsCsv();
+    loadAsDelimited(buffer.toString("utf8"));
     return workbook;
   }
 
@@ -112,14 +123,19 @@ export async function parseWorkbookRows(file) {
     return workbook;
   } catch (xlsxError) {
     const fallbackByMime = mimeType.includes("octet-stream") || mimeType.includes("text/plain");
-    if (!fallbackByMime) {
-      throw xlsxError;
-    }
     try {
-      loadAsCsv();
+      loadAsDelimited(buffer.toString("utf8"));
       return workbook;
     } catch {
-      throw xlsxError;
+      if (!fallbackByMime) {
+        throw xlsxError;
+      }
+      try {
+        loadAsLooseText();
+        return workbook;
+      } catch {
+        throw xlsxError;
+      }
     }
   }
 
@@ -129,6 +145,7 @@ export async function parseWorkbookRows(file) {
 function parseCsvText(text) {
   const normalized = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
   const lines = normalized.split("\n").filter((line) => line.trim() !== "");
+  const delimiter = detectDelimiter(lines.slice(0, 20));
   return lines.map((line) => {
     const cells = [];
     let current = "";
@@ -143,7 +160,7 @@ function parseCsvText(text) {
         } else {
           inQuotes = !inQuotes;
         }
-      } else if (ch === "," && !inQuotes) {
+      } else if (ch === delimiter && !inQuotes) {
         cells.push(current);
         current = "";
       } else {
@@ -153,6 +170,50 @@ function parseCsvText(text) {
     cells.push(current);
     return cells.map((cell) => String(cell || "").trim());
   });
+}
+
+function parseLooseTextRows(text) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized
+    .split("\n")
+    .map((line) => String(line || "").trim())
+    .filter(Boolean);
+
+  if (!lines.length) return [];
+
+  const tabular = parseCsvText(lines.join("\n"));
+  const maxCols = Math.max(0, ...tabular.map((row) => row.length));
+  if (maxCols >= 2) return tabular;
+
+  // Narrativo: una línea por fila para posterior extracción semántica.
+  return lines.map((line) => [line]);
+}
+
+function detectDelimiter(lines) {
+  const candidates = [",", ";", "\t", "|"];
+  let best = { char: ",", score: -1 };
+  for (const char of candidates) {
+    let score = 0;
+    for (const line of lines) {
+      const count = String(line || "").split(char).length - 1;
+      score += count;
+    }
+    if (score > best.score) best = { char, score };
+  }
+  return best.score > 0 ? best.char : ",";
+}
+
+function looksMostlyPrintable(text) {
+  if (!text) return false;
+  const sample = text.slice(0, 2000);
+  let printable = 0;
+  for (let i = 0; i < sample.length; i += 1) {
+    const code = sample.charCodeAt(i);
+    if ((code >= 32 && code <= 126) || code === 9 || code === 10 || code === 13 || code >= 160) {
+      printable += 1;
+    }
+  }
+  return printable / Math.max(1, sample.length) > 0.8;
 }
 
 export function extractRowsFromSheet(worksheet, headerRowNumber) {

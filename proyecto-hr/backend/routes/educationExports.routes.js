@@ -883,16 +883,50 @@ router.post(
     );
 
     if (detectedDataset === "unknown") {
-      return res.status(422).json({
-        ok: false,
-        status: "rejected_unrecognized_file",
-        detectedDataset,
-        mensaje: "No se pudo reconocer la estructura del archivo para importacion.",
+      const narrativeData = extractNarrativeData(rows);
+      const nameParts = parseNameParts(narrativeData.fullName);
+      const previewToken = saveImportPreview({
+        dataset: "narrative",
+        schoolId: req.body.schoolId || req.user.schoolId || null,
+        validRows: [],
+        invalidRows: [],
+        narrativeData,
+        fileMeta: {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+        },
+      });
+
+      const extractedSummary = {
+        nombre: narrativeData.fullName || "",
+        apellido: nameParts.apellido || "",
+        cargo: narrativeData.cargo || "",
+        area: narrativeData.area || "",
+        competenciasDetectadas: narrativeData.competencias.length,
+        promedioFinal: narrativeData.promedioFinal || 0,
+      };
+
+      return res.json({
+        ok: true,
+        previewToken,
+        datasetDetected: "narrative",
+        totalRows: rows.length,
+        validCount: narrativeData.competencias.length ? 1 : 0,
+        invalidCount: narrativeData.competencias.length ? 0 : 1,
+        truncated,
+        previewLimit: MAX_PREVIEW_ROWS,
+        extractedSummary,
+        sampleValidRows: narrativeData.competencias.slice(0, 20),
+        sampleErrors: narrativeData.competencias.length
+          ? []
+          : [{ row: 0, message: "No se detectaron competencias puntuables en el archivo." }],
         analysis: {
           sheetName,
           headerRowNumber,
           worksheetsMeta,
           detections,
+          lowConfidenceFields,
+          requiresManualMapping: true,
         },
       });
     }
