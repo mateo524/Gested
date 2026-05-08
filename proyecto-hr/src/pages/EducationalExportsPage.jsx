@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
@@ -27,6 +27,7 @@ export default function EducationalExportsPage() {
   const [datasetData, setDatasetData] = useState({ items: [], canDownload: false });
   const [filters, setFilters] = useState({ schoolId: "", area: "", cargo: "" });
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
 
   const [importDataset, setImportDataset] = useState("auto");
   const [importFile, setImportFile] = useState(null);
@@ -44,26 +45,32 @@ export default function EducationalExportsPage() {
     return params.toString() ? `?${params.toString()}` : "";
   }, [filters]);
 
-  async function loadOverview() {
+  const loadOverview = useCallback(async () => {
     const data = await apiFetch("/education-exports/overview", { token });
     setOverview(data);
     if (!filters.schoolId && data.schools?.[0]?._id) {
       setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
     }
-  }
+  }, [token, filters.schoolId]);
 
-  async function loadDataset() {
+  const loadDataset = useCallback(async () => {
     const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
     setDatasetData(data);
-  }
+  }, [token, dataset, queryString]);
 
   useEffect(() => {
-    loadOverview().catch((error) => setMessage(error.message));
-  }, []);
+    loadOverview().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
+  }, [loadOverview]);
 
   useEffect(() => {
-    loadDataset().catch((error) => setMessage(error.message));
-  }, [dataset, queryString]);
+    loadDataset().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
+  }, [loadDataset]);
 
   async function downloadDataset(format) {
     try {
@@ -79,15 +86,21 @@ export default function EducationalExportsPage() {
       anchor.download = `${dataset}.${format === "xlsx" ? "xlsx" : "csv"}`;
       anchor.click();
       window.URL.revokeObjectURL(url);
+      setMessageType("success");
       setMessage("Descarga generada.");
       await loadOverview();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
 
   async function previewImport(mode = "preview") {
-    if (!importFile) return setMessage("Selecciona un archivo.");
+    if (!importFile) {
+      setMessageType("warning");
+      setMessage("Selecciona un archivo antes de continuar.");
+      return;
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 120000);
     try {
@@ -110,12 +123,17 @@ export default function EducationalExportsPage() {
       setImportResult(null);
       setConfirmMapping(false);
       setConfirmWarnings(false);
-      if (mode === "analyze") setMessage("Analisis completado. Revisa detecciones antes de confirmar.");
+      if (mode === "analyze") {
+        setMessageType("info");
+        setMessage("Análisis completado. Revisa detecciones y advertencias.");
+      }
     } catch (error) {
       setImportPreview(null);
       if (error.name === "AbortError") {
-        setMessage("La validacion demoro demasiado. Intenta con un archivo mas chico o usa 'Analizar sin importar'.");
+        setMessageType("warning");
+        setMessage("La validación demoró demasiado. Prueba con un archivo más chico o usa 'Analizar sin importar'.");
       } else {
+        setMessageType("error");
         setMessage(error.message);
       }
     } finally {
@@ -126,7 +144,8 @@ export default function EducationalExportsPage() {
 
   async function confirmImport() {
     if (!importPreview?.previewToken) {
-      setMessage("No hay preview activo para confirmar.");
+      setMessageType("warning");
+      setMessage("No hay validación activa para confirmar.");
       return;
     }
     try {
@@ -146,9 +165,11 @@ export default function EducationalExportsPage() {
       setImportPreview(null);
       setImportFile(null);
       setManualMapping({});
-      setMessage("Importacion confirmada.");
+      setMessageType("success");
+      setMessage("Importación confirmada.");
       await Promise.all([loadOverview(), loadDataset()]);
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsImporting(false);
@@ -176,29 +197,38 @@ export default function EducationalExportsPage() {
   const mappingFields = importPreview?.analysis?.lowConfidenceFields || [];
   const detectionEntries = Object.entries(importPreview?.analysis?.detections || {});
 
+  const messageClass =
+    messageType === "error"
+      ? "rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200"
+      : messageType === "success"
+      ? "rounded-xl border border-emerald-300/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200"
+      : messageType === "warning"
+      ? "rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200"
+      : "rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200";
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-2xl font-bold text-white">Cargas y descargas</h3>
-        <p className="mt-2 text-[#9fb6c4]">Flujo seguro: subir, validar, revisar advertencias y confirmar.</p>
+        <p className="mt-2 text-[#9fb6c4]">Flujo sugerido: subir archivo, validar resultados y recién después confirmar importación.</p>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-white">Subida de datos (sin plantilla fija)</h4>
+        <h4 className="text-lg font-semibold text-white">Subida de datos (unificada)</h4>
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
-        {message ? <div className="rounded-xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">{message}</div> : null}
+        {message ? <div className={messageClass}>{message}</div> : null}
 
         <div className="grid gap-3 md:grid-cols-4">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
             <option value="metrics">Indicadores</option>
-            <option value="cycles">Periodos</option>
+            <option value="cycles">Períodos</option>
             <option value="roles">Perfiles</option>
           </select>
           <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-sm text-white" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
           <button className="rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={() => previewImport("preview")} disabled={!canImport || isImporting || !importFile}>
-            {isImporting ? "Procesando..." : "Subir y validar"}
+            {isImporting ? "Procesando..." : "Subir y validar datos"}
           </button>
           <button className="rounded-xl border border-white/25 bg-[#0f1f28] px-4 py-3 font-semibold text-white disabled:opacity-60" onClick={() => previewImport("analyze")} disabled={!canImport || isImporting || !importFile}>
             Analizar sin importar
@@ -207,9 +237,9 @@ export default function EducationalExportsPage() {
 
         {importPreview ? (
           <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8] space-y-3">
-            <p>Tipo detectado: {importPreview.datasetDetected}</p>
+            <p>Dataset detectado: {importPreview.datasetDetected}</p>
             <p>Total filas: {importPreview.totalRows}</p>
-            <p>Validas: {importPreview.validCount}</p>
+            <p>Válidas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
             <p>Advertencias: {importPreview.warningCount || 0}</p>
             {importPreview.analysis?.sheetName ? <p>Hoja detectada: {importPreview.analysis.sheetName} (encabezado fila {importPreview.analysis.headerRowNumber})</p> : null}
@@ -262,7 +292,7 @@ export default function EducationalExportsPage() {
 
             {editableErrors.length ? (
               <div className="space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Corregir errores antes de confirmar</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Corrige filas con error antes de confirmar</p>
                 {editableErrors.map((errorRow, index) => (
                   <div key={`${errorRow.row}-${index}`} className="rounded-lg border border-white/10 bg-[#142028] p-2">
                     <p className="mb-2 text-xs text-rose-300">
@@ -289,7 +319,7 @@ export default function EducationalExportsPage() {
                 {mappingFields.length ? (
                   <label className="flex items-center gap-2 text-xs text-[#c9d9e1]">
                     <input type="checkbox" checked={confirmMapping} onChange={(e) => setConfirmMapping(e.target.checked)} />
-                    Confirmo mapeo manual de columnas detectadas
+                    Confirmo el mapeo manual de columnas detectadas
                   </label>
                 ) : null}
                 {(importPreview.sampleWarnings || []).length ? (
@@ -308,7 +338,7 @@ export default function EducationalExportsPage() {
                     ((importPreview.sampleWarnings || []).length > 0 && !confirmWarnings)
                   }
                 >
-                  {isImporting ? "Importando..." : "Confirmar importacion"}
+                  {isImporting ? "Importando..." : "Confirmar importación"}
                 </button>
               </div>
             ) : null}
@@ -344,7 +374,7 @@ export default function EducationalExportsPage() {
             <option value="">Todos los colegios</option>
             {(overview?.schools || []).map((school) => <option key={school._id} value={school._id}>{school.nombre}</option>)}
           </select>
-          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Area" value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })} />
+          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Área" value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })} />
           <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargo" value={filters.cargo} onChange={(e) => setFilters({ ...filters, cargo: e.target.value })} />
           <div className="flex gap-2">
             <button className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("csv")}>CSV</button>
@@ -376,3 +406,4 @@ export default function EducationalExportsPage() {
     </div>
   );
 }
+
