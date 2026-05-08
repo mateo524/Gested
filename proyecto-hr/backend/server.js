@@ -93,9 +93,28 @@ function assertRuntimeConfig() {
 
 app.use(cors(buildCorsOptions()));
 app.use(helmet({ crossOriginResourcePolicy: false }));
-app.use(compression());
+app.use(
+  compression({
+    threshold: "1kb",
+    level: 6,
+  })
+);
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+
+app.use((req, res, next) => {
+  const method = req.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return next();
+
+  if (req.path.startsWith("/auth")) {
+    res.setHeader("Cache-Control", "no-store");
+    return next();
+  }
+
+  res.setHeader("Cache-Control", "private, max-age=20, stale-while-revalidate=60");
+  res.setHeader("Vary", "Authorization, X-Company-Id");
+  return next();
+});
 
 app.use("/auth", authRoutes);
 app.use("/dashboard", dashboardRoutes);
