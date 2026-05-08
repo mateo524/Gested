@@ -9,12 +9,34 @@ export default function OrganizationsPage() {
   const canManageCompanies = !!user?.isSuperAdmin;
   const [tab, setTab] = useState(canManageCompanies ? "empresas" : "colegios");
   const [qualityItems, setQualityItems] = useState([]);
+  const [isLoadingQuality, setIsLoadingQuality] = useState(false);
+  const qualityCacheKey = "pf_org_quality_superadmin";
 
   useEffect(() => {
     if (!canManageCompanies) return;
-    apiFetch("/automation/quality-by-company", { token })
-      .then((data) => setQualityItems(data.items || []))
-      .catch(() => {});
+    const cached = sessionStorage.getItem(qualityCacheKey);
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        setQualityItems(Array.isArray(parsed) ? parsed : []);
+      } catch {
+        sessionStorage.removeItem(qualityCacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    setIsLoadingQuality(true);
+    apiFetch("/automation/quality-by-company", { token, signal: controller.signal, timeoutMs: 20000 })
+      .then((data) => {
+        const items = data.items || [];
+        setQualityItems(items);
+        sessionStorage.setItem(qualityCacheKey, JSON.stringify(items));
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingQuality(false);
+      });
+    return () => controller.abort();
   }, [canManageCompanies, token]);
 
   const tabs = useMemo(() => {
@@ -64,6 +86,9 @@ export default function OrganizationsPage() {
             Flujo guiado recomendado: 1) Crear empresa, 2) Crear colegio, 3) Generar admin de colegio, 4) Probar login con rol cliente.
           </div>
           <h4 className="text-lg font-semibold text-slate-950">Salud de datos por empresa</h4>
+          {isLoadingQuality ? (
+            <p className="mt-2 text-xs text-[#A9BFCA]">Actualizando controles...</p>
+          ) : null}
           <div className="mt-4 grid gap-3">
             {qualityItems.length ? (
               qualityItems.map((item) => (
