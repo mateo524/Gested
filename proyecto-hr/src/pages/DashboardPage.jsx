@@ -3,6 +3,12 @@ import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { useView } from "../context/ViewContext";
 
+function getDashboardCacheKey(user, companyId) {
+  const role = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
+  const scope = companyId || user?.companyId || "global";
+  return `pf_dashboard_summary_${role}_${scope}`;
+}
+
 function KpiCard({ title, value, hint }) {
   return (
     <article className="rounded-2xl border border-white/10 bg-[#122530] p-5">
@@ -26,12 +32,32 @@ export default function DashboardPage() {
   const isLector = ["LECTOR", "LECTOR_AUDITOR"].includes(roleCode);
 
   useEffect(() => {
-    apiFetch("/dashboard/summary", { token })
+    if (!token) return;
+
+    const cacheKey = getDashboardCacheKey(user, activeCompanyId);
+    const cachedSummary = sessionStorage.getItem(cacheKey);
+    if (cachedSummary) {
+      try {
+        setSummary(JSON.parse(cachedSummary));
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    apiFetch("/dashboard/summary", { token, timeoutMs: 20000, signal: controller.signal })
       .then((summaryData) => {
         setSummary(summaryData);
+        sessionStorage.setItem(cacheKey, JSON.stringify(summaryData));
+        setMessage("");
       })
-      .catch((error) => setMessage(error.message));
-  }, [token, activeCompany?._id]);
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setMessage(error.message);
+      });
+
+    return () => controller.abort();
+  }, [token, activeCompanyId, user]);
 
   const training = useMemo(
     () => summary?.decisionInsights?.trainingRecommendations || [],
