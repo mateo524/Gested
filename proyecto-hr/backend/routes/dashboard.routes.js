@@ -206,7 +206,7 @@ router.get("/summary", auth, async (req, res) => {
       { $unwind: "$evaluation" },
       {
         $match: {
-          "evaluation.companyId": companyObjectId,
+          "evaluation.companyId": company._id,
           ...(baseFilter.schoolId ? { "evaluation.schoolId": baseFilter.schoolId } : {}),
           ...(Array.isArray(evaluationFilter.employeeId?.$in)
             ? { "evaluation.employeeId": { $in: evaluationFilter.employeeId.$in } }
