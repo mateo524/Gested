@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
@@ -38,38 +38,93 @@ export default function EducationalExportsPage() {
   const [confirmMapping, setConfirmMapping] = useState(false);
   const [confirmWarnings, setConfirmWarnings] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isLoadingOverview, setIsLoadingOverview] = useState(false);
+  const [isLoadingDataset, setIsLoadingDataset] = useState(false);
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => value && params.set(key, value));
     return params.toString() ? `?${params.toString()}` : "";
   }, [filters]);
+  const deferredQueryString = useDeferredValue(queryString);
 
-  const loadOverview = useCallback(async () => {
-    const data = await apiFetch("/education-exports/overview", { token });
-    setOverview(data);
-    if (!filters.schoolId && data.schools?.[0]?._id) {
-      setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
+  const overviewCacheKey = useMemo(() => {
+    const role = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
+    return `pf_exports_overview_${role}`;
+  }, [user]);
+
+  const datasetCacheKey = useMemo(() => {
+    const role = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
+    return `pf_exports_dataset_${role}_${dataset}_${deferredQueryString}`;
+  }, [dataset, deferredQueryString, user]);
+
+  const loadOverview = useCallback(async (signal) => {
+    setIsLoadingOverview(true);
+    try {
+      const data = await apiFetch("/education-exports/overview", { token, timeoutMs: 20000, signal });
+      setOverview(data);
+      sessionStorage.setItem(overviewCacheKey, JSON.stringify(data));
+      if (!filters.schoolId && data.schools?.[0]?._id) {
+        setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
+      }
+    } finally {
+      setIsLoadingOverview(false);
     }
-  }, [token, filters.schoolId]);
+  }, [token, filters.schoolId, overviewCacheKey]);
 
-  const loadDataset = useCallback(async () => {
-    const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
-    setDatasetData(data);
-  }, [token, dataset, queryString]);
+  const loadDataset = useCallback(async (signal) => {
+    setIsLoadingDataset(true);
+    try {
+      const data = await apiFetch(`/education-exports/dataset/${dataset}${deferredQueryString}`, {
+        token,
+        timeoutMs: 20000,
+        signal,
+      });
+      setDatasetData(data);
+      sessionStorage.setItem(datasetCacheKey, JSON.stringify(data));
+    } finally {
+      setIsLoadingDataset(false);
+    }
+  }, [token, dataset, deferredQueryString, datasetCacheKey]);
 
   useEffect(() => {
-    loadOverview().catch((error) => {
+    const cachedOverview = sessionStorage.getItem(overviewCacheKey);
+    if (cachedOverview) {
+      try {
+        setOverview(JSON.parse(cachedOverview));
+      } catch {
+        sessionStorage.removeItem(overviewCacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    loadOverview(controller.signal).catch((error) => {
+      if (controller.signal.aborted) return;
+      setIsLoadingOverview(false);
       setMessageType("error");
       setMessage(error.message);
     });
+    return () => controller.abort();
   }, [loadOverview]);
 
   useEffect(() => {
-    loadDataset().catch((error) => {
+    const cachedDataset = sessionStorage.getItem(datasetCacheKey);
+    if (cachedDataset) {
+      try {
+        setDatasetData(JSON.parse(cachedDataset));
+      } catch {
+        sessionStorage.removeItem(datasetCacheKey);
+      }
+    }
+
+    const controller = new AbortController();
+    loadDataset(controller.signal).catch((error) => {
+      if (controller.signal.aborted) return;
+      setIsLoadingDataset(false);
       setMessageType("error");
       setMessage(error.message);
     });
+    return () => controller.abort();
   }, [loadDataset]);
 
   async function downloadDataset(format) {
@@ -381,9 +436,13 @@ export default function EducationalExportsPage() {
             <button className="rounded-2xl border border-white/20 px-4 py-3 text-sm font-semibold text-[#c5d5de] disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("xlsx")}>Excel</button>
           </div>
         </div>
+        {isLoadingDataset ? (
+          <p className="mt-3 text-xs text-[#9fb6c4]">Actualizando resultados...</p>
+        ) : null}
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        {isLoadingOverview ? <p className="mb-3 text-xs text-[#9fb6c4]">Actualizando historial...</p> : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
@@ -406,4 +465,3 @@ export default function EducationalExportsPage() {
     </div>
   );
 }
-
