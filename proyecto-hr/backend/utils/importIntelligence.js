@@ -84,14 +84,45 @@ function scoreRows(rows, headers) {
 export async function parseWorkbookRows(file) {
   const workbook = new ExcelJS.Workbook();
   const fileName = String(file.originalname || "").toLowerCase();
-  if (fileName.endsWith(".csv")) {
-    const text = Buffer.from(file.buffer).toString("utf8");
+  const mimeType = String(file.mimetype || "").toLowerCase();
+  const buffer = Buffer.from(file.buffer || []);
+
+  const loadAsCsv = () => {
+    const text = buffer.toString("utf8");
     const rows = parseCsvText(text);
+    if (!rows.length) {
+      throw new Error("CSV vacio o invalido");
+    }
     const sheet = workbook.addWorksheet("CSV");
     rows.forEach((row) => sheet.addRow(row));
-  } else {
-    await workbook.xlsx.load(file.buffer);
+  };
+
+  const looksLikeCsv =
+    fileName.endsWith(".csv") ||
+    mimeType.includes("text/csv") ||
+    mimeType.includes("application/csv");
+
+  if (looksLikeCsv) {
+    loadAsCsv();
+    return workbook;
   }
+
+  try {
+    await workbook.xlsx.load(buffer);
+    return workbook;
+  } catch (xlsxError) {
+    const fallbackByMime = mimeType.includes("octet-stream") || mimeType.includes("text/plain");
+    if (!fallbackByMime) {
+      throw xlsxError;
+    }
+    try {
+      loadAsCsv();
+      return workbook;
+    } catch {
+      throw xlsxError;
+    }
+  }
+
   return workbook;
 }
 
