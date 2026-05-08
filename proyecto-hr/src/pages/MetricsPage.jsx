@@ -1,13 +1,13 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
 const baseLevels = [
-  { nivel: 1, etiqueta: "Insatisfactorio", descripción: "" },
-  { nivel: 2, etiqueta: "Mínimo", descripción: "" },
-  { nivel: 3, etiqueta: "En desarrollo", descripción: "" },
-  { nivel: 4, etiqueta: "Competente", descripción: "" },
-  { nivel: 5, etiqueta: "Excepcional", descripción: "" },
+  { nivel: 1, etiqueta: "Insatisfactorio", descripcion: "" },
+  { nivel: 2, etiqueta: "Minimo", descripcion: "" },
+  { nivel: 3, etiqueta: "En desarrollo", descripcion: "" },
+  { nivel: 4, etiqueta: "Competente", descripcion: "" },
+  { nivel: 5, etiqueta: "Excepcional", descripcion: "" },
 ];
 
 const buildDefaultLevels = () => baseLevels.map((level) => ({ ...level }));
@@ -16,7 +16,7 @@ const emptyForm = {
   schoolId: "",
   competencyId: "",
   nombre: "",
-  descripción: "",
+  descripcion: "",
   cargoAplica: "",
   ponderacion: 1,
   levels: buildDefaultLevels(),
@@ -45,7 +45,7 @@ export default function MetricsPage() {
     const term = query.trim().toLowerCase();
     if (!term) return metrics;
     return metrics.filter((metric) =>
-      [metric.nombre, metric.descripción, ...(metric.cargoAplica || [])]
+      [metric.nombre, metric.descripcion, ...(metric.cargoAplica || [])]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
     );
@@ -86,12 +86,12 @@ export default function MetricsPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = {};
-    if (!form.schoolId) nextErrors.schoolId = "No hay institucion asignada.";
+    if (!form.schoolId) nextErrors.schoolId = "No hay institución asignada.";
     if (!form.competencyId) nextErrors.competencyId = "Selecciona una competencia.";
     if (!form.nombre?.trim()) nextErrors.nombre = "El nombre del indicador es obligatorio.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
-      setMessage("Completa colegio, competencia y nombre de indicador para guardar.");
+      setMessage("Completa institución, competencia y nombre de indicador para guardar.");
       setMessageType("warning");
       return;
     }
@@ -130,13 +130,13 @@ export default function MetricsPage() {
       schoolId: metric.schoolId || "",
       competencyId: metric.competencyId || "",
       nombre: metric.nombre || "",
-      descripción: metric.descripción || "",
+      descripcion: metric.descripcion || "",
       cargoAplica: (metric.cargoAplica || []).join(", "),
       ponderacion: Number(metric.ponderacion || 1),
       levels: (metric.levels?.length ? metric.levels : buildDefaultLevels()).map((level) => ({
         nivel: Number(level.nivel),
         etiqueta: level.etiqueta || "",
-        descripción: level.descripción || "",
+        descripcion: level.descripcion || "",
       })),
     });
     setMessageType("info");
@@ -165,39 +165,57 @@ export default function MetricsPage() {
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar indicador" : "Nuevo indicador"}</h4>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Definir indicador</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Escala 1-5</span>
-          </div>
+          <p className="mt-2 text-sm text-[#9fb6c4]">
+            Carga el indicador con una descripción observable y niveles 1 a 5 claros.
+          </p>
+
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
-              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
+              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin institución asignada"}</p>
             </div>
             {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
-            <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.competencyId ? "border-rose-400/70" : "border-white/15"}`} value={form.competencyId} onChange={(e) => setForm({ ...form, competencyId: e.target.value })}>
-              <option value="">Selecciona competencia</option>
-              {visibleCompetencies.map((competency) => (
-                <option key={competency._id} value={competency._id}>{competency.nombre}</option>
-              ))}
-            </select>
+
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Competencia</label>
+              <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.competencyId ? "border-rose-400/70" : "border-white/15"}`} value={form.competencyId} onChange={(e) => setForm({ ...form, competencyId: e.target.value })}>
+                <option value="">Selecciona competencia</option>
+                {visibleCompetencies.map((competency) => (
+                  <option key={competency._id} value={competency._id}>{competency.nombre}</option>
+                ))}
+              </select>
+            </div>
             {fieldErrors.competencyId ? <p className="text-xs text-rose-300">{fieldErrors.competencyId}</p> : null}
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Definicion del indicador</p>
-            <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Nombre del indicador" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Nombre del indicador</label>
+              <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Ej: Cumple objetivos trimestrales" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
+            </div>
             {fieldErrors.nombre ? <p className="text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
-            <textarea className="pf-textarea" placeholder="Descripción breve y observable" value={form.descripción} onChange={(e) => setForm({ ...form, descripción: e.target.value })} />
+
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Descripción observable</label>
+              <textarea className="pf-textarea" placeholder="Describe cómo se mide este indicador en la práctica." value={form.descripcion} onChange={(e) => setForm({ ...form, descripcion: e.target.value })} />
+            </div>
+
             <div className="grid gap-4 md:grid-cols-2">
-              <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargos (separados por coma)" value={form.cargoAplica} onChange={(e) => setForm({ ...form, cargoAplica: e.target.value })} />
-              <input type="number" min="1" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Ponderación" value={form.ponderacion} onChange={(e) => setForm({ ...form, ponderacion: Number(e.target.value) })} />
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Cargos (separados por coma)</label>
+                <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Docente, Jefe de área" value={form.cargoAplica} onChange={(e) => setForm({ ...form, cargoAplica: e.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Ponderación</label>
+                <input type="number" min="1" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Ej: 2" value={form.ponderacion} onChange={(e) => setForm({ ...form, ponderacion: Number(e.target.value) })} />
+              </div>
             </div>
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-[#c5d5de]">Niveles 1 a 5</p>
+              <p className="text-sm font-semibold text-[#c5d5de]">Escala de evaluación (1 a 5)</p>
               {form.levels.map((level, index) => (
                 <div key={level.nivel} className="grid gap-3 md:grid-cols-[0.18fr_0.4fr_1fr]">
                   <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={level.nivel} disabled />
                   <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={level.etiqueta} onChange={(e) => updateLevel(index, "etiqueta", e.target.value)} />
-                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Descripcion del nivel" value={level.descripción} onChange={(e) => updateLevel(index, "descripción", e.target.value)} />
+                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Descripción del nivel" value={level.descripcion} onChange={(e) => updateLevel(index, "descripcion", e.target.value)} />
                 </div>
               ))}
             </div>
@@ -235,7 +253,7 @@ export default function MetricsPage() {
                   {(metric.levels || []).map((level) => (
                     <div key={`${metric._id}-${level.nivel}`} className="rounded-2xl bg-[#122530] px-4 py-3 text-sm">
                       <span className="font-semibold text-white">{level.nivel} - {level.etiqueta}</span>
-                      <p className="mt-1 text-[#9fb6c4]">{level.descripción || "Sin descripción"}</p>
+                      <p className="mt-1 text-[#9fb6c4]">{level.descripcion || "Sin descripción"}</p>
                     </div>
                   ))}
                 </div>
@@ -249,9 +267,13 @@ export default function MetricsPage() {
         </section>
       </div>
 
-      {message ? <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>{message}</p> : null}
+      {message ? (
+        <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>
+          {messageType === "error" ? "No se pudo guardar. " : ""}
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }
-
 

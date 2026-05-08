@@ -78,14 +78,14 @@ export default function EmployeesPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = {};
-    if (!form.schoolId) nextErrors.schoolId = "No hay institucion asignada.";
+    if (!form.schoolId) nextErrors.schoolId = "No hay institución asignada.";
     if (!form.nombre?.trim()) nextErrors.nombre = "Nombre obligatorio.";
     if (!form.apellido?.trim()) nextErrors.apellido = "Apellido obligatorio.";
     if (!form.cargo?.trim()) nextErrors.cargo = "Cargo obligatorio.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setMessageType("warning");
-      setMessage("Completa colegio, nombre, apellido y cargo para guardar.");
+      setMessage("Completa institución, nombre, apellido y cargo para guardar.");
       return;
     }
     try {
@@ -151,48 +151,72 @@ export default function EmployeesPage() {
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="pf-card p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar empleado" : "Nuevo empleado"}</h4>
-          <p className="mt-2 text-sm text-[#9fb6c4]">Completá los datos mínimos y guardá. Luego podés editar cuando quieras.</p>
+          <p className="mt-2 text-sm text-[#9fb6c4]">Completa los datos mínimos y guarda. Luego puedes editar cuando quieras.</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institucion asignada</p>
-              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
+              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin institución asignada"}</p>
             </div>
             {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Nombre" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
-              <input className={`pf-input ${fieldErrors.apellido ? "border-rose-400/70" : ""}`} placeholder="Apellido" value={form.apellido} onChange={(event) => setForm({ ...form, apellido: event.target.value })} />
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Nombre</label>
+                <input className={`pf-input ${fieldErrors.nombre ? "border-rose-400/70" : ""}`} placeholder="Ej: Mateo" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Apellido</label>
+                <input className={`pf-input ${fieldErrors.apellido ? "border-rose-400/70" : ""}`} placeholder="Ej: Sánchez" value={form.apellido} onChange={(event) => setForm({ ...form, apellido: event.target.value })} />
+              </div>
             </div>
             {(fieldErrors.nombre || fieldErrors.apellido) ? <p className="text-xs text-rose-300">{fieldErrors.nombre || fieldErrors.apellido}</p> : null}
 
-            <input className="pf-input" placeholder="Email institucional" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Correo institucional (opcional)</label>
+              <input className="pf-input" placeholder="Ej: nombre@colegio.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+            </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <input className={`pf-input ${fieldErrors.cargo ? "border-rose-400/70" : ""}`} placeholder="Cargo (ej: Docente de Matematica)" value={form.cargo} onChange={(event) => setForm({ ...form, cargo: event.target.value })} />
-              <input className="pf-input" placeholder="Área / Departamento" value={form.area} onChange={(event) => setForm({ ...form, area: event.target.value })} />
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Cargo</label>
+                <input className={`pf-input ${fieldErrors.cargo ? "border-rose-400/70" : ""}`} placeholder="Ej: Docente de Matemática" value={form.cargo} onChange={(event) => setForm({ ...form, cargo: event.target.value })} />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Área / Departamento</label>
+                <input className="pf-input" placeholder="Ej: Ciencias Exactas" value={form.area} onChange={(event) => setForm({ ...form, area: event.target.value })} />
+              </div>
             </div>
             {fieldErrors.cargo ? <p className="text-xs text-rose-300">{fieldErrors.cargo}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <select className="pf-select" value={form.tipoEmpleado} onChange={(event) => setForm({ ...form, tipoEmpleado: event.target.value })}>
-                <option value="DOCENTE">Docente</option>
-                <option value="NO_DOCENTE">No docente</option>
-                <option value="DIRECTIVO">Directivo</option>
-                <option value="RRHH">RRHH</option>
-                <option value="OTRO">Otro</option>
-              </select>
-              <input type="date" className="pf-input" value={form.fechaIngreso} onChange={(event) => setForm({ ...form, fechaIngreso: event.target.value })} />
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Tipo de perfil</label>
+                <select className="pf-select" value={form.tipoEmpleado} onChange={(event) => setForm({ ...form, tipoEmpleado: event.target.value })}>
+                  <option value="DOCENTE">Docente</option>
+                  <option value="NO_DOCENTE">No docente</option>
+                  <option value="DIRECTIVO">Directivo</option>
+                  <option value="RRHH">RRHH</option>
+                  <option value="OTRO">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de ingreso</label>
+                <input type="date" className="pf-input" value={form.fechaIngreso} onChange={(event) => setForm({ ...form, fechaIngreso: event.target.value })} />
+              </div>
             </div>
 
-            <select className="pf-select" value={form.managerId} onChange={(event) => setForm({ ...form, managerId: event.target.value })}>
-              <option value="">Sin jefe asignado</option>
-              {employees.map((employee) => (
-                <option key={employee._id} value={employee._id}>
-                  {employee.apellido}, {employee.nombre}
-                </option>
-              ))}
-            </select>
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Responsable directo</label>
+              <select className="pf-select" value={form.managerId} onChange={(event) => setForm({ ...form, managerId: event.target.value })}>
+                <option value="">Sin jefe asignado</option>
+                {employees.map((employee) => (
+                  <option key={employee._id} value={employee._id}>
+                    {employee.apellido}, {employee.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
 
             <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear empleado"}
@@ -256,7 +280,13 @@ export default function EmployeesPage() {
         </section>
       </div>
 
-      {message ? <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>{message}</p> : null}
+      {message ? (
+        <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>
+          {messageType === "error" ? "No se pudo guardar. " : ""}
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }
+
