@@ -5,20 +5,35 @@ import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
 
-const DashboardPage = lazy(() => import("./pages/DashboardPage"));
-const OrganizationsPage = lazy(() => import("./pages/OrganizationsPage"));
-const UsersPage = lazy(() => import("./pages/UsersPage"));
-const RolesPage = lazy(() => import("./pages/RolesPage"));
-const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
-const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
-const CompetenciesPage = lazy(() => import("./pages/CompetenciesPage"));
-const MetricsPage = lazy(() => import("./pages/MetricsPage"));
-const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
-const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
-const DevelopmentPlansPage = lazy(() => import("./pages/DevelopmentPlansPage"));
-const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
-const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
-const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+const loadDashboardPage = () => import("./pages/DashboardPage");
+const loadOrganizationsPage = () => import("./pages/OrganizationsPage");
+const loadUsersPage = () => import("./pages/UsersPage");
+const loadRolesPage = () => import("./pages/RolesPage");
+const loadAnnouncementsPage = () => import("./pages/AnnouncementsPage");
+const loadEmployeesPage = () => import("./pages/EmployeesPage");
+const loadCompetenciesPage = () => import("./pages/CompetenciesPage");
+const loadMetricsPage = () => import("./pages/MetricsPage");
+const loadEvaluationCyclesPage = () => import("./pages/EvaluationCyclesPage");
+const loadEvaluationsPage = () => import("./pages/EvaluationsPage");
+const loadDevelopmentPlansPage = () => import("./pages/DevelopmentPlansPage");
+const loadEducationalExportsPage = () => import("./pages/EducationalExportsPage");
+const loadStorageCenterPage = () => import("./pages/StorageCenterPage");
+const loadSettingsPage = () => import("./pages/SettingsPage");
+
+const DashboardPage = lazy(loadDashboardPage);
+const OrganizationsPage = lazy(loadOrganizationsPage);
+const UsersPage = lazy(loadUsersPage);
+const RolesPage = lazy(loadRolesPage);
+const AnnouncementsPage = lazy(loadAnnouncementsPage);
+const EmployeesPage = lazy(loadEmployeesPage);
+const CompetenciesPage = lazy(loadCompetenciesPage);
+const MetricsPage = lazy(loadMetricsPage);
+const EvaluationCyclesPage = lazy(loadEvaluationCyclesPage);
+const EvaluationsPage = lazy(loadEvaluationsPage);
+const DevelopmentPlansPage = lazy(loadDevelopmentPlansPage);
+const EducationalExportsPage = lazy(loadEducationalExportsPage);
+const StorageCenterPage = lazy(loadStorageCenterPage);
+const SettingsPage = lazy(loadSettingsPage);
 
 function ViewLoader() {
   return (
@@ -75,6 +90,46 @@ function AppContent() {
       setView(availableViews[0] || "dashboard");
     }
   }, [view, availableViews]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) return;
+
+    const preloaders = [loadDashboardPage];
+    const roleCode = user.roleCode || "";
+
+    if (["ADMIN_COLEGIO", "RRHH", "JEFE", "EMPLEADO"].includes(roleCode)) {
+      preloaders.push(loadEvaluationsPage, loadDevelopmentPlansPage);
+    }
+    if (["ADMIN_COLEGIO", "RRHH"].includes(roleCode)) {
+      preloaders.push(loadEmployeesPage, loadMetricsPage, loadEvaluationCyclesPage);
+    }
+    if (user.isSuperAdmin) {
+      preloaders.push(
+        loadOrganizationsPage,
+        loadUsersPage,
+        loadRolesPage,
+        loadSettingsPage,
+        loadEducationalExportsPage,
+        loadStorageCenterPage
+      );
+    } else if (hasPermission("view_reports")) {
+      preloaders.push(loadEducationalExportsPage);
+    }
+
+    const runPreload = () => {
+      preloaders.forEach((preload) => {
+        preload().catch(() => {});
+      });
+    };
+
+    if (typeof window !== "undefined" && "requestIdleCallback" in window) {
+      const idleId = window.requestIdleCallback(runPreload, { timeout: 1800 });
+      return () => window.cancelIdleCallback(idleId);
+    }
+
+    const timer = window.setTimeout(runPreload, 400);
+    return () => window.clearTimeout(timer);
+  }, [hasPermission, isAuthenticated, user]);
 
   if (!isAuthenticated) {
     return <LoginPage />;
