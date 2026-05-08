@@ -46,8 +46,14 @@ export default function DashboardPage() {
       .catch((error) => setMessage(error.message));
   }, [token, activeCompany?._id]);
 
-  const training = summary?.decisionInsights?.trainingRecommendations || [];
-  const risk = summary?.decisionInsights?.riskRanking || [];
+  const training = useMemo(
+    () => summary?.decisionInsights?.trainingRecommendations || [],
+    [summary]
+  );
+  const risk = useMemo(
+    () => summary?.decisionInsights?.riskRanking || [],
+    [summary]
+  );
   const criticalCount = training.filter((item) => item.priority === "ALTA").length;
 
   const priorityStatus = useMemo(() => {

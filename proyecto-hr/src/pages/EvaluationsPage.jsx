@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -70,7 +70,7 @@ export default function EvaluationsPage() {
 
   const metricMap = useMemo(() => new Map(metrics.map((metric) => [metric._id, metric])), [metrics]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     const [employeesData, cyclesData, metricsData, evaluationsData] = await Promise.all([
       apiFetch("/employees", { token }),
       apiFetch("/evaluation-cycles", { token }),
@@ -81,11 +81,11 @@ export default function EvaluationsPage() {
     setCycles(cyclesData);
     setMetrics(metricsData);
     setEvaluations(evaluationsData);
-  }
+  }, [token]);
 
   useEffect(() => {
     loadData().catch((error) => setMessage(error.message));
-  }, [token]);
+  }, [loadData]);
 
   useEffect(() => {
     setScores(metrics.map((metric) => defaultScore(metric._id)));

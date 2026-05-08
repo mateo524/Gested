@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -26,7 +26,7 @@ export default function RolesPage() {
     );
   }, [roles, query]);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     const [rolesData, catalog] = await Promise.all([
       apiFetch("/roles", { token }),
       apiFetch("/roles/catalog", { token }),
@@ -34,14 +34,14 @@ export default function RolesPage() {
     setRoles(rolesData);
     setPermissionsCatalog(catalog.permissions || []);
     setTemplates(catalog.templates || []);
-  }
+  }, [token]);
 
   useEffect(() => {
     loadData().catch((error) => {
       setMessageType("error");
       setMessage(error.message);
     });
-  }, [token]);
+  }, [loadData]);
 
   function resetForm() {
     setEditingId("");

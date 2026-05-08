@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -23,7 +23,7 @@ export default function EvaluationCyclesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       const [schoolsData, cyclesData] = await Promise.all([
@@ -38,14 +38,14 @@ export default function EvaluationCyclesPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [form.schoolId, token]);
 
   useEffect(() => {
     loadData().catch((error) => {
       setMessageType("error");
       setMessage(error.message);
     });
-  }, [token]);
+  }, [loadData]);
 
   async function handleSubmit(event) {
     event.preventDefault();

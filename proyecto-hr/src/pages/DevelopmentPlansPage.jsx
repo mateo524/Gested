@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -22,7 +22,7 @@ export default function DevelopmentPlansPage() {
   const [message, setMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     const params = new URLSearchParams();
     if (filters.employeeId) params.set("employeeId", filters.employeeId);
     if (filters.estado) params.set("estado", filters.estado);
@@ -37,11 +37,11 @@ export default function DevelopmentPlansPage() {
     setPlans(plansData);
     setEmployees(employeesData);
     setEvaluations(evaluationsData);
-  }
+  }, [filters.employeeId, filters.estado, token]);
 
   useEffect(() => {
     loadData().catch((error) => setMessage(error.message));
-  }, [token, filters.employeeId, filters.estado]);
+  }, [loadData]);
 
   async function handleSubmit(event) {
     event.preventDefault();

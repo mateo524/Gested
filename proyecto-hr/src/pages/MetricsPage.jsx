@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -39,7 +39,7 @@ export default function MetricsPage() {
     [competencies, form.schoolId]
   );
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       const [schoolsData, competenciesData, metricsData] = await Promise.all([
@@ -56,14 +56,14 @@ export default function MetricsPage() {
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [form.schoolId, token]);
 
   useEffect(() => {
     loadData().catch((error) => {
       setMessageType("error");
       setMessage(error.message);
     });
-  }, [token]);
+  }, [loadData]);
 
   function updateLevel(index, field, value) {
     const nextLevels = [...form.levels];

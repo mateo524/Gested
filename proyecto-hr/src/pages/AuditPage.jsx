@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -36,15 +36,15 @@ export default function AuditPage() {
     return built ? `?${built}` : "";
   }, [filters]);
 
-  async function loadAudit() {
+  const loadAudit = useCallback(async () => {
     const data = await apiFetch(`/audit${queryString}`, { token });
     setLogs(data.logs || []);
     setOptions(data.filters || { modules: [], actions: [], users: [] });
-  }
+  }, [queryString, token]);
 
   useEffect(() => {
     loadAudit().catch((error) => setMessage(error.message));
-  }, [token, queryString]);
+  }, [loadAudit]);
 
   return (
     <div className="space-y-6">

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -63,14 +63,14 @@ export default function CompaniesPage() {
     filteredCompanies.length > 0 &&
     filteredCompanies.every((company) => selectedIds.includes(company._id));
 
-  async function loadCompanies() {
+  const loadCompanies = useCallback(async () => {
     const data = await apiFetch(`/companies${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`, { token });
     setCompanies(data);
-  }
+  }, [query, token]);
 
   useEffect(() => {
     loadCompanies().catch((error) => setMessage(error.message));
-  }, [token, query]);
+  }, [loadCompanies]);
 
   function toggleSelection(companyId) {
     setSelectedIds((current) =>

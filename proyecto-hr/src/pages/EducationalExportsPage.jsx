@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
@@ -46,7 +46,7 @@ export default function EducationalExportsPage() {
     return params.toString() ? `?${params.toString()}` : "";
   }, [filters]);
 
-  async function loadOverview() {
+  const loadOverview = useCallback(async () => {
     try {
       setIsLoadingOverview(true);
       const data = await apiFetch("/education-exports/overview", { token });
@@ -57,9 +57,9 @@ export default function EducationalExportsPage() {
     } finally {
       setIsLoadingOverview(false);
     }
-  }
+  }, [filters.schoolId, token]);
 
-  async function loadDataset() {
+  const loadDataset = useCallback(async () => {
     try {
       setIsLoadingDataset(true);
       const data = await apiFetch(`/education-exports/dataset/${dataset}${queryString}`, { token });
@@ -67,21 +67,21 @@ export default function EducationalExportsPage() {
     } finally {
       setIsLoadingDataset(false);
     }
-  }
+  }, [dataset, queryString, token]);
 
-  async function loadImportJobs() {
+  const loadImportJobs = useCallback(async () => {
     const data = await apiFetch("/education-exports/import-jobs", { token });
     setImportJobs(data.items || []);
-  }
+  }, [token]);
 
   useEffect(() => {
     loadOverview().catch((error) => setMessage(error.message));
     loadImportJobs().catch((error) => setMessage(error.message));
-  }, [token, activeCompanyId]);
+  }, [activeCompanyId, loadImportJobs, loadOverview]);
 
   useEffect(() => {
     loadDataset().catch((error) => setMessage(error.message));
-  }, [token, dataset, queryString, activeCompanyId]);
+  }, [activeCompanyId, loadDataset]);
 
   async function downloadDataset(format) {
     try {
