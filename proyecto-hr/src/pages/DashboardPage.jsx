@@ -24,6 +24,7 @@ export default function DashboardPage() {
   const [scenarios, setScenarios] = useState([]);
   const [simForm, setSimForm] = useState({ competency: "", investment: "media" });
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [meetingMode, setMeetingMode] = useState(false);
   const [launchAudit, setLaunchAudit] = useState({ running: false, done: false, score: 0, checks: [] });
   const roleCode = user?.roleCode || "";
   const isSuperOrDirector = user?.isSuperAdmin || roleCode === "ADMIN_COLEGIO";
@@ -470,6 +471,22 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border border-white/10 bg-[#122530] p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Vista</p>
+            <p className="text-sm text-white">{meetingMode ? "Modo reunion activado" : "Modo operativo activado"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setMeetingMode((v) => !v)}
+            className="rounded-xl border border-white/20 bg-[#0f1f28] px-4 py-2 text-sm font-semibold text-[#c5d5de]"
+          >
+            {meetingMode ? "Volver a modo operativo" : "Activar modo reunion"}
+          </button>
+        </div>
+      </section>
+
       <section className="rounded-[2rem] border border-emerald-300/30 bg-emerald-500/10 p-7">
         <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">Vista principal</p>
         <h2 className="mt-2 text-3xl font-bold text-white">Decisiones recomendadas</h2>
@@ -563,6 +580,7 @@ export default function DashboardPage() {
         </article>
       </section>
 
+      {!meetingMode ? (
       <section className="grid gap-4 xl:grid-cols-2">
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-5">
           <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Centro de estado operativo</p>
@@ -595,6 +613,7 @@ export default function DashboardPage() {
           ) : null}
         </article>
       </section>
+      ) : null}
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex items-center justify-between gap-3">
@@ -629,6 +648,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {!meetingMode ? (
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -664,7 +684,9 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </section>
+      ) : null}
 
+      {!meetingMode ? (
       <section className="rounded-[2rem] border border-[#1e3a8a]/35 bg-[#0f2230] p-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -696,6 +718,7 @@ export default function DashboardPage() {
           ))}
         </div>
       </section>
+      ) : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <KpiCard title={isEmpleado ? "Mi score actual" : "Promedio general"} value={summary.cards?.[3]?.value || "0.00"} hint={summary.cards?.[3]?.hint || "Sin datos"} />
@@ -788,6 +811,7 @@ export default function DashboardPage() {
         </div>
       </section>
 
+      {!meetingMode ? (
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-4">
         <button
           type="button"
@@ -797,8 +821,9 @@ export default function DashboardPage() {
           {showAdvanced ? "Ocultar anal?tica avanzada" : "Mostrar anal?tica avanzada (patrones y prediccion)"}
         </button>
       </section>
+      ) : null}
 
-      {showAdvanced ? (
+      {showAdvanced && !meetingMode ? (
       <section className="grid gap-6 xl:grid-cols-3">
         <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h3 className="text-lg font-semibold text-white">Capa 1: Patrones detectados</h3>
@@ -841,6 +866,7 @@ export default function DashboardPage() {
       </section>
       ) : null}
 
+      {!meetingMode ? (
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-xl font-semibold text-white">Simulador de inversion en capacitacion</h3>
         <p className="mt-1 text-[#9fb6c4]">Proyecta impacto en riesgo y desempeno antes de decidir presupuesto.</p>
@@ -909,6 +935,7 @@ export default function DashboardPage() {
           </div>
         ) : null}
       </section>
+      ) : null}
     </div>
   );
 }
