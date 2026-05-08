@@ -85,11 +85,43 @@ export async function parseWorkbookRows(file) {
   const workbook = new ExcelJS.Workbook();
   const fileName = String(file.originalname || "").toLowerCase();
   if (fileName.endsWith(".csv")) {
-    await workbook.csv.readBuffer(file.buffer);
+    const text = Buffer.from(file.buffer).toString("utf8");
+    const rows = parseCsvText(text);
+    const sheet = workbook.addWorksheet("CSV");
+    rows.forEach((row) => sheet.addRow(row));
   } else {
     await workbook.xlsx.load(file.buffer);
   }
   return workbook;
+}
+
+function parseCsvText(text) {
+  const normalized = String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+  const lines = normalized.split("\n").filter((line) => line.trim() !== "");
+  return lines.map((line) => {
+    const cells = [];
+    let current = "";
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i += 1) {
+      const ch = line[i];
+      if (ch === '"') {
+        const next = line[i + 1];
+        if (inQuotes && next === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === "," && !inQuotes) {
+        cells.push(current);
+        current = "";
+      } else {
+        current += ch;
+      }
+    }
+    cells.push(current);
+    return cells.map((cell) => String(cell || "").trim());
+  });
 }
 
 export function extractRowsFromSheet(worksheet, headerRowNumber) {
@@ -313,4 +345,3 @@ export function validateRowsForDataset(mappedRows, dataset) {
 
   return { validRows, invalidRows, warnings, duplicates };
 }
-
