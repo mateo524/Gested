@@ -33,11 +33,21 @@ export default function MetricsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [query, setQuery] = useState("");
 
   const visibleCompetencies = useMemo(
     () => competencies.filter((item) => !form.schoolId || item.schoolId === form.schoolId || item.schoolId === null),
     [competencies, form.schoolId]
   );
+  const filteredMetrics = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    if (!term) return metrics;
+    return metrics.filter((metric) =>
+      [metric.nombre, metric.descripcion, ...(metric.cargoAplica || [])]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [metrics, query]);
 
   const loadData = useCallback(async () => {
     try {
@@ -135,8 +145,11 @@ export default function MetricsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Motor de evaluacion</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Motor de evaluaci?n</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Indicadores y niveles</h3>
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
+          Define indicadores claros por competencia y usa la misma escala para comparar resultados.
+        </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -180,22 +193,30 @@ export default function MetricsPage() {
               ))}
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full">
+            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full disabled:opacity-60">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear indicador"}
             </button>
             {editingId ? (
               <button type="button" onClick={cancelEdit} className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]">
-                Cancelar edicion
+                Cancelar edici?n
               </button>
             ) : null}
           </form>
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Indicadores cargados</h4>
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h4 className="text-xl font-semibold text-white">Indicadores cargados</h4>
+            <input
+              className="w-full max-w-xs rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              placeholder="Buscar indicador o cargo"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </div>
           <div className="mt-6 space-y-4">
             {isLoading ? <p className="pf-alert-info">Cargando indicadores...</p> : null}
-            {!isLoading && metrics.length ? metrics.map((metric) => (
+            {!isLoading && filteredMetrics.length ? filteredMetrics.map((metric) => (
               <article key={metric._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <p className="text-lg font-semibold text-white">{metric.nombre}</p>
                 <p className="mt-1 text-sm text-[#9fb6c4]">
@@ -214,7 +235,7 @@ export default function MetricsPage() {
                 </button>
               </article>
             )) : null}
-            {!isLoading && !metrics.length ? <p className="pf-alert-warning">Todavía no hay indicadores cargados.</p> : null}
+            {!isLoading && !filteredMetrics.length ? <p className="pf-alert-warning">No hay indicadores para los filtros actuales.</p> : null}
           </div>
         </section>
       </div>

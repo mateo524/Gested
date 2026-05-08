@@ -105,6 +105,9 @@ export default function EvaluationCyclesPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Periodos de evaluacion</h3>
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
+          Define periodos claros para ordenar altas, evaluaciones y reportes por etapa.
+        </p>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
@@ -144,7 +147,7 @@ export default function EvaluationCyclesPage() {
               <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaInicio} onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })} />
               <input type="date" className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.fechaFin} onChange={(e) => setForm({ ...form, fechaFin: e.target.value })} />
             </div>
-            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full">
+            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full disabled:opacity-60">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear periodo"}
             </button>
             {editingId ? (

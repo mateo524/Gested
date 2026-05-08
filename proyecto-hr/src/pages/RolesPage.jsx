@@ -15,6 +15,7 @@ export default function RolesPage() {
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
   const [query, setQuery] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const filteredRoles = useMemo(() => {
     const term = query.trim().toLowerCase();
@@ -84,6 +85,7 @@ export default function RolesPage() {
       return;
     }
     try {
+      setIsSubmitting(true);
       const isEditing = Boolean(editingId);
       const path = isEditing ? `/roles/${editingId}` : "/roles";
       const method = isEditing ? "PUT" : "POST";
@@ -105,6 +107,8 @@ export default function RolesPage() {
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -158,6 +162,11 @@ export default function RolesPage() {
               </button>
             ) : null}
           </div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Elegir base</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Describir perfil</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Asignar permisos</span>
+          </div>
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             {!editingId ? (
@@ -188,8 +197,8 @@ export default function RolesPage() {
               ))}
             </div>
 
-            <button type="submit" className="pf-button-primary w-full text-sm">
-              {editingId ? "Guardar cambios" : "Crear perfil"}
+            <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full text-sm disabled:opacity-60">
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear perfil"}
             </button>
           </form>
         </section>
