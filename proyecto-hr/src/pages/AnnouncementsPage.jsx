@@ -40,7 +40,6 @@ export default function AnnouncementsPage() {
 
   async function sendAnnouncement(event) {
     event.preventDefault();
-
     try {
       setMessage("");
       setIsSubmitting(true);
@@ -76,12 +75,9 @@ export default function AnnouncementsPage() {
       await apiFetch(`/announcements/${item._id}/visibility`, {
         method: "PUT",
         token,
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ visible: !item.visible }),
       });
-
       await loadData();
     } catch (error) {
       setMessage(error.message);
@@ -100,27 +96,32 @@ export default function AnnouncementsPage() {
     }
   }
 
-  const isSuperAdmin = !!user?.isSuperAdmin;
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
 
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#142028] p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Comunicación interna</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Comunicacion interna</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Novedades y avisos</h3>
-        <p className="mt-3 max-w-3xl text-slate-500">
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Este espacio permite compartir informacion importante dentro de la app. El superadmin
           puede enviar novedades a cada empresa y cada empresa solo ve sus propios mensajes.
         </p>
       </section>
 
       {isSuperAdmin ? (
-        <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-          <h3 className="text-xl font-semibold">Enviar novedad</h3>
-          <p className="mt-1 text-slate-500">Comparte información relevante con una empresa puntual.</p>
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 shadow-sm">
+          <h3 className="text-xl font-semibold text-white">Enviar novedad</h3>
+          <p className="mt-1 text-[#9fb6c4]">Comparte informacion relevante con una empresa puntual.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Elegir empresa</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Redactar mensaje</span>
+            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Adjuntar y enviar</span>
+          </div>
 
           <form className="mt-6 space-y-4" onSubmit={sendAnnouncement}>
             <select
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
               value={form.companyId}
               onChange={(event) => setForm({ ...form, companyId: event.target.value })}
             >
@@ -133,14 +134,14 @@ export default function AnnouncementsPage() {
             </select>
 
             <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
               placeholder="Titulo"
               value={form.titulo}
               onChange={(event) => setForm({ ...form, titulo: event.target.value })}
             />
 
             <textarea
-              className="min-h-32 w-full rounded-2xl border border-slate-300 px-4 py-3"
+              className="min-h-32 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
               placeholder="Contenido de la novedad"
               value={form.cuerpo}
               onChange={(event) => setForm({ ...form, cuerpo: event.target.value })}
@@ -148,7 +149,7 @@ export default function AnnouncementsPage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <select
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
                 value={form.prioridad}
                 onChange={(event) => setForm({ ...form, prioridad: event.target.value })}
               >
@@ -158,23 +159,23 @@ export default function AnnouncementsPage() {
               </select>
 
               <input
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
                 placeholder="Categoria"
                 value={form.categoria}
                 onChange={(event) => setForm({ ...form, categoria: event.target.value })}
               />
             </div>
 
-            <label className="block rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-5">
-              <span className="block text-sm font-medium text-slate-700">Adjuntar archivos</span>
-              <span className="mt-1 block text-sm text-slate-500">
+            <label className="block rounded-[1.75rem] border border-dashed border-white/20 bg-[#0f1f28] px-4 py-5">
+              <span className="block text-sm font-medium text-white">Adjuntar archivos</span>
+              <span className="mt-1 block text-sm text-[#9fb6c4]">
                 Puedes sumar PDF, instructivos, contratos o material complementario.
               </span>
               <input
                 id="announcement-attachments"
                 type="file"
                 multiple
-                className="mt-4 block w-full text-sm text-slate-500"
+                className="mt-4 block w-full text-sm text-[#9fb6c4]"
                 onChange={(event) =>
                   setForm({ ...form, attachments: Array.from(event.target.files || []) })
                 }
@@ -184,7 +185,7 @@ export default function AnnouncementsPage() {
                   {form.attachments.map((file) => (
                     <span
                       key={`${file.name}-${file.size}`}
-                      className="rounded-full bg-white px-3 py-1 text-xs text-slate-600"
+                      className="rounded-full border border-white/15 bg-[#142028] px-3 py-1 text-xs text-[#c5d5de]"
                     >
                       {file.name}
                     </span>
@@ -196,7 +197,7 @@ export default function AnnouncementsPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="rounded-2xl bg-slate-950 px-6 py-3 font-semibold text-white"
+              className="rounded-2xl bg-[#1e3a8a] px-6 py-3 font-semibold text-white disabled:opacity-60"
             >
               {isSubmitting ? "Enviando..." : "Enviar novedad"}
             </button>
@@ -204,14 +205,14 @@ export default function AnnouncementsPage() {
         </section>
       ) : null}
 
-      <section className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-        <h3 className="text-xl font-semibold">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 shadow-sm">
+        <h3 className="text-xl font-semibold text-white">
           {isSuperAdmin ? "Mensajes enviados" : "Novedades para tu empresa"}
         </h3>
-        <p className="mt-1 text-slate-500">
+        <p className="mt-1 text-[#9fb6c4]">
           {isSuperAdmin
-            ? "Historial de información compartida desde Performia con cada cuenta cliente."
-            : "Información compartida por Performia para esta empresa."}
+            ? "Historial de informacion compartida desde Performia con cada cuenta cliente."
+            : "Informacion compartida por Performia para esta empresa."}
         </p>
 
         <div className="mt-6 space-y-4">
@@ -221,38 +222,38 @@ export default function AnnouncementsPage() {
                 key={item._id}
                 className={`rounded-[1.75rem] border p-5 ${
                   !isSuperAdmin && !item.isRead
-                    ? "border-emerald-200 bg-emerald-50/40"
-                    : "border-slate-200"
+                    ? "border-emerald-300/40 bg-emerald-900/20"
+                    : "border-white/10 bg-[#0f1f28]"
                 }`}
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-lg font-semibold text-slate-950">{item.titulo}</p>
+                      <p className="text-lg font-semibold text-white">{item.titulo}</p>
                       {!isSuperAdmin && !item.isRead ? (
                         <span className="rounded-full bg-emerald-500 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-white">
                           Nueva
                         </span>
                       ) : null}
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2 text-sm text-slate-500">
-                      <span className="rounded-full bg-slate-100 px-3 py-1">{item.prioridad}</span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1">{item.categoria}</span>
+                    <div className="mt-2 flex flex-wrap gap-2 text-sm text-[#9fb6c4]">
+                      <span className="rounded-full border border-white/15 bg-[#142028] px-3 py-1">{item.prioridad}</span>
+                      <span className="rounded-full border border-white/15 bg-[#142028] px-3 py-1">{item.categoria}</span>
                     </div>
                   </div>
-                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  <span className="rounded-full border border-emerald-400/30 bg-emerald-900/20 px-3 py-1 text-xs font-semibold text-emerald-200">
                     {formatDate(item.createdAt)}
                   </span>
                 </div>
 
-                <p className="mt-4 whitespace-pre-wrap text-slate-600">{item.cuerpo}</p>
+                <p className="mt-4 whitespace-pre-wrap text-[#d4e1e8]">{item.cuerpo}</p>
 
                 {item.attachments?.length ? (
                   <div className="mt-4 flex flex-wrap gap-2">
                     {item.attachments.map((attachment, index) => (
                       <span
                         key={`${item._id}-attachment-${index}`}
-                        className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-600"
+                        className="rounded-full border border-white/15 bg-[#142028] px-3 py-1 text-xs text-[#c5d5de]"
                       >
                         {attachmentLabel(attachment)}
                       </span>
@@ -265,7 +266,7 @@ export default function AnnouncementsPage() {
                     <button
                       type="button"
                       onClick={() => toggleVisibility(item)}
-                      className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium"
+                      className="rounded-2xl border border-white/20 px-4 py-2 text-sm font-medium text-[#c5d5de]"
                     >
                       {item.visible ? "Ocultar para empresa" : "Volver a mostrar"}
                     </button>
@@ -274,9 +275,9 @@ export default function AnnouncementsPage() {
                       <button
                         type="button"
                         onClick={() => markAsRead(item)}
-                        className="rounded-2xl border border-emerald-200 px-4 py-2 text-sm font-medium text-emerald-700"
+                        className="rounded-2xl border border-emerald-300/40 bg-emerald-900/20 px-4 py-2 text-sm font-medium text-emerald-200"
                       >
-                        Marcar como leída
+                        Marcar como leida
                       </button>
                     )
                   )}
@@ -284,11 +285,11 @@ export default function AnnouncementsPage() {
               </article>
             ))
           ) : (
-            <p className="text-slate-500">Todavia no hay novedades cargadas.</p>
+            <p className="text-[#9fb6c4]">Todavia no hay novedades cargadas.</p>
           )}
         </div>
 
-        {message ? <p className="mt-4 text-sm text-slate-600">{message}</p> : null}
+        {message ? <p className="mt-4 text-sm text-[#c5d5de]">{message}</p> : null}
       </section>
     </div>
   );
