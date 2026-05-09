@@ -105,7 +105,7 @@ export default function EducationalExportsPage() {
       setMessage(error.message);
     });
     return () => controller.abort();
-  }, [loadOverview]);
+  }, [loadOverview, overviewCacheKey]);
 
   useEffect(() => {
     const cachedDataset = sessionStorage.getItem(datasetCacheKey);
@@ -125,7 +125,7 @@ export default function EducationalExportsPage() {
       setMessage(error.message);
     });
     return () => controller.abort();
-  }, [loadDataset]);
+  }, [loadDataset, datasetCacheKey]);
 
   async function downloadDataset(format) {
     try {
@@ -153,7 +153,7 @@ export default function EducationalExportsPage() {
   async function previewImport(mode = "preview") {
     if (!importFile) {
       setMessageType("warning");
-      setMessage("Selecciona un archivo antes de continuar.");
+      setMessage("Seleccioná un archivo antes de continuar.");
       return;
     }
     const controller = new AbortController();
@@ -180,13 +180,13 @@ export default function EducationalExportsPage() {
       setConfirmWarnings(false);
       if (mode === "analyze") {
         setMessageType("info");
-        setMessage("Análisis completado. Revisa detecciones y advertencias.");
+        setMessage("Análisis completado. Revisá detecciones y advertencias.");
       }
     } catch (error) {
       setImportPreview(null);
       if (error.name === "AbortError") {
         setMessageType("warning");
-        setMessage("La validación demoró demasiado. Prueba con un archivo más chico o usa 'Analizar sin importar'.");
+        setMessage("La validación demoró demasiado. Probá con un archivo más chico o usá 'Analizar sin importar'.");
       } else {
         setMessageType("error");
         setMessage(error.message);
@@ -268,7 +268,7 @@ export default function EducationalExportsPage() {
         <p className="mt-2 text-[#9fb6c4]">Flujo sugerido: subir archivo, validar resultados y recién después confirmar importación.</p>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
+      <section className="space-y-4 rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h4 className="text-lg font-semibold text-white">Subida de datos (unificada)</h4>
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
         {message ? <div className={messageClass}>{message}</div> : null}
@@ -291,13 +291,27 @@ export default function EducationalExportsPage() {
         </div>
 
         {importPreview ? (
-          <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8] space-y-3">
+          <div className="space-y-3 rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
             <p>Dataset detectado: {importPreview.datasetDetected}</p>
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Válidas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
             <p>Advertencias: {importPreview.warningCount || 0}</p>
             {importPreview.analysis?.sheetName ? <p>Hoja detectada: {importPreview.analysis.sheetName} (encabezado fila {importPreview.analysis.headerRowNumber})</p> : null}
+
+            <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+              <p className="text-sm font-semibold text-white">Estado del resultado</p>
+              <p className="mt-1 text-xs text-[#c5d5de]">
+                {importPreview.invalidCount > 0
+                  ? `Hay ${importPreview.invalidCount} error(es) que bloquean la importación hasta corregirlos.`
+                  : "No hay errores bloqueantes. Podés continuar."}
+              </p>
+              <p className="mt-1 text-xs text-[#c5d5de]">
+                {(importPreview.warningCount || 0) > 0
+                  ? `Hay ${importPreview.warningCount} advertencia(s): no bloquean, pero requieren confirmación.`
+                  : "No hay advertencias pendientes."}
+              </p>
+            </div>
 
             {detectionEntries.length ? (
               <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
@@ -329,14 +343,15 @@ export default function EducationalExportsPage() {
                   ))}
                 </div>
                 <button className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-white" onClick={() => previewImport("preview")} disabled={isImporting}>
-                  Reanalizar con mapeo opcional
+                  Reanalizar con mejora opcional
                 </button>
               </div>
             ) : null}
 
             {(importPreview.sampleWarnings || []).length ? (
               <div className="rounded-xl border border-yellow-300/30 bg-yellow-500/10 p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-yellow-200">Advertencias</p>
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-yellow-200">Advertencias (no bloquean)</p>
+                <p className="mb-2 text-xs text-yellow-100">Podés seguir, pero primero confirmá que revisaste estas advertencias.</p>
                 {(importPreview.sampleWarnings || []).slice(0, 10).map((warning, index) => (
                   <p key={`${warning.row}-${index}`} className="text-xs text-yellow-100">
                     Fila {warning.row}: {warning.message}
@@ -347,7 +362,7 @@ export default function EducationalExportsPage() {
 
             {editableErrors.length ? (
               <div className="space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Corrige filas con error antes de confirmar</p>
+                <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Errores que sí bloquean</p>
                 {editableErrors.map((errorRow, index) => (
                   <div key={`${errorRow.row}-${index}`} className="rounded-lg border border-white/10 bg-[#142028] p-2">
                     <p className="mb-2 text-xs text-rose-300">
@@ -374,7 +389,7 @@ export default function EducationalExportsPage() {
                 {(importPreview.sampleWarnings || []).length ? (
                   <label className="flex items-center gap-2 text-xs text-[#c9d9e1]">
                     <input type="checkbox" checked={confirmWarnings} onChange={(e) => setConfirmWarnings(e.target.checked)} />
-                    Confirmo advertencias (roles, jefe o sede ambiguos)
+                    Revisé las advertencias y quiero continuar.
                   </label>
                 ) : null}
                 <button
@@ -386,7 +401,11 @@ export default function EducationalExportsPage() {
                     ((importPreview.sampleWarnings || []).length > 0 && !confirmWarnings)
                   }
                 >
-                  {isImporting ? "Importando..." : "Confirmar importación"}
+                  {isImporting
+                    ? "Importando..."
+                    : importPreview.invalidCount > 0
+                    ? "Corregí errores para continuar"
+                    : "Confirmar e importar"}
                 </button>
               </div>
             ) : null}
