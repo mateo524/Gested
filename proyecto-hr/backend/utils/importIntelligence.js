@@ -74,11 +74,33 @@ function confidenceByContent(samples, field) {
 
 function scoreRows(rows, headers) {
   let nonEmptyRows = 0;
+  let dataDensity = 0;
   for (const row of rows) {
     const rowValues = headers.map((header) => row[header]).filter((value) => String(value || "").trim() !== "");
-    if (rowValues.length >= 2) nonEmptyRows += 1;
+    if (rowValues.length >= 2) {
+      nonEmptyRows += 1;
+      dataDensity += rowValues.length;
+    }
   }
-  return nonEmptyRows;
+  return nonEmptyRows * 2 + dataDensity * 0.25;
+}
+
+function scoreHeaderRow(headers) {
+  let aliasHits = 0;
+  let genericCols = 0;
+  let suspiciousLong = 0;
+  const knownAliases = new Set(Object.values(aliasMap).flat().map((value) => sanitizeHeader(value)));
+
+  headers.forEach((header) => {
+    const sanitized = sanitizeHeader(header);
+    if (!sanitized) return;
+    if (/^col_\d+$/i.test(sanitized)) genericCols += 1;
+    if (knownAliases.has(sanitized)) aliasHits += 1;
+    if (sanitized.length > 30) suspiciousLong += 1;
+  });
+
+  // Priorizamos filas con encabezados tipo dataset y penalizamos narrativas/largas.
+  return aliasHits * 6 - genericCols * 1.5 - suspiciousLong * 2;
 }
 
 export async function parseWorkbookRows(file) {
@@ -262,7 +284,9 @@ export function detectBestSheet(workbook) {
     let best = { sheetName: worksheet.name, headerRowNumber: 1, score: -1, rows: [], headers: [] };
     for (let rowNumber = 1; rowNumber <= Math.min(25, worksheet.rowCount || 25); rowNumber += 1) {
       const { headers, rows } = extractRowsFromSheet(worksheet, rowNumber);
-      const score = scoreRows(rows.slice(0, 60), headers);
+      const dataScore = scoreRows(rows.slice(0, 60), headers);
+      const headerScore = scoreHeaderRow(headers);
+      const score = dataScore + headerScore;
       if (score > best.score) best = { sheetName: worksheet.name, headerRowNumber: rowNumber, score, rows, headers };
     }
     candidates.push(best);
