@@ -111,6 +111,23 @@ export default function EvaluationCyclesPage() {
     setFieldErrors({});
   }
 
+  async function handleDelete(cycle) {
+    const ok = window.confirm(`¿Eliminar el período "${cycle.periodo} ${cycle.anio}"?`);
+    if (!ok) return;
+    try {
+      await apiFetch(`/evaluation-cycles/${cycle._id}`, { method: "DELETE", token });
+      if (editingId === cycle._id) {
+        cancelEdit();
+      }
+      setMessageType("success");
+      setMessage("Período eliminado.");
+      await loadData();
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
@@ -203,9 +220,14 @@ export default function EvaluationCyclesPage() {
                   {cycle.fechaInicio ? new Date(cycle.fechaInicio).toLocaleDateString("es-AR") : "-"} al{" "}
                   {cycle.fechaFin ? new Date(cycle.fechaFin).toLocaleDateString("es-AR") : "-"}
                 </p>
-                <button type="button" onClick={() => handleEdit(cycle)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
-                  Editar
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                    Editar
+                  </button>
+                  <button type="button" onClick={() => handleDelete(cycle)} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                    Eliminar
+                  </button>
+                </div>
               </article>
             )) : null}
             {!isLoading && !cycles.length ? <p className="pf-alert-warning">Todavía no hay períodos definidos.</p> : null}
@@ -217,4 +239,3 @@ export default function EvaluationCyclesPage() {
     </div>
   );
 }
-

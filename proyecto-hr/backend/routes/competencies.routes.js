@@ -1,5 +1,6 @@
 import express from "express";
 import Competency from "../models/Competency.js";
+import Metric from "../models/Metric.js";
 import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
@@ -101,6 +102,36 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
   });
 
   res.json({ mensaje: "Competencia actualizada", competency });
+});
+
+router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_COMPETENCIES), async (req, res) => {
+  const filter = buildScopedFilter(req, { _id: req.params.id });
+  const competency = await Competency.findOne(filter);
+  if (!competency) {
+    return res.status(404).json({ mensaje: "Competencia no encontrada" });
+  }
+
+  const metricCount = await Metric.countDocuments({
+    companyId: competency.companyId,
+    schoolId: competency.schoolId,
+    competencyId: competency._id,
+  });
+  if (metricCount > 0) {
+    return res.status(400).json({ mensaje: "No se puede eliminar la competencia porque tiene indicadores asociados" });
+  }
+
+  await Competency.deleteOne({ _id: competency._id });
+
+  await logAudit({
+    companyId: competency.companyId,
+    schoolId: competency.schoolId,
+    userId: req.user.userId,
+    accion: "delete",
+    modulo: "competencies",
+    detalle: `Se elimino la competencia ${competency.nombre}`,
+  });
+
+  res.json({ mensaje: "Competencia eliminada" });
 });
 
 export default router;

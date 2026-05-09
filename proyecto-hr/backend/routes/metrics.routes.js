@@ -202,4 +202,26 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
   res.json({ mensaje: "Metrica actualizada", metric });
 });
 
+router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_METRICS), async (req, res) => {
+  const filter = buildScopedFilter(req, { _id: req.params.id });
+  const metric = await Metric.findOne(filter);
+  if (!metric) {
+    return res.status(404).json({ mensaje: "Metrica no encontrada" });
+  }
+
+  await MetricLevel.deleteMany({ metricId: metric._id });
+  await Metric.deleteOne({ _id: metric._id });
+
+  await logAudit({
+    companyId: metric.companyId,
+    schoolId: metric.schoolId,
+    userId: req.user.userId,
+    accion: "delete",
+    modulo: "metrics",
+    detalle: `Se elimino la metrica ${metric.nombre}`,
+  });
+
+  res.json({ mensaje: "Metrica eliminada" });
+});
+
 export default router;

@@ -143,6 +143,23 @@ export default function EmployeesPage() {
     setFieldErrors({});
   }
 
+  async function handleDelete(employee) {
+    const ok = window.confirm(`¿Eliminar a ${employee.apellido}, ${employee.nombre}? Esta acción no se puede deshacer.`);
+    if (!ok) return;
+    try {
+      await apiFetch(`/employees/${employee._id}`, { method: "DELETE", token });
+      if (editingId === employee._id) {
+        cancelEdit();
+      }
+      setMessageType("success");
+      setMessage("Empleado eliminado.");
+      await loadBase();
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="pf-card p-8">
@@ -276,9 +293,14 @@ export default function EmployeesPage() {
                     <p className="mt-1 text-xs text-[#7f99a8]">
                       Ingreso: {formatDate(employee.fechaIngreso)} - Jefe: {manager ? `${manager.apellido}, ${manager.nombre}` : "Sin jefe"}
                     </p>
-                    <button type="button" onClick={() => handleEdit(employee)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
-                      Editar
-                    </button>
+                    <div className="mt-3 flex gap-2">
+                      <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                        Editar
+                      </button>
+                      <button type="button" onClick={() => handleDelete(employee)} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                        Eliminar
+                      </button>
+                    </div>
                   </article>
                 );
               })

@@ -156,4 +156,31 @@ router.put(
   }
 );
 
+router.delete(
+  "/:id",
+  auth,
+  attachTenantScope,
+  requirePermission(PERMISSIONS.MANAGE_EVALUATION_CYCLES),
+  async (req, res) => {
+    const filter = buildScopedFilter(req, { _id: req.params.id });
+    const cycle = await EvaluationCycle.findOne(filter);
+    if (!cycle) {
+      return res.status(404).json({ mensaje: "Ciclo no encontrado" });
+    }
+
+    await EvaluationCycle.deleteOne({ _id: cycle._id });
+
+    await logAudit({
+      companyId: cycle.companyId,
+      schoolId: cycle.schoolId,
+      userId: req.user.userId,
+      accion: "delete",
+      modulo: "evaluation-cycles",
+      detalle: `Se elimino el ciclo ${cycle.periodo} ${cycle.anio}`,
+    });
+
+    res.json({ mensaje: "Ciclo eliminado" });
+  }
+);
+
 export default router;

@@ -87,6 +87,21 @@ export default function CompetenciesPage() {
     setMessage("Edicion cancelada.");
   }
 
+  async function handleDelete(competency) {
+    const ok = window.confirm(`¿Eliminar la competencia "${competency.nombre}"?`);
+    if (!ok) return;
+    try {
+      await apiFetch(`/competencies/${competency._id}`, { method: "DELETE", token });
+      if (editingId === competency._id) {
+        cancelEdit();
+      }
+      setMessage("Competencia eliminada.");
+      await loadData();
+    } catch (error) {
+      setMessage(error.message);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
@@ -159,9 +174,14 @@ export default function CompetenciesPage() {
                   <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{competency.componente}</span>
                 </div>
                 <p className="mt-3 text-sm text-[#9fb6c4]">{competency.descripción || "Sin descripción"}</p>
-                <button type="button" onClick={() => handleEdit(competency)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
-                  Editar
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={() => handleEdit(competency)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                    Editar
+                  </button>
+                  <button type="button" onClick={() => handleDelete(competency)} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                    Eliminar
+                  </button>
+                </div>
               </article>
             )) : <p className="text-[#9fb6c4]">Todavía no hay competencias cargadas.</p>}
           </div>
