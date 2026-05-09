@@ -16,7 +16,7 @@ export function sanitizeHeader(value) {
 
 const aliasMap = {
   apellido: ["apellido", "apellidos", "last_name", "lastname", "surname"],
-  nombre: ["nombre", "nombres", "first_name", "firstname", "name"],
+  nombre: ["nombre", "nombres", "first_name", "firstname", "name", "apellidoynombre", "nombreyapellido"],
   email: ["email", "correo", "mail", "correoelectronico"],
   cargo: ["cargo", "puesto", "posicion", "rolcargo", "position"],
   area: ["area", "departamento", "sector"],
@@ -341,10 +341,15 @@ function getMappedValue(row, detections, field) {
 export function mapRowsByDetections(rows, detections, dataset) {
   return rows.map((row) => {
     if (dataset === "employees") {
+      const rawApellido = String(getMappedValue(row, detections, "apellido") || "").trim();
+      const rawNombre = String(getMappedValue(row, detections, "nombre") || "").trim();
+      const autoName = splitCombinedName(rawNombre || rawApellido);
+      const apellido = rawApellido || autoName.apellido;
+      const nombre = rawNombre || autoName.nombre;
       return {
         _rowNumber: row._rowNumber,
-        apellido: String(getMappedValue(row, detections, "apellido") || "").trim(),
-        nombre: String(getMappedValue(row, detections, "nombre") || "").trim(),
+        apellido,
+        nombre,
         email: String(getMappedValue(row, detections, "email") || "").trim().toLowerCase(),
         cargo: String(getMappedValue(row, detections, "cargo") || "").trim(),
         area: String(getMappedValue(row, detections, "area") || "").trim(),
@@ -394,6 +399,24 @@ function normalizeRoleCode(raw) {
   if (value.includes("auditor") || value.includes("lector")) return "AUDITOR";
   if (value.includes("empleado") || value.includes("docente")) return "EMPLEADO";
   return raw ? String(raw).trim().toUpperCase() : "";
+}
+
+function splitCombinedName(value) {
+  const text = String(value || "").trim().replace(/\s+/g, " ");
+  if (!text) return { nombre: "", apellido: "" };
+  if (text.includes(",")) {
+    const [apellidoRaw, nombreRaw] = text.split(",", 2);
+    return {
+      apellido: String(apellidoRaw || "").trim(),
+      nombre: String(nombreRaw || "").trim(),
+    };
+  }
+  const parts = text.split(" ").filter(Boolean);
+  if (parts.length <= 1) return { nombre: text, apellido: "" };
+  return {
+    nombre: parts[0],
+    apellido: parts.slice(1).join(" "),
+  };
 }
 
 export function validateRowsForDataset(mappedRows, dataset) {

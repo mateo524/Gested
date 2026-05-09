@@ -982,22 +982,7 @@ router.post(
 
     const mappedRows = mapRowsByDetections(rows, detections, detectedDataset);
     const { validRows, invalidRows, warnings, duplicates } = validateRowsForDataset(mappedRows, detectedDataset);
-    const requiresManualMapping = lowConfidenceFields.length > 0;
-    if (requiresManualMapping && !manualMappingRaw) {
-      return res.status(422).json({
-        ok: false,
-        status: "requires_manual_mapping",
-        mensaje: "No se detectaron columnas criticas con suficiente confianza. Confirma mapeo manual.",
-        analysis: {
-          sheetName,
-          headerRowNumber,
-          worksheetsMeta,
-          detections,
-          lowConfidenceFields,
-          requiresManualMapping: true,
-        },
-      });
-    }
+    const requiresManualMapping = false;
 
     if (analyzeOnly) {
       return res.json({
