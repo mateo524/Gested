@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 import fs from "node:fs/promises";
 import { v2 as cloudinary } from "cloudinary";
 
@@ -130,4 +130,37 @@ export async function uploadBufferToStorage({
     bucket: null,
     publicUrl: null,
   };
+}
+
+export async function deleteFromStorage({ provider, key, bucket, localPath }) {
+  const resolvedProvider = String(provider || "").toLowerCase();
+
+  if (resolvedProvider === "cloudinary" && key) {
+    if (!isCloudinaryEnabled()) return;
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+    await cloudinary.uploader.destroy(key, { resource_type: "raw", invalidate: true }).catch(() => {});
+    await cloudinary.uploader.destroy(key, { resource_type: "image", invalidate: true }).catch(() => {});
+    await cloudinary.uploader.destroy(key, { resource_type: "video", invalidate: true }).catch(() => {});
+    return;
+  }
+
+  if (resolvedProvider === "s3" && key) {
+    if (!isS3Enabled()) return;
+    const client = getS3Client();
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: bucket || process.env.S3_BUCKET,
+        Key: key,
+      })
+    ).catch(() => {});
+    return;
+  }
+
+  if (resolvedProvider === "local" && localPath) {
+    await fs.unlink(localPath).catch(() => {});
+  }
 }

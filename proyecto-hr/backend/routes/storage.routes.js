@@ -9,7 +9,7 @@ import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { requireSuperAdmin } from "../middleware/rbac.js";
 import { logAudit } from "../utils/audit.js";
-import { uploadToStorage } from "../utils/storageProvider.js";
+import { uploadToStorage, deleteFromStorage } from "../utils/storageProvider.js";
 
 const router = express.Router();
 const uploadsDir = path.resolve("uploads", "storage");
@@ -171,6 +171,34 @@ router.get("/:id/detail", auth, requireSuperAdmin, permit("manage_companies"), a
     },
     preview: records,
   });
+});
+
+router.delete("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
+  const file = await DatabaseFile.findById(req.params.id);
+  if (!file) {
+    return res.status(404).json({ mensaje: "Archivo no encontrado" });
+  }
+
+  const localPath = file.archivo ? path.resolve(uploadsDir, file.archivo) : null;
+  await deleteFromStorage({
+    provider: file.storageProvider,
+    key: file.storageKey,
+    bucket: file.storageBucket,
+    localPath,
+  });
+
+  await Record.deleteMany({ databaseId: file._id });
+  await DatabaseFile.deleteOne({ _id: file._id });
+
+  await logAudit({
+    companyId: file.companyId,
+    userId: req.user.userId,
+    accion: "delete",
+    modulo: "archivo-central",
+    detalle: `Se elimino ${file.nombreVisible}`,
+  });
+
+  res.json({ mensaje: "Archivo eliminado" });
 });
 
 export default router;
