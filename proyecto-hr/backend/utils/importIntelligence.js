@@ -43,6 +43,9 @@ const expectedByDataset = {
 
 function confidenceByHeader(sanitizedHeader, field) {
   const aliases = aliasMap[field] || [];
+  if (field === "role" && /(observacion|observaciones|comentario|comentarios|nota|notas)/i.test(sanitizedHeader)) {
+    return 0;
+  }
   if (aliases.includes(sanitizedHeader)) return 0.95;
   if (aliases.some((alias) => sanitizedHeader.includes(alias) || alias.includes(sanitizedHeader))) return 0.8;
   return 0;
@@ -330,6 +333,9 @@ export function buildColumnDetections(rows, headers, manualMapping = {}) {
     let bestScore = 0;
     for (const header of headers) {
       if (usedHeaders.has(header)) continue;
+      if (field === "role" && /(observacion|observaciones|comentario|comentarios|nota|notas)/i.test(header)) {
+        continue;
+      }
       const headerScore = confidenceByHeader(header, field);
       const contentScore = confidenceByContent(samplesByHeader.get(header) || [], field) * 0.65;
       const score = Math.max(headerScore, contentScore);
