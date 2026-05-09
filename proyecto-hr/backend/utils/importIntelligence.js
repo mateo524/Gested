@@ -18,10 +18,10 @@ const aliasMap = {
   apellido: ["apellido", "apellidos", "last_name", "lastname", "surname"],
   nombre: ["nombre", "nombres", "first_name", "firstname", "name", "apellidoynombre", "nombreyapellido"],
   email: ["email", "correo", "mail", "correoelectronico"],
-  cargo: ["cargo", "puesto", "posicion", "rolcargo", "position"],
+  cargo: ["cargo", "funcioncargo", "funcion", "puesto", "posicion", "rolcargo", "position"],
   area: ["area", "departamento", "sector"],
   role: ["rol", "role", "perfil"],
-  managerRef: ["jefe", "supervisor", "manager", "responsable", "encargado"],
+  managerRef: ["jefe", "supervisor", "manager", "responsable", "encargado", "reportaa", "reporta"],
   sede: ["sede", "colegio", "school", "institucion", "campus"],
   legajo: ["legajo", "employeeid", "employee_id", "idempleado", "dni"],
   competencia: ["competencia", "competency"],
@@ -378,8 +378,9 @@ export function mapRowsByDetections(rows, detections, dataset) {
     if (dataset === "employees") {
       const rawApellido = String(getMappedValue(row, detections, "apellido") || "").trim();
       const rawNombre = String(getMappedValue(row, detections, "nombre") || "").trim();
-      const autoName = splitCombinedName(rawNombre || rawApellido);
-      const apellido = rawApellido || autoName.apellido;
+      const combinedFromApellido = !rawNombre && /,|\s/.test(rawApellido);
+      const autoName = splitCombinedName(combinedFromApellido ? rawApellido : (rawNombre || rawApellido));
+      const apellido = combinedFromApellido ? autoName.apellido : (rawApellido || autoName.apellido);
       const nombre = rawNombre || autoName.nombre;
       return {
         _rowNumber: row._rowNumber,
