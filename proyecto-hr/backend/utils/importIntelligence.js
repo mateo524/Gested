@@ -359,12 +359,33 @@ export function buildColumnDetections(rows, headers, manualMapping = {}) {
 
 export function classifyDatasetByDetections(detections, requestedDataset = "auto") {
   if (requestedDataset && requestedDataset !== "auto") return requestedDataset;
-  let best = { dataset: "unknown", score: 0 };
+  const ranking = [];
   for (const [dataset, fields] of Object.entries(expectedByDataset)) {
-    const scores = fields.map((field) => detections[field]?.confidence || 0);
-    const score = scores.reduce((acc, item) => acc + item, 0) / fields.length;
-    if (score > best.score) best = { dataset, score };
+    const fieldScores = fields.map((field) => detections[field]?.confidence || 0);
+    const score = fieldScores.reduce((acc, item) => acc + item, 0) / fields.length;
+    ranking.push({ dataset, score });
   }
+  ranking.sort((a, b) => b.score - a.score);
+  const best = ranking[0] || { dataset: "unknown", score: 0 };
+  const second = ranking[1] || { dataset: "unknown", score: 0 };
+
+  // Evita falsos positivos de "roles" cuando la planilla es mixta.
+  if (best.dataset === "roles") {
+    const roleInfo = detections.role || {};
+    const roleHeader = sanitizeHeader(roleInfo.header || "");
+    const looksLikeRoleHeader =
+      roleHeader === "rol" ||
+      roleHeader === "role" ||
+      roleHeader === "perfil" ||
+      roleHeader.includes("rol") ||
+      roleHeader.includes("perfil");
+
+    // Si no hay una columna de rol clara o hay empate cercano con otro dataset, no forzar roles.
+    if (!looksLikeRoleHeader || best.score < 0.85 || best.score - second.score < 0.12) {
+      return second.score >= 0.5 ? second.dataset : "unknown";
+    }
+  }
+
   return best.score >= 0.5 ? best.dataset : "unknown";
 }
 
