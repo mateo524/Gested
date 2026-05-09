@@ -316,7 +316,7 @@ export default function EducationalExportsPage() {
 
             {mappingFields.length ? (
               <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 p-3">
-                <p className="mb-2 text-sm font-semibold text-amber-200">Mapeo manual requerido</p>
+                <p className="mb-2 text-sm font-semibold text-amber-200">Mejora opcional de mapeo (la importación puede continuar igual)</p>
                 <div className="grid gap-2 md:grid-cols-3">
                   {mappingFields.map((field) => (
                     <input
@@ -329,7 +329,7 @@ export default function EducationalExportsPage() {
                   ))}
                 </div>
                 <button className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-white" onClick={() => previewImport("preview")} disabled={isImporting}>
-                  Reanalizar con mapeo manual
+                  Reanalizar con mapeo opcional
                 </button>
               </div>
             ) : null}
@@ -371,12 +371,6 @@ export default function EducationalExportsPage() {
 
             {!importPreview.analyzeOnly ? (
               <div className="space-y-2">
-                {mappingFields.length ? (
-                  <label className="flex items-center gap-2 text-xs text-[#c9d9e1]">
-                    <input type="checkbox" checked={confirmMapping} onChange={(e) => setConfirmMapping(e.target.checked)} />
-                    Confirmo el mapeo manual de columnas detectadas
-                  </label>
-                ) : null}
                 {(importPreview.sampleWarnings || []).length ? (
                   <label className="flex items-center gap-2 text-xs text-[#c9d9e1]">
                     <input type="checkbox" checked={confirmWarnings} onChange={(e) => setConfirmWarnings(e.target.checked)} />
@@ -389,7 +383,6 @@ export default function EducationalExportsPage() {
                   disabled={
                     isImporting ||
                     (importPreview.validCount === 0 && editableErrors.length === 0) ||
-                    (mappingFields.length > 0 && !confirmMapping) ||
                     ((importPreview.sampleWarnings || []).length > 0 && !confirmWarnings)
                   }
                 >
