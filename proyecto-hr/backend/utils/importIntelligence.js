@@ -122,6 +122,24 @@ export async function parseWorkbookRows(file) {
     await workbook.xlsx.load(buffer);
     return workbook;
   } catch (xlsxError) {
+    // Fallback robusto para xlsx "raros" que Excel abre pero exceljs no parsea bien.
+    try {
+      const xlsx = await import("xlsx");
+      const wb = xlsx.read(buffer, { type: "buffer", cellDates: false, raw: false });
+      const excelFallback = new ExcelJS.Workbook();
+      for (const name of wb.SheetNames || []) {
+        const ws = wb.Sheets[name];
+        const matrix = xlsx.utils.sheet_to_json(ws, { header: 1, defval: "" });
+        const out = excelFallback.addWorksheet(name || "Sheet");
+        matrix.forEach((row) => out.addRow(Array.isArray(row) ? row : [row]));
+      }
+      if (excelFallback.worksheets.length > 0) {
+        return excelFallback;
+      }
+    } catch {
+      // Sigue al fallback siguiente
+    }
+
     const fallbackByMime = mimeType.includes("octet-stream") || mimeType.includes("text/plain");
     try {
       loadAsDelimited(buffer.toString("utf8"));
