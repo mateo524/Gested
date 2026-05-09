@@ -732,6 +732,115 @@ async function parseWithAiWebhook(file, dataset) {
 }
 
 router.get(
+  "/imports/files",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.READ_ONLY_ACCESS
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    const items = await DatabaseFile.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .select("_id nombreVisible nombreArchivo tipoArchivo extension mimeType registros fechaSubida publicUrl")
+      .lean();
+
+    res.json({ items });
+  }
+);
+
+router.get(
+  "/imports/files/superadmin",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+    PERMISSIONS.VIEW_REPORTS
+  ),
+  async (req, res) => {
+    if (!req.user.isSuperAdmin) {
+      return res.status(403).json({ mensaje: "Solo superadmin puede ver archivo global" });
+    }
+    const filter = {};
+    if (req.query.companyId) filter.companyId = req.query.companyId;
+    if (req.query.schoolId) filter.schoolId = req.query.schoolId;
+
+    const items = await DatabaseFile.find(filter)
+      .sort({ fechaSubida: -1 })
+      .limit(300)
+      .populate("companyId", "nombre")
+      .populate("schoolId", "nombre")
+      .select("_id nombreVisible nombreArchivo tipoArchivo extension mimeType registros fechaSubida publicUrl companyId schoolId")
+      .lean();
+
+    res.json({ items });
+  }
+);
+
+router.patch(
+  "/imports/files/:id",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    const nombreVisible = String(req.body?.nombreVisible || "").trim();
+    if (!nombreVisible) {
+      return res.status(400).json({ mensaje: "Debes indicar un nombre visible" });
+    }
+
+    const file = await DatabaseFile.findOne({
+      _id: req.params.id,
+      ...filter,
+    });
+    if (!file) {
+      return res.status(404).json({ mensaje: "Documento no encontrado" });
+    }
+
+    file.nombreVisible = nombreVisible;
+    await file.save();
+    return res.json({ mensaje: "Documento actualizado" });
+  }
+);
+
+router.delete(
+  "/imports/files/:id",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    const file = await DatabaseFile.findOne({
+      _id: req.params.id,
+      ...filter,
+    });
+    if (!file) {
+      return res.status(404).json({ mensaje: "Documento no encontrado" });
+    }
+
+    await deleteFromStorage({
+      provider: file.storageProvider,
+      key: file.storageKey,
+      bucket: file.storageBucket,
+      localPath: null,
+    });
+    await file.deleteOne();
+    return res.json({ mensaje: "Documento eliminado" });
+  }
+);
+
+router.get(
   "/overview",
   auth,
   requireAnyPermission(
