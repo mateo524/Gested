@@ -42,7 +42,12 @@ export default function EducationalExportsPage() {
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [globalOriginalFiles, setGlobalOriginalFiles] = useState([]);
-  const [globalOriginalFilter, setGlobalOriginalFilter] = useState({ companyId: "", schoolId: "" });
+  const [globalOriginalFilter, setGlobalOriginalFilter] = useState({
+    companyId: "",
+    schoolId: "",
+    dateFrom: "",
+    dateTo: "",
+  });
   const [editingFileId, setEditingFileId] = useState("");
   const [editingFileName, setEditingFileName] = useState("");
 
@@ -102,10 +107,19 @@ export default function EducationalExportsPage() {
     const params = new URLSearchParams();
     if (globalOriginalFilter.companyId) params.set("companyId", globalOriginalFilter.companyId);
     if (globalOriginalFilter.schoolId) params.set("schoolId", globalOriginalFilter.schoolId);
+    if (globalOriginalFilter.dateFrom) params.set("dateFrom", globalOriginalFilter.dateFrom);
+    if (globalOriginalFilter.dateTo) params.set("dateTo", globalOriginalFilter.dateTo);
     const suffix = params.toString() ? `?${params.toString()}` : "";
     const data = await apiFetch(`/education-exports/imports/files/superadmin${suffix}`, { token, timeoutMs: 20000 });
     setGlobalOriginalFiles(data.items || []);
-  }, [token, user, globalOriginalFilter.companyId, globalOriginalFilter.schoolId]);
+  }, [
+    token,
+    user,
+    globalOriginalFilter.companyId,
+    globalOriginalFilter.schoolId,
+    globalOriginalFilter.dateFrom,
+    globalOriginalFilter.dateTo,
+  ]);
 
   useEffect(() => {
     const cachedOverview = sessionStorage.getItem(overviewCacheKey);
@@ -618,7 +632,7 @@ export default function EducationalExportsPage() {
           <p className="mt-1 text-sm text-[#9fb6c4]">
             Acá ves y descargás los archivos originales subidos por cada empresa/colegio.
           </p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <select
               className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
               value={globalOriginalFilter.companyId}
@@ -639,6 +653,18 @@ export default function EducationalExportsPage() {
                 <option key={item._id} value={item._id}>{item.nombre}</option>
               ))}
             </select>
+            <input
+              type="date"
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={globalOriginalFilter.dateFrom}
+              onChange={(e) => setGlobalOriginalFilter((prev) => ({ ...prev, dateFrom: e.target.value }))}
+            />
+            <input
+              type="date"
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={globalOriginalFilter.dateTo}
+              onChange={(e) => setGlobalOriginalFilter((prev) => ({ ...prev, dateTo: e.target.value }))}
+            />
           </div>
           <div className="mt-4 space-y-3">
             {globalOriginalFiles.length === 0 ? (

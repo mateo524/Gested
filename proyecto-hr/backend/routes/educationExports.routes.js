@@ -769,6 +769,18 @@ router.get(
     const filter = {};
     if (req.query.companyId) filter.companyId = req.query.companyId;
     if (req.query.schoolId) filter.schoolId = req.query.schoolId;
+    if (req.query.dateFrom || req.query.dateTo) {
+      filter.fechaSubida = {};
+      if (req.query.dateFrom) {
+        const from = new Date(`${String(req.query.dateFrom)}T00:00:00.000Z`);
+        if (!Number.isNaN(from.getTime())) filter.fechaSubida.$gte = from;
+      }
+      if (req.query.dateTo) {
+        const to = new Date(`${String(req.query.dateTo)}T23:59:59.999Z`);
+        if (!Number.isNaN(to.getTime())) filter.fechaSubida.$lte = to;
+      }
+      if (!Object.keys(filter.fechaSubida).length) delete filter.fechaSubida;
+    }
 
     const items = await DatabaseFile.find(filter)
       .sort({ fechaSubida: -1 })
