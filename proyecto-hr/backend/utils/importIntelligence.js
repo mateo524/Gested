@@ -456,13 +456,14 @@ function splitCombinedName(value) {
   };
 }
 
-export function validateRowsForDataset(mappedRows, dataset) {
+export function validateRowsForDataset(mappedRows, dataset, options = {}) {
   const validRows = [];
   const invalidRows = [];
   const warnings = [];
   const duplicates = [];
   const emailSeen = new Set();
   const legajoSeen = new Set();
+  const highestAllowedRoleCode = String(options.highestAllowedRoleCode || "ADMIN_COLEGIO").toUpperCase();
 
   for (const row of mappedRows) {
     const errors = [];
@@ -474,8 +475,17 @@ export function validateRowsForDataset(mappedRows, dataset) {
       if (!row.email && !row.legajo) errors.push("Falta email o legajo");
       if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) errors.push("Email invalido");
 
-      const roleCode = normalizeRoleCode(row.roleCode);
-      if (roleCode === "SUPER_ADMIN") errors.push("No se permite SUPER_ADMIN por importacion");
+      let roleCode = normalizeRoleCode(row.roleCode);
+      if (roleCode === "SUPER_ADMIN") {
+        row.roleCode = highestAllowedRoleCode;
+        roleCode = highestAllowedRoleCode;
+        warnings.push({
+          row: row._rowNumber,
+          field: "roleCode",
+          message: `SUPER_ADMIN no permitido: se asigno ${highestAllowedRoleCode}`,
+          value: row.roleCode,
+        });
+      }
       if (row.email && emailSeen.has(row.email)) duplicates.push(`Email duplicado: ${row.email}`);
       if (row.legajo && legajoSeen.has(row.legajo)) duplicates.push(`Legajo duplicado: ${row.legajo}`);
       if (row.email) emailSeen.add(row.email);
