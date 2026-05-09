@@ -277,4 +277,28 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
   res.json({ mensaje: "Empleado actualizado", employee });
 });
 
+router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
+  const filter = buildScopedFilter(req, { _id: req.params.id });
+  const employee = await Employee.findOne(filter);
+  if (!employee) {
+    return res.status(404).json({ mensaje: "Empleado no encontrado" });
+  }
+
+  await Employee.updateMany({ managerId: employee._id }, { $set: { managerId: null } });
+  await DevelopmentPlan.deleteMany({ employeeId: employee._id });
+  await Evaluation.deleteMany({ employeeId: employee._id });
+  await Employee.deleteOne({ _id: employee._id });
+
+  await logAudit({
+    companyId: employee.companyId,
+    schoolId: employee.schoolId,
+    userId: req.user.userId,
+    accion: "delete",
+    modulo: "employees",
+    detalle: `Se elimino el empleado ${employee.apellido}, ${employee.nombre}`,
+  });
+
+  res.json({ mensaje: "Empleado eliminado" });
+});
+
 export default router;

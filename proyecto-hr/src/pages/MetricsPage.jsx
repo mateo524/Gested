@@ -152,6 +152,23 @@ export default function MetricsPage() {
     setFieldErrors({});
   }
 
+  async function handleDelete(metric) {
+    const ok = window.confirm(`¿Eliminar el indicador "${metric.nombre}"?`);
+    if (!ok) return;
+    try {
+      await apiFetch(`/metrics/${metric._id}`, { method: "DELETE", token });
+      if (editingId === metric._id) {
+        cancelEdit();
+      }
+      setMessageType("success");
+      setMessage("Indicador eliminado.");
+      await loadData();
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    }
+  }
+
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
@@ -257,9 +274,14 @@ export default function MetricsPage() {
                     </div>
                   ))}
                 </div>
-                <button type="button" onClick={() => handleEdit(metric)} className="mt-3 rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
-                  Editar
-                </button>
+                <div className="mt-3 flex gap-2">
+                  <button type="button" onClick={() => handleEdit(metric)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                    Editar
+                  </button>
+                  <button type="button" onClick={() => handleDelete(metric)} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                    Eliminar
+                  </button>
+                </div>
               </article>
             )) : null}
             {!isLoading && !filteredMetrics.length ? <p className="pf-alert-warning">No hay indicadores para los filtros actuales.</p> : null}
@@ -276,4 +298,3 @@ export default function MetricsPage() {
     </div>
   );
 }
-
