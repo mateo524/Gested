@@ -44,6 +44,7 @@ const IMPORT_AI_ENABLED = String(process.env.IMPORT_AI_ENABLED || "").toLowerCas
 const IMPORT_AI_WEBHOOK_URL = process.env.IMPORT_AI_WEBHOOK_URL || "";
 const IMPORT_AI_TOKEN = process.env.IMPORT_AI_TOKEN || "";
 const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
+const ROLE_FALLBACK_ORDER = ["ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"];
 
 function getImportErrorPayload(error, fallbackMessage) {
   const raw = String(error?.message || "");
@@ -63,6 +64,35 @@ function getImportErrorPayload(error, fallbackMessage) {
     mensaje: fallbackMessage,
     code: "IMPORT_PROCESSING_ERROR",
   };
+}
+
+async function resolveHighestAllowedRoleCode({ companyId, schoolId }) {
+  const roles = await Role.find({
+    companyId,
+    activo: true,
+    $or: [{ schoolId: null }, { schoolId: schoolId || null }],
+  })
+    .select("code nombre permisos")
+    .lean();
+
+  for (const code of ROLE_FALLBACK_ORDER) {
+    if (roles.some((role) => String(role.code || "").toUpperCase() === code)) {
+      return code;
+    }
+  }
+
+  let bestByPermissions = null;
+  for (const role of roles) {
+    const code = String(role.code || "").toUpperCase();
+    if (code === "SUPER_ADMIN") continue;
+    const count = Array.isArray(role.permisos) ? role.permisos.length : 0;
+    if (!bestByPermissions || count > bestByPermissions.count) {
+      bestByPermissions = { code: code || "", count };
+    }
+  }
+
+  if (bestByPermissions?.code) return bestByPermissions.code;
+  return "ADMIN_COLEGIO";
 }
 
 const allowedDatasets = {
@@ -547,9 +577,7 @@ function validateCorrectedRow(dataset, row) {
     if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return { ok: false, message: "Email invalido" };
     }
-    if (roleCode === "SUPER_ADMIN") {
-      return { ok: false, message: "No se permite SUPER_ADMIN por importacion" };
-    }
+    const safeRoleCode = roleCode === "SUPER_ADMIN" ? "ADMIN_COLEGIO" : roleCode;
     return {
       ok: true,
       row: {
@@ -557,7 +585,7 @@ function validateCorrectedRow(dataset, row) {
         nombre,
         email,
         legajo,
-        roleCode,
+        roleCode: safeRoleCode,
         managerRef: String(row.managerRef || row.jefe || "").trim(),
         sede: String(row.sede || "").trim(),
         cargo,
@@ -981,7 +1009,14 @@ router.post(
     }
 
     const mappedRows = mapRowsByDetections(rows, detections, detectedDataset);
-    const { validRows, invalidRows, warnings, duplicates } = validateRowsForDataset(mappedRows, detectedDataset);
+    const { companyId: scopeCompanyId } = await resolveCompanyScope(req);
+    const highestAllowedRoleCode = await resolveHighestAllowedRoleCode({
+      companyId: scopeCompanyId,
+      schoolId: req.body.schoolId || req.user.schoolId || null,
+    });
+    const { validRows, invalidRows, warnings, duplicates } = validateRowsForDataset(mappedRows, detectedDataset, {
+      highestAllowedRoleCode,
+    });
     const requiresManualMapping = false;
 
     if (analyzeOnly) {
