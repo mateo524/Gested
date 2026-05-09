@@ -41,6 +41,8 @@ export default function EducationalExportsPage() {
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [globalOriginalFiles, setGlobalOriginalFiles] = useState([]);
+  const [globalOriginalFilter, setGlobalOriginalFilter] = useState({ companyId: "", schoolId: "" });
   const [editingFileId, setEditingFileId] = useState("");
   const [editingFileName, setEditingFileName] = useState("");
 
@@ -95,6 +97,16 @@ export default function EducationalExportsPage() {
     setUploadedFiles(data.items || []);
   }, [token]);
 
+  const loadGlobalOriginalFiles = useCallback(async () => {
+    if (!user?.isSuperAdmin) return;
+    const params = new URLSearchParams();
+    if (globalOriginalFilter.companyId) params.set("companyId", globalOriginalFilter.companyId);
+    if (globalOriginalFilter.schoolId) params.set("schoolId", globalOriginalFilter.schoolId);
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    const data = await apiFetch(`/education-exports/imports/files/superadmin${suffix}`, { token, timeoutMs: 20000 });
+    setGlobalOriginalFiles(data.items || []);
+  }, [token, user, globalOriginalFilter.companyId, globalOriginalFilter.schoolId]);
+
   useEffect(() => {
     const cachedOverview = sessionStorage.getItem(overviewCacheKey);
     if (cachedOverview) {
@@ -121,6 +133,13 @@ export default function EducationalExportsPage() {
       setMessage(error.message);
     });
   }, [loadUploadedFiles]);
+
+  useEffect(() => {
+    loadGlobalOriginalFiles().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
+  }, [loadGlobalOriginalFiles]);
 
   useEffect(() => {
     const cachedDataset = sessionStorage.getItem(datasetCacheKey);
@@ -295,7 +314,7 @@ export default function EducationalExportsPage() {
       });
       setMessageType("success");
       setMessage("Documento eliminado.");
-      await loadUploadedFiles();
+      await Promise.all([loadUploadedFiles(), loadGlobalOriginalFiles()]);
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -304,6 +323,21 @@ export default function EducationalExportsPage() {
 
   const mappingFields = importPreview?.analysis?.lowConfidenceFields || [];
   const detectionEntries = Object.entries(importPreview?.analysis?.detections || {});
+  const globalCompanies = useMemo(() => {
+    const map = new Map();
+    for (const file of globalOriginalFiles) {
+      if (file.companyId?._id) map.set(file.companyId._id, file.companyId.nombre || "Empresa");
+    }
+    return [...map.entries()].map(([id, nombre]) => ({ _id: id, nombre }));
+  }, [globalOriginalFiles]);
+
+  const globalSchools = useMemo(() => {
+    const map = new Map();
+    for (const file of globalOriginalFiles) {
+      if (file.schoolId?._id) map.set(file.schoolId._id, file.schoolId.nombre || "Colegio");
+    }
+    return [...map.entries()].map(([id, nombre]) => ({ _id: id, nombre }));
+  }, [globalOriginalFiles]);
 
   const messageClass =
     messageType === "error"
@@ -536,7 +570,7 @@ export default function EducationalExportsPage() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">{file.nombreVisible || file.nombreArchivo}</p>
                   <p className="text-xs text-[#9fb6c4]">
-                    {file.tipoArchivo || "importación"} • {file.nombreArchivo} • {formatDate(file.createdAt)}
+                    {file.tipoArchivo || "importación"} • {file.nombreArchivo} • {formatDate(file.fechaSubida || file.createdAt)}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -577,6 +611,69 @@ export default function EducationalExportsPage() {
           )}
         </div>
       </section>
+
+      {user?.isSuperAdmin ? (
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h4 className="text-lg font-semibold text-white">Archivo original global (solo superadmin)</h4>
+          <p className="mt-1 text-sm text-[#9fb6c4]">
+            Acá ves y descargás los archivos originales subidos por cada empresa/colegio.
+          </p>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <select
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={globalOriginalFilter.companyId}
+              onChange={(e) => setGlobalOriginalFilter((prev) => ({ ...prev, companyId: e.target.value }))}
+            >
+              <option value="">Todas las empresas</option>
+              {globalCompanies.map((item) => (
+                <option key={item._id} value={item._id}>{item.nombre}</option>
+              ))}
+            </select>
+            <select
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={globalOriginalFilter.schoolId}
+              onChange={(e) => setGlobalOriginalFilter((prev) => ({ ...prev, schoolId: e.target.value }))}
+            >
+              <option value="">Todos los colegios</option>
+              {globalSchools.map((item) => (
+                <option key={item._id} value={item._id}>{item.nombre}</option>
+              ))}
+            </select>
+          </div>
+          <div className="mt-4 space-y-3">
+            {globalOriginalFiles.length === 0 ? (
+              <p className="text-sm text-[#9fb6c4]">Todavía no hay archivos originales registrados.</p>
+            ) : (
+              globalOriginalFiles.map((file) => (
+                <article
+                  key={`global-${file._id}`}
+                  className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{file.nombreArchivo || file.nombreVisible}</p>
+                    <p className="text-xs text-[#9fb6c4]">
+                      {(file.companyId?.nombre || "Empresa")} • {(file.schoolId?.nombre || "Sin colegio")} • {formatDate(file.fechaSubida || file.createdAt)}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <a
+                      className={`rounded-xl px-3 py-2 text-sm font-semibold ${file.publicUrl ? "bg-emerald-600 text-white" : "cursor-not-allowed border border-white/20 text-[#8ea7b7]"}`}
+                      href={file.publicUrl || "#"}
+                      target={file.publicUrl ? "_blank" : undefined}
+                      rel={file.publicUrl ? "noreferrer" : undefined}
+                      onClick={(e) => {
+                        if (!file.publicUrl) e.preventDefault();
+                      }}
+                    >
+                      Descargar original
+                    </a>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+      ) : null}
 
       {overview ? (
         <section className="grid gap-4 md:grid-cols-4">
