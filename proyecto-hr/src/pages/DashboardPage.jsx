@@ -11,7 +11,7 @@ function getDashboardCacheKey(user, companyId) {
 
 function KpiCard({ title, value, hint }) {
   return (
-    <article className="rounded-2xl border border-white/10 bg-[#122530] p-5">
+    <article className="pf-card p-5">
       <p className="text-sm text-[#9fb6c4]">{title}</p>
       <p className="mt-2 text-3xl font-bold text-white">{value}</p>
       <p className="mt-1 text-xs text-[#7f99a8]">{hint}</p>
@@ -223,7 +223,7 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <section className="pf-surface p-6">
         <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Resumen del día</p>
         <h2 className="mt-1 text-2xl font-semibold text-white">
           {actionsToday.length
@@ -233,7 +233,7 @@ export default function DashboardPage() {
         <div className="mt-4 space-y-3">
           {actionsToday.length ? (
             actionsToday.map((item, index) => (
-              <article key={`${item.title}-${index}`} className="rounded-xl border border-white/10 bg-[#0f1f28] p-4">
+              <article key={`${item.title}-${index}`} className="pf-card-muted p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <p className="text-sm font-semibold text-white">{item.title}</p>
                   <span className={`rounded-full px-2 py-1 text-xs font-semibold ${item.priority === "ALTA" ? "bg-rose-900/30 text-rose-300 border border-rose-400/30" : "bg-amber-900/30 text-amber-300 border border-amber-400/30"}`}>
@@ -265,7 +265,7 @@ export default function DashboardPage() {
 
       {(isSuperOrDirector || isRRHH || isJefe || isEmpleado) ? (
       <section className="grid gap-4 xl:grid-cols-2">
-        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <article className="pf-surface p-6">
           <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Siguiente paso</p>
           <h3 className="mt-2 text-xl font-semibold text-white">
             {training[0]?.competencia
@@ -282,7 +282,7 @@ export default function DashboardPage() {
           ) : null}
         </article>
 
-        <article className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <article className="pf-surface p-6">
           <p className="text-xs uppercase tracking-[0.16em] text-[#9fb6c4]">Acceso rápido</p>
           <h3 className="mt-2 text-xl font-semibold text-white">Ver reporte</h3>
           <p className="mt-2 text-sm text-[#c5d5de]">
@@ -300,13 +300,13 @@ export default function DashboardPage() {
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="pf-surface p-6">
           <h3 className="text-xl font-semibold text-white">{isEmpleado ? "Recomendaciones para mi desarrollo" : "Capacitación recomendada"}</h3>
           <p className="mt-1 text-[#9fb6c4]">Ordenada por prioridad de intervención.</p>
           <div className="mt-4 space-y-3">
             {training.length ? (
               training.map((item) => (
-                <div key={item.competencia} className="rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+                <div key={item.competencia} className="pf-card-muted p-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-semibold text-white">{item.competencia}</p>
                     <span className="rounded-full bg-[#1e293b] px-2.5 py-1 text-xs font-semibold text-[#c5d5de]">{item.priority}</span>
@@ -320,7 +320,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="pf-surface p-6">
           <h3 className="text-xl font-semibold text-white">{isJefe ? "Mi equipo en riesgo" : "Colaboradores a revisar"}</h3>
           <p className="mt-1 text-[#9fb6c4]">Mostramos primero los casos que requieren acción.</p>
           <div className="mt-4 space-y-2">

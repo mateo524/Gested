@@ -364,12 +364,12 @@ export default function EducationalExportsPage() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <section className="pf-surface p-6">
         <h3 className="text-2xl font-bold text-white">Cargas y descargas</h3>
         <p className="mt-2 text-[#9fb6c4]">Flujo sugerido: subir archivo, validar resultados y recién después confirmar importación.</p>
       </section>
 
-      <section className="space-y-4 rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <section className="pf-surface space-y-4 p-6">
         <h4 className="text-lg font-semibold text-white">Subida de datos (unificada)</h4>
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
         {message ? <div className={messageClass}>{message}</div> : null}
@@ -391,7 +391,7 @@ export default function EducationalExportsPage() {
           </button>
         </div>
         {importPreview ? (
-          <div className="space-y-3 rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
+          <div className="pf-card space-y-3 p-4 text-sm text-[#D4E1E8]">
             <p>Dataset detectado: {importPreview.datasetDetected}</p>
             <p>Total filas: {importPreview.totalRows}</p>
             <p>Válidas: {importPreview.validCount}</p>
@@ -399,7 +399,7 @@ export default function EducationalExportsPage() {
             <p>Advertencias: {importPreview.warningCount || 0}</p>
             {importPreview.analysis?.sheetName ? <p>Hoja detectada: {importPreview.analysis.sheetName} (encabezado fila {importPreview.analysis.headerRowNumber})</p> : null}
 
-            <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+            <div className="pf-card-muted p-3">
               <p className="text-sm font-semibold text-white">Estado del resultado</p>
               <p className="mt-1 text-xs text-[#c5d5de]">
                 {importPreview.invalidCount > 0
@@ -419,11 +419,11 @@ export default function EducationalExportsPage() {
             </div>
 
             {detectionEntries.length ? (
-              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+              <div className="pf-card-muted p-3">
                 <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Columnas detectadas con confianza</p>
                 <div className="grid gap-2 md:grid-cols-3">
                   {detectionEntries.map(([field, info]) => (
-                    <div key={field} className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2">
+                    <div key={field} className="pf-card-muted px-3 py-2">
                       <p className="text-xs text-[#9fb6c4]">{field}</p>
                       <p className="font-semibold text-white">{info.header}</p>
                       <p className="text-xs text-[#9fb6c4]">Confianza: {Math.round((info.confidence || 0) * 100)}%</p>
@@ -434,11 +434,11 @@ export default function EducationalExportsPage() {
             ) : null}
 
             {importPreview.datasetDetected === "multi" && importPreview.mixedSummary ? (
-              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+              <div className="pf-card-muted p-3">
                 <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen mixto detectado</p>
                 <div className="grid gap-2 md:grid-cols-3">
                   {Object.entries(importPreview.mixedSummary).map(([moduleName, count]) => (
-                    <div key={moduleName} className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2">
+                    <div key={moduleName} className="pf-card-muted px-3 py-2">
                       <p className="text-xs text-[#9fb6c4]">{moduleName}</p>
                       <p className="font-semibold text-white">{count} fila(s)</p>
                     </div>
@@ -483,10 +483,10 @@ export default function EducationalExportsPage() {
             ) : null}
 
             {editableErrors.length && importPreview.datasetDetected !== "multi" ? (
-              <div className="space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+              <div className="pf-card-muted space-y-3 p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Errores que sí bloquean</p>
                 {editableErrors.map((errorRow, index) => (
-                  <div key={`${errorRow.row}-${index}`} className="rounded-lg border border-white/10 bg-[#142028] p-2">
+                  <div key={`${errorRow.row}-${index}`} className="pf-card-muted p-2">
                     <p className="mb-2 text-xs text-rose-300">
                       Fila {errorRow.row}: {errorRow.message}
                     </p>
@@ -572,7 +572,7 @@ export default function EducationalExportsPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <section className="pf-surface p-6">
         <h4 className="text-lg font-semibold text-white">Documentos subidos</h4>
         <p className="mt-1 text-sm text-[#9fb6c4]">Historial de archivos importados con fecha y hora.</p>
         <div className="mt-4 space-y-3">
@@ -580,7 +580,7 @@ export default function EducationalExportsPage() {
             <p className="text-sm text-[#9fb6c4]">Todavía no hay documentos cargados.</p>
           ) : (
             uploadedFiles.map((file) => (
-              <article key={file._id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4 md:flex-row md:items-center md:justify-between">
+              <article key={file._id} className="pf-card-muted flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between">
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-white">{file.nombreVisible || file.nombreArchivo}</p>
                   <p className="text-xs text-[#9fb6c4]">
@@ -627,7 +627,7 @@ export default function EducationalExportsPage() {
       </section>
 
       {user?.isSuperAdmin ? (
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <section className="pf-surface p-6">
           <h4 className="text-lg font-semibold text-white">Archivo original global (solo superadmin)</h4>
           <p className="mt-1 text-sm text-[#9fb6c4]">
             Acá ves y descargás los archivos originales subidos por cada empresa/colegio.
@@ -673,7 +673,7 @@ export default function EducationalExportsPage() {
               globalOriginalFiles.map((file) => (
                 <article
                   key={`global-${file._id}`}
-                  className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4 md:flex-row md:items-center md:justify-between"
+                  className="pf-card-muted flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{file.nombreArchivo || file.nombreVisible}</p>
@@ -703,14 +703,14 @@ export default function EducationalExportsPage() {
 
       {overview ? (
         <section className="grid gap-4 md:grid-cols-4">
-          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Empleados</p><p className="text-3xl font-bold text-white">{overview.summary.employees}</p></article>
-          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Evaluaciones</p><p className="text-3xl font-bold text-white">{overview.summary.evaluations}</p></article>
-          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Indicadores</p><p className="text-3xl font-bold text-white">{overview.summary.metrics}</p></article>
-          <article className="rounded-2xl border border-white/10 bg-[#122530] p-5"><p className="text-sm text-[#9fb6c4]">Planes</p><p className="text-3xl font-bold text-white">{overview.summary.developmentPlans}</p></article>
+          <article className="pf-card p-5"><p className="text-sm text-[#9fb6c4]">Empleados</p><p className="text-3xl font-bold text-white">{overview.summary.employees}</p></article>
+          <article className="pf-card p-5"><p className="text-sm text-[#9fb6c4]">Evaluaciones</p><p className="text-3xl font-bold text-white">{overview.summary.evaluations}</p></article>
+          <article className="pf-card p-5"><p className="text-sm text-[#9fb6c4]">Indicadores</p><p className="text-3xl font-bold text-white">{overview.summary.metrics}</p></article>
+          <article className="pf-card p-5"><p className="text-sm text-[#9fb6c4]">Planes</p><p className="text-3xl font-bold text-white">{overview.summary.developmentPlans}</p></article>
         </section>
       ) : null}
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <section className="pf-surface p-6">
         <div className="grid gap-3 xl:grid-cols-5">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={dataset} onChange={(e) => setDataset(e.target.value)}>
             {Object.entries(datasetLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -731,7 +731,7 @@ export default function EducationalExportsPage() {
         ) : null}
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <section className="pf-surface p-6">
         {isLoadingOverview ? <p className="mb-3 text-xs text-[#9fb6c4]">Actualizando historial...</p> : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">

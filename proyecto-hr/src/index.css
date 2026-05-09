@@ -57,8 +57,20 @@ select optgroup {
 }
 
 @layer components {
+  .pf-surface {
+    @apply rounded-[2rem] border border-white/10 bg-gradient-to-b from-[#142734] to-[#11222d] text-[#E8EEF1] shadow-[0_12px_32px_rgba(2,8,23,0.28)];
+  }
+
   .pf-card {
-    @apply rounded-[2rem] border border-white/10 bg-[#142028] text-[#E8EEF1] shadow-sm;
+    @apply rounded-2xl border border-white/10 bg-[#132530] text-[#E8EEF1] shadow-[0_8px_24px_rgba(2,8,23,0.22)];
+  }
+
+  .pf-card-muted {
+    @apply rounded-2xl border border-white/10 bg-[#0f1f28] text-[#d3e0e7];
+  }
+
+  .pf-section-title {
+    @apply text-xs uppercase tracking-[0.16em] text-[#8fb0c2];
   }
 
   .pf-input {
