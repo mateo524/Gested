@@ -38,9 +38,11 @@ export default function EducationalExportsPage() {
   const [confirmMapping, setConfirmMapping] = useState(false);
   const [confirmWarnings, setConfirmWarnings] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
-  const [isPurging, setIsPurging] = useState(false);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
+  const [uploadedFiles, setUploadedFiles] = useState([]);
+  const [editingFileId, setEditingFileId] = useState("");
+  const [editingFileName, setEditingFileName] = useState("");
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -88,6 +90,11 @@ export default function EducationalExportsPage() {
     }
   }, [token, dataset, deferredQueryString, datasetCacheKey]);
 
+  const loadUploadedFiles = useCallback(async () => {
+    const data = await apiFetch("/education-exports/imports/files", { token, timeoutMs: 20000 });
+    setUploadedFiles(data.items || []);
+  }, [token]);
+
   useEffect(() => {
     const cachedOverview = sessionStorage.getItem(overviewCacheKey);
     if (cachedOverview) {
@@ -107,6 +114,13 @@ export default function EducationalExportsPage() {
     });
     return () => controller.abort();
   }, [loadOverview, overviewCacheKey]);
+
+  useEffect(() => {
+    loadUploadedFiles().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
+  }, [loadUploadedFiles]);
 
   useEffect(() => {
     const cachedDataset = sessionStorage.getItem(datasetCacheKey);
@@ -223,7 +237,7 @@ export default function EducationalExportsPage() {
       setManualMapping({});
       setMessageType("success");
       setMessage("Importación confirmada.");
-      await Promise.all([loadOverview(), loadDataset()]);
+      await Promise.all([loadOverview(), loadDataset(), loadUploadedFiles()]);
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -251,26 +265,40 @@ export default function EducationalExportsPage() {
     return [];
   }
 
-  async function purgeTarget(target, label) {
-    const confirmation = window.prompt(`Para borrar ${label}, escribe ELIMINAR`);
-    if (confirmation !== "ELIMINAR") return;
+  async function saveFileName(fileId) {
+    if (!editingFileName.trim()) return;
     try {
-      setIsPurging(true);
-      const suffix = filters.schoolId ? `?schoolId=${encodeURIComponent(filters.schoolId)}` : "";
-      const data = await apiFetch(`/education-exports/purge/${target}${suffix}`, {
+      await apiFetch(`/education-exports/imports/files/${fileId}`, {
+        method: "PATCH",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nombreVisible: editingFileName.trim() }),
+      });
+      setMessageType("success");
+      setMessage("Documento actualizado.");
+      setEditingFileId("");
+      setEditingFileName("");
+      await loadUploadedFiles();
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    }
+  }
+
+  async function deleteUploadedFile(fileId) {
+    const ok = window.confirm("¿Eliminar este documento subido?");
+    if (!ok) return;
+    try {
+      await apiFetch(`/education-exports/imports/files/${fileId}`, {
         method: "DELETE",
         token,
       });
       setMessageType("success");
-      setMessage(data?.mensaje || `Limpieza completada: ${label}`);
-      setImportPreview(null);
-      setImportResult(null);
-      await Promise.all([loadOverview(), loadDataset()]);
+      setMessage("Documento eliminado.");
+      await loadUploadedFiles();
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
-    } finally {
-      setIsPurging(false);
     }
   }
 
@@ -314,23 +342,6 @@ export default function EducationalExportsPage() {
             Analizar sin importar
           </button>
         </div>
-        {canImport ? (
-          <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4">
-            <p className="mb-3 text-sm font-semibold text-rose-200">Limpieza rápida (con confirmación)</p>
-            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-4">
-              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("files", "archivos subidos")}>Borrar archivos subidos</button>
-              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("employees", "empleados")}>Borrar empleados</button>
-              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("metrics", "métricas")}>Borrar métricas</button>
-              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("cycles", "ciclos")}>Borrar ciclos</button>
-              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("competencies", "indicadores/competencias")}>Borrar indicadores</button>
-              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("roles", "perfiles")}>Borrar perfiles</button>
-              <button className="rounded-xl bg-rose-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60 md:col-span-2 xl:col-span-2" disabled={isPurging} onClick={() => purgeTarget("all", "todo (archivos + datos importados)")}>
-                {isPurging ? "Borrando..." : "Borrar todo importado"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-
         {importPreview ? (
           <div className="space-y-3 rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
             <p>Dataset detectado: {importPreview.datasetDetected}</p>
@@ -352,6 +363,11 @@ export default function EducationalExportsPage() {
                   ? `Hay ${importPreview.warningCount} advertencia(s): no bloquean, pero requieren confirmación.`
                   : "No hay advertencias pendientes."}
               </p>
+              {importPreview.invalidCount > 0 ? (
+                <p className="mt-1 text-xs text-amber-200">
+                  Sugerencia: si detectó mal el tipo de archivo, probá elegir manualmente Empleados / Indicadores / Períodos / Perfiles arriba.
+                </p>
+              ) : null}
             </div>
 
             {detectionEntries.length ? (
@@ -506,6 +522,60 @@ export default function EducationalExportsPage() {
             ) : null}
           </div>
         ) : null}
+      </section>
+
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <h4 className="text-lg font-semibold text-white">Documentos subidos</h4>
+        <p className="mt-1 text-sm text-[#9fb6c4]">Historial de archivos importados con fecha y hora.</p>
+        <div className="mt-4 space-y-3">
+          {uploadedFiles.length === 0 ? (
+            <p className="text-sm text-[#9fb6c4]">Todavía no hay documentos cargados.</p>
+          ) : (
+            uploadedFiles.map((file) => (
+              <article key={file._id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4 md:flex-row md:items-center md:justify-between">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-white">{file.nombreVisible || file.nombreArchivo}</p>
+                  <p className="text-xs text-[#9fb6c4]">
+                    {file.tipoArchivo || "importación"} • {file.nombreArchivo} • {formatDate(file.createdAt)}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {editingFileId === file._id ? (
+                    <>
+                      <input
+                        className="rounded-xl border border-white/15 bg-[#122530] px-3 py-2 text-sm text-white"
+                        value={editingFileName}
+                        onChange={(e) => setEditingFileName(e.target.value)}
+                        placeholder="Nuevo nombre"
+                      />
+                      <button className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white" onClick={() => saveFileName(file._id)}>
+                        Guardar
+                      </button>
+                      <button className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white" onClick={() => { setEditingFileId(""); setEditingFileName(""); }}>
+                        Cancelar
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="rounded-xl border border-white/20 px-3 py-2 text-sm text-white"
+                        onClick={() => {
+                          setEditingFileId(file._id);
+                          setEditingFileName(file.nombreVisible || file.nombreArchivo || "");
+                        }}
+                      >
+                        Editar
+                      </button>
+                      <button className="rounded-xl border border-rose-300/30 px-3 py-2 text-sm text-rose-200" onClick={() => deleteUploadedFile(file._id)}>
+                        Eliminar
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+            ))
+          )}
+        </div>
       </section>
 
       {overview ? (
