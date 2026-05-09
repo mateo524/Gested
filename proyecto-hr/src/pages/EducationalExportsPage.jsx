@@ -363,18 +363,18 @@ export default function EducationalExportsPage() {
       : "rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200";
 
   return (
-    <div className="space-y-6">
-      <section className="pf-surface p-6">
-        <h3 className="text-2xl font-bold text-white">Cargas y descargas</h3>
-        <p className="mt-2 text-[#9fb6c4]">Flujo sugerido: subir archivo, validar resultados y recién después confirmar importación.</p>
+    <div className="pf-stack">
+      <section className="pf-surface pf-surface-pad">
+        <h3 className="pf-title-xl">Cargas y descargas</h3>
+        <p className="pf-body mt-2">Flujo sugerido: subir archivo, validar resultados y recién después confirmar importación.</p>
       </section>
 
-      <section className="pf-surface space-y-4 p-6">
-        <h4 className="text-lg font-semibold text-white">Subida de datos (unificada)</h4>
+      <section className="pf-surface space-y-4 p-4 md:p-6">
+        <h4 className="pf-title-lg">Subida de datos (unificada)</h4>
         {!canImport ? <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">Tu rol no tiene permiso para importar.</div> : null}
         {message ? <div className={messageClass}>{message}</div> : null}
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-2 md:grid-cols-4 md:gap-3">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
@@ -572,9 +572,9 @@ export default function EducationalExportsPage() {
         ) : null}
       </section>
 
-      <section className="pf-surface p-6">
-        <h4 className="text-lg font-semibold text-white">Documentos subidos</h4>
-        <p className="mt-1 text-sm text-[#9fb6c4]">Historial de archivos importados con fecha y hora.</p>
+      <section className="pf-surface pf-surface-pad">
+        <h4 className="pf-title-lg">Documentos subidos</h4>
+        <p className="pf-body-muted mt-1">Historial de archivos importados con fecha y hora.</p>
         <div className="mt-4 space-y-3">
           {uploadedFiles.length === 0 ? (
             <p className="text-sm text-[#9fb6c4]">Todavía no hay documentos cargados.</p>
@@ -627,9 +627,9 @@ export default function EducationalExportsPage() {
       </section>
 
       {user?.isSuperAdmin ? (
-        <section className="pf-surface p-6">
-          <h4 className="text-lg font-semibold text-white">Archivo original global (solo superadmin)</h4>
-          <p className="mt-1 text-sm text-[#9fb6c4]">
+        <section className="pf-surface pf-surface-pad">
+          <h4 className="pf-title-lg">Archivo original global (solo superadmin)</h4>
+          <p className="pf-body-muted mt-1">
             Acá ves y descargás los archivos originales subidos por cada empresa/colegio.
           </p>
           <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -710,7 +710,7 @@ export default function EducationalExportsPage() {
         </section>
       ) : null}
 
-      <section className="pf-surface p-6">
+      <section className="pf-surface pf-surface-pad">
         <div className="grid gap-3 xl:grid-cols-5">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={dataset} onChange={(e) => setDataset(e.target.value)}>
             {Object.entries(datasetLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
@@ -731,7 +731,7 @@ export default function EducationalExportsPage() {
         ) : null}
       </section>
 
-      <section className="pf-surface p-6">
+      <section className="pf-surface pf-surface-pad">
         {isLoadingOverview ? <p className="mb-3 text-xs text-[#9fb6c4]">Actualizando historial...</p> : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">

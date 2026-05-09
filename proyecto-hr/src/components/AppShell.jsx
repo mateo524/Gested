@@ -169,10 +169,10 @@ export default function AppShell({ view, setView, children }) {
   return (
     <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-4 py-4">
+        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-3 px-4 py-3 md:gap-4 md:py-4">
           <div className="min-w-0">
             <AppLogo variant="dark" />
-            <p className="mt-1 text-sm text-[#7A9AAA]">{contextualSubtitle}</p>
+            <p className="mt-1 text-xs text-[#7A9AAA] md:text-sm">{contextualSubtitle}</p>
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
@@ -180,7 +180,7 @@ export default function AppShell({ view, setView, children }) {
               <button
                 key={tab.key}
                 onClick={() => openPrimary(tab.key, tab.defaultView)}
-                className={`rounded-xl px-5 py-3 text-base font-medium transition ${
+                className={`rounded-xl px-4 py-2.5 text-sm font-medium transition md:px-5 md:py-3 md:text-base ${
                   activePrimary === tab.key
                     ? "bg-[#28964D] text-white"
                     : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
@@ -194,7 +194,7 @@ export default function AppShell({ view, setView, children }) {
           <div className="flex items-center gap-2">
             {user?.isSuperAdmin && companies.length ? (
               <select
-                className="max-w-56 rounded-xl border border-white/10 bg-[#142028] px-3 py-3 text-sm text-white"
+                className="max-w-52 rounded-xl border border-white/10 bg-[#142028] px-3 py-2.5 text-xs text-white md:max-w-56 md:py-3 md:text-sm"
                 value={activeCompanyId}
                 onChange={(e) => setActiveCompanyId(e.target.value)}
               >
@@ -206,7 +206,7 @@ export default function AppShell({ view, setView, children }) {
               </select>
             ) : null}
             <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
-            <button onClick={logout} className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-3 text-sm text-white">
+            <button onClick={logout} className="rounded-xl border border-white/15 bg-[#1A2C38] px-3 py-2.5 text-xs text-white md:px-4 md:py-3 md:text-sm">
               Salir
             </button>
           </div>
