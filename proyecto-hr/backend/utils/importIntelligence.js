@@ -378,8 +378,9 @@ export function mapRowsByDetections(rows, detections, dataset) {
     if (dataset === "employees") {
       const rawApellido = String(getMappedValue(row, detections, "apellido") || "").trim();
       const rawNombre = String(getMappedValue(row, detections, "nombre") || "").trim();
+      const nombreHeader = String(detections?.nombre?.header || "");
       const combinedFromApellido = !rawNombre && /,|\s/.test(rawApellido);
-      const autoName = splitCombinedName(combinedFromApellido ? rawApellido : (rawNombre || rawApellido));
+      const autoName = splitCombinedName(combinedFromApellido ? rawApellido : (rawNombre || rawApellido), nombreHeader);
       const apellido = combinedFromApellido ? autoName.apellido : (rawApellido || autoName.apellido);
       const nombre = rawNombre || autoName.nombre;
       return {
@@ -433,14 +434,16 @@ function normalizeRoleCode(raw) {
   if (value.includes("admin") && value.includes("coleg")) return "ADMIN_COLEGIO";
   if (value.includes("director")) return "DIRECTOR";
   if (value.includes("rrhh")) return "RRHH";
-  if (value.includes("jefe")) return "JEFE";
+  if (value.includes("jefe") || value.includes("coordinador") || value.includes("referente")) return "JEFE";
+  if (value.includes("asesora_pedagogica_externa") || value.includes("auditor") || value.includes("lector")) return "AUDITOR";
   if (value.includes("auditor") || value.includes("lector")) return "AUDITOR";
   if (value.includes("empleado") || value.includes("docente")) return "EMPLEADO";
   return raw ? String(raw).trim().toUpperCase() : "";
 }
 
-function splitCombinedName(value) {
+function splitCombinedName(value, sourceHeader = "") {
   const text = String(value || "").trim().replace(/\s+/g, " ");
+  const header = sanitizeHeader(sourceHeader);
   if (!text) return { nombre: "", apellido: "" };
   if (text.includes(",")) {
     const [apellidoRaw, nombreRaw] = text.split(",", 2);
@@ -451,6 +454,18 @@ function splitCombinedName(value) {
   }
   const parts = text.split(" ").filter(Boolean);
   if (parts.length <= 1) return { nombre: text, apellido: "" };
+  if (header.includes("apellidoynombre")) {
+    return {
+      apellido: parts.slice(0, -1).join(" "),
+      nombre: parts.slice(-1).join(" "),
+    };
+  }
+  if (header.includes("nombreyapellido")) {
+    return {
+      nombre: parts[0],
+      apellido: parts.slice(1).join(" "),
+    };
+  }
   return {
     nombre: parts[0],
     apellido: parts.slice(1).join(" "),
@@ -477,6 +492,10 @@ export function validateRowsForDataset(mappedRows, dataset, options = {}) {
       if (row.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(row.email)) errors.push("Email invalido");
 
       let roleCode = normalizeRoleCode(row.roleCode);
+      if (!roleCode && row.cargo) {
+        roleCode = normalizeRoleCode(row.cargo);
+        row.roleCode = roleCode || row.roleCode;
+      }
       if (roleCode === "SUPER_ADMIN") {
         row.roleCode = highestAllowedRoleCode;
         roleCode = highestAllowedRoleCode;
