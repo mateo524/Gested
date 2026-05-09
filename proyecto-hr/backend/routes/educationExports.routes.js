@@ -1338,6 +1338,7 @@ router.post(
       updated: 0,
       errors: [...preview.invalidRows, ...correctedErrors],
       warnings: preview.warnings || [],
+      moduleSummary: null,
     };
 
     if (dataset === "narrative") {
@@ -1460,10 +1461,24 @@ router.post(
     if (dataset === "multi") {
       const modules = preview.aiParsed?.detectedModules || {};
       const byNameCompetency = new Map();
+      const moduleSummary = {
+        employees: { created: 0, updated: 0, errors: 0 },
+        roles: { created: 0, updated: 0, errors: 0 },
+        competencies: { created: 0, updated: 0, errors: 0 },
+        metrics: { created: 0, updated: 0, errors: 0 },
+        cycles: { created: 0, updated: 0, errors: 0 },
+      };
+      const pushModuleError = (moduleName, message) => {
+        moduleSummary[moduleName].errors += 1;
+        result.errors.push({ row: "-", message: `[${moduleName}] ${message}` });
+      };
 
       const employees = Array.isArray(modules.employees) ? modules.employees : [];
       for (const row of employees) {
-        if (!schoolId) continue;
+        if (!schoolId) {
+          pushModuleError("employees", "No hay colegio activo para crear empleados");
+          continue;
+        }
         const apellido = String(row.apellido || "").trim() || parseNameParts(row.nombreCompleto || row.nombre || "").apellido || "-";
         const nombre = String(row.nombre || "").trim() || parseNameParts(row.nombreCompleto || "").nombre || "-";
         const cargo = String(row.cargo || "").trim() || "Colaborador";
@@ -1484,19 +1499,31 @@ router.post(
           Object.assign(existing, payload);
           await existing.save();
           result.updated += 1;
+          moduleSummary.employees.updated += 1;
         } else {
           await Employee.create({ ...payload, email: email || undefined });
           result.created += 1;
+          moduleSummary.employees.created += 1;
         }
       }
 
       const roles = Array.isArray(modules.roles) ? modules.roles : [];
       for (const row of roles) {
         const nombre = String(row.nombre || row.role || "").trim();
-        if (!nombre) continue;
-        if (normalizeText(nombre).includes("super_admin")) continue;
+        if (!nombre) {
+          pushModuleError("roles", "Falta nombre de rol");
+          continue;
+        }
+        if (normalizeText(nombre).includes("super_admin")) {
+          pushModuleError("roles", "No se permite SUPER_ADMIN por importación");
+          continue;
+        }
         const exists = await Role.findOne({ companyId, schoolId: schoolId || null, nombre });
-        if (exists) continue;
+        if (exists) {
+          result.updated += 1;
+          moduleSummary.roles.updated += 1;
+          continue;
+        }
         await Role.create({
           companyId,
           schoolId: schoolId || null,
@@ -1507,13 +1534,27 @@ router.post(
           activo: true,
         });
         result.created += 1;
+        moduleSummary.roles.created += 1;
       }
 
       const competencies = Array.isArray(modules.competencies) ? modules.competencies : [];
       for (const row of competencies) {
-        if (!schoolId) continue;
+        if (!schoolId) {
+          pushModuleError("competencies", "No hay colegio activo para crear competencias");
+          continue;
+        }
         const nombre = String(row.nombre || row.competencia || "").trim();
-        if (!nombre) continue;
+        if (!nombre) {
+          pushModuleError("competencies", "Falta nombre de competencia");
+          continue;
+        }
+        const exists = await Competency.findOne({ companyId, schoolId, nombre }).lean();
+        if (exists) {
+          result.updated += 1;
+          moduleSummary.competencies.updated += 1;
+          byNameCompetency.set(normalizeText(nombre), exists);
+          continue;
+        }
         const competency = await Competency.findOneAndUpdate(
           { companyId, schoolId, nombre },
           {
@@ -1529,18 +1570,34 @@ router.post(
           },
           { upsert: true, new: true }
         );
+        result.created += 1;
+        moduleSummary.competencies.created += 1;
         byNameCompetency.set(normalizeText(nombre), competency);
       }
 
       const metrics = Array.isArray(modules.metrics) ? modules.metrics : [];
       for (const row of metrics) {
-        if (!schoolId) continue;
+        if (!schoolId) {
+          pushModuleError("metrics", "No hay colegio activo para crear indicadores");
+          continue;
+        }
         const nombre = String(row.nombre || row.metrica || "").trim();
         const compName = normalizeText(row.competencia || row.competency || "");
         const competency = byNameCompetency.get(compName);
-        if (!nombre || !competency) continue;
+        if (!nombre) {
+          pushModuleError("metrics", "Falta nombre de indicador");
+          continue;
+        }
+        if (!competency) {
+          pushModuleError("metrics", `Competencia no encontrada para indicador: ${nombre}`);
+          continue;
+        }
         const exists = await Metric.findOne({ companyId, schoolId, competencyId: competency._id, nombre });
-        if (exists) continue;
+        if (exists) {
+          result.updated += 1;
+          moduleSummary.metrics.updated += 1;
+          continue;
+        }
         await Metric.create({
           companyId,
           schoolId,
@@ -1552,11 +1609,15 @@ router.post(
           activa: true,
         });
         result.created += 1;
+        moduleSummary.metrics.created += 1;
       }
 
       const cycles = Array.isArray(modules.cycles) ? modules.cycles : [];
       for (const row of cycles) {
-        if (!schoolId) continue;
+        if (!schoolId) {
+          pushModuleError("cycles", "No hay colegio activo para crear períodos");
+          continue;
+        }
         const anio = Number(row.anio || new Date().getFullYear());
         const periodo = String(row.periodo || row.nombre || "Importado").trim();
         const etapa = ["INICIO", "REVISION_INTERMEDIA", "EVALUACION_FINAL"].includes(String(row.etapa || "").toUpperCase())
@@ -1565,7 +1626,11 @@ router.post(
         const fechaInicio = row.fechaInicio ? new Date(row.fechaInicio) : new Date(anio, 0, 1);
         const fechaFin = row.fechaFin ? new Date(row.fechaFin) : new Date(anio, 11, 31);
         const exists = await EvaluationCycle.findOne({ companyId, schoolId, anio, periodo, etapa });
-        if (exists) continue;
+        if (exists) {
+          result.updated += 1;
+          moduleSummary.cycles.updated += 1;
+          continue;
+        }
         await EvaluationCycle.create({
           companyId,
           schoolId,
@@ -1577,7 +1642,9 @@ router.post(
           fechaFin,
         });
         result.created += 1;
+        moduleSummary.cycles.created += 1;
       }
+      result.moduleSummary = moduleSummary;
     }
 
     if (dataset === "employees") {
