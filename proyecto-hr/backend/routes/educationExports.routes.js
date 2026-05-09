@@ -1376,6 +1376,8 @@ router.post(
     }
 
     if (dataset === "employees") {
+      const touchedEmployeeIds = [];
+
       for (const row of rows) {
         if (!schoolId) {
           result.errors.push({ row: "-", message: "No hay colegio activo para crear empleados" });
@@ -1397,10 +1399,63 @@ router.post(
         if (existing) {
           Object.assign(existing, base);
           await existing.save();
+          touchedEmployeeIds.push(String(existing._id));
           result.updated += 1;
         } else {
-          await Employee.create({ ...base, email: email || undefined });
+          const created = await Employee.create({ ...base, email: email || undefined });
+          touchedEmployeeIds.push(String(created._id));
           result.created += 1;
+        }
+      }
+
+      // Vincula "reporta a" -> managerId usando email, legajo o nombre.
+      if (schoolId && touchedEmployeeIds.length > 0) {
+        const scopeEmployees = await Employee.find({ companyId, schoolId }).select("_id nombre apellido email legajo").lean();
+        const byEmail = new Map();
+        const byLegajo = new Map();
+        const byFullName = new Map();
+
+        for (const item of scopeEmployees) {
+          if (item.email) byEmail.set(String(item.email).trim().toLowerCase(), item._id);
+          if (item.legajo) byLegajo.set(String(item.legajo).trim().toLowerCase(), item._id);
+          const fullName = `${String(item.apellido || "").trim()} ${String(item.nombre || "").trim()}`.trim().toLowerCase();
+          if (fullName) byFullName.set(fullName, item._id);
+        }
+
+        for (const row of rows) {
+          const ref = String(row.managerRef || row.jefe || "").trim();
+          if (!ref) continue;
+
+          const email = String(row.email || "").trim().toLowerCase();
+          const legajo = String(row.legajo || "").trim().toLowerCase();
+          const current = await Employee.findOne({
+            companyId,
+            schoolId,
+            $or: [
+              ...(email ? [{ email }] : []),
+              ...(legajo ? [{ legajo }] : []),
+              { apellido: row.apellido, nombre: row.nombre },
+            ],
+          });
+          if (!current) continue;
+
+          const refKey = ref.toLowerCase();
+          let managerId =
+            byEmail.get(refKey) ||
+            byLegajo.get(refKey) ||
+            byFullName.get(refKey) ||
+            null;
+
+          if (!managerId && ref.includes(",")) {
+            const [apellidoPart, nombrePart] = ref.split(",", 2).map((v) => String(v || "").trim().toLowerCase());
+            const key = `${apellidoPart} ${nombrePart}`.trim();
+            managerId = byFullName.get(key) || null;
+          }
+
+          if (managerId && String(managerId) !== String(current._id)) {
+            current.managerId = managerId;
+            await current.save();
+          }
         }
       }
     }
