@@ -19,7 +19,7 @@ import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
-import { uploadBufferToStorage } from "../utils/storageProvider.js";
+import { uploadBufferToStorage, deleteFromStorage } from "../utils/storageProvider.js";
 import {
   IMPORT_CONFIDENCE_THRESHOLD,
   buildColumnDetections,
@@ -45,6 +45,7 @@ const IMPORT_AI_WEBHOOK_URL = process.env.IMPORT_AI_WEBHOOK_URL || "";
 const IMPORT_AI_TOKEN = process.env.IMPORT_AI_TOKEN || "";
 const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
 const ROLE_FALLBACK_ORDER = ["ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"];
+const PROTECTED_ROLE_CODES = new Set(["SUPER_ADMIN", "ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"]);
 
 function getImportErrorPayload(error, fallbackMessage) {
   const raw = String(error?.message || "");
@@ -1089,6 +1090,103 @@ router.post(
         getImportErrorPayload(error, "No se pudo procesar el archivo. Verifica el formato e intenta nuevamente.")
       );
     }
+  }
+);
+
+router.delete(
+  "/purge/:target",
+  auth,
+  requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES, PERMISSIONS.MANAGE_ROLES),
+  async (req, res) => {
+    const { companyId } = await resolveCompanyScope(req);
+    const requestedSchoolId = String(req.query.schoolId || "").trim();
+    const schoolId = req.user.isSuperAdmin ? requestedSchoolId || null : req.user.schoolId || null;
+    const target = String(req.params.target || "").trim().toLowerCase();
+
+    const scopedFilter = schoolId ? { companyId, schoolId } : { companyId };
+    const summary = { target, deleted: 0, filesDeleted: 0 };
+
+    if (target === "employees") {
+      const out = await Employee.deleteMany(scopedFilter);
+      summary.deleted = out.deletedCount || 0;
+    } else if (target === "metrics") {
+      const out = await Metric.deleteMany(scopedFilter);
+      summary.deleted = out.deletedCount || 0;
+    } else if (target === "cycles") {
+      const out = await EvaluationCycle.deleteMany(scopedFilter);
+      summary.deleted = out.deletedCount || 0;
+    } else if (target === "competencies" || target === "indicators") {
+      const [mOut, cOut] = await Promise.all([
+        Metric.deleteMany(scopedFilter),
+        Competency.deleteMany(scopedFilter),
+      ]);
+      summary.deleted = (mOut.deletedCount || 0) + (cOut.deletedCount || 0);
+    } else if (target === "roles" || target === "profiles") {
+      const roles = await Role.find(scopedFilter).select("_id code nombre").lean();
+      const removable = roles.filter((role) => {
+        const code = String(role.code || "").toUpperCase().trim();
+        if (!code) return true;
+        return !PROTECTED_ROLE_CODES.has(code);
+      });
+      if (removable.length) {
+        const out = await Role.deleteMany({ _id: { $in: removable.map((r) => r._id) } });
+        summary.deleted = out.deletedCount || 0;
+      } else {
+        summary.deleted = 0;
+      }
+    } else if (target === "files") {
+      const files = await DatabaseFile.find(scopedFilter).lean();
+      for (const file of files) {
+        await deleteFromStorage({
+          provider: file.storageProvider,
+          key: file.storageKey,
+          bucket: file.storageBucket,
+          localPath: null,
+        });
+        summary.filesDeleted += 1;
+      }
+      const out = await DatabaseFile.deleteMany(scopedFilter);
+      summary.deleted = out.deletedCount || 0;
+    } else if (target === "all") {
+      const [employeesOut, metricsOut, cyclesOut, competenciesOut] = await Promise.all([
+        Employee.deleteMany(scopedFilter),
+        Metric.deleteMany(scopedFilter),
+        EvaluationCycle.deleteMany(scopedFilter),
+        Competency.deleteMany(scopedFilter),
+      ]);
+      const roles = await Role.find(scopedFilter).select("_id code").lean();
+      const removableRoleIds = roles
+        .filter((role) => !PROTECTED_ROLE_CODES.has(String(role.code || "").toUpperCase().trim()))
+        .map((role) => role._id);
+      const rolesOut = removableRoleIds.length
+        ? await Role.deleteMany({ _id: { $in: removableRoleIds } })
+        : { deletedCount: 0 };
+      const files = await DatabaseFile.find(scopedFilter).lean();
+      for (const file of files) {
+        await deleteFromStorage({
+          provider: file.storageProvider,
+          key: file.storageKey,
+          bucket: file.storageBucket,
+          localPath: null,
+        });
+        summary.filesDeleted += 1;
+      }
+      const filesOut = await DatabaseFile.deleteMany(scopedFilter);
+      summary.deleted =
+        (employeesOut.deletedCount || 0) +
+        (metricsOut.deletedCount || 0) +
+        (cyclesOut.deletedCount || 0) +
+        (competenciesOut.deletedCount || 0) +
+        (rolesOut.deletedCount || 0) +
+        (filesOut.deletedCount || 0);
+    } else {
+      return res.status(400).json({ mensaje: "Target no soportado. Usa employees, metrics, cycles, competencies, roles, files o all." });
+    }
+
+    return res.json({
+      mensaje: `Limpieza completada para ${target}.`,
+      summary,
+    });
   }
 );
 
