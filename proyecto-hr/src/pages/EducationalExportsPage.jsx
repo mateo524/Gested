@@ -477,6 +477,33 @@ export default function EducationalExportsPage() {
             <p>Actualizados: {importResult.updated}</p>
             <p>Errores: {importResult.errors?.length || 0}</p>
             <p>Advertencias: {importResult.warnings?.length || 0}</p>
+            {importResult.moduleSummary ? (
+              <div className="mt-4 space-y-2">
+                <p className="text-xs uppercase tracking-[0.2em] text-[#b9f4cf]">Resumen por módulo</p>
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {Object.entries(importResult.moduleSummary).map(([moduleName, moduleData]) => (
+                    <article key={moduleName} className="rounded-xl border border-emerald-300/20 bg-[#0f1f28] p-3 text-xs text-[#d3f8e2]">
+                      <p className="text-sm font-semibold text-white">
+                        {moduleName === "employees"
+                          ? "Empleados"
+                          : moduleName === "metrics"
+                          ? "Indicadores"
+                          : moduleName === "cycles"
+                          ? "Períodos"
+                          : moduleName === "roles"
+                          ? "Perfiles"
+                          : moduleName === "competencies"
+                          ? "Competencias"
+                          : moduleName}
+                      </p>
+                      <p>Creados: {moduleData?.created || 0}</p>
+                      <p>Actualizados: {moduleData?.updated || 0}</p>
+                      <p>Errores: {moduleData?.errors || 0}</p>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </section>
