@@ -66,7 +66,12 @@ function confidenceByContent(samples, field) {
   }
   if (field === "role") {
     const roleWords = ["super_admin", "admin", "rrhh", "jefe", "empleado", "auditor", "lector", "director"];
-    const hit = sample.filter((v) => roleWords.some((word) => normalizeText(v).includes(word))).length;
+    const hit = sample.filter((v) => {
+      const value = normalizeText(v);
+      // Evita tomar textos narrativos largos (ej: observaciones) como columna de rol.
+      if (value.length > 32) return false;
+      return roleWords.some((word) => value === word || value.startsWith(`${word} `) || value.endsWith(` ${word}`) || value.includes(word));
+    }).length;
     return hit / sample.length;
   }
   return 0.2;
@@ -415,6 +420,8 @@ export function mapRowsByDetections(rows, detections, dataset) {
 function normalizeRoleCode(raw) {
   const value = normalizeText(raw).replace(/\s+/g, "_");
   if (!value) return "";
+  // Frases narrativas tipo "no SUPER_ADMIN" no deben convertirse en rol.
+  if (value.includes("no_super_admin") || value.includes("no_se_permite_super_admin")) return "";
   if (value.includes("super")) return "SUPER_ADMIN";
   if (value.includes("admin") && value.includes("coleg")) return "ADMIN_COLEGIO";
   if (value.includes("director")) return "DIRECTOR";
