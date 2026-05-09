@@ -243,6 +243,7 @@ export default function EducationalExportsPage() {
   }
 
   function getEditableFields() {
+    if (importPreview?.datasetDetected === "multi") return [];
     if (importPreview?.datasetDetected === "employees") return ["apellido", "nombre", "email", "cargo", "area", "legajo"];
     if (importPreview?.datasetDetected === "metrics") return ["competencia", "nombre", "ponderacion", "descripcion"];
     if (importPreview?.datasetDetected === "cycles") return ["anio", "periodo", "etapa", "estado", "fechaInicio", "fechaFin"];
@@ -368,6 +369,23 @@ export default function EducationalExportsPage() {
               </div>
             ) : null}
 
+            {importPreview.datasetDetected === "multi" && importPreview.mixedSummary ? (
+              <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Resumen mixto detectado</p>
+                <div className="grid gap-2 md:grid-cols-3">
+                  {Object.entries(importPreview.mixedSummary).map(([moduleName, count]) => (
+                    <div key={moduleName} className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2">
+                      <p className="text-xs text-[#9fb6c4]">{moduleName}</p>
+                      <p className="font-semibold text-white">{count} fila(s)</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-[#c5d5de]">
+                  Se importará por secciones automáticamente (empleados, métricas, ciclos, perfiles y competencias detectadas).
+                </p>
+              </div>
+            ) : null}
+
             {mappingFields.length ? (
               <div className="rounded-xl border border-amber-300/30 bg-amber-500/10 p-3">
                 <p className="mb-2 text-sm font-semibold text-amber-200">Mejora opcional de mapeo (la importación puede continuar igual)</p>
@@ -400,7 +418,7 @@ export default function EducationalExportsPage() {
               </div>
             ) : null}
 
-            {editableErrors.length ? (
+            {editableErrors.length && importPreview.datasetDetected !== "multi" ? (
               <div className="space-y-3 rounded-xl border border-white/10 bg-[#1A2C38] p-3">
                 <p className="text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Errores que sí bloquean</p>
                 {editableErrors.map((errorRow, index) => (

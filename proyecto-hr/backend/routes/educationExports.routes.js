@@ -47,6 +47,55 @@ const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
 const ROLE_FALLBACK_ORDER = ["ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"];
 const PROTECTED_ROLE_CODES = new Set(["SUPER_ADMIN", "ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"]);
 
+async function buildMultiDetectedModules({ rows, companyId, schoolId }) {
+  const modules = {
+    employees: [],
+    metrics: [],
+    cycles: [],
+    roles: [],
+    competencies: [],
+  };
+  const errors = [];
+  const warnings = [];
+
+  const highestAllowedRoleCode = await resolveHighestAllowedRoleCode({ companyId, schoolId });
+
+  const datasetList = ["employees", "metrics", "cycles", "roles"];
+  for (const datasetName of datasetList) {
+    const detections = buildColumnDetections(rows, Object.keys(rows[0] || {}), {});
+    const mappedRows = mapRowsByDetections(rows, detections, datasetName);
+    const validated = validateRowsForDataset(mappedRows, datasetName, { highestAllowedRoleCode });
+    if (validated.validRows.length > 0) {
+      modules[datasetName] = validated.validRows;
+    }
+    if (validated.invalidRows.length > 0) {
+      errors.push(...validated.invalidRows.slice(0, 10).map((item) => ({ ...item, dataset: datasetName })));
+    }
+    if (validated.warnings.length > 0) {
+      warnings.push(...validated.warnings.slice(0, 10).map((item) => ({ ...item, dataset: datasetName })));
+    }
+    if (validated.duplicates.length > 0) {
+      warnings.push(...validated.duplicates.slice(0, 10).map((message) => ({ row: "-", message, dataset: datasetName })));
+    }
+  }
+
+  const byCompetency = new Map();
+  for (const metricRow of modules.metrics) {
+    const name = String(metricRow.competencia || "").trim();
+    if (!name) continue;
+    const key = normalizeText(name);
+    if (!byCompetency.has(key)) {
+      byCompetency.set(key, {
+        nombre: name,
+        descripcion: "Competencia generada desde importación mixta",
+      });
+    }
+  }
+  modules.competencies = [...byCompetency.values()];
+
+  return { modules, errors, warnings };
+}
+
 function getImportErrorPayload(error, fallbackMessage) {
   const raw = String(error?.message || "");
   if (/zip|central directory|end of central directory|corrupt/i.test(raw)) {
@@ -899,6 +948,65 @@ router.post(
     const detections = buildColumnDetections(rows, headers, { ...learnedMapping, ...manualMapping });
     const detectedDataset = classifyDatasetByDetections(detections, requestedDataset);
     const analyzeOnly = String(req.body.mode || "").toLowerCase() === "analyze" || String(req.body.analyzeOnly || "").toLowerCase() === "true";
+    const schoolIdForPreview = req.body.schoolId || req.user.schoolId || null;
+    const { companyId: scopeCompanyId } = await resolveCompanyScope(req);
+
+    if (requestedDataset === "auto") {
+      const mixed = await buildMultiDetectedModules({
+        rows,
+        companyId: scopeCompanyId,
+        schoolId: schoolIdForPreview,
+      });
+      const nonEmptyModules = Object.entries(mixed.modules).filter(([, items]) => Array.isArray(items) && items.length > 0);
+      const isMixedCandidate = nonEmptyModules.length >= 2;
+      if (isMixedCandidate) {
+        const previewToken = saveImportPreview({
+          dataset: "multi",
+          schoolId: schoolIdForPreview,
+          validRows: [],
+          invalidRows: mixed.errors,
+          warnings: mixed.warnings,
+          aiParsed: {
+            detectedModules: mixed.modules,
+          },
+          analysis: {
+            sheetName,
+            headerRowNumber,
+            worksheetsMeta,
+            detections,
+            lowConfidenceFields: [],
+            requiresManualMapping: false,
+          },
+          fileMeta: {
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+          },
+        });
+
+        const validCount = nonEmptyModules.reduce((acc, [, items]) => acc + items.length, 0);
+        const summaryByModule = Object.fromEntries(nonEmptyModules.map(([name, items]) => [name, items.length]));
+        return res.json({
+          ok: true,
+          previewToken,
+          datasetDetected: "multi",
+          totalRows: rows.length,
+          validCount,
+          invalidCount: mixed.errors.length,
+          warningCount: mixed.warnings.length,
+          sampleErrors: mixed.errors.slice(0, 20),
+          sampleWarnings: mixed.warnings.slice(0, 20),
+          mixedSummary: summaryByModule,
+          analysis: {
+            sheetName,
+            headerRowNumber,
+            worksheetsMeta,
+            detections,
+            lowConfidenceFields: [],
+            requiresManualMapping: false,
+          },
+        });
+      }
+    }
 
     const criticalByDataset = {
       employees: ["apellido", "nombre", "cargo", "email"],
@@ -1010,10 +1118,9 @@ router.post(
     }
 
     const mappedRows = mapRowsByDetections(rows, detections, detectedDataset);
-    const { companyId: scopeCompanyId } = await resolveCompanyScope(req);
     const highestAllowedRoleCode = await resolveHighestAllowedRoleCode({
       companyId: scopeCompanyId,
-      schoolId: req.body.schoolId || req.user.schoolId || null,
+      schoolId: schoolIdForPreview,
     });
     const { validRows, invalidRows, warnings, duplicates } = validateRowsForDataset(mappedRows, detectedDataset, {
       highestAllowedRoleCode,
@@ -1044,7 +1151,7 @@ router.post(
 
     const previewToken = saveImportPreview({
       dataset: detectedDataset,
-      schoolId: req.body.schoolId || req.user.schoolId || null,
+      schoolId: schoolIdForPreview,
       validRows,
       invalidRows,
       warnings: [...warnings, ...duplicates.map((message) => ({ row: "-", message }))],
