@@ -38,6 +38,7 @@ export default function EducationalExportsPage() {
   const [confirmMapping, setConfirmMapping] = useState(false);
   const [confirmWarnings, setConfirmWarnings] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [isPurging, setIsPurging] = useState(false);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
 
@@ -249,6 +250,29 @@ export default function EducationalExportsPage() {
     return [];
   }
 
+  async function purgeTarget(target, label) {
+    const confirmation = window.prompt(`Para borrar ${label}, escribe ELIMINAR`);
+    if (confirmation !== "ELIMINAR") return;
+    try {
+      setIsPurging(true);
+      const suffix = filters.schoolId ? `?schoolId=${encodeURIComponent(filters.schoolId)}` : "";
+      const data = await apiFetch(`/education-exports/purge/${target}${suffix}`, {
+        method: "DELETE",
+        token,
+      });
+      setMessageType("success");
+      setMessage(data?.mensaje || `Limpieza completada: ${label}`);
+      setImportPreview(null);
+      setImportResult(null);
+      await Promise.all([loadOverview(), loadDataset()]);
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setIsPurging(false);
+    }
+  }
+
   const mappingFields = importPreview?.analysis?.lowConfidenceFields || [];
   const detectionEntries = Object.entries(importPreview?.analysis?.detections || {});
 
@@ -289,6 +313,22 @@ export default function EducationalExportsPage() {
             Analizar sin importar
           </button>
         </div>
+        {canImport ? (
+          <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4">
+            <p className="mb-3 text-sm font-semibold text-rose-200">Limpieza rápida (con confirmación)</p>
+            <div className="grid gap-2 md:grid-cols-3 xl:grid-cols-4">
+              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("files", "archivos subidos")}>Borrar archivos subidos</button>
+              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("employees", "empleados")}>Borrar empleados</button>
+              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("metrics", "métricas")}>Borrar métricas</button>
+              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("cycles", "ciclos")}>Borrar ciclos</button>
+              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("competencies", "indicadores/competencias")}>Borrar indicadores</button>
+              <button className="rounded-xl border border-rose-300/40 px-3 py-2 text-sm text-rose-100 disabled:opacity-60" disabled={isPurging} onClick={() => purgeTarget("roles", "perfiles")}>Borrar perfiles</button>
+              <button className="rounded-xl bg-rose-700 px-3 py-2 text-sm font-semibold text-white disabled:opacity-60 md:col-span-2 xl:col-span-2" disabled={isPurging} onClick={() => purgeTarget("all", "todo (archivos + datos importados)")}>
+                {isPurging ? "Borrando..." : "Borrar todo importado"}
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         {importPreview ? (
           <div className="space-y-3 rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
