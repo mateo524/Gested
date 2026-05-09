@@ -232,7 +232,7 @@ export default function AppShell({ view, setView, children }) {
       </header>
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
-        <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
+        <div className="pf-card-muted mb-4 px-4 py-3 text-sm text-[#AFC3CE]">
           {user?.companyName || "Organización"} - {user?.roleName}
         </div>
         {tokenNearExpiry ? (
@@ -245,4 +245,3 @@ export default function AppShell({ view, setView, children }) {
     </div>
   );
 }
-
