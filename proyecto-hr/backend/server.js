@@ -27,6 +27,7 @@ import educationExportsRoutes from "./routes/educationExports.routes.js";
 import developmentPlansRoutes from "./routes/developmentPlans.routes.js";
 import automationRoutes from "./routes/automation.routes.js";
 import supportRoutes from "./routes/support.routes.js";
+import bulkImportRoutes from "./routes/bulkImport.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 
 const app = express();
@@ -138,6 +139,7 @@ app.use("/education-exports", educationExportsRoutes);
 app.use("/development-plans", developmentPlansRoutes);
 app.use("/automation", automationRoutes);
 app.use("/support", supportRoutes);
+app.use("/bulk-import", bulkImportRoutes);
 
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");

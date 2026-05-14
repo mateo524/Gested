@@ -23,6 +23,12 @@ const ImportAuditEventSchema = new mongoose.Schema(
 
 const ImportJobSchema = new mongoose.Schema(
   {
+    jobType: {
+      type: String,
+      enum: ["legacy_dataset", "bulk_unified"],
+      default: "legacy_dataset",
+      index: true,
+    },
     companyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Company",
@@ -49,7 +55,7 @@ const ImportJobSchema = new mongoose.Schema(
     previewToken: { type: String, default: "", index: true },
     stage: {
       type: String,
-      enum: ["uploaded", "validated", "confirmed", "failed", "expired"],
+      enum: ["uploaded", "analyzed", "validated", "confirmed", "failed", "expired"],
       default: "uploaded",
       index: true,
     },
@@ -64,6 +70,7 @@ const ImportJobSchema = new mongoose.Schema(
     updatedCount: { type: Number, default: 0 },
     errorCount: { type: Number, default: 0 },
     previewSummary: { type: mongoose.Schema.Types.Mixed, default: null },
+    resultSummary: { type: mongoose.Schema.Types.Mixed, default: null },
     issues: { type: [ImportIssueSchema], default: [] },
     aiSuggestions: { type: [String], default: [] },
     aiRawSummary: { type: mongoose.Schema.Types.Mixed, default: null },
