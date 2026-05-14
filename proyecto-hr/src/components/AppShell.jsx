@@ -106,12 +106,23 @@ export default function AppShell({ view, setView, children }) {
         { key: "planes", label: "Desarrollo", show: hasPermission("manage_development_plans"), group: "evaluacion" },
         {
           key: "bases-descargas",
-          label: "Cargas y descargas",
+          label: "Descargas",
           show:
             hasPermission("view_reports") ||
             hasPermission("download_reports") ||
             hasPermission("download_team_reports") ||
             hasPermission("download_self_report"),
+          group: "datos",
+        },
+        {
+          key: "carga-masiva",
+          label: "Carga masiva",
+          show:
+            hasPermission("manage_users") ||
+            hasPermission("manage_school_users") ||
+            hasPermission("manage_employees") ||
+            hasPermission("manage_roles") ||
+            hasPermission("view_audit"),
           group: "datos",
         },
         { key: "novedades", label: "Comunicados", show: true, group: "datos" },
@@ -150,7 +161,7 @@ export default function AppShell({ view, setView, children }) {
         : isManagerUser
           ? ["empleados", "competencias", "metricas", "ciclos", "usuarios", "roles", "settings"]
           : ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
-      datos: ["bases-descargas", "organizaciones", "novedades"],
+      datos: ["carga-masiva", "bases-descargas", "organizaciones", "novedades"],
     };
 
     const groupViews = allViews.filter((item) => item.group === groupKey).map((item) => item.key);
