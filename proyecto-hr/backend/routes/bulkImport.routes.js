@@ -21,7 +21,7 @@ const upload = multer({
   limits: { fileSize: 12 * 1024 * 1024 },
 });
 
-function resolveBulkTenant(req) {
+export function resolveBulkTenant(req) {
   if (req.scope?.isSuperAdmin) {
     return {
       companyId: req.get("X-Company-Id") || req.scope.companyId,
@@ -35,14 +35,14 @@ function resolveBulkTenant(req) {
   };
 }
 
-const bulkImportManageAccess = requireAnyPermission(
+export const bulkImportManageAccess = requireAnyPermission(
   PERMISSIONS.MANAGE_USERS,
   PERMISSIONS.MANAGE_SCHOOL_USERS,
   PERMISSIONS.MANAGE_EMPLOYEES,
   PERMISSIONS.MANAGE_ROLES
 );
 
-const bulkImportReadAccess = requireAnyPermission(
+export const bulkImportReadAccess = requireAnyPermission(
   PERMISSIONS.MANAGE_USERS,
   PERMISSIONS.MANAGE_SCHOOL_USERS,
   PERMISSIONS.MANAGE_EMPLOYEES,
