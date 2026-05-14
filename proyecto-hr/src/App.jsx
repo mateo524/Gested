@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
 
+<<<<<<< HEAD
 const loadDashboardPage = () => import("./pages/DashboardPage");
 const loadOrganizationsPage = () => import("./pages/OrganizationsPage");
 const loadUsersPage = () => import("./pages/UsersPage");
@@ -34,6 +35,23 @@ const DevelopmentPlansPage = lazy(loadDevelopmentPlansPage);
 const EducationalExportsPage = lazy(loadEducationalExportsPage);
 const StorageCenterPage = lazy(loadStorageCenterPage);
 const SettingsPage = lazy(loadSettingsPage);
+=======
+const DashboardPage = lazy(() => import("./pages/DashboardPage"));
+const OrganizationsPage = lazy(() => import("./pages/OrganizationsPage"));
+const UsersPage = lazy(() => import("./pages/UsersPage"));
+const RolesPage = lazy(() => import("./pages/RolesPage"));
+const AnnouncementsPage = lazy(() => import("./pages/AnnouncementsPage"));
+const EmployeesPage = lazy(() => import("./pages/EmployeesPage"));
+const CompetenciesPage = lazy(() => import("./pages/CompetenciesPage"));
+const MetricsPage = lazy(() => import("./pages/MetricsPage"));
+const EvaluationCyclesPage = lazy(() => import("./pages/EvaluationCyclesPage"));
+const EvaluationsPage = lazy(() => import("./pages/EvaluationsPage"));
+const DevelopmentPlansPage = lazy(() => import("./pages/DevelopmentPlansPage"));
+const EducationalExportsPage = lazy(() => import("./pages/EducationalExportsPage"));
+const BulkImportPage = lazy(() => import("./pages/BulkImportPage"));
+const StorageCenterPage = lazy(() => import("./pages/StorageCenterPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
+>>>>>>> 31fdab3 (Add unified bulk import frontend flow)
 
 function ViewLoader() {
   return (
@@ -79,6 +97,13 @@ function AppContent() {
         hasPermission("download_team_reports") ||
         hasPermission("download_self_report")
           ? "bases-descargas"
+          : null,
+        hasPermission("manage_users") ||
+        hasPermission("manage_school_users") ||
+        hasPermission("manage_employees") ||
+        hasPermission("manage_roles") ||
+        hasPermission("view_audit")
+          ? "carga-masiva"
           : null,
         user?.isSuperAdmin ? "archivo-central" : null,
       ].filter(Boolean),
@@ -153,6 +178,7 @@ function AppContent() {
           {view === "evaluaciones" && <EvaluationsPage />}
           {view === "planes" && <DevelopmentPlansPage />}
           {view === "bases-descargas" && <EducationalExportsPage />}
+          {view === "carga-masiva" && <BulkImportPage />}
           {view === "archivo-central" && <StorageCenterPage />}
           {view === "usuarios" && <UsersPage />}
           {view === "roles" && <RolesPage />}
