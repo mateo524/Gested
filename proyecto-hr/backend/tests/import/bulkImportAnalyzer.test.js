@@ -145,3 +145,245 @@ test("analyze bulk import rechaza roleKey prohibido", async () => {
     restores.forEach((restore) => restore());
   }
 });
+
+test("analyze bulk import rechaza PLATFORM como roleKey", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("Usuarios_y_Roles").getCell("C2").value = "PLATFORM";
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(analysis.summary.errors > 0, true);
+    assert.equal(
+      analysis.errors.some((item) => item.field === "role_key" && item.message.includes("PLATFORM")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze bulk import rechaza roleKey invalido", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("Usuarios_y_Roles").getCell("C2").value = "WHATEVER_ROLE";
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.field === "role_key" && item.message.includes("no permitido")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze bulk import rechaza scope invalido", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("Usuarios_y_Roles").getCell("D2").value = "GLOBAL_ROOT";
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.field === "scope" && item.message.includes("no permitido")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze bulk import rechaza empleado sin email", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("Empleados").getCell("D2").value = "";
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.field === "work_email" && item.message.includes("obligatorio")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze bulk import detecta employee_code duplicado", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("Empleados").addRow([
+        "EMP-1",
+        "Beto",
+        "Suarez",
+        "beto@demo.local",
+        "Analista",
+        "DEP-RRHH",
+        "active",
+        "yes",
+      ]);
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.field === "employee_code" && item.message.includes("duplicado")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze bulk import detecta manager_email inexistente", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("Managers").getCell("B2").value = "manager.inexistente@demo.local";
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.field === "manager_email" && item.message.includes("no existe")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze no inserta empleados ni usuarios", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+  const originalEmployeeCreate = Employee.create;
+  const originalUserCreate = User.create;
+  let employeeCreateCalled = 0;
+  let userCreateCalled = 0;
+  Employee.create = async () => {
+    employeeCreateCalled += 1;
+    return [];
+  };
+  User.create = async () => {
+    userCreateCalled += 1;
+    return [];
+  };
+
+  try {
+    const buffer = await buildWorkbookBuffer();
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(analysis.summary.errors, 0);
+    assert.equal(employeeCreateCalled, 0);
+    assert.equal(userCreateCalled, 0);
+  } finally {
+    Employee.create = originalEmployeeCreate;
+    User.create = originalUserCreate;
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze ignora companyId y schoolId del Excel y los marca como warning", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      const employees = workbook.getWorksheet("Empleados");
+      employees.getCell("I1").value = "companyId";
+      employees.getCell("J1").value = "schoolId";
+      employees.getCell("I2").value = "excel-company";
+      employees.getCell("J2").value = "excel-school";
+    });
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "scope-company",
+      schoolId: "scope-school",
+    });
+
+    assert.equal(
+      analysis.warnings.some((item) => item.field.toLowerCase().includes("company") || item.field.toLowerCase().includes("school")),
+      true
+    );
+    assert.equal(analysis.summary.errors, 0);
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
