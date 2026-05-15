@@ -90,10 +90,13 @@ function AppContent() {
           : null,
         hasPermission("manage_development_plans") ||
         hasPermission("evaluate_team") ||
+        hasPermission("self_evaluate") ||
+        hasPermission("download_self_report") ||
         hasPermission("view_reports")
           ? "planes"
           : null,
         hasPermission("view_reports") ||
+        hasPermission("download_reports") ||
         hasPermission("download_team_reports") ||
         hasPermission("download_self_report")
           ? "bases-descargas"

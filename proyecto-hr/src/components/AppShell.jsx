@@ -11,7 +11,7 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
     <div className="relative">
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => setOpen((value) => !value)}
         className="relative rounded-xl border border-white/10 bg-[#142028] px-3 py-2 text-white"
         aria-label="Novedades"
       >
@@ -59,6 +59,10 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
   );
 }
 
+function firstVisibleView(items) {
+  return items.find((item) => item.show)?.key || null;
+}
+
 export default function AppShell({ view, setView, children }) {
   const {
     user,
@@ -75,128 +79,227 @@ export default function AppShell({ view, setView, children }) {
   } = useAuth();
 
   const roleCode = user?.roleCode || "";
-  const isBasicUser = ["EMPLEADO", "LECTOR", "LECTOR_AUDITOR"].includes(roleCode);
-  const isManagerUser = ["JEFE", "RRHH", "ADMIN_COLEGIO"].includes(roleCode);
+  const isSuperAdmin = Boolean(user?.isSuperAdmin);
+  const isEmployee = roleCode === "EMPLEADO";
+  const isManager = roleCode === "JEFE";
+  const isReadOnly = ["LECTOR", "LECTOR_AUDITOR"].includes(roleCode) || hasPermission("read_only_access");
 
   const allViews = useMemo(
-    () =>
-      [
-        { key: "dashboard", label: "Panel", show: true, group: "panel" },
-        {
-          key: "empleados",
-          label: isBasicUser ? "Mi ficha" : "Plantilla",
-          show: hasPermission("manage_employees"),
-          group: "gestion",
-        },
-        { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), group: "gestion" },
-        { key: "metricas", label: "Indicadores", show: hasPermission("manage_metrics"), group: "gestion" },
-        { key: "ciclos", label: "Periodos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
-        { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
-        {
-          key: "roles",
-          label: "Roles y accesos",
-          show: hasPermission("manage_roles") || hasPermission("view_audit"),
-          group: "gestion",
-        },
-        { key: "settings", label: "Configuración", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
-        {
-          key: "evaluaciones",
-          label: "Evaluación",
-          show:
-            hasPermission("manage_evaluations") ||
-            hasPermission("evaluate_team") ||
-            hasPermission("self_evaluate"),
-          group: "evaluacion",
-        },
-        { key: "planes", label: "Desarrollo", show: hasPermission("manage_development_plans"), group: "evaluacion" },
-        {
-          key: "bases-descargas",
-          label: "Descargas",
-          show:
-            hasPermission("view_reports") ||
-            hasPermission("download_reports") ||
-            hasPermission("download_team_reports") ||
-            hasPermission("download_self_report"),
-          group: "datos",
-        },
-        {
-          key: "carga-masiva",
-          label: "Carga masiva",
-          show:
-            hasPermission("manage_users") ||
-            hasPermission("manage_school_users") ||
-            hasPermission("manage_employees") ||
-            hasPermission("manage_roles") ||
-            hasPermission("view_audit"),
-          group: "datos",
-        },
-        { key: "novedades", label: "Comunicados", show: true, group: "datos" },
-        { key: "organizaciones", label: "Organización", show: user?.isSuperAdmin, group: "datos" },
-      ].filter((item) => item.show),
-    [hasPermission, user, isBasicUser]
+    () => [
+      { key: "dashboard", label: "Inicio", shortLabel: "Inicio", show: true, section: isSuperAdmin ? "plataforma" : "inicio" },
+      {
+        key: "empleados",
+        label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas",
+        shortLabel: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas",
+        show: hasPermission("manage_employees"),
+        section: "personas",
+      },
+      {
+        key: "evaluaciones",
+        label: isEmployee ? "Mis evaluaciones" : "Evaluaciones",
+        shortLabel: isEmployee ? "Mis evaluaciones" : "Evaluaciones",
+        show:
+          hasPermission("manage_evaluations") ||
+          hasPermission("evaluate_team") ||
+          hasPermission("self_evaluate") ||
+          hasPermission("view_reports"),
+        section: "evaluaciones",
+      },
+      {
+        key: "ciclos",
+        label: "Periodos",
+        shortLabel: "Periodos",
+        show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee),
+        section: "evaluaciones",
+      },
+      {
+        key: "metricas",
+        label: "Objetivos / Indicadores",
+        shortLabel: "Indicadores",
+        show: hasPermission("manage_metrics"),
+        section: "objetivos",
+      },
+      {
+        key: "competencias",
+        label: "Competencias",
+        shortLabel: "Competencias",
+        show: hasPermission("manage_competencies"),
+        section: "objetivos",
+      },
+      {
+        key: "planes",
+        label: isEmployee ? "Mi desarrollo" : "Desarrollo",
+        shortLabel: isEmployee ? "Mi desarrollo" : "Desarrollo",
+        show:
+          hasPermission("manage_development_plans") ||
+          hasPermission("evaluate_team") ||
+          hasPermission("self_evaluate") ||
+          hasPermission("download_self_report") ||
+          hasPermission("view_reports"),
+        section: "desarrollo",
+      },
+      {
+        key: "bases-descargas",
+        label: isManager ? "Reportes de equipo" : "Reportes",
+        shortLabel: "Reportes",
+        show:
+          hasPermission("view_reports") ||
+          hasPermission("download_reports") ||
+          hasPermission("download_team_reports") ||
+          hasPermission("download_self_report"),
+        section: isSuperAdmin ? "reportes-globales" : "reportes",
+      },
+      {
+        key: "carga-masiva",
+        label: isReadOnly ? "Datos" : "Carga masiva",
+        shortLabel: isReadOnly ? "Datos" : "Carga masiva",
+        show:
+          hasPermission("manage_users") ||
+          hasPermission("manage_school_users") ||
+          hasPermission("manage_employees") ||
+          hasPermission("manage_roles") ||
+          hasPermission("view_audit"),
+        section: "datos",
+      },
+      {
+        key: "usuarios",
+        label: "Usuarios",
+        shortLabel: "Usuarios",
+        show: hasPermission("manage_users"),
+        section: "configuracion",
+      },
+      {
+        key: "roles",
+        label: "Roles y accesos",
+        shortLabel: "Roles",
+        show: hasPermission("manage_roles") || hasPermission("view_audit"),
+        section: "configuracion",
+      },
+      {
+        key: "settings",
+        label: isSuperAdmin ? "Configuracion global" : "Configuracion",
+        shortLabel: "Configuracion",
+        show: hasPermission("manage_settings") || isSuperAdmin,
+        section: isSuperAdmin ? "plataforma" : "configuracion",
+      },
+      {
+        key: "organizaciones",
+        label: "Organizaciones",
+        shortLabel: "Organizaciones",
+        show: isSuperAdmin,
+        section: "organizaciones",
+      },
+      {
+        key: "archivo-central",
+        label: "Plataforma",
+        shortLabel: "Plataforma",
+        show: isSuperAdmin,
+        section: "plataforma",
+      },
+      {
+        key: "novedades",
+        label: "Comunicados",
+        shortLabel: "Comunicados",
+        show: false,
+        section: "inicio",
+      },
+    ],
+    [hasPermission, isEmployee, isManager, isReadOnly, isSuperAdmin]
   );
 
-  const primaryTabs = [
-    { key: "panel", label: "Panel", defaultView: "dashboard" },
-    { key: "evaluacion", label: "Evaluación", defaultView: "evaluaciones" },
-    { key: "gestion", label: "Gestión", defaultView: "empleados" },
-    {
-      key: "datos",
-      label: user?.isSuperAdmin ? "Datos" : "Novedades",
-      defaultView: user?.isSuperAdmin ? "bases-descargas" : "novedades",
-    },
-  ];
-  const visiblePrimaryTabs = primaryTabs.filter((item) => item.show !== false);
+  const visibleViews = allViews.filter((item) => item.show);
 
-  const activePrimary = allViews.find((item) => item.key === view)?.group || "panel";
-  const secondaryTabs = allViews.filter((item) => item.group === activePrimary);
+  const primaryTabs = useMemo(() => {
+    if (isSuperAdmin) {
+      return [
+        { key: "organizaciones", label: "Organizaciones" },
+        { key: "reportes-globales", label: "Reportes globales" },
+        { key: "plataforma", label: "Plataforma" },
+      ];
+    }
+
+    if (isEmployee) {
+      return [
+        { key: "inicio", label: "Inicio" },
+        { key: "evaluaciones", label: "Evaluaciones" },
+        { key: "desarrollo", label: "Desarrollo" },
+      ];
+    }
+
+    if (isManager) {
+      return [
+        { key: "inicio", label: "Inicio" },
+        { key: "personas", label: "Personas" },
+        { key: "evaluaciones", label: "Evaluaciones" },
+        { key: "desarrollo", label: "Desarrollo" },
+        { key: "reportes", label: "Reportes" },
+      ];
+    }
+
+    if (isReadOnly) {
+      return [
+        { key: "inicio", label: "Inicio" },
+        { key: "reportes", label: "Reportes" },
+        { key: "datos", label: "Datos" },
+      ];
+    }
+
+    return [
+      { key: "inicio", label: "Inicio" },
+      { key: "personas", label: "Personas" },
+      { key: "evaluaciones", label: "Evaluaciones" },
+      { key: "objetivos", label: "Objetivos / Indicadores" },
+      { key: "desarrollo", label: "Desarrollo" },
+      { key: "reportes", label: "Reportes" },
+      { key: "datos", label: "Datos / Carga masiva" },
+      { key: "configuracion", label: "Configuracion" },
+    ];
+  }, [isEmployee, isManager, isReadOnly, isSuperAdmin]);
+
+  const visiblePrimaryTabs = primaryTabs.filter((tab) =>
+    visibleViews.some((item) => item.section === tab.key)
+  );
+
+  const viewSection = visibleViews.find((item) => item.key === view)?.section;
+  const activePrimary = visiblePrimaryTabs.some((tab) => tab.key === viewSection)
+    ? viewSection
+    : visiblePrimaryTabs[0]?.key || "inicio";
+
+  const secondaryTabs = visibleViews.filter((item) => item.section === activePrimary);
 
   async function handleMarkRead(item) {
-    if (!token || item.isRead || user?.isSuperAdmin) return;
+    if (!token || item.isRead || isSuperAdmin) return;
     await apiFetch(`/announcements/${item._id}/read`, { method: "POST", token });
     await refreshAnnouncementSummary();
   }
 
-  function openPrimary(groupKey, fallback) {
-    const priorityByGroup = {
-      panel: ["dashboard"],
-      evaluacion: ["evaluaciones", "planes"],
-      gestion: isBasicUser
-        ? ["empleados", "evaluaciones", "planes"]
-        : isManagerUser
-          ? ["empleados", "competencias", "metricas", "ciclos", "usuarios", "roles", "settings"]
-          : ["empleados", "usuarios", "roles", "competencias", "metricas", "ciclos", "settings"],
-      datos: ["carga-masiva", "bases-descargas", "organizaciones", "novedades"],
-    };
-
-    const groupViews = allViews.filter((item) => item.group === groupKey).map((item) => item.key);
-    const priority = priorityByGroup[groupKey] || [];
-    const preferred = priority.find((key) => groupViews.includes(key));
-    const first = preferred || groupViews[0] || fallback;
-    if (first) setView(first);
+  function openPrimary(groupKey) {
+    const items = visibleViews.filter((item) => item.section === groupKey);
+    const nextView = firstVisibleView(items);
+    if (nextView) setView(nextView);
   }
 
-  const contextualSubtitle = user?.isSuperAdmin
-    ? "Gestión global multi-organización"
+  const contextualSubtitle = isSuperAdmin
+    ? "Gestion global multi-organizacion"
     : user?.companyName
-      ? `Operación en ${user.companyName}`
-      : "Gestión de desempeño institucional";
+      ? `Operacion en ${user.companyName}`
+      : "Gestion de desempeño institucional";
 
   return (
     <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
       <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-3 px-4 py-3 md:gap-4 md:py-4">
+        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-4 py-4">
           <div className="min-w-0">
             <AppLogo variant="dark" />
-            <p className="mt-1 text-xs text-[#7A9AAA] md:text-sm">{contextualSubtitle}</p>
+            <p className="mt-1 text-sm text-[#7A9AAA]">{contextualSubtitle}</p>
           </div>
 
           <div className="hidden items-center gap-2 lg:flex">
             {visiblePrimaryTabs.map((tab) => (
               <button
                 key={tab.key}
-                onClick={() => openPrimary(tab.key, tab.defaultView)}
-                className={`rounded-xl px-4 py-2.5 text-sm font-medium transition md:px-5 md:py-3 md:text-base ${
+                onClick={() => openPrimary(tab.key)}
+                className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
                   activePrimary === tab.key
                     ? "bg-[#28964D] text-white"
                     : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
@@ -208,11 +311,11 @@ export default function AppShell({ view, setView, children }) {
           </div>
 
           <div className="flex items-center gap-2">
-            {user?.isSuperAdmin && companies.length ? (
+            {isSuperAdmin && companies.length ? (
               <select
-                className="max-w-52 rounded-xl border border-white/10 bg-[#142028] px-3 py-2.5 text-xs text-white md:max-w-56 md:py-3 md:text-sm"
+                className="max-w-56 rounded-xl border border-white/10 bg-[#142028] px-3 py-3 text-sm text-white"
                 value={activeCompanyId}
-                onChange={(e) => setActiveCompanyId(e.target.value)}
+                onChange={(event) => setActiveCompanyId(event.target.value)}
               >
                 {companies.map((company) => (
                   <option key={company._id} value={company._id}>
@@ -222,7 +325,10 @@ export default function AppShell({ view, setView, children }) {
               </select>
             ) : null}
             <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
-            <button onClick={logout} className="rounded-xl border border-white/15 bg-[#1A2C38] px-3 py-2.5 text-xs text-white md:px-4 md:py-3 md:text-sm">
+            <button
+              onClick={logout}
+              className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-3 text-sm text-white"
+            >
               Salir
             </button>
           </div>
@@ -240,7 +346,7 @@ export default function AppShell({ view, setView, children }) {
                     : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
                 }`}
               >
-                {item.label}
+                {item.shortLabel || item.label}
               </button>
             ))}
           </div>
@@ -249,12 +355,11 @@ export default function AppShell({ view, setView, children }) {
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
         <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.nombre} - {user?.roleLabel || user?.roleName} - {user?.companyName || "Organización"}
-        </div>
+          {user?.nombre} - {user?.roleLabel || user?.roleName} - {user?.companyName || "Organizacion"}
         </div>
         {tokenNearExpiry ? (
           <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Tu sesión vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesión.
+            Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
           </div>
         ) : null}
         {children}
@@ -262,4 +367,3 @@ export default function AppShell({ view, setView, children }) {
     </div>
   );
 }
-
