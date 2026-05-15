@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { useView } from "../context/ViewContext";
+import OnboardingChecklist from "../components/OnboardingChecklist";
 
 function getDashboardCacheKey(user, companyId) {
   const role = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
@@ -223,6 +224,8 @@ export default function DashboardPage() {
 
   return (
     <div className="pf-stack">
+      {(isSuperOrDirector || isRRHH) ? <OnboardingChecklist /> : null}
+
       <section className="pf-surface pf-surface-pad">
         <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Resumen del día</p>
         <h2 className="pf-title-xl mt-1">
