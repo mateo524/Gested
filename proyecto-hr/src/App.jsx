@@ -18,6 +18,7 @@ const loadEvaluationsPage = () => import("./pages/EvaluationsPage");
 const loadDevelopmentPlansPage = () => import("./pages/DevelopmentPlansPage");
 const loadEducationalExportsPage = () => import("./pages/EducationalExportsPage");
 const loadBulkImportPage = () => import("./pages/BulkImportPage");
+const loadExecutiveReportPage = () => import("./pages/ExecutiveReportPage");
 const loadStorageCenterPage = () => import("./pages/StorageCenterPage");
 const loadSettingsPage = () => import("./pages/SettingsPage");
 
@@ -34,6 +35,7 @@ const EvaluationsPage = lazy(loadEvaluationsPage);
 const DevelopmentPlansPage = lazy(loadDevelopmentPlansPage);
 const EducationalExportsPage = lazy(loadEducationalExportsPage);
 const BulkImportPage = lazy(loadBulkImportPage);
+const ExecutiveReportPage = lazy(loadExecutiveReportPage);
 const StorageCenterPage = lazy(loadStorageCenterPage);
 const SettingsPage = lazy(loadSettingsPage);
 
@@ -85,6 +87,12 @@ function AppContent() {
         hasPermission("download_self_report")
           ? "bases-descargas"
           : null,
+        hasPermission("view_reports") ||
+        hasPermission("download_reports") ||
+        hasPermission("download_team_reports") ||
+        hasPermission("view_audit")
+          ? "reporte-ejecutivo"
+          : null,
         hasPermission("manage_users") ||
         hasPermission("manage_school_users") ||
         hasPermission("manage_employees") ||
@@ -126,6 +134,7 @@ function AppContent() {
       );
     } else if (hasPermission("view_reports")) {
       preloaders.push(loadEducationalExportsPage);
+      preloaders.push(loadExecutiveReportPage);
     }
 
     const runPreload = () => {
@@ -165,6 +174,7 @@ function AppContent() {
           {view === "evaluaciones" && <EvaluationsPage />}
           {view === "planes" && <DevelopmentPlansPage />}
           {view === "bases-descargas" && <EducationalExportsPage />}
+          {view === "reporte-ejecutivo" && <ExecutiveReportPage />}
           {view === "carga-masiva" && <BulkImportPage />}
           {view === "archivo-central" && <StorageCenterPage />}
           {view === "usuarios" && <UsersPage />}

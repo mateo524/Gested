@@ -171,7 +171,7 @@ router.post("/contact", async (req, res) => {
 
     try {
       await sendContactRequestNotification(contactRequest);
-    } catch (_mailError) {
+    } catch {
       // La notificacion por mail es opcional; no bloquea la recepcion de la solicitud.
     }
 
@@ -179,7 +179,7 @@ router.post("/contact", async (req, res) => {
       ok: true,
       message: "Solicitud recibida",
     });
-  } catch (_error) {
+  } catch {
     return res.status(500).json({
       ok: false,
       message: "No pudimos registrar la solicitud en este momento.",
