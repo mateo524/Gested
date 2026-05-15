@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
 const datasetLabels = {
@@ -16,6 +17,7 @@ function formatDate(value) {
 
 export default function EducationalExportsPage() {
   const { token, user, activeCompanyId } = useAuth();
+  const { setView } = useView();
   const canImport =
     user?.isSuperAdmin ||
     user?.permisos?.includes("manage_employees") ||
@@ -260,13 +262,27 @@ export default function EducationalExportsPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-2xl font-bold text-white">Centro de datos</h3>
-        <p className="mt-2 text-[#9fb6c4]">Un solo lugar para subir, validar, confirmar y descargar.</p>
+        <p className="mt-2 text-[#9fb6c4]">
+          Descargas, historial e importacion avanzada. Recomendado: usar la plantilla oficial desde Carga masiva.
+        </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setView("carga-masiva")}
+            className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Ir a Carga masiva
+          </button>
+          <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
+            Importacion avanzada / legacy
+          </span>
+        </div>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-white">Flujo de importacion guiado</h4>
+        <h4 className="text-lg font-semibold text-white">Importacion avanzada</h4>
         <p className="text-sm text-[#9fb6c4]">
-          Carga una vez, valida con reglas, corrige errores puntuales y confirma el lote final.
+          Este flujo queda disponible para casos especiales. Para el uso diario conviene trabajar desde la plantilla oficial.
         </p>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">1. Subir archivo</span>

@@ -41,10 +41,6 @@ const upload = multer({
 });
 const importPreviewStore = new Map();
 const MAX_PREVIEW_ROWS = 3000;
-const IMPORT_AI_ENABLED = String(process.env.IMPORT_AI_ENABLED || "").toLowerCase() === "true";
-const IMPORT_AI_WEBHOOK_URL = process.env.IMPORT_AI_WEBHOOK_URL || "";
-const IMPORT_AI_TOKEN = process.env.IMPORT_AI_TOKEN || "";
-const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
 
 const allowedDatasets = {
   employees: {
@@ -275,37 +271,11 @@ async function getLearnedMapping(companyId, dataset) {
     : {};
 }
 
-function firstByAliases(row, aliases) {
-  for (const alias of aliases) {
-    const value = row[alias];
-    if (value !== undefined && String(value).trim() !== "") return value;
-  }
-  return "";
-}
-
 function getRowValues(row) {
   return Object.entries(row)
     .filter(([key]) => key !== "_rowNumber")
     .map(([, value]) => value)
     .filter((value) => value !== undefined && value !== null && String(value).trim() !== "");
-}
-
-function getWorksheetRowValues(row) {
-  return row.values
-    .slice(1)
-    .map((value) => (value && typeof value === "object" && "text" in value ? value.text : value));
-}
-
-function sanitizeWorksheetHeaders(row) {
-  return getWorksheetRowValues(row).map((value, index) => {
-    const clean = sanitizeHeader(value);
-    return clean || `col_${index + 1}`;
-  });
-}
-
-function scoreHeaderRow(row) {
-  const aliases = new Set(Object.values(fieldAliases).flat());
-  return sanitizeWorksheetHeaders(row).filter((header) => aliases.has(header)).length;
 }
 
 function parseNameParts(fullName) {
@@ -453,121 +423,6 @@ async function parseUploadedRows(file) {
     worksheetsMeta: candidates,
     droppedEmptyRows: extracted.droppedEmptyRows,
   };
-}
-
-function classifyDataset(rows, requestedDataset) {
-  if (requestedDataset && requestedDataset !== "auto") {
-    return requestedDataset;
-  }
-
-  const firstRows = rows.slice(0, 20);
-  const rowText = JSON.stringify(firstRows).toLowerCase();
-
-  if (rowText.includes("evaluaciondedesempeno") || rowText.includes("comentarios jefatura")) {
-    return "narrative";
-  }
-
-  const hasEmployeeFields = firstRows.some(
-    (row) =>
-      firstByAliases(row, fieldAliases.apellido) &&
-      firstByAliases(row, fieldAliases.nombre) &&
-      firstByAliases(row, fieldAliases.cargo)
-  );
-  if (hasEmployeeFields) return "employees";
-
-  const hasMetricFields = firstRows.some(
-    (row) =>
-      firstByAliases(row, fieldAliases.competencia) &&
-      firstByAliases(row, fieldAliases.metrica)
-  );
-  if (hasMetricFields) return "metrics";
-
-  const hasCycleFields = firstRows.some(
-    (row) =>
-      firstByAliases(row, fieldAliases.periodo) &&
-      firstByAliases(row, fieldAliases.fechainicio) &&
-      firstByAliases(row, fieldAliases.fechafin)
-  );
-  if (hasCycleFields) return "cycles";
-
-  const hasRoleFields = firstRows.some((row) => firstByAliases(row, fieldAliases.rol));
-  if (hasRoleFields) return "roles";
-
-  return "unknown";
-}
-
-function normalizeRowsForDataset(rows, dataset) {
-  const validRows = [];
-  const invalidRows = [];
-
-  for (const row of rows) {
-    if (Object.keys(row).filter((key) => key !== "_rowNumber").every((key) => !String(row[key] || "").trim())) {
-      continue;
-    }
-
-    if (dataset === "employees") {
-      const normalized = {
-        apellido: String(firstByAliases(row, fieldAliases.apellido)).trim(),
-        nombre: String(firstByAliases(row, fieldAliases.nombre)).trim(),
-        email: String(firstByAliases(row, fieldAliases.email)).trim().toLowerCase(),
-        cargo: String(firstByAliases(row, fieldAliases.cargo)).trim(),
-        area: String(firstByAliases(row, fieldAliases.area)).trim(),
-        tipoempleado: String(firstByAliases(row, fieldAliases.tipoempleado) || "DOCENTE").trim().toUpperCase(),
-        activo: String(firstByAliases(row, fieldAliases.activo) || "true").trim().toLowerCase(),
-      };
-      const errors = [];
-      if (!normalized.apellido) errors.push("Falta apellido");
-      if (!normalized.nombre) errors.push("Falta nombre");
-      if (!normalized.cargo) errors.push("Falta cargo");
-      if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized });
-      else validRows.push(normalized);
-      continue;
-    }
-
-    if (dataset === "metrics") {
-      const normalized = {
-        competencia: String(firstByAliases(row, fieldAliases.competencia)).trim(),
-        nombre: String(firstByAliases(row, fieldAliases.metrica)).trim(),
-        descripcion: String(firstByAliases(row, fieldAliases.descripcion)).trim(),
-        ponderacion: Number(firstByAliases(row, fieldAliases.ponderacion) || 1),
-      };
-      const errors = [];
-      if (!normalized.competencia) errors.push("Falta competencia");
-      if (!normalized.nombre) errors.push("Falta metrica");
-      if (!Number.isFinite(normalized.ponderacion) || normalized.ponderacion <= 0) errors.push("Ponderacion invalida");
-      if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized });
-      else validRows.push(normalized);
-      continue;
-    }
-
-    if (dataset === "cycles") {
-      const normalized = {
-        periodo: String(firstByAliases(row, fieldAliases.periodo)).trim(),
-        etapa: String(firstByAliases(row, fieldAliases.etapa) || "INICIO").trim().toUpperCase(),
-        estado: String(firstByAliases(row, fieldAliases.estado) || "BORRADOR").trim().toUpperCase(),
-        fechaInicio: new Date(firstByAliases(row, fieldAliases.fechainicio)),
-        fechaFin: new Date(firstByAliases(row, fieldAliases.fechafin)),
-        anio: Number(String(firstByAliases(row, ["anio", "ano", "año"]) || new Date().getFullYear())),
-      };
-      const errors = [];
-      if (!normalized.periodo) errors.push("Falta periodo");
-      if (Number.isNaN(normalized.fechaInicio.getTime())) errors.push("Fecha inicio invalida");
-      if (Number.isNaN(normalized.fechaFin.getTime())) errors.push("Fecha fin invalida");
-      if (errors.length) invalidRows.push({ row: row._rowNumber, message: errors.join(", "), normalized });
-      else validRows.push(normalized);
-      continue;
-    }
-
-    if (dataset === "roles") {
-      const normalized = {
-        nombre: String(firstByAliases(row, fieldAliases.rol)).trim(),
-      };
-      if (!normalized.nombre) invalidRows.push({ row: row._rowNumber, message: "Falta nombre de rol", normalized });
-      else validRows.push(normalized);
-    }
-  }
-
-  return { validRows, invalidRows };
 }
 
 function validateCorrectedRow(dataset, row) {
@@ -744,35 +599,6 @@ async function createImportJob({
     ],
     expiresAt,
   });
-}
-
-async function parseWithAiWebhook(file, dataset) {
-  if (!IMPORT_AI_ENABLED || !IMPORT_AI_WEBHOOK_URL) return null;
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), IMPORT_AI_TIMEOUT_MS);
-  try {
-    const form = new FormData();
-    const blob = new Blob([file.buffer], { type: file.mimetype || "application/octet-stream" });
-    form.append("file", blob, file.originalname);
-    form.append("dataset", dataset || "auto");
-
-    const response = await fetch(IMPORT_AI_WEBHOOK_URL, {
-      method: "POST",
-      headers: IMPORT_AI_TOKEN ? { Authorization: `Bearer ${IMPORT_AI_TOKEN}` } : {},
-      body: form,
-      signal: controller.signal,
-    });
-
-    if (!response.ok) return null;
-    const data = await response.json();
-    if (!data || typeof data !== "object") return null;
-    return data;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 router.get(
