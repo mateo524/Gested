@@ -27,17 +27,17 @@ function mockRes() {
   };
 }
 
-function runMiddleware(middleware, req) {
+async function runMiddleware(middleware, req) {
   const res = mockRes();
   let nextCalled = false;
-  middleware(req, res, () => {
+  await middleware(req, res, () => {
     nextCalled = true;
   });
   return { res, nextCalled };
 }
 
-test("EMPLOYEE no puede usar bulk import de gestion", () => {
-  const { res, nextCalled } = runMiddleware(bulkImportManageAccess, {
+test("EMPLOYEE no puede usar bulk import de gestion", async () => {
+  const { res, nextCalled } = await runMiddleware(bulkImportManageAccess, {
     user: {
       permisos: [PERMISSIONS.DOWNLOAD_SELF_REPORT, PERMISSIONS.VIEW_SELF_PROFILE],
     },
@@ -47,7 +47,7 @@ test("EMPLOYEE no puede usar bulk import de gestion", () => {
   assert.equal(res.statusCode, 403);
 });
 
-test("VIEWER/AUDITOR puede leer jobs pero no confirmar importacion", () => {
+test("VIEWER/AUDITOR puede leer jobs pero no confirmar importacion", async () => {
   const readerReq = {
     user: {
       permisos: [PERMISSIONS.READ_ONLY_ACCESS, PERMISSIONS.VIEW_AUDIT],
@@ -59,8 +59,8 @@ test("VIEWER/AUDITOR puede leer jobs pero no confirmar importacion", () => {
     },
   };
 
-  const readCheck = runMiddleware(bulkImportReadAccess, readerReq);
-  const manageCheck = runMiddleware(bulkImportManageAccess, writerReq);
+  const readCheck = await runMiddleware(bulkImportReadAccess, readerReq);
+  const manageCheck = await runMiddleware(bulkImportManageAccess, writerReq);
 
   assert.equal(readCheck.nextCalled, true);
   assert.equal(manageCheck.nextCalled, false);

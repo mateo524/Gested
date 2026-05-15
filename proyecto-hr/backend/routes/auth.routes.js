@@ -9,6 +9,7 @@ import AuditLog from "../models/AuditLog.js";
 import { auth } from "../middleware/auth.js";
 import { logAudit } from "../utils/audit.js";
 import { sendPasswordResetEmail } from "../utils/mailer.js";
+import { resolveEffectiveRole } from "../utils/accessControl.js";
 
 const router = express.Router();
 
@@ -47,8 +48,14 @@ function clearAttempts(key) {
 }
 
 async function buildSafeUser(user) {
-  const role = await Role.findById(user.roleId).lean();
+  const role = user.roleId ? await Role.findById(user.roleId).lean() : null;
   const company = await Company.findById(user.companyId).lean();
+  const effectiveRole = await resolveEffectiveRole({
+    ...user.toObject(),
+    roleCode: role?.code || null,
+    roleScope: role?.scope || "company",
+    permisos: role?.permisos || [],
+  });
 
   return {
     _id: user._id,
@@ -62,10 +69,15 @@ async function buildSafeUser(user) {
     isSuperAdmin: !!user.isSuperAdmin,
     mustChangePassword: !!user.mustChangePassword,
     roleName: role?.nombre || "Sin rol",
-    roleCode: role?.code || null,
-    roleScope: role?.scope || "company",
+    roleCode: effectiveRole?.roleCode || role?.code || null,
+    roleKey: effectiveRole?.roleKey || null,
+    roleLabel: effectiveRole?.roleLabel || role?.nombre || "Sin rol",
+    roleScope: effectiveRole?.roleScope || role?.scope || "company",
+    scope: effectiveRole?.roleScope || role?.scope || "company",
+    departmentCode: effectiveRole?.departmentCode || "",
+    teamId: effectiveRole?.teamId || "",
     companyName: company?.nombre || "Sin empresa",
-    permisos: role?.permisos || [],
+    permisos: effectiveRole?.permisos || role?.permisos || [],
   };
 }
 
@@ -78,7 +90,11 @@ function buildToken(user, safeUser) {
       roleId: user.roleId,
       employeeId: user.employeeId || null,
       roleCode: safeUser.roleCode,
+      roleKey: safeUser.roleKey || null,
       roleScope: safeUser.roleScope,
+      scope: safeUser.scope,
+      departmentCode: safeUser.departmentCode || "",
+      teamId: safeUser.teamId || "",
       isSuperAdmin: !!user.isSuperAdmin,
       permisos: safeUser.permisos,
       nombre: user.nombre,

@@ -11,6 +11,18 @@ const router = express.Router();
 
 export async function getTeamEmployeeIds(scope) {
   if (!scope.employeeId) return [];
+  if (scope.roleKey === "MANAGER" && scope.roleScope === "DEPARTMENT" && scope.departmentCode) {
+    const employees = await Employee.find({
+      companyId: scope.companyId,
+      schoolId: scope.schoolId,
+      area: scope.departmentCode,
+      activo: true,
+    })
+      .select("_id")
+      .lean();
+
+    return employees.map((item) => item._id);
+  }
   const employees = await Employee.find({
     companyId: scope.companyId,
     schoolId: scope.schoolId,
@@ -26,18 +38,19 @@ export async function getTeamEmployeeIds(scope) {
 export async function buildPlansFilter(req) {
   const filter = buildScopedFilter(req, {});
   let jefeTeamIds = null;
+  const roleKey = req.scope.roleKey || req.scope.roleCode;
 
-  if (req.scope.roleCode === "JEFE") {
+  if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
     jefeTeamIds = await getTeamEmployeeIds(req.scope);
     filter.employeeId = { $in: jefeTeamIds };
   }
 
-  if (req.scope.roleCode === "EMPLEADO") {
+  if (roleKey === "EMPLOYEE" || req.scope.roleCode === "EMPLEADO") {
     filter.employeeId = req.scope.employeeId;
   }
 
-  if (req.query.employeeId && req.scope.roleCode !== "EMPLEADO") {
-    if (req.scope.roleCode === "JEFE") {
+  if (req.query.employeeId && roleKey !== "EMPLOYEE" && req.scope.roleCode !== "EMPLEADO") {
+    if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
       const requested = String(req.query.employeeId);
       const allowed = (jefeTeamIds || []).some((id) => String(id) === requested);
       if (!allowed) {
@@ -64,7 +77,8 @@ async function canEditPlanEmployee(req, employeeId) {
   const employee = await Employee.findOne(buildScopedFilter(req, { _id: employeeId })).lean();
   if (!employee) return { ok: false, status: 404, mensaje: "Empleado no encontrado" };
 
-  if (req.scope.roleCode === "JEFE") {
+  const roleKey = req.scope.roleKey || req.scope.roleCode;
+  if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
     const teamIds = await getTeamEmployeeIds(req.scope);
     const allowed = teamIds.some((id) => String(id) === String(employee._id));
     if (!allowed) {
@@ -159,7 +173,8 @@ router.put(
       return res.status(404).json({ mensaje: "Plan no encontrado" });
     }
 
-    if (req.scope.roleCode === "JEFE") {
+    const roleKey = req.scope.roleKey || req.scope.roleCode;
+    if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
       const teamIds = await getTeamEmployeeIds(req.scope);
       const allowed = teamIds.some((id) => String(id) === String(plan.employeeId));
       if (!allowed) {

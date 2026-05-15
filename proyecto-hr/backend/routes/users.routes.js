@@ -14,6 +14,8 @@ import { logAudit } from "../utils/audit.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { generateTempPassword } from "../utils/password.js";
 import { uploadBufferToStorage } from "../utils/storageProvider.js";
+import { syncPrimaryRoleAssignmentForUser } from "../utils/accessControl.js";
+import { getPresetByLegacyRoleCode } from "../utils/rolePresets.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -92,6 +94,23 @@ async function buildUniqueEmail({ companySlug, baseLocalPart, companyId }) {
   return candidate;
 }
 
+async function syncAssignmentFromRole({ user, role }) {
+  if (!user || !role?.code) return;
+  const preset = getPresetByLegacyRoleCode(role.code);
+  if (!preset || preset.roleKey === "SUPER_ADMIN") return;
+
+  await syncPrimaryRoleAssignmentForUser({
+    user,
+    companyId: user.companyId,
+    employeeId: user.employeeId || null,
+    roleKey: preset.roleKey,
+    scope: preset.allowedScopes[0],
+    departmentCode: "",
+    teamId: "",
+    active: true,
+  });
+}
+
 router.get("/", auth, permit("manage_users"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
   const search = req.query.q?.trim();
@@ -151,6 +170,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
     activo,
     mustChangePassword,
   });
+  await syncAssignmentFromRole({ user, role });
 
   await logAudit({
     companyId,
@@ -219,6 +239,8 @@ router.post("/seed-demo-roles", auth, permit("manage_users"), async (req, res) =
         passwordHash: hash,
       });
     }
+    const assignedRole = roles.find((role) => String(role._id) === String(spec.roleId)) || null;
+    await syncAssignmentFromRole({ user, role: assignedRole });
 
     created.push({
       _id: user._id,
@@ -323,6 +345,7 @@ router.post(
         }
 
         await existing.save();
+        await syncAssignmentFromRole({ user: existing, role });
         result.updated += 1;
         continue;
       }
@@ -338,6 +361,7 @@ router.post(
         passwordHash: await bcrypt.hash(generatedPassword, 10),
         mustChangePassword,
       });
+      await syncAssignmentFromRole({ user, role });
 
       if (mustChangePassword) {
         result.temporaryPasswords.push({
@@ -524,6 +548,12 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
   })
     .select("-passwordHash")
     .populate("roleId", "nombre permisos");
+
+  if (update.roleId) {
+    const role = await Role.findById(update.roleId).lean();
+    const rawUser = await User.findById(req.params.id);
+    await syncAssignmentFromRole({ user: rawUser, role });
+  }
 
   await logAudit({
     companyId: user.companyId,

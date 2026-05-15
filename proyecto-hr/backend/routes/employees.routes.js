@@ -94,15 +94,20 @@ router.get(
       return res.status(404).json({ mensaje: "Empleado no encontrado" });
     }
 
-    if (req.scope.roleCode === "JEFE" && req.scope.employeeId) {
+    const roleKey = req.scope.roleKey || req.scope.roleCode;
+
+    if ((roleKey === "MANAGER" || req.scope.roleCode === "JEFE") && req.scope.employeeId) {
       const isSelf = String(employee._id) === String(req.scope.employeeId);
-      const isTeam = String(employee.managerId || "") === String(req.scope.employeeId);
+      const isTeam =
+        req.scope.roleScope === "DEPARTMENT" && req.scope.departmentCode
+          ? String(employee.area || "") === String(req.scope.departmentCode)
+          : String(employee.managerId || "") === String(req.scope.employeeId);
       if (!isSelf && !isTeam) {
         return res.status(403).json({ mensaje: "No tienes acceso a esta ficha" });
       }
     }
 
-    if (req.scope.roleCode === "EMPLEADO" && req.scope.employeeId) {
+    if ((roleKey === "EMPLOYEE" || req.scope.roleCode === "EMPLEADO") && req.scope.employeeId) {
       const isSelf = String(employee._id) === String(req.scope.employeeId);
       if (!isSelf) {
         return res.status(403).json({ mensaje: "Solo puedes ver tu propia ficha" });

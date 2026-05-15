@@ -92,7 +92,12 @@ export default function AppShell({ view, setView, children }) {
         { key: "metricas", label: "Indicadores", show: hasPermission("manage_metrics"), group: "gestion" },
         { key: "ciclos", label: "Periodos", show: hasPermission("manage_evaluation_cycles"), group: "gestion" },
         { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
-        { key: "roles", label: "Perfiles", show: hasPermission("manage_roles"), group: "gestion" },
+        {
+          key: "roles",
+          label: "Perfiles",
+          show: hasPermission("manage_roles") || hasPermission("view_audit"),
+          group: "gestion",
+        },
         { key: "settings", label: "Configuración", show: hasPermission("manage_settings") || user?.isSuperAdmin, group: "gestion" },
         {
           key: "evaluaciones",
@@ -243,8 +248,9 @@ export default function AppShell({ view, setView, children }) {
       </header>
 
       <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
-        <div className="pf-card-muted mb-4 px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.companyName || "Organización"} - {user?.roleName}
+        <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
+          {user?.nombre} - {user?.roleLabel || user?.roleName} - {user?.companyName || "Organización"}
+        </div>
         </div>
         {tokenNearExpiry ? (
           <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -256,3 +262,4 @@ export default function AppShell({ view, setView, children }) {
     </div>
   );
 }
+

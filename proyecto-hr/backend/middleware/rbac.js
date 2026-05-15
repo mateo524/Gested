@@ -1,9 +1,15 @@
+import { can } from "../utils/accessControl.js";
+
 export function requirePermission(...requiredPermissions) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const userPermissions = req.user?.permisos || [];
-    const authorized = requiredPermissions.every((permission) =>
-      userPermissions.includes(permission)
-    );
+    const authorized = (
+      await Promise.all(
+        requiredPermissions.map(
+          async (permission) => userPermissions.includes(permission) || await can(req.user, permission)
+        )
+      )
+    ).every(Boolean);
 
     if (!authorized) {
       return res.status(403).json({
@@ -16,11 +22,15 @@ export function requirePermission(...requiredPermissions) {
 }
 
 export function requireAnyPermission(...requiredPermissions) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
     const userPermissions = req.user?.permisos || [];
-    const authorized = requiredPermissions.some((permission) =>
-      userPermissions.includes(permission)
-    );
+    const authorized = (
+      await Promise.all(
+        requiredPermissions.map(
+          async (permission) => userPermissions.includes(permission) || await can(req.user, permission)
+        )
+      )
+    ).some(Boolean);
 
     if (!authorized) {
       return res.status(403).json({
@@ -34,7 +44,8 @@ export function requireAnyPermission(...requiredPermissions) {
 
 export function requireRole(...roles) {
   return (req, res, next) => {
-    if (!roles.includes(req.user?.roleCode)) {
+    const currentRole = req.user?.roleCode || req.user?.roleKey;
+    if (!roles.includes(currentRole)) {
       return res.status(403).json({
         mensaje: "Tu rol no tiene acceso a este modulo",
       });

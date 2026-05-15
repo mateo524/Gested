@@ -6,6 +6,7 @@ import Role from "../models/Role.js";
 import User from "../models/User.js";
 import { logAudit } from "../utils/audit.js";
 import { generateTempPassword } from "../utils/password.js";
+import { syncPrimaryRoleAssignmentForUser } from "../utils/accessControl.js";
 import {
   BULK_IMPORT_ROLE_KEY_MAP,
   buildBulkImportTenantFilter,
@@ -226,6 +227,17 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           current.schoolId = job.schoolId || current.schoolId || null;
           current.activo = toBooleanWord(row.status, true);
           await current.save({ session });
+          await syncPrimaryRoleAssignmentForUser({
+            user: current,
+            companyId: job.companyId,
+            employeeId: employee._id,
+            roleKey,
+            scope: String(row.scope || mapped.allowedScopes?.[0] || "TEAM").trim().toUpperCase(),
+            departmentCode: String(row.scope_reference_code || "").trim(),
+            teamId: String(row.scope_reference_code || "").trim(),
+            active: true,
+            session,
+          });
           userByEmail.set(email, current);
           result.users.updated += 1;
         } else {
@@ -245,6 +257,17 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
             },
           ], { session });
           const user = created[0];
+          await syncPrimaryRoleAssignmentForUser({
+            user,
+            companyId: job.companyId,
+            employeeId: employee._id,
+            roleKey,
+            scope: String(row.scope || mapped.allowedScopes?.[0] || "TEAM").trim().toUpperCase(),
+            departmentCode: String(row.scope_reference_code || "").trim(),
+            teamId: String(row.scope_reference_code || "").trim(),
+            active: true,
+            session,
+          });
           userByEmail.set(email, user);
           result.temporaryPasswords.push({
             email,
