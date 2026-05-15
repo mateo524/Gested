@@ -5,7 +5,11 @@ export function attachTenantScope(req, _res, next) {
     companyId: user?.companyId || null,
     schoolId: user?.schoolId || null,
     roleCode: user?.roleCode || null,
+    roleKey: user?.roleKey || null,
     employeeId: user?.employeeId || null,
+    roleScope: user?.roleScope || user?.scope || null,
+    departmentCode: user?.departmentCode || "",
+    teamId: user?.teamId || "",
     isSuperAdmin: !!user?.isSuperAdmin,
   };
 

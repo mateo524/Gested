@@ -52,6 +52,15 @@ function patchTeamIds(teamIds) {
   };
 }
 
+async function runMiddleware(middleware, req) {
+  const res = mockRes();
+  let nextCalled = false;
+  await middleware(req, res, () => {
+    nextCalled = true;
+  });
+  return { res, nextCalled };
+}
+
 test("JEFE no puede consultar evaluations de empleado fuera de su equipo", async () => {
   const restore = patchTeamIds(["emp-team-1"]);
   try {
@@ -90,20 +99,13 @@ test("EMPLEADO queda limitado a su propio employeeId en evaluations aunque mande
   assert.equal(filter.companyId, "orgA");
 });
 
-test("LECTOR/AUDITOR no puede escribir endpoint critico protegido por permiso de escritura", () => {
-  const req = {
+test("LECTOR/AUDITOR no puede escribir endpoint critico protegido por permiso de escritura", async () => {
+  const middleware = requirePermission("manage_employees");
+  const { res, nextCalled } = await runMiddleware(middleware, {
     user: {
       permisos: ["read_only_access"],
     },
-  };
-  const res = mockRes();
-  let nextCalled = false;
-  const next = () => {
-    nextCalled = true;
-  };
-
-  const middleware = requirePermission("manage_employees");
-  middleware(req, res, next);
+  });
 
   assert.equal(nextCalled, false);
   assert.equal(res.statusCode, 403);
