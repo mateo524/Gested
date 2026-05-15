@@ -29,6 +29,7 @@ import automationRoutes from "./routes/automation.routes.js";
 import supportRoutes from "./routes/support.routes.js";
 import bulkImportRoutes from "./routes/bulkImport.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
+import onboardingRoutes from "./routes/onboarding.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 
 const app = express();
@@ -142,6 +143,7 @@ app.use("/automation", automationRoutes);
 app.use("/support", supportRoutes);
 app.use("/bulk-import", bulkImportRoutes);
 app.use("/reports", reportsRoutes);
+app.use("/onboarding", onboardingRoutes);
 
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");

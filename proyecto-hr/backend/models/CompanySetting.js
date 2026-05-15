@@ -23,6 +23,26 @@ const CompanySettingSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {},
   },
+  onboarding: {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      default: null,
+    },
+    steps: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    updatedAt: {
+      type: Date,
+      default: null,
+    },
+  },
 });
 
 export default mongoose.model("CompanySetting", CompanySettingSchema);
