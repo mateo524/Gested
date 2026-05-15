@@ -118,7 +118,7 @@ function buildHeaders(rowValues) {
   });
 }
 
-export async function parseWorkbookRows(file, maxRows = 3000) {
+export async function parseWorkbookRows(file) {
   const workbook = new ExcelJS.Workbook();
   const fileName = String(file.originalname || "").toLowerCase();
   if (fileName.endsWith(".csv")) await workbook.csv.readBuffer(file.buffer);
@@ -288,7 +288,7 @@ function normalizeRoleCode(rawRole) {
   return "";
 }
 
-export function validateRowsForDataset(mappedRows, dataset, detections, options = {}) {
+export function validateRowsForDataset(mappedRows, dataset, detections, _options = {}) {
   const validRows = [];
   const invalidRows = [];
   const warnings = [];
@@ -449,4 +449,3 @@ export function validateRowsForDataset(mappedRows, dataset, detections, options 
     confirmationsRequired: [...new Set(confirmationsRequired)],
   };
 }
-

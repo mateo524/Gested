@@ -99,13 +99,6 @@ function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
 
-function toBooleanWord(value) {
-  const normalized = normalizeHeader(value);
-  if (["yes", "si", "true", "1", "active"].includes(normalized)) return true;
-  if (["no", "false", "0", "inactive"].includes(normalized)) return false;
-  return null;
-}
-
 function parseDateValue(value) {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
     return value;
