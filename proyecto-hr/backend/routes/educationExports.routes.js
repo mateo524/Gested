@@ -15,22 +15,23 @@ import EvaluationScore from "../models/EvaluationScore.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Announcement from "../models/Announcement.js";
 import CompanySetting from "../models/CompanySetting.js";
+import ImportJob from "../models/ImportJob.js";
 import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
-import { uploadBufferToStorage, deleteFromStorage } from "../utils/storageProvider.js";
+import { uploadBufferToStorage } from "../utils/storageProvider.js";
 import {
   IMPORT_CONFIDENCE_THRESHOLD,
-  buildColumnDetections,
-  classifyDatasetByDetections,
+  parseWorkbookRows,
   detectBestSheet,
   extractRowsFromSheet,
+  buildColumnDetections,
+  classifyDatasetByDetections,
   mapRowsByDetections,
-  parseWorkbookRows,
+  validateRowsForDataset,
   sanitizeHeader,
   normalizeText,
-  validateRowsForDataset,
 } from "../utils/importIntelligence.js";
 
 const router = express.Router();
@@ -44,106 +45,6 @@ const IMPORT_AI_ENABLED = String(process.env.IMPORT_AI_ENABLED || "").toLowerCas
 const IMPORT_AI_WEBHOOK_URL = process.env.IMPORT_AI_WEBHOOK_URL || "";
 const IMPORT_AI_TOKEN = process.env.IMPORT_AI_TOKEN || "";
 const IMPORT_AI_TIMEOUT_MS = Number(process.env.IMPORT_AI_TIMEOUT_MS || 45000);
-const ROLE_FALLBACK_ORDER = ["ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"];
-const PROTECTED_ROLE_CODES = new Set(["SUPER_ADMIN", "ADMIN_COLEGIO", "DIRECTOR", "RRHH", "JEFE", "EMPLEADO", "AUDITOR", "LECTOR"]);
-
-async function buildMultiDetectedModules({ rows, companyId, schoolId }) {
-  const modules = {
-    employees: [],
-    metrics: [],
-    cycles: [],
-    roles: [],
-    competencies: [],
-  };
-  const errors = [];
-  const warnings = [];
-
-  const highestAllowedRoleCode = await resolveHighestAllowedRoleCode({ companyId, schoolId });
-
-  const datasetList = ["employees", "metrics", "cycles", "roles"];
-  for (const datasetName of datasetList) {
-    const detections = buildColumnDetections(rows, Object.keys(rows[0] || {}), {});
-    const mappedRows = mapRowsByDetections(rows, detections, datasetName);
-    const validated = validateRowsForDataset(mappedRows, datasetName, { highestAllowedRoleCode });
-    if (validated.validRows.length > 0) {
-      modules[datasetName] = validated.validRows;
-    }
-    if (validated.invalidRows.length > 0) {
-      errors.push(...validated.invalidRows.slice(0, 10).map((item) => ({ ...item, dataset: datasetName })));
-    }
-    if (validated.warnings.length > 0) {
-      warnings.push(...validated.warnings.slice(0, 10).map((item) => ({ ...item, dataset: datasetName })));
-    }
-    if (validated.duplicates.length > 0) {
-      warnings.push(...validated.duplicates.slice(0, 10).map((message) => ({ row: "-", message, dataset: datasetName })));
-    }
-  }
-
-  const byCompetency = new Map();
-  for (const metricRow of modules.metrics) {
-    const name = String(metricRow.competencia || "").trim();
-    if (!name) continue;
-    const key = normalizeText(name);
-    if (!byCompetency.has(key)) {
-      byCompetency.set(key, {
-        nombre: name,
-        descripcion: "Competencia generada desde importación mixta",
-      });
-    }
-  }
-  modules.competencies = [...byCompetency.values()];
-
-  return { modules, errors, warnings };
-}
-
-function getImportErrorPayload(error, fallbackMessage) {
-  const raw = String(error?.message || "");
-  if (/zip|central directory|end of central directory|corrupt/i.test(raw)) {
-    return {
-      mensaje: "El archivo Excel parece dañado o no tiene un formato válido (.xlsx).",
-      code: "IMPORT_INVALID_XLSX",
-    };
-  }
-  if (/CSV vacio o invalido/i.test(raw)) {
-    return {
-      mensaje: "El CSV está vacío o tiene formato inválido.",
-      code: "IMPORT_INVALID_CSV",
-    };
-  }
-  return {
-    mensaje: fallbackMessage,
-    code: "IMPORT_PROCESSING_ERROR",
-  };
-}
-
-async function resolveHighestAllowedRoleCode({ companyId, schoolId }) {
-  const roles = await Role.find({
-    companyId,
-    activo: true,
-    $or: [{ schoolId: null }, { schoolId: schoolId || null }],
-  })
-    .select("code nombre permisos")
-    .lean();
-
-  for (const code of ROLE_FALLBACK_ORDER) {
-    if (roles.some((role) => String(role.code || "").toUpperCase() === code)) {
-      return code;
-    }
-  }
-
-  let bestByPermissions = null;
-  for (const role of roles) {
-    const code = String(role.code || "").toUpperCase();
-    if (code === "SUPER_ADMIN") continue;
-    const count = Array.isArray(role.permisos) ? role.permisos.length : 0;
-    if (!bestByPermissions || count > bestByPermissions.count) {
-      bestByPermissions = { code: code || "", count };
-    }
-  }
-
-  if (bestByPermissions?.code) return bestByPermissions.code;
-  return "ADMIN_COLEGIO";
-}
 
 const allowedDatasets = {
   employees: {
@@ -182,6 +83,12 @@ function buildBaseFilter(req) {
   }
 
   return filter;
+}
+
+async function validateImportSchool(companyId, schoolId) {
+  if (!schoolId) return true;
+  const school = await School.findOne({ _id: schoolId, companyId, activa: true }).select("_id").lean();
+  return Boolean(school);
 }
 
 async function buildScopedFilter(req, dataset) {
@@ -336,10 +243,37 @@ const fieldAliases = {
   fechainicio: ["fechainicio", "inicio", "startdate"],
   fechafin: ["fechafin", "fin", "enddate"],
   rol: ["rol", "role", "nombrerol"],
-  jefe: ["jefe", "manager", "responsable", "supervisor"],
-  sede: ["sede", "colegio", "campus", "institucion"],
-  legajo: ["legajo", "employeeid", "employee_id", "dni"],
+  jefe: ["jefe", "manager", "responsable", "supervisor", "lider"],
+  sede: ["sede", "colegio", "escuela", "campus"],
+  employeeid: ["employeeid", "idempleado", "idempleadolegajo", "idcolaborador"],
+  legajo: ["legajo", "nrolegajo", "numerolegajo", "employeecode"],
 };
+
+const criticalFieldsByDataset = {
+  employees: ["apellido", "nombre", "cargo", "email", "legajo"],
+  metrics: ["competencia", "metrica"],
+  cycles: ["periodo", "fechainicio", "fechafin"],
+  roles: ["rol"],
+};
+
+function parseManualMapping(value) {
+  if (!value) return {};
+  if (typeof value === "object") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return {};
+  }
+}
+
+async function getLearnedMapping(companyId, dataset) {
+  if (!dataset || dataset === "auto") return {};
+  const settings = await CompanySetting.findOne({ companyId }).lean();
+  const profile = settings?.importProfiles?.[dataset];
+  return profile?.columnMapping && typeof profile.columnMapping === "object"
+    ? profile.columnMapping
+    : {};
+}
 
 function firstByAliases(row, aliases) {
   for (const alias of aliases) {
@@ -354,6 +288,24 @@ function getRowValues(row) {
     .filter(([key]) => key !== "_rowNumber")
     .map(([, value]) => value)
     .filter((value) => value !== undefined && value !== null && String(value).trim() !== "");
+}
+
+function getWorksheetRowValues(row) {
+  return row.values
+    .slice(1)
+    .map((value) => (value && typeof value === "object" && "text" in value ? value.text : value));
+}
+
+function sanitizeWorksheetHeaders(row) {
+  return getWorksheetRowValues(row).map((value, index) => {
+    const clean = sanitizeHeader(value);
+    return clean || `col_${index + 1}`;
+  });
+}
+
+function scoreHeaderRow(row) {
+  const aliases = new Set(Object.values(fieldAliases).flat());
+  return sanitizeWorksheetHeaders(row).filter((header) => aliases.has(header)).length;
 }
 
 function parseNameParts(fullName) {
@@ -477,24 +429,29 @@ function extractNarrativeData(rows) {
 }
 
 async function parseUploadedRows(file) {
-  const workbook = await parseWorkbookRows(file);
-  const { selected, candidates } = detectBestSheet(workbook);
-  const worksheet = workbook.getWorksheet(selected.sheetName);
+  const { workbook } = await parseWorkbookRows(file, MAX_PREVIEW_ROWS);
+  const { best, candidates } = detectBestSheet(workbook, fieldAliases);
+  const worksheet = best?.worksheet;
   if (!worksheet) {
-    return { rows: [], truncated: false, sheetName: "", headerRowNumber: 1, headers: [], worksheetsMeta: [] };
+    return {
+      rows: [],
+      truncated: false,
+      sheetName: "",
+      headerRowNumber: 1,
+      headers: [],
+      worksheetsMeta: [],
+      droppedEmptyRows: 0,
+    };
   }
-  const extracted = extractRowsFromSheet(worksheet, selected.headerRowNumber || 1);
+  const extracted = extractRowsFromSheet(worksheet, best.headerRowNumber, MAX_PREVIEW_ROWS);
   return {
     rows: extracted.rows,
     truncated: extracted.truncated,
-    sheetName: selected.sheetName,
-    headerRowNumber: selected.headerRowNumber || 1,
+    sheetName: worksheet.name,
+    headerRowNumber: best.headerRowNumber,
     headers: extracted.headers,
-    worksheetsMeta: candidates.map((item) => ({
-      sheetName: item.sheetName,
-      score: item.score,
-      headerRowNumber: item.headerRowNumber,
-    })),
+    worksheetsMeta: candidates,
+    droppedEmptyRows: extracted.droppedEmptyRows,
   };
 }
 
@@ -620,28 +577,33 @@ function validateCorrectedRow(dataset, row) {
     const cargo = String(row.cargo || "").trim();
     const email = String(row.email || "").trim().toLowerCase();
     const legajo = String(row.legajo || row.employeeId || "").trim();
-    const roleCode = String(row.roleCode || "").trim().toUpperCase();
-    if (!apellido || !nombre || !cargo || (!email && !legajo)) {
-      return { ok: false, message: "Faltan apellido, nombre, cargo o identificador (email/legajo)" };
+    const roleRaw = String(row.roleCode || row.rol || "").trim();
+    if (!apellido || !nombre || !cargo) {
+      return { ok: false, message: "Faltan apellido, nombre o cargo" };
     }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!email && !legajo) {
+      return { ok: false, message: "Falta email o legajo/employeeId" };
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(email)) {
       return { ok: false, message: "Email invalido" };
     }
-    const safeRoleCode = roleCode === "SUPER_ADMIN" ? "ADMIN_COLEGIO" : roleCode;
+    if (sanitizeHeader(roleRaw).includes("superadmin")) {
+      return { ok: false, message: "No se permite SUPER_ADMIN por importacion" };
+    }
     return {
       ok: true,
       row: {
         apellido,
         nombre,
         email,
-        legajo,
-        roleCode: safeRoleCode,
-        managerRef: String(row.managerRef || row.jefe || "").trim(),
-        sede: String(row.sede || "").trim(),
         cargo,
         area: String(row.area || "").trim(),
         tipoempleado: String(row.tipoempleado || "DOCENTE").trim().toUpperCase(),
         activo: String(row.activo || "true").trim().toLowerCase(),
+        roleCode: roleRaw || "",
+        managerRef: String(row.managerRef || row.jefe || "").trim(),
+        sede: String(row.sede || "").trim(),
+        legajo,
       },
     };
   }
@@ -702,6 +664,88 @@ function getImportPreview(token) {
   return data;
 }
 
+function sanitizeIssueNormalized(normalized) {
+  if (!normalized || typeof normalized !== "object") return null;
+  const safe = { ...normalized };
+  if ("email" in safe) safe.email = "[redacted]";
+  if ("correoelectronico" in safe) safe.correoelectronico = "[redacted]";
+  Object.keys(safe).forEach((key) => {
+    if (typeof safe[key] === "string" && safe[key].length > 160) {
+      safe[key] = `${safe[key].slice(0, 160)}...`;
+    }
+  });
+  return safe;
+}
+
+async function createImportJob({
+  req,
+  companyId,
+  schoolId,
+  previewToken,
+  datasetRequested,
+  datasetDetected,
+  parserType,
+  totalRows,
+  validRows,
+  invalidRows,
+  previewSummary,
+  issues,
+  aiRawSummary,
+  sourceFileName,
+  sourceMimeType,
+  sourceStorageProvider = "local",
+  sourceStorageKey = "",
+  sourcePublicUrl = "",
+  stage = "validated",
+}) {
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 30);
+  const initialIssues = Array.isArray(issues)
+    ? issues.slice(0, 200).map((issue) => ({
+        rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
+        message: String(issue.message || "Error de validacion"),
+        source: issue.source || "rule",
+        normalized: sanitizeIssueNormalized(issue.normalized || null),
+      }))
+    : [];
+
+  return ImportJob.create({
+    companyId,
+    schoolId,
+    createdByUserId: req.user.userId,
+    sourceFileName,
+    sourceMimeType,
+    sourceStorageProvider,
+    sourceStorageKey,
+    sourcePublicUrl,
+    previewToken,
+    stage,
+    datasetRequested,
+    datasetDetected,
+    parserType,
+    inferenceUsed: parserType !== "rules",
+    totalRows,
+    validRows,
+    invalidRows,
+    errorCount: initialIssues.length,
+    previewSummary: previewSummary || null,
+    issues: initialIssues,
+    aiRawSummary: aiRawSummary || null,
+    auditTrail: [
+      {
+        action: "preview_created",
+        actorUserId: req.user.userId,
+        details: {
+          datasetRequested,
+          datasetDetected,
+          validRows,
+          invalidRows,
+        },
+      },
+    ],
+    expiresAt,
+  });
+}
+
 async function parseWithAiWebhook(file, dataset) {
   if (!IMPORT_AI_ENABLED || !IMPORT_AI_WEBHOOK_URL) return null;
 
@@ -732,127 +776,6 @@ async function parseWithAiWebhook(file, dataset) {
 }
 
 router.get(
-  "/imports/files",
-  auth,
-  requireAnyPermission(
-    PERMISSIONS.MANAGE_EMPLOYEES,
-    PERMISSIONS.MANAGE_METRICS,
-    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
-    PERMISSIONS.VIEW_REPORTS,
-    PERMISSIONS.READ_ONLY_ACCESS
-  ),
-  async (req, res) => {
-    const filter = buildBaseFilter(req);
-    const items = await DatabaseFile.find(filter)
-      .sort({ createdAt: -1 })
-      .limit(100)
-      .select("_id nombreVisible nombreArchivo tipoArchivo extension mimeType registros fechaSubida publicUrl")
-      .lean();
-
-    res.json({ items });
-  }
-);
-
-router.get(
-  "/imports/files/superadmin",
-  auth,
-  requireAnyPermission(
-    PERMISSIONS.MANAGE_EMPLOYEES,
-    PERMISSIONS.MANAGE_METRICS,
-    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
-    PERMISSIONS.VIEW_REPORTS
-  ),
-  async (req, res) => {
-    if (!req.user.isSuperAdmin) {
-      return res.status(403).json({ mensaje: "Solo superadmin puede ver archivo global" });
-    }
-    const filter = {};
-    if (req.query.companyId) filter.companyId = req.query.companyId;
-    if (req.query.schoolId) filter.schoolId = req.query.schoolId;
-    if (req.query.dateFrom || req.query.dateTo) {
-      filter.fechaSubida = {};
-      if (req.query.dateFrom) {
-        const from = new Date(`${String(req.query.dateFrom)}T00:00:00.000Z`);
-        if (!Number.isNaN(from.getTime())) filter.fechaSubida.$gte = from;
-      }
-      if (req.query.dateTo) {
-        const to = new Date(`${String(req.query.dateTo)}T23:59:59.999Z`);
-        if (!Number.isNaN(to.getTime())) filter.fechaSubida.$lte = to;
-      }
-      if (!Object.keys(filter.fechaSubida).length) delete filter.fechaSubida;
-    }
-
-    const items = await DatabaseFile.find(filter)
-      .sort({ fechaSubida: -1 })
-      .limit(300)
-      .populate("companyId", "nombre")
-      .populate("schoolId", "nombre")
-      .select("_id nombreVisible nombreArchivo tipoArchivo extension mimeType registros fechaSubida publicUrl companyId schoolId")
-      .lean();
-
-    res.json({ items });
-  }
-);
-
-router.patch(
-  "/imports/files/:id",
-  auth,
-  requireAnyPermission(
-    PERMISSIONS.MANAGE_EMPLOYEES,
-    PERMISSIONS.MANAGE_METRICS,
-    PERMISSIONS.MANAGE_EVALUATION_CYCLES
-  ),
-  async (req, res) => {
-    const filter = buildBaseFilter(req);
-    const nombreVisible = String(req.body?.nombreVisible || "").trim();
-    if (!nombreVisible) {
-      return res.status(400).json({ mensaje: "Debes indicar un nombre visible" });
-    }
-
-    const file = await DatabaseFile.findOne({
-      _id: req.params.id,
-      ...filter,
-    });
-    if (!file) {
-      return res.status(404).json({ mensaje: "Documento no encontrado" });
-    }
-
-    file.nombreVisible = nombreVisible;
-    await file.save();
-    return res.json({ mensaje: "Documento actualizado" });
-  }
-);
-
-router.delete(
-  "/imports/files/:id",
-  auth,
-  requireAnyPermission(
-    PERMISSIONS.MANAGE_EMPLOYEES,
-    PERMISSIONS.MANAGE_METRICS,
-    PERMISSIONS.MANAGE_EVALUATION_CYCLES
-  ),
-  async (req, res) => {
-    const filter = buildBaseFilter(req);
-    const file = await DatabaseFile.findOne({
-      _id: req.params.id,
-      ...filter,
-    });
-    if (!file) {
-      return res.status(404).json({ mensaje: "Documento no encontrado" });
-    }
-
-    await deleteFromStorage({
-      provider: file.storageProvider,
-      key: file.storageKey,
-      bucket: file.storageBucket,
-      localPath: null,
-    });
-    await file.deleteOne();
-    return res.json({ mensaje: "Documento eliminado" });
-  }
-);
-
-router.get(
   "/overview",
   auth,
   requireAnyPermission(
@@ -864,17 +787,13 @@ router.get(
   ),
   async (req, res) => {
     const filter = buildBaseFilter(req);
-    const downloadFilter = { ...filter };
-    if (req.user.roleCode === "EMPLEADO") {
-      downloadFilter.userId = req.user.userId;
-    }
     const [schools, employees, evaluations, metrics, plans, downloads] = await Promise.all([
       School.find(filter).sort({ nombre: 1 }).lean(),
       Employee.countDocuments(filter),
       Evaluation.countDocuments(filter),
       Metric.countDocuments(filter),
       DevelopmentPlan.countDocuments(filter),
-      DownloadLog.find(downloadFilter).sort({ downloadedAt: -1 }).limit(12).lean(),
+      DownloadLog.find(filter).sort({ downloadedAt: -1 }).limit(12).lean(),
     ]);
 
     res.json({
@@ -930,11 +849,6 @@ router.get(
     PERMISSIONS.DOWNLOAD_SELF_REPORT
   ),
   async (req, res) => {
-    if (process.env.NODE_ENV === "production" && !req.user.isSuperAdmin) {
-      return res.status(403).json({
-        mensaje: "Este endpoint legacy esta deshabilitado para tu rol. Usa flujo subir-validar-confirmar.",
-      });
-    }
     const dataset = req.params.dataset;
     const config = allowedDatasets[dataset];
 
@@ -975,7 +889,7 @@ router.get(
     );
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename=\"${config.filename}.xlsx\"`
+      `attachment; filename="${config.filename}.xlsx"`
     );
     await workbook.xlsx.write(res);
     res.end();
@@ -1043,149 +957,86 @@ router.post(
     if (!req.file) {
       return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
     }
-    try {
-      const { rows, truncated, sheetName, headerRowNumber, headers, worksheetsMeta } = await parseUploadedRows(req.file);
-      if (!rows.length) {
-        return res.status(400).json({ mensaje: "El archivo no tiene datos" });
-      }
 
     const requestedDataset = String(req.body.dataset || "auto").toLowerCase();
-    const manualMappingRaw = req.body.manualMapping;
-    let manualMapping = {};
-    if (manualMappingRaw) {
-      try {
-        manualMapping = JSON.parse(manualMappingRaw);
-      } catch {
-        manualMapping = {};
-      }
+    const analyzeOnly =
+      String(req.body.mode || "").toLowerCase() === "analyze"
+      || String(req.body.analyzeOnly || "").toLowerCase() === "true";
+    const manualMapping = parseManualMapping(req.body.manualMapping);
+    const { companyId } = await resolveCompanyScope(req);
+    const schoolId = req.body.schoolId || req.user.schoolId || null;
+    if (!(await validateImportSchool(companyId, schoolId))) {
+      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
     }
-
-    let learnedMapping = {};
-    if (requestedDataset !== "auto") {
-      const settings = await CompanySetting.findOne({ companyId: req.user.companyId }).lean();
-      learnedMapping = settings?.importProfiles?.[requestedDataset]?.columnMapping || {};
-    }
-
-    const detections = buildColumnDetections(rows, headers, { ...learnedMapping, ...manualMapping });
-    const detectedDataset = classifyDatasetByDetections(detections, requestedDataset);
-    const analyzeOnly = String(req.body.mode || "").toLowerCase() === "analyze" || String(req.body.analyzeOnly || "").toLowerCase() === "true";
-    const schoolIdForPreview = req.body.schoolId || req.user.schoolId || null;
-    const { companyId: scopeCompanyId } = await resolveCompanyScope(req);
-
-    if (requestedDataset === "auto") {
-      const mixed = await buildMultiDetectedModules({
-        rows,
-        companyId: scopeCompanyId,
-        schoolId: schoolIdForPreview,
+    const parsed = await parseUploadedRows(req.file);
+    const { rows, truncated, sheetName, headerRowNumber, headers, worksheetsMeta, droppedEmptyRows } = parsed;
+    if (!rows.length) {
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken: "",
+        datasetRequested: requestedDataset,
+        datasetDetected: "unknown",
+        parserType: "rules",
+        totalRows: 0,
+        validRows: 0,
+        invalidRows: 1,
+        previewSummary: null,
+        issues: [{ row: 0, message: "El archivo no tiene datos", source: "rule" }],
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+        stage: "failed",
       });
-      const nonEmptyModules = Object.entries(mixed.modules).filter(([, items]) => Array.isArray(items) && items.length > 0);
-      const isMixedCandidate = nonEmptyModules.length >= 2;
-      if (isMixedCandidate) {
-        const previewToken = saveImportPreview({
-          dataset: "multi",
-          schoolId: schoolIdForPreview,
-          validRows: [],
-          invalidRows: mixed.errors,
-          warnings: mixed.warnings,
-          aiParsed: {
-            detectedModules: mixed.modules,
-          },
-          analysis: {
-            sheetName,
-            headerRowNumber,
-            worksheetsMeta,
-            detections,
-            lowConfidenceFields: [],
-            requiresManualMapping: false,
-          },
-          fileMeta: {
-            originalname: req.file.originalname,
-            mimetype: req.file.mimetype,
-          },
-        });
-
-        const validCount = nonEmptyModules.reduce((acc, [, items]) => acc + items.length, 0);
-        const summaryByModule = Object.fromEntries(nonEmptyModules.map(([name, items]) => [name, items.length]));
-        return res.json({
-          ok: true,
-          previewToken,
-          datasetDetected: "multi",
-          totalRows: rows.length,
-          validCount,
-          invalidCount: mixed.errors.length,
-          warningCount: mixed.warnings.length,
-          sampleErrors: mixed.errors.slice(0, 20),
-          sampleWarnings: mixed.warnings.slice(0, 20),
-          mixedSummary: summaryByModule,
-          analysis: {
-            sheetName,
-            headerRowNumber,
-            worksheetsMeta,
-            detections,
-            lowConfidenceFields: [],
-            requiresManualMapping: false,
-          },
-        });
-      }
+      return res.status(400).json({ mensaje: "El archivo no tiene datos", importJobId: importJob._id });
     }
 
-    const criticalByDataset = {
-      employees: ["apellido", "nombre", "cargo", "email"],
-      metrics: ["competencia", "metrica", "ponderacion"],
-      cycles: ["anio", "periodo", "etapa"],
-      roles: ["role"],
-    };
-    const criticalFields = criticalByDataset[detectedDataset] || [];
-    const lowConfidenceFields = criticalFields.filter(
-      (field) => !detections[field] || (detections[field].confidence || 0) < IMPORT_CONFIDENCE_THRESHOLD
-    );
+    const learnedMapping = await getLearnedMapping(companyId, requestedDataset === "auto" ? "employees" : requestedDataset);
+    const detections = buildColumnDetections(rows, headers || Object.keys(rows[0] || {}), fieldAliases, manualMapping, learnedMapping);
+    let { dataset: detectedDataset, scores: datasetScores } = classifyDatasetByDetections(detections, requestedDataset);
+
+    const firstRowsText = JSON.stringify(rows.slice(0, 20)).toLowerCase();
+    if (
+      detectedDataset === "unknown"
+      && (firstRowsText.includes("evaluaciondedesempeno") || firstRowsText.includes("comentarios jefatura"))
+    ) {
+      detectedDataset = "narrative";
+    }
 
     if (detectedDataset === "unknown") {
-      const narrativeData = extractNarrativeData(rows);
-      const nameParts = parseNameParts(narrativeData.fullName);
-      const previewToken = saveImportPreview({
-        dataset: "narrative",
-        schoolId: req.body.schoolId || req.user.schoolId || null,
-        validRows: [],
-        invalidRows: [],
-        narrativeData,
-        fileMeta: {
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype,
-        },
-      });
-
-      const extractedSummary = {
-        nombre: narrativeData.fullName || "",
-        apellido: nameParts.apellido || "",
-        cargo: narrativeData.cargo || "",
-        area: narrativeData.area || "",
-        competenciasDetectadas: narrativeData.competencias.length,
-        promedioFinal: narrativeData.promedioFinal || 0,
-      };
-
-      return res.json({
-        ok: true,
-        previewToken,
-        datasetDetected: "narrative",
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken: "",
+        datasetRequested: requestedDataset,
+        datasetDetected: "unknown",
+        parserType: "rules",
         totalRows: rows.length,
-        validCount: narrativeData.competencias.length ? 1 : 0,
-        invalidCount: narrativeData.competencias.length ? 0 : 1,
-        truncated,
-        previewLimit: MAX_PREVIEW_ROWS,
-        extractedSummary,
-        sampleValidRows: narrativeData.competencias.slice(0, 20),
-        sampleErrors: narrativeData.competencias.length
-          ? []
-          : [{ row: 0, message: "No se detectaron competencias puntuables en el archivo." }],
+        validRows: 0,
+        invalidRows: rows.length,
+        previewSummary: null,
+        issues: [{ row: 0, message: "No se reconocieron encabezados o estructura importable", source: "rule" }],
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+        stage: "failed",
+      });
+      return res.status(422).json({
+        ok: false,
+        status: "rejected_unrecognized_file",
+        importJobId: importJob._id,
+        detectedDataset,
         analysis: {
           sheetName,
           headerRowNumber,
-          worksheetsMeta,
-          detections,
-          lowConfidenceFields,
-          requiresManualMapping: true,
+          availableHeaders: headers || [],
+          columnDetections: detections,
+          datasetScores,
+          worksheets: worksheetsMeta || [],
         },
+        mensaje: "No se pudo reconocer la estructura del archivo para importacion.",
       });
     }
 
@@ -1194,16 +1045,19 @@ router.post(
       const nameParts = parseNameParts(narrativeData.fullName);
       const previewToken = saveImportPreview({
         dataset: detectedDataset,
-        schoolId: req.body.schoolId || req.user.schoolId || null,
+        schoolId,
         validRows: [],
         invalidRows: [],
         narrativeData,
         fileMeta: {
           originalname: req.file.originalname,
           mimetype: req.file.mimetype,
+          binaryBuffer: req.file.buffer,
         },
       });
-
+      const narrativeIssues = narrativeData.competencias.length
+        ? []
+        : [{ row: 0, message: "No se detectaron competencias puntuables en el formulario.", source: "rule" }];
       const extractedSummary = {
         nombre: narrativeData.fullName || "",
         apellido: nameParts.apellido || "",
@@ -1212,10 +1066,28 @@ router.post(
         competenciasDetectadas: narrativeData.competencias.length,
         promedioFinal: narrativeData.promedioFinal || 0,
       };
-
-      return res.json({
-        ok: true,
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
         previewToken,
+        datasetRequested: requestedDataset,
+        datasetDetected: "narrative",
+        parserType: "hybrid",
+        totalRows: rows.length,
+        validRows: narrativeData.competencias.length ? 1 : 0,
+        invalidRows: narrativeData.competencias.length ? 0 : 1,
+        previewSummary: extractedSummary,
+        issues: narrativeIssues,
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+      });
+
+      const payload = {
+        ok: true,
+        importJobId: importJob?._id,
+        previewToken: analyzeOnly ? "" : previewToken,
         datasetDetected: "narrative",
         totalRows: rows.length,
         validCount: narrativeData.competencias.length ? 1 : 0,
@@ -1228,192 +1100,165 @@ router.post(
           ? []
           : [{ row: 0, message: "No se detectaron competencias puntuables en el formulario." }],
         analysis: {
+          mode: analyzeOnly ? "analyze_only" : "preview",
           sheetName,
           headerRowNumber,
-          worksheetsMeta,
-          detections,
-          lowConfidenceFields,
-          requiresManualMapping: lowConfidenceFields.length > 0,
+          availableHeaders: headers || [],
+          columnDetections: detections,
+          datasetScores,
+          worksheets: worksheetsMeta || [],
         },
-      });
+      };
+      if (analyzeOnly) {
+        return res.json({ ...payload, previewToken: "", analyzeOnly: true });
+      }
+      return res.json(payload);
     }
 
     const mappedRows = mapRowsByDetections(rows, detections, detectedDataset);
-    const highestAllowedRoleCode = await resolveHighestAllowedRoleCode({
-      companyId: scopeCompanyId,
-      schoolId: schoolIdForPreview,
-    });
-    const { validRows, invalidRows, warnings, duplicates } = validateRowsForDataset(mappedRows, detectedDataset, {
-      highestAllowedRoleCode,
-    });
-    const requiresManualMapping = false;
+    const validation = validateRowsForDataset(mappedRows, detectedDataset, detections);
+    const validRows = validation.validRows;
+    const invalidRows = validation.invalidRows;
+    const warnings = validation.warnings || [];
+    const confidenceFields = criticalFieldsByDataset[detectedDataset] || [];
+    const lowConfidenceCritical = confidenceFields
+      .filter((field) => (detections[field]?.confidence || 0) < IMPORT_CONFIDENCE_THRESHOLD)
+      .map((field) => ({
+        field,
+        confidence: detections[field]?.confidence || 0,
+      }));
+    const requiresManualMapping = validation.needsManualMapping || lowConfidenceCritical.length > 0;
 
     if (analyzeOnly) {
+      const importJob = await createImportJob({
+        req,
+        companyId,
+        schoolId,
+        previewToken: "",
+        datasetRequested: requestedDataset,
+        datasetDetected: detectedDataset,
+        parserType: "rules",
+        totalRows: rows.length,
+        validRows: validRows.length,
+        invalidRows: invalidRows.length,
+        previewSummary: {
+          droppedEmptyRows,
+          requiresManualMapping,
+          warnings: warnings.length,
+          duplicates: validation.duplicates.length,
+        },
+        issues: [...invalidRows, ...warnings].slice(0, 200),
+        aiRawSummary: null,
+        sourceFileName: req.file.originalname,
+        sourceMimeType: req.file.mimetype,
+      });
       return res.json({
         ok: true,
         analyzeOnly: true,
+        importJobId: importJob._id,
         datasetDetected: detectedDataset,
         totalRows: rows.length,
         validCount: validRows.length,
         invalidCount: invalidRows.length,
-        warningCount: warnings.length + duplicates.length,
-        sampleErrors: invalidRows.slice(0, 30),
-        sampleWarnings: [...warnings, ...duplicates.map((message) => ({ row: "-", message }))].slice(0, 30),
+        warningCount: warnings.length,
+        duplicateCount: validation.duplicates.length,
         analysis: {
+          mode: "analyze_only",
           sheetName,
           headerRowNumber,
-          worksheetsMeta,
-          detections,
-          lowConfidenceFields,
+          availableHeaders: headers || [],
+          worksheets: worksheetsMeta || [],
+          datasetScores,
+          columnDetections: detections,
           requiresManualMapping,
+          lowConfidenceCritical,
+          confirmationsRequired: validation.confirmationsRequired,
+          detectedRoles: validation.detectedRoles,
+          droppedEmptyRows,
         },
+        sampleValidRows: validRows.slice(0, 20),
+        sampleErrors: invalidRows.slice(0, 20),
+        sampleWarnings: warnings.slice(0, 20),
       });
     }
 
     const previewToken = saveImportPreview({
       dataset: detectedDataset,
-      schoolId: schoolIdForPreview,
+      schoolId,
       validRows,
       invalidRows,
-      warnings: [...warnings, ...duplicates.map((message) => ({ row: "-", message }))],
-      analysis: {
+      warnings,
+      detectionSummary: {
         sheetName,
         headerRowNumber,
-        worksheetsMeta,
-        detections,
-        lowConfidenceFields,
+        availableHeaders: headers || [],
+        worksheets: worksheetsMeta || [],
+        datasetScores,
+        columnDetections: detections,
         requiresManualMapping,
+        lowConfidenceCritical,
+        confirmationsRequired: validation.confirmationsRequired,
+        detectedRoles: validation.detectedRoles,
+        duplicateCount: validation.duplicates.length,
       },
       fileMeta: {
         originalname: req.file.originalname,
         mimetype: req.file.mimetype,
+        binaryBuffer: req.file.buffer,
       },
     });
+    const importJob = await createImportJob({
+      req,
+      companyId,
+      schoolId,
+      previewToken,
+      datasetRequested: requestedDataset,
+      datasetDetected: detectedDataset,
+      parserType: "rules",
+      totalRows: validRows.length + invalidRows.length,
+      validRows: validRows.length,
+      invalidRows: invalidRows.length,
+      previewSummary: {
+        droppedEmptyRows,
+        requiresManualMapping,
+        warnings: warnings.length,
+        duplicates: validation.duplicates.length,
+      },
+      issues: [...invalidRows, ...warnings],
+      aiRawSummary: null,
+      sourceFileName: req.file.originalname,
+      sourceMimeType: req.file.mimetype,
+    });
 
-      res.json({
-        ok: true,
-        previewToken,
-        datasetDetected: detectedDataset,
-        totalRows: validRows.length + invalidRows.length,
-        validCount: validRows.length,
-        invalidCount: invalidRows.length,
-        truncated,
-        previewLimit: MAX_PREVIEW_ROWS,
-        sampleValidRows: validRows.slice(0, 20),
-        sampleErrors: invalidRows.slice(0, 20),
-        warningCount: warnings.length + duplicates.length,
-        sampleWarnings: [...warnings, ...duplicates.map((message) => ({ row: "-", message }))].slice(0, 20),
-        analysis: {
-          sheetName,
-          headerRowNumber,
-          worksheetsMeta,
-          detections,
-          lowConfidenceFields,
-          requiresManualMapping,
-        },
-      });
-    } catch (error) {
-      console.error("Error import/preview:", error);
-      return res.status(500).json(
-        getImportErrorPayload(error, "No se pudo procesar el archivo. Verifica el formato e intenta nuevamente.")
-      );
-    }
-  }
-);
-
-router.delete(
-  "/purge/:target",
-  auth,
-  requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES, PERMISSIONS.MANAGE_ROLES),
-  async (req, res) => {
-    const { companyId } = await resolveCompanyScope(req);
-    const requestedSchoolId = String(req.query.schoolId || "").trim();
-    const schoolId = req.user.isSuperAdmin ? requestedSchoolId || null : req.user.schoolId || null;
-    const target = String(req.params.target || "").trim().toLowerCase();
-
-    const scopedFilter = schoolId ? { companyId, schoolId } : { companyId };
-    const summary = { target, deleted: 0, filesDeleted: 0 };
-
-    if (target === "employees") {
-      const out = await Employee.deleteMany(scopedFilter);
-      summary.deleted = out.deletedCount || 0;
-    } else if (target === "metrics") {
-      const out = await Metric.deleteMany(scopedFilter);
-      summary.deleted = out.deletedCount || 0;
-    } else if (target === "cycles") {
-      const out = await EvaluationCycle.deleteMany(scopedFilter);
-      summary.deleted = out.deletedCount || 0;
-    } else if (target === "competencies" || target === "indicators") {
-      const [mOut, cOut] = await Promise.all([
-        Metric.deleteMany(scopedFilter),
-        Competency.deleteMany(scopedFilter),
-      ]);
-      summary.deleted = (mOut.deletedCount || 0) + (cOut.deletedCount || 0);
-    } else if (target === "roles" || target === "profiles") {
-      const roles = await Role.find(scopedFilter).select("_id code nombre").lean();
-      const removable = roles.filter((role) => {
-        const code = String(role.code || "").toUpperCase().trim();
-        if (!code) return true;
-        return !PROTECTED_ROLE_CODES.has(code);
-      });
-      if (removable.length) {
-        const out = await Role.deleteMany({ _id: { $in: removable.map((r) => r._id) } });
-        summary.deleted = out.deletedCount || 0;
-      } else {
-        summary.deleted = 0;
-      }
-    } else if (target === "files") {
-      const files = await DatabaseFile.find(scopedFilter).lean();
-      for (const file of files) {
-        await deleteFromStorage({
-          provider: file.storageProvider,
-          key: file.storageKey,
-          bucket: file.storageBucket,
-          localPath: null,
-        });
-        summary.filesDeleted += 1;
-      }
-      const out = await DatabaseFile.deleteMany(scopedFilter);
-      summary.deleted = out.deletedCount || 0;
-    } else if (target === "all") {
-      const [employeesOut, metricsOut, cyclesOut, competenciesOut] = await Promise.all([
-        Employee.deleteMany(scopedFilter),
-        Metric.deleteMany(scopedFilter),
-        EvaluationCycle.deleteMany(scopedFilter),
-        Competency.deleteMany(scopedFilter),
-      ]);
-      const roles = await Role.find(scopedFilter).select("_id code").lean();
-      const removableRoleIds = roles
-        .filter((role) => !PROTECTED_ROLE_CODES.has(String(role.code || "").toUpperCase().trim()))
-        .map((role) => role._id);
-      const rolesOut = removableRoleIds.length
-        ? await Role.deleteMany({ _id: { $in: removableRoleIds } })
-        : { deletedCount: 0 };
-      const files = await DatabaseFile.find(scopedFilter).lean();
-      for (const file of files) {
-        await deleteFromStorage({
-          provider: file.storageProvider,
-          key: file.storageKey,
-          bucket: file.storageBucket,
-          localPath: null,
-        });
-        summary.filesDeleted += 1;
-      }
-      const filesOut = await DatabaseFile.deleteMany(scopedFilter);
-      summary.deleted =
-        (employeesOut.deletedCount || 0) +
-        (metricsOut.deletedCount || 0) +
-        (cyclesOut.deletedCount || 0) +
-        (competenciesOut.deletedCount || 0) +
-        (rolesOut.deletedCount || 0) +
-        (filesOut.deletedCount || 0);
-    } else {
-      return res.status(400).json({ mensaje: "Target no soportado. Usa employees, metrics, cycles, competencies, roles, files o all." });
-    }
-
-    return res.json({
-      mensaje: `Limpieza completada para ${target}.`,
-      summary,
+    res.json({
+      ok: true,
+      importJobId: importJob._id,
+      previewToken,
+      datasetDetected: detectedDataset,
+      totalRows: validRows.length + invalidRows.length,
+      validCount: validRows.length,
+      invalidCount: invalidRows.length,
+      warningCount: warnings.length,
+      truncated,
+      previewLimit: MAX_PREVIEW_ROWS,
+      sampleValidRows: validRows.slice(0, 20),
+      sampleErrors: invalidRows.slice(0, 20),
+      sampleWarnings: warnings.slice(0, 20),
+      analysis: {
+        mode: "preview",
+        sheetName,
+        headerRowNumber,
+        availableHeaders: headers || [],
+        worksheets: worksheetsMeta || [],
+        datasetScores,
+        columnDetections: detections,
+        requiresManualMapping,
+        lowConfidenceCritical,
+        confirmationsRequired: validation.confirmationsRequired,
+        detectedRoles: validation.detectedRoles,
+        duplicateCount: validation.duplicates.length,
+        droppedEmptyRows,
+      },
     });
   }
 );
@@ -1426,41 +1271,91 @@ router.post(
     const previewToken = String(req.body.previewToken || "");
     const preview = getImportPreview(previewToken);
     if (!preview) {
-      return res.status(404).json({
-        mensaje: "Preview expirada o inexistente. Vuelve a analizar el archivo.",
-        code: "PREVIEW_EXPIRED",
+      return res.status(400).json({
+        mensaje:
+          "Preview expirada o inexistente. Puede haber vencido la sesion de importacion o reiniciado el servidor. Vuelve a subir el archivo.",
       });
     }
 
-    const confirmMapping = req.body.confirmMapping === true;
-    const confirmWarnings = req.body.confirmWarnings === true;
-    if (preview.analysis?.requiresManualMapping && !confirmMapping) {
-      return res.status(400).json({ mensaje: "Debes confirmar el mapeo manual antes de importar." });
+    const dataset = preview.dataset;
+    const confirmMapping = Boolean(req.body.confirmMapping);
+    const confirmWarnings = Boolean(req.body.confirmWarnings);
+    const detectionSummary = preview.detectionSummary || {};
+    if (detectionSummary.requiresManualMapping && !confirmMapping) {
+      return res.status(400).json({
+        mensaje:
+          "El archivo requiere confirmar mapeo manual por baja confianza. Revisa columnas detectadas y confirma.",
+        code: "IMPORT_MAPPING_CONFIRMATION_REQUIRED",
+      });
     }
     if ((preview.warnings || []).length > 0 && !confirmWarnings) {
-      return res.status(400).json({ mensaje: "Debes confirmar las advertencias antes de importar." });
+      return res.status(400).json({
+        mensaje:
+          "Hay advertencias de rol/jefe/sede/duplicados. Debes confirmar revisión antes de importar.",
+        code: "IMPORT_WARNING_CONFIRMATION_REQUIRED",
+      });
     }
-
-    const dataset = preview.dataset;
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = preview.schoolId || req.user.schoolId || null;
+    if (!(await validateImportSchool(companyId, schoolId))) {
+      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+    }
+    const importJob = await ImportJob.findOne({
+      companyId,
+      previewToken,
+      stage: { $in: ["validated", "uploaded"] },
+    }).sort({ createdAt: -1 });
     const rows = [...preview.validRows];
     const correctedRows = Array.isArray(req.body.correctedRows) ? req.body.correctedRows : [];
+    const originalInvalidRows = Array.isArray(preview.invalidRows) ? preview.invalidRows : [];
     const correctedErrors = [];
     correctedRows.forEach((item, index) => {
       const checked = validateCorrectedRow(dataset, item);
       if (checked.ok) rows.push(checked.row);
-      else correctedErrors.push({ row: item.row || `manual-${index + 1}`, message: checked.message });
+      else {
+        const original = originalInvalidRows[index] || {};
+        correctedErrors.push({
+          row: item.row || original.row || `manual-${index + 1}`,
+          message: checked.message,
+          normalized: item,
+        });
+      }
     });
+    const unresolvedInvalidRows = originalInvalidRows.slice(correctedRows.length);
 
     const result = {
-      total: rows.length + preview.invalidRows.length,
+      total: rows.length + unresolvedInvalidRows.length + correctedErrors.length,
       created: 0,
       updated: 0,
-      errors: [...preview.invalidRows, ...correctedErrors],
-      warnings: preview.warnings || [],
-      moduleSummary: null,
+      errors: [...unresolvedInvalidRows, ...correctedErrors],
+      warnings: Array.isArray(preview.warnings) ? preview.warnings : [],
     };
+    const appendAudit = (action, details = {}) => {
+      if (!importJob) return;
+      importJob.auditTrail.push({
+        action,
+        actorUserId: req.user.userId,
+        details,
+      });
+    };
+
+    if (["employees", "metrics", "cycles", "roles"].includes(dataset) && !rows.length) {
+      if (importJob) {
+        importJob.stage = "failed";
+        importJob.errorCount = result.errors.length || 1;
+        importJob.issues = (result.errors.length ? result.errors : [{ row: "-", message: "No hay filas validas para confirmar" }])
+          .slice(0, 300)
+          .map((issue) => ({
+            rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
+            message: String(issue.message || "Error de importacion"),
+            source: issue.source || "rule",
+            normalized: sanitizeIssueNormalized(issue.normalized || null),
+          }));
+        appendAudit("import_failed", { reason: "no_valid_rows" });
+        await importJob.save();
+      }
+      return res.status(400).json({ mensaje: "No hay filas validas para confirmar", errors: result.errors });
+    }
 
     if (dataset === "narrative") {
       if (!schoolId) {
@@ -1582,24 +1477,10 @@ router.post(
     if (dataset === "multi") {
       const modules = preview.aiParsed?.detectedModules || {};
       const byNameCompetency = new Map();
-      const moduleSummary = {
-        employees: { created: 0, updated: 0, errors: 0 },
-        roles: { created: 0, updated: 0, errors: 0 },
-        competencies: { created: 0, updated: 0, errors: 0 },
-        metrics: { created: 0, updated: 0, errors: 0 },
-        cycles: { created: 0, updated: 0, errors: 0 },
-      };
-      const pushModuleError = (moduleName, message) => {
-        moduleSummary[moduleName].errors += 1;
-        result.errors.push({ row: "-", message: `[${moduleName}] ${message}` });
-      };
 
       const employees = Array.isArray(modules.employees) ? modules.employees : [];
       for (const row of employees) {
-        if (!schoolId) {
-          pushModuleError("employees", "No hay colegio activo para crear empleados");
-          continue;
-        }
+        if (!schoolId) continue;
         const apellido = String(row.apellido || "").trim() || parseNameParts(row.nombreCompleto || row.nombre || "").apellido || "-";
         const nombre = String(row.nombre || "").trim() || parseNameParts(row.nombreCompleto || "").nombre || "-";
         const cargo = String(row.cargo || "").trim() || "Colaborador";
@@ -1615,36 +1496,28 @@ router.post(
           area: String(row.area || "General").trim(),
           tipoEmpleado: "DOCENTE",
           activo: true,
+          legajo: String(row.legajo || row.employeeId || "").trim() || undefined,
         };
         if (existing) {
           Object.assign(existing, payload);
           await existing.save();
           result.updated += 1;
-          moduleSummary.employees.updated += 1;
         } else {
           await Employee.create({ ...payload, email: email || undefined });
           result.created += 1;
-          moduleSummary.employees.created += 1;
         }
       }
 
       const roles = Array.isArray(modules.roles) ? modules.roles : [];
       for (const row of roles) {
         const nombre = String(row.nombre || row.role || "").trim();
-        if (!nombre) {
-          pushModuleError("roles", "Falta nombre de rol");
-          continue;
-        }
-        if (normalizeText(nombre).includes("super_admin")) {
-          pushModuleError("roles", "No se permite SUPER_ADMIN por importación");
+        if (!nombre) continue;
+        if (sanitizeHeader(nombre).includes("superadmin")) {
+          result.errors.push({ row: "-", message: "No se permite crear SUPER_ADMIN por importacion", normalized: { nombre } });
           continue;
         }
         const exists = await Role.findOne({ companyId, schoolId: schoolId || null, nombre });
-        if (exists) {
-          result.updated += 1;
-          moduleSummary.roles.updated += 1;
-          continue;
-        }
+        if (exists) continue;
         await Role.create({
           companyId,
           schoolId: schoolId || null,
@@ -1655,27 +1528,13 @@ router.post(
           activo: true,
         });
         result.created += 1;
-        moduleSummary.roles.created += 1;
       }
 
       const competencies = Array.isArray(modules.competencies) ? modules.competencies : [];
       for (const row of competencies) {
-        if (!schoolId) {
-          pushModuleError("competencies", "No hay colegio activo para crear competencias");
-          continue;
-        }
+        if (!schoolId) continue;
         const nombre = String(row.nombre || row.competencia || "").trim();
-        if (!nombre) {
-          pushModuleError("competencies", "Falta nombre de competencia");
-          continue;
-        }
-        const exists = await Competency.findOne({ companyId, schoolId, nombre }).lean();
-        if (exists) {
-          result.updated += 1;
-          moduleSummary.competencies.updated += 1;
-          byNameCompetency.set(normalizeText(nombre), exists);
-          continue;
-        }
+        if (!nombre) continue;
         const competency = await Competency.findOneAndUpdate(
           { companyId, schoolId, nombre },
           {
@@ -1691,34 +1550,18 @@ router.post(
           },
           { upsert: true, new: true }
         );
-        result.created += 1;
-        moduleSummary.competencies.created += 1;
         byNameCompetency.set(normalizeText(nombre), competency);
       }
 
       const metrics = Array.isArray(modules.metrics) ? modules.metrics : [];
       for (const row of metrics) {
-        if (!schoolId) {
-          pushModuleError("metrics", "No hay colegio activo para crear indicadores");
-          continue;
-        }
+        if (!schoolId) continue;
         const nombre = String(row.nombre || row.metrica || "").trim();
         const compName = normalizeText(row.competencia || row.competency || "");
         const competency = byNameCompetency.get(compName);
-        if (!nombre) {
-          pushModuleError("metrics", "Falta nombre de indicador");
-          continue;
-        }
-        if (!competency) {
-          pushModuleError("metrics", `Competencia no encontrada para indicador: ${nombre}`);
-          continue;
-        }
+        if (!nombre || !competency) continue;
         const exists = await Metric.findOne({ companyId, schoolId, competencyId: competency._id, nombre });
-        if (exists) {
-          result.updated += 1;
-          moduleSummary.metrics.updated += 1;
-          continue;
-        }
+        if (exists) continue;
         await Metric.create({
           companyId,
           schoolId,
@@ -1730,15 +1573,11 @@ router.post(
           activa: true,
         });
         result.created += 1;
-        moduleSummary.metrics.created += 1;
       }
 
       const cycles = Array.isArray(modules.cycles) ? modules.cycles : [];
       for (const row of cycles) {
-        if (!schoolId) {
-          pushModuleError("cycles", "No hay colegio activo para crear períodos");
-          continue;
-        }
+        if (!schoolId) continue;
         const anio = Number(row.anio || new Date().getFullYear());
         const periodo = String(row.periodo || row.nombre || "Importado").trim();
         const etapa = ["INICIO", "REVISION_INTERMEDIA", "EVALUACION_FINAL"].includes(String(row.etapa || "").toUpperCase())
@@ -1747,11 +1586,7 @@ router.post(
         const fechaInicio = row.fechaInicio ? new Date(row.fechaInicio) : new Date(anio, 0, 1);
         const fechaFin = row.fechaFin ? new Date(row.fechaFin) : new Date(anio, 11, 31);
         const exists = await EvaluationCycle.findOne({ companyId, schoolId, anio, periodo, etapa });
-        if (exists) {
-          result.updated += 1;
-          moduleSummary.cycles.updated += 1;
-          continue;
-        }
+        if (exists) continue;
         await EvaluationCycle.create({
           companyId,
           schoolId,
@@ -1763,14 +1598,10 @@ router.post(
           fechaFin,
         });
         result.created += 1;
-        moduleSummary.cycles.created += 1;
       }
-      result.moduleSummary = moduleSummary;
     }
 
     if (dataset === "employees") {
-      const touchedEmployeeIds = [];
-
       for (const row of rows) {
         if (!schoolId) {
           result.errors.push({ row: "-", message: "No hay colegio activo para crear empleados" });
@@ -1784,71 +1615,18 @@ router.post(
           nombre: row.nombre,
           cargo: row.cargo,
           area: row.area || "",
-          legajo: row.legajo || undefined,
           tipoEmpleado: row.tipoempleado || "DOCENTE",
           activo: row.activo !== "false",
+          legajo: row.legajo || row.employeeId || undefined,
         };
         const existing = email ? await Employee.findOne({ companyId, schoolId, email }) : null;
         if (existing) {
           Object.assign(existing, base);
           await existing.save();
-          touchedEmployeeIds.push(String(existing._id));
           result.updated += 1;
         } else {
-          const created = await Employee.create({ ...base, email: email || undefined });
-          touchedEmployeeIds.push(String(created._id));
+          await Employee.create({ ...base, email: email || undefined });
           result.created += 1;
-        }
-      }
-
-      // Vincula "reporta a" -> managerId usando email, legajo o nombre.
-      if (schoolId && touchedEmployeeIds.length > 0) {
-        const scopeEmployees = await Employee.find({ companyId, schoolId }).select("_id nombre apellido email legajo").lean();
-        const byEmail = new Map();
-        const byLegajo = new Map();
-        const byFullName = new Map();
-
-        for (const item of scopeEmployees) {
-          if (item.email) byEmail.set(String(item.email).trim().toLowerCase(), item._id);
-          if (item.legajo) byLegajo.set(String(item.legajo).trim().toLowerCase(), item._id);
-          const fullName = `${String(item.apellido || "").trim()} ${String(item.nombre || "").trim()}`.trim().toLowerCase();
-          if (fullName) byFullName.set(fullName, item._id);
-        }
-
-        for (const row of rows) {
-          const ref = String(row.managerRef || row.jefe || "").trim();
-          if (!ref) continue;
-
-          const email = String(row.email || "").trim().toLowerCase();
-          const legajo = String(row.legajo || "").trim().toLowerCase();
-          const current = await Employee.findOne({
-            companyId,
-            schoolId,
-            $or: [
-              ...(email ? [{ email }] : []),
-              ...(legajo ? [{ legajo }] : []),
-              { apellido: row.apellido, nombre: row.nombre },
-            ],
-          });
-          if (!current) continue;
-
-          const refKey = ref.toLowerCase();
-          let managerId =
-            byEmail.get(refKey) ||
-            byLegajo.get(refKey) ||
-            byFullName.get(refKey) ||
-            null;
-
-          if (!managerId && ref.includes(",")) {
-            const [apellidoPart, nombrePart] = ref.split(",", 2).map((v) => String(v || "").trim().toLowerCase());
-            const key = `${apellidoPart} ${nombrePart}`.trim();
-            managerId = byFullName.get(key) || null;
-          }
-
-          if (managerId && String(managerId) !== String(current._id)) {
-            current.managerId = managerId;
-            await current.save();
-          }
         }
       }
     }
@@ -1918,8 +1696,8 @@ router.post(
 
     if (dataset === "roles") {
       for (const row of rows) {
-        if (normalizeText(row.nombre).includes("super_admin")) {
-          result.errors.push({ row: "-", message: "No se permite crear SUPER_ADMIN por importacion" });
+        if (sanitizeHeader(row.nombre).includes("superadmin")) {
+          result.errors.push({ row: "-", message: "No se permite crear SUPER_ADMIN por importacion", normalized: { nombre: row.nombre } });
           continue;
         }
         const existing = await Role.findOne({
@@ -1945,15 +1723,12 @@ router.post(
     }
 
     const school = schoolId ? await School.findById(schoolId).lean() : null;
-    let uploaded = null;
-    if (preview.fileMeta?.bufferBase64) {
-      uploaded = await uploadBufferToStorage({
-        buffer: Buffer.from(preview.fileMeta.bufferBase64, "base64"),
-        contentType: preview.fileMeta.mimetype,
-        originalName: preview.fileMeta.originalname,
-        folderPath: `performia/${companyId}/${school?.slug || schoolId || "general"}/${dataset}`,
-      });
-    }
+    const uploaded = await uploadBufferToStorage({
+      buffer: preview.fileMeta.binaryBuffer,
+      contentType: preview.fileMeta.mimetype,
+      originalName: preview.fileMeta.originalname,
+      folderPath: `performia/${companyId}/${school?.slug || schoolId || "general"}/${dataset}`,
+    });
 
     await DatabaseFile.create({
       companyId,
@@ -1964,35 +1739,118 @@ router.post(
       extension: preview.fileMeta.originalname.split(".").pop()?.toLowerCase() || "csv",
       mimeType: preview.fileMeta.mimetype,
       tipoArchivo: `importacion-${dataset}`,
-      storageProvider: uploaded?.provider || "none",
-      storageKey: uploaded?.key || "",
-      storageBucket: uploaded?.bucket || "",
-      publicUrl: uploaded?.publicUrl || "",
+      storageProvider: uploaded.provider,
+      storageKey: uploaded.key,
+      storageBucket: uploaded.bucket,
+      publicUrl: uploaded.publicUrl,
       hoja: dataset,
       registros: result.total,
       activa: true,
     });
 
-    if (preview.analysis?.detections && dataset !== "narrative") {
-      const mapping = Object.fromEntries(
-        Object.entries(preview.analysis.detections).map(([field, info]) => [field, info.header]).filter(([, header]) => Boolean(header))
-      );
-      await CompanySetting.findOneAndUpdate(
-        { companyId },
-        {
-          $set: {
-            [`importProfiles.${dataset}.columnMapping`]: mapping,
-            [`importProfiles.${dataset}.sheetName`]: preview.analysis.sheetName || "",
-            [`importProfiles.${dataset}.headerRowNumber`]: preview.analysis.headerRowNumber || 1,
-            [`importProfiles.${dataset}.updatedAt`]: new Date(),
+    if (importJob) {
+      importJob.stage = "confirmed";
+      importJob.datasetDetected = dataset;
+      importJob.validRows = rows.length;
+      importJob.invalidRows = result.errors.length;
+      importJob.createdCount = result.created;
+      importJob.updatedCount = result.updated;
+      importJob.errorCount = result.errors.length;
+      importJob.confirmedAt = new Date();
+      importJob.expiresAt = null;
+      importJob.issues = result.errors.slice(0, 300).map((issue) => ({
+        rowNumber: String(issue.row ?? issue.rowNumber ?? ""),
+        message: String(issue.message || "Error de importacion"),
+        source: issue.source || "rule",
+        normalized: sanitizeIssueNormalized(issue.normalized || null),
+      }));
+      appendAudit("import_confirmed", {
+        dataset,
+        created: result.created,
+        updated: result.updated,
+        errors: result.errors.length,
+      });
+      await importJob.save();
+    }
+
+    if (detectionSummary?.columnDetections && ["employees", "metrics", "cycles", "roles"].includes(dataset)) {
+      const columnMapping = Object.entries(detectionSummary.columnDetections).reduce((acc, [field, meta]) => {
+        if (meta?.header) acc[field] = meta.header;
+        return acc;
+      }, {});
+      if (Object.keys(columnMapping).length) {
+        await CompanySetting.findOneAndUpdate(
+          { companyId },
+          {
+            $set: {
+              [`importProfiles.${dataset}`]: {
+                columnMapping,
+                sheetName: detectionSummary.sheetName || "",
+                headerRowNumber: detectionSummary.headerRowNumber || 1,
+                updatedAt: new Date(),
+              },
+            },
           },
-        },
-        { new: true, upsert: true }
-      );
+          { upsert: true, new: true }
+        );
+      }
     }
 
     importPreviewStore.delete(previewToken);
-    res.json({ mensaje: "Importacion confirmada", ...result });
+    res.json({ mensaje: "Importacion confirmada", importJobId: importJob?._id || null, ...result });
+  }
+);
+
+router.get(
+  "/import-jobs",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+    PERMISSIONS.VIEW_AUDIT,
+    PERMISSIONS.READ_ONLY_ACCESS
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    if (!req.user.isSuperAdmin && req.user.schoolId) {
+      filter.schoolId = req.user.schoolId;
+    }
+    if (req.query.stage) filter.stage = req.query.stage;
+    if (req.query.datasetDetected) filter.datasetDetected = req.query.datasetDetected;
+
+    const items = await ImportJob.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .select(
+        "sourceFileName stage datasetRequested datasetDetected parserType totalRows validRows invalidRows createdCount updatedCount errorCount createdAt confirmedAt previewSummary"
+      )
+      .lean();
+
+    res.json({ items });
+  }
+);
+
+router.get(
+  "/import-jobs/:id",
+  auth,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.MANAGE_METRICS,
+    PERMISSIONS.MANAGE_EVALUATION_CYCLES,
+    PERMISSIONS.VIEW_AUDIT,
+    PERMISSIONS.READ_ONLY_ACCESS
+  ),
+  async (req, res) => {
+    const filter = buildBaseFilter(req);
+    filter._id = req.params.id;
+
+    const job = await ImportJob.findOne(filter).lean();
+    if (!job) {
+      return res.status(404).json({ mensaje: "Importacion no encontrada" });
+    }
+
+    res.json({ job });
   }
 );
 
@@ -2002,7 +1860,14 @@ router.post(
   requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATION_CYCLES),
   upload.single("file"),
   async (req, res) => {
-    try {
+    const legacyAllowed = process.env.NODE_ENV !== "production" || req.user.isSuperAdmin;
+    if (!legacyAllowed) {
+      return res.status(403).json({
+        mensaje:
+          "El endpoint legacy de importacion directa esta deshabilitado en produccion. Usa Subir -> Validar -> Confirmar.",
+      });
+    }
+
     const dataset = req.params.dataset;
     if (!["employees", "metrics", "cycles"].includes(dataset)) {
       return res.status(400).json({ mensaje: "Dataset no soportado para importacion" });
@@ -2014,8 +1879,10 @@ router.post(
 
     const { companyId } = await resolveCompanyScope(req);
     const schoolId = req.body.schoolId || req.user.schoolId || null;
-    const parsed = await parseUploadedRows(req.file);
-    const rows = parsed.rows || [];
+    if (!(await validateImportSchool(companyId, schoolId))) {
+      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+    }
+    const { rows } = await parseUploadedRows(req.file);
 
     if (!rows.length) {
       return res.status(400).json({ mensaje: "El archivo no tiene datos" });
@@ -2101,7 +1968,7 @@ router.post(
         return res.status(400).json({ mensaje: "Debes indicar colegio para importar ciclos" });
       }
       for (const row of rows) {
-        const anio = Number(row.anio || row.año);
+        const anio = Number(row.anio || row.ano);
         const periodo = String(row.periodo || "").trim();
         const etapa = String(row.etapa || "").trim().toUpperCase();
         const fechaInicio = row.fechainicio ? new Date(row.fechainicio) : null;
@@ -2172,16 +2039,10 @@ router.post(
       });
     }
 
-    return res.json({
+    res.json({
       mensaje: "Importacion completada",
       ...result,
     });
-    } catch (error) {
-      console.error("Error import legacy:", error);
-      return res.status(500).json(
-        getImportErrorPayload(error, "No se pudo procesar la importación del archivo.")
-      );
-    }
   }
 );
 

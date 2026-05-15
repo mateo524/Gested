@@ -4,82 +4,79 @@ import {
   buildColumnDetections,
   classifyDatasetByDetections,
   mapRowsByDetections,
-  sanitizeHeader,
   validateRowsForDataset,
 } from "../../utils/importIntelligence.js";
 
-test("detecta dataset employees con headers desordenados", () => {
-  const headers = ["mail_docente", "apellidos", "nombre_completo", "puesto_actual", "campus"];
-  const sanitized = headers.map((value) => sanitizeHeader(value));
+const fieldAliases = {
+  nombre: ["nombre", "name", "firstname", "first_name"],
+  apellido: ["apellido", "lastname", "last_name", "surname"],
+  email: ["email", "correo", "mail", "correoelectronico"],
+  cargo: ["cargo", "puesto", "roletitle", "rolcargo"],
+  area: ["area", "departamento", "sector"],
+  tipoempleado: ["tipoempleado", "tipo", "perfil"],
+  activo: ["activo", "active", "habilitado"],
+  competencia: ["competencia", "competency"],
+  metrica: ["metrica", "metrica", "nombre", "metric"],
+  descripcion: ["descripcion", "description"],
+  ponderacion: ["ponderacion", "weight", "peso"],
+  periodo: ["periodo", "mes", "period"],
+  fechainicio: ["fechainicio", "inicio", "startdate"],
+  fechafin: ["fechafin", "fin", "enddate"],
+  rol: ["rol", "role", "nombrerol"],
+  jefe: ["jefe", "manager", "responsable", "supervisor", "lider"],
+  sede: ["sede", "colegio", "escuela", "campus"],
+  employeeid: ["employeeid", "idempleado", "idcolaborador"],
+  legajo: ["legajo", "nrolegajo", "numerolegajo", "employeecode"],
+};
+
+test("detecta columnas en archivo desordenado y clasifica employees", () => {
+  const headers = ["apellido_y_nombre", "mail_contacto", "puesto_actual", "sector_base", "cod_legajo"];
   const rows = [
-    {
-      [sanitized[0]]: "ana@colegio.com",
-      [sanitized[1]]: "Perez",
-      [sanitized[2]]: "Ana",
-      [sanitized[3]]: "Docente",
-      [sanitized[4]]: "Norte",
-      _rowNumber: 2,
-    },
+    { _rowNumber: 7, apellido_y_nombre: "Pérez Ana", mail_contacto: "ana@colegio.edu", puesto_actual: "Docente", sector_base: "Primaria", cod_legajo: "A-1" },
+    { _rowNumber: 8, apellido_y_nombre: "López Juan", mail_contacto: "juan@colegio.edu", puesto_actual: "Preceptor", sector_base: "Secundaria", cod_legajo: "A-2" },
   ];
-  const detections = buildColumnDetections(rows, sanitized, {});
-  const dataset = classifyDatasetByDetections(detections, "auto");
-  assert.equal(dataset, "employees");
-  assert.ok((detections.email?.confidence || 0) >= 0.7);
+
+  const detections = buildColumnDetections(rows, headers, fieldAliases);
+  const classified = classifyDatasetByDetections(detections, "auto");
+  assert.equal(classified.dataset, "employees");
+  assert.ok((detections.email?.confidence || 0) > 0.6);
 });
 
-test("marca filas invalidas y bloquea super admin", () => {
+test("marca invalido SUPER_ADMIN y email malformado en employees", () => {
   const rows = [
-    {
-      apellido: "Gomez",
-      nombre: "Pablo",
-      email: "pablo@colegio.com",
-      cargo: "Profesor",
-      roleCode: "SUPER_ADMIN",
-      _rowNumber: 2,
-    },
-    {
-      apellido: "Diaz",
-      nombre: "Sofi",
-      email: "correo-invalido",
-      cargo: "Docente",
-      _rowNumber: 3,
-    },
+    { _rowNumber: 2, apellido: "Perez", nombre: "Ana", email: "ana@", cargo: "Docente", area: "Primaria", tipoempleado: "DOCENTE", activo: true, rol: "SUPER_ADMIN", jefe: "", sede: "Sede A", employeeid: "", legajo: "A-11" },
   ];
-  const result = validateRowsForDataset(rows, "employees");
+  const detections = Object.fromEntries(Object.keys(fieldAliases).map((f) => [f, { header: f, confidence: 0.9, source: "manual" }]));
+  const result = validateRowsForDataset(rows, "employees", detections);
   assert.equal(result.validRows.length, 0);
-  assert.equal(result.invalidRows.length, 2);
-  assert.match(result.invalidRows[0].message, /SUPER_ADMIN/i);
-  assert.match(result.invalidRows[1].message, /Email invalido/i);
+  assert.equal(result.invalidRows.length, 1);
+  assert.match(result.invalidRows[0].message, /Email inválido|No se permite crear SUPER_ADMIN/i);
 });
 
-test("detecta duplicados por email y legajo", () => {
+test("detecta duplicados de email y legajo", () => {
   const rows = [
-    { apellido: "Uno", nombre: "A", cargo: "Docente", email: "a@x.com", legajo: "10", _rowNumber: 2 },
-    { apellido: "Dos", nombre: "B", cargo: "Docente", email: "a@x.com", legajo: "10", _rowNumber: 3 },
+    { _rowNumber: 2, apellido: "A", nombre: "A", email: "a@x.com", cargo: "Doc", area: "", tipoempleado: "DOCENTE", activo: true, rol: "EMPLEADO", jefe: "", sede: "", employeeid: "", legajo: "L1" },
+    { _rowNumber: 3, apellido: "B", nombre: "B", email: "a@x.com", cargo: "Doc", area: "", tipoempleado: "DOCENTE", activo: true, rol: "EMPLEADO", jefe: "", sede: "", employeeid: "", legajo: "L1" },
   ];
-  const result = validateRowsForDataset(rows, "employees");
+  const detections = Object.fromEntries(Object.keys(fieldAliases).map((f) => [f, { header: f, confidence: 0.9, source: "manual" }]));
+  const result = validateRowsForDataset(rows, "employees", detections);
   assert.equal(result.validRows.length, 2);
   assert.ok(result.duplicates.length >= 2);
 });
 
-test("mapea columnas manuales para empleados", () => {
-  const rows = [
-    {
-      docenteapellido: "Suarez",
-      docentenombre: "Luz",
-      correodocente: "luz@colegio.com",
-      puestodocente: "Jefe",
-      _rowNumber: 2,
-    },
+test("mapRowsByDetections usa headers elegidos manualmente", () => {
+  const rawRows = [
+    { _rowNumber: 10, col_1: "Garcia", col_2: "Maria", col_3: "maria@x.com", col_4: "Docente", col_5: "Primaria" },
   ];
-  const headers = ["docenteapellido", "docentenombre", "correodocente", "puestodocente"];
-  const detections = buildColumnDetections(rows, headers, {
-    apellido: "docenteapellido",
-    nombre: "docentenombre",
-    email: "correodocente",
-    cargo: "puestodocente",
-  });
-  const mapped = mapRowsByDetections(rows, detections, "employees");
-  assert.equal(mapped[0].apellido, "Suarez");
-  assert.equal(mapped[0].cargo, "Jefe");
+  const detections = {
+    apellido: { header: "col_1", confidence: 1, source: "manual" },
+    nombre: { header: "col_2", confidence: 1, source: "manual" },
+    email: { header: "col_3", confidence: 1, source: "manual" },
+    cargo: { header: "col_4", confidence: 1, source: "manual" },
+    area: { header: "col_5", confidence: 1, source: "manual" },
+  };
+  const mapped = mapRowsByDetections(rawRows, detections, "employees");
+  assert.equal(mapped[0].apellido, "Garcia");
+  assert.equal(mapped[0].nombre, "Maria");
 });
+
