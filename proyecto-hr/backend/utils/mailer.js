@@ -10,12 +10,8 @@ function smtpConfigured() {
   );
 }
 
-export async function sendPasswordResetEmail({ to, resetUrl }) {
-  if (!smtpConfigured()) {
-    return { sent: false, reason: "smtp_not_configured" };
-  }
-
-  const transporter = nodemailer.createTransport({
+function createTransporter() {
+  return nodemailer.createTransport({
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
     secure: String(process.env.SMTP_SECURE || "false") === "true",
@@ -24,6 +20,14 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
       pass: process.env.SMTP_PASS,
     },
   });
+}
+
+export async function sendPasswordResetEmail({ to, resetUrl }) {
+  if (!smtpConfigured()) {
+    return { sent: false, reason: "smtp_not_configured" };
+  }
+
+  const transporter = createTransporter();
 
   await transporter.sendMail({
     from: process.env.SMTP_FROM,
@@ -40,6 +44,48 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
           </a>
         </p>
         <p>Si no lo solicitaste, ignora este correo.</p>
+      </div>
+    `,
+  });
+
+  return { sent: true };
+}
+
+export async function sendContactRequestNotification(contactRequest) {
+  if (!smtpConfigured()) {
+    return { sent: false, reason: "smtp_not_configured" };
+  }
+
+  const transporter = createTransporter();
+  const to = process.env.CONTACT_NOTIFICATIONS_TO || process.env.SUPPORT_CONTACT_TO || process.env.SMTP_FROM;
+
+  await transporter.sendMail({
+    from: process.env.SMTP_FROM,
+    to,
+    subject: `Performia - Nueva solicitud comercial (${contactRequest.source || "landing"})`,
+    text: [
+      "Nueva solicitud comercial en Performia",
+      `Nombre: ${contactRequest.name}`,
+      `Email: ${contactRequest.email}`,
+      `Institucion: ${contactRequest.institution || "-"}`,
+      `Rol: ${contactRequest.role || "-"}`,
+      `Tamano: ${contactRequest.size || "-"}`,
+      `Origen: ${contactRequest.source || "-"}`,
+      "",
+      "Mensaje:",
+      contactRequest.message || "-",
+    ].join("\n"),
+    html: `
+      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
+        <h2>Nueva solicitud comercial</h2>
+        <p><strong>Nombre:</strong> ${contactRequest.name}</p>
+        <p><strong>Email:</strong> ${contactRequest.email}</p>
+        <p><strong>Institucion:</strong> ${contactRequest.institution || "-"}</p>
+        <p><strong>Rol:</strong> ${contactRequest.role || "-"}</p>
+        <p><strong>Tamano:</strong> ${contactRequest.size || "-"}</p>
+        <p><strong>Origen:</strong> ${contactRequest.source || "-"}</p>
+        <p><strong>Mensaje:</strong></p>
+        <p>${String(contactRequest.message || "-").replace(/\n/g, "<br/>")}</p>
       </div>
     `,
   });

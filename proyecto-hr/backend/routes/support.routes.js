@@ -3,6 +3,8 @@ import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import SupportQueryLog from "../models/SupportQueryLog.js";
+import ContactRequest from "../models/ContactRequest.js";
+import { sendContactRequestNotification } from "../utils/mailer.js";
 
 const router = express.Router();
 const cache = new Map();
@@ -10,6 +12,8 @@ const rateStore = new Map();
 const CACHE_TTL_MS = Number(process.env.SUPPORT_CACHE_TTL_MS || 1000 * 60 * 2);
 const RATE_WINDOW_MS = Number(process.env.SUPPORT_RATE_WINDOW_MS || 1000 * 60);
 const RATE_MAX_REQUESTS = Number(process.env.SUPPORT_RATE_MAX_REQUESTS || 20);
+export const CONTACT_MESSAGE_MAX_LENGTH = 2000;
+const BASIC_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const intents = [
   {
@@ -81,12 +85,107 @@ function setCachedAnswer(question, value) {
   cache.set(key, { createdAt: Date.now(), value });
 }
 
+function pickString(...values) {
+  for (const value of values) {
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
+}
+
+function sanitizeMetadata(req) {
+  return {
+    userAgent: String(req.get?.("user-agent") || "").slice(0, 300),
+    referer: String(req.get?.("referer") || "").slice(0, 300),
+  };
+}
+
+export function normalizeContactPayload(body = {}) {
+  return {
+    name: pickString(body.name, body.nombre),
+    email: pickString(body.email).toLowerCase(),
+    institution: pickString(body.institution, body.institucion, body.organization),
+    role: pickString(body.role, body.rol),
+    size: pickString(body.size, body.tamanio),
+    message: pickString(body.message, body.mensaje),
+    source: pickString(body.source) ? pickString(body.source).toLowerCase() : "landing",
+  };
+}
+
+export function validateContactPayload(payload) {
+  const fieldErrors = {};
+
+  if (!payload.name) {
+    fieldErrors.name = "El nombre es obligatorio.";
+  }
+  if (!payload.email) {
+    fieldErrors.email = "El email es obligatorio.";
+  } else if (!BASIC_EMAIL_REGEX.test(payload.email)) {
+    fieldErrors.email = "Ingresa un email valido.";
+  }
+  if (payload.message && payload.message.length > CONTACT_MESSAGE_MAX_LENGTH) {
+    fieldErrors.message = `El mensaje no puede superar ${CONTACT_MESSAGE_MAX_LENGTH} caracteres.`;
+  }
+
+  return {
+    ok: Object.keys(fieldErrors).length === 0,
+    fieldErrors,
+  };
+}
+
 router.get("/health", (_req, res) => {
   res.json({
     ok: true,
     service: "performia-support",
     timestamp: new Date().toISOString(),
   });
+});
+
+router.post("/contact", async (req, res) => {
+  if (!checkRateLimit(req)) {
+    return res.status(429).json({
+      ok: false,
+      message: "Demasiadas solicitudes seguidas. Intenta nuevamente en unos segundos.",
+      fieldErrors: {},
+    });
+  }
+
+  const payload = normalizeContactPayload(req.body || {});
+  const validation = validateContactPayload(payload);
+
+  if (!validation.ok) {
+    return res.status(400).json({
+      ok: false,
+      message: "Revisa los campos obligatorios antes de enviar la solicitud.",
+      fieldErrors: validation.fieldErrors,
+    });
+  }
+
+  try {
+    const contactRequest = await ContactRequest.create({
+      ...payload,
+      status: "new",
+      metadata: sanitizeMetadata(req),
+    });
+
+    try {
+      await sendContactRequestNotification(contactRequest);
+    } catch (_mailError) {
+      // La notificacion por mail es opcional; no bloquea la recepcion de la solicitud.
+    }
+
+    return res.status(201).json({
+      ok: true,
+      message: "Solicitud recibida",
+    });
+  } catch (_error) {
+    return res.status(500).json({
+      ok: false,
+      message: "No pudimos registrar la solicitud en este momento.",
+      fieldErrors: {},
+    });
+  }
 });
 
 router.post("/chat", async (req, res) => {
