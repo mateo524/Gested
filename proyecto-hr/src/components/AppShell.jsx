@@ -94,7 +94,7 @@ export default function AppShell({ view, setView, children }) {
         { key: "usuarios", label: "Accesos", show: hasPermission("manage_users"), group: "gestion" },
         {
           key: "roles",
-          label: "Perfiles",
+          label: "Roles y accesos",
           show: hasPermission("manage_roles") || hasPermission("view_audit"),
           group: "gestion",
         },
