@@ -20,7 +20,7 @@ function KpiCard({ title, value, hint }) {
 }
 
 export default function DashboardPage() {
-  const { token, activeCompany, activeCompanyId, user } = useAuth();
+  const { token, activeCompanyId, user } = useAuth();
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");

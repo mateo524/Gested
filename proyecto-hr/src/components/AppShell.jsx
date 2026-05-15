@@ -139,6 +139,17 @@ export default function AppShell({ view, setView, children }) {
         section: "desarrollo",
       },
       {
+        key: "reporte-ejecutivo",
+        label: "Reporte ejecutivo",
+        shortLabel: "Reporte ejecutivo",
+        show:
+          hasPermission("view_reports") ||
+          hasPermission("download_reports") ||
+          hasPermission("download_team_reports") ||
+          hasPermission("view_audit"),
+        section: isSuperAdmin ? "reportes-globales" : "reportes",
+      },
+      {
         key: "bases-descargas",
         label: isManager ? "Reportes de equipo" : "Reportes",
         shortLabel: "Reportes",
