@@ -145,6 +145,16 @@ app.use("/bulk-import", bulkImportRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
 
+app.get("/health", (_req, res) => {
+  res.json({
+    ok: true,
+    service: "performia-backend",
+    timestamp: new Date().toISOString(),
+    mongoConnected: mongoose.connection?.readyState === 1,
+    nodeEnv: process.env.NODE_ENV || "development",
+  });
+});
+
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
 });

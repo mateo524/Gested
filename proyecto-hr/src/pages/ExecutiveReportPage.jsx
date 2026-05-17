@@ -44,6 +44,18 @@ function EmptyPanel({ text }) {
   );
 }
 
+function InsightList({ items, renderItem }) {
+  return (
+    <div className="space-y-3">
+      {items.map((item) => (
+        <article key={item._id} className="rounded-2xl border border-white/10 bg-[#0F1A21] p-4">
+          {renderItem(item)}
+        </article>
+      ))}
+    </div>
+  );
+}
+
 export default function ExecutiveReportPage() {
   const { token, user } = useAuth();
   const { setView } = useView();
@@ -392,9 +404,88 @@ export default function ExecutiveReportPage() {
                 )
               ) : null}
 
-              {activeTab === "kpis" ? <EmptyPanel text={overview.kpis?.message || "Todavia no hay KPIs persistidos para este periodo."} /> : null}
+              {activeTab === "kpis" ? (
+                loadingDetail ? (
+                  <EmptyPanel text="Cargando KPIs..." />
+                ) : detail?.kpis?.available && detail?.kpis?.items?.length ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-white/10 bg-[#0F1A21] p-4 text-sm text-[#AFC3CE]">
+                      {selectedEmployee?.fullName || "La persona seleccionada"} tiene {detail.kpis.items.length} KPI(s)
+                      operativo(s) visibles en este alcance.
+                    </div>
+                    <InsightList
+                      items={detail.kpis.items}
+                      renderItem={(item) => (
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-white">{item.name}</p>
+                            <p className="mt-1 text-sm text-[#8FA9B7]">
+                              {item.code || "Sin codigo"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
+                            </p>
+                            <p className="mt-3 text-sm text-[#c8d8df]">
+                              Objetivo {item.targetValue ?? "-"} {item.unit || ""}
+                              {item.frequency ? ` · ${item.frequency}` : ""}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            {item.status ? (
+                              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                                {item.status}
+                              </span>
+                            ) : null}
+                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                              Actualizado {formatDate(item.updatedAt)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <EmptyPanel text={detail?.kpis?.message || overview.kpis?.message || "Todavia no hay KPIs persistidos para este periodo."} />
+                )
+              ) : null}
 
-              {activeTab === "okrs" ? <EmptyPanel text={overview.okrs?.message || "Todavia no hay OKRs persistidos para este periodo."} /> : null}
+              {activeTab === "okrs" ? (
+                loadingDetail ? (
+                  <EmptyPanel text="Cargando OKRs..." />
+                ) : detail?.okrs?.available && detail?.okrs?.items?.length ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-white/10 bg-[#0F1A21] p-4 text-sm text-[#AFC3CE]">
+                      {selectedEmployee?.fullName || "La persona seleccionada"} tiene {detail.okrs.items.length} OKR(s)
+                      visibles en este alcance.
+                    </div>
+                    <InsightList
+                      items={detail.okrs.items}
+                      renderItem={(item) => (
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-white">{item.objectiveTitle}</p>
+                            <p className="mt-1 text-sm text-[#8FA9B7]">
+                              {item.keyResultTitle}
+                              {item.quarter ? ` · ${item.quarter}` : ""}
+                              {item.departmentCode ? ` · ${item.departmentCode}` : ""}
+                            </p>
+                            <p className="mt-3 text-sm text-[#c8d8df]">Meta {item.targetValue ?? "-"}</p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-xs">
+                            {item.status ? (
+                              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                                {item.status}
+                              </span>
+                            ) : null}
+                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                              Actualizado {formatDate(item.updatedAt)}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    />
+                  </div>
+                ) : (
+                  <EmptyPanel text={detail?.okrs?.message || overview.okrs?.message || "Todavia no hay OKRs persistidos para este periodo."} />
+                )
+              ) : null}
 
               {activeTab === "evaluaciones" ? (
                 loadingDetail ? (

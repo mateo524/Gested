@@ -33,6 +33,7 @@ import {
   sanitizeHeader,
   normalizeText,
 } from "../utils/importIntelligence.js";
+import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
 const upload = multer({
@@ -89,6 +90,16 @@ async function validateImportSchool(companyId, schoolId) {
 
 async function buildScopedFilter(req, dataset) {
   const filter = buildBaseFilter(req);
+  const scopeContext = {
+    companyId: req.user.companyId,
+    schoolId: req.user.schoolId || null,
+    employeeId: req.user.employeeId || null,
+    roleKey: req.user.roleKey || null,
+    roleCode: req.user.roleCode || null,
+    roleScope: req.user.roleScope || req.user.scope || null,
+    departmentCode: req.user.departmentCode || "",
+    isSuperAdmin: req.user.isSuperAdmin || false,
+  };
 
   if (req.query.schoolId && !req.user.isSuperAdmin) {
     filter.schoolId = req.user.schoolId;
@@ -98,8 +109,12 @@ async function buildScopedFilter(req, dataset) {
     if (req.query.area) filter.area = req.query.area;
     if (req.query.cargo) filter.cargo = req.query.cargo;
 
-    if (req.user.roleCode === "JEFE" && req.user.employeeId) {
-      filter.managerId = req.user.employeeId;
+    if (isManagerScope(scopeContext)) {
+      if (scopeContext.roleScope === "DEPARTMENT" && scopeContext.departmentCode) {
+        filter.area = scopeContext.departmentCode;
+      } else if (scopeContext.employeeId) {
+        filter.managerId = scopeContext.employeeId;
+      }
     }
   }
 
@@ -109,18 +124,12 @@ async function buildScopedFilter(req, dataset) {
     if (req.query.employeeId) filter.employeeId = req.query.employeeId;
     if (req.query.cycleId) filter.cycleId = req.query.cycleId;
 
-    if (req.user.roleCode === "JEFE" && req.user.employeeId) {
-      const team = await Employee.find({
-        companyId: req.user.companyId,
-        schoolId: req.user.schoolId,
-        managerId: req.user.employeeId,
-      })
-        .select("_id")
-        .lean();
-      filter.employeeId = { $in: team.map((item) => item._id) };
+    if (isManagerScope(scopeContext)) {
+      const teamIds = await getScopedEmployeeIds(scopeContext);
+      filter.employeeId = { $in: Array.isArray(teamIds) ? teamIds : [] };
     }
 
-    if (req.user.roleCode === "EMPLEADO" && req.user.employeeId) {
+    if (isEmployeeScope(scopeContext) && req.user.employeeId) {
       filter.employeeId = req.user.employeeId;
     }
   }
@@ -133,18 +142,12 @@ async function buildScopedFilter(req, dataset) {
     if (req.query.estado) filter.estado = req.query.estado;
     if (req.query.employeeId) filter.employeeId = req.query.employeeId;
 
-    if (req.user.roleCode === "JEFE" && req.user.employeeId) {
-      const team = await Employee.find({
-        companyId: req.user.companyId,
-        schoolId: req.user.schoolId,
-        managerId: req.user.employeeId,
-      })
-        .select("_id")
-        .lean();
-      filter.employeeId = { $in: team.map((item) => item._id) };
+    if (isManagerScope(scopeContext)) {
+      const teamIds = await getScopedEmployeeIds(scopeContext);
+      filter.employeeId = { $in: Array.isArray(teamIds) ? teamIds : [] };
     }
 
-    if (req.user.roleCode === "EMPLEADO" && req.user.employeeId) {
+    if (isEmployeeScope(scopeContext) && req.user.employeeId) {
       filter.employeeId = req.user.employeeId;
     }
   }
@@ -154,13 +157,18 @@ async function buildScopedFilter(req, dataset) {
 
 function canDownloadDataset(req, dataset) {
   const permissions = req.user?.permisos || [];
+  const scopeContext = {
+    roleKey: req.user?.roleKey || null,
+    roleCode: req.user?.roleCode || null,
+    roleScope: req.user?.roleScope || req.user?.scope || null,
+  };
 
   if (req.user.isSuperAdmin) return true;
   if (permissions.includes(PERMISSIONS.DOWNLOAD_REPORTS)) return true;
-  if (req.user.roleCode === "JEFE" && permissions.includes(PERMISSIONS.DOWNLOAD_TEAM_REPORTS)) {
+  if (isManagerScope(scopeContext) && permissions.includes(PERMISSIONS.DOWNLOAD_TEAM_REPORTS)) {
     return dataset === "employees" || dataset === "evaluations" || dataset === "developmentPlans";
   }
-  if (req.user.roleCode === "EMPLEADO" && permissions.includes(PERMISSIONS.DOWNLOAD_SELF_REPORT)) {
+  if (isEmployeeScope(scopeContext) && permissions.includes(PERMISSIONS.DOWNLOAD_SELF_REPORT)) {
     return dataset === "evaluations" || dataset === "developmentPlans";
   }
 
@@ -169,11 +177,16 @@ function canDownloadDataset(req, dataset) {
 
 function getDownloadPolicy(req) {
   const datasets = Object.keys(allowedDatasets);
+  const scopeContext = {
+    roleKey: req.user?.roleKey || null,
+    roleCode: req.user?.roleCode || null,
+    roleScope: req.user?.roleScope || req.user?.scope || null,
+  };
   return datasets.map((dataset) => {
     let scope = "global";
     if (!req.user.isSuperAdmin) {
-      if (req.user.roleCode === "JEFE") scope = "equipo";
-      else if (req.user.roleCode === "EMPLEADO") scope = "propio";
+      if (isManagerScope(scopeContext)) scope = scopeContext.roleScope === "DEPARTMENT" ? "departamento" : "equipo";
+      else if (isEmployeeScope(scopeContext)) scope = "propio";
       else scope = "colegio";
     }
 
@@ -183,6 +196,8 @@ function getDownloadPolicy(req) {
       reason = "Tu rol no tiene permiso para descargar este dataset";
     } else if (scope === "equipo") {
       reason = "Descarga limitada a tu equipo a cargo";
+    } else if (scope === "departamento") {
+      reason = "Descarga limitada a tu departamento asignado";
     } else if (scope === "propio") {
       reason = "Descarga limitada a tu información personal";
     } else if (scope === "colegio") {

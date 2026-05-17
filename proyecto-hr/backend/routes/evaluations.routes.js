@@ -8,51 +8,25 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
-
-export async function getTeamEmployeeIds(scope) {
-  if (!scope.employeeId) return [];
-  if (scope.roleKey === "MANAGER" && scope.roleScope === "DEPARTMENT" && scope.departmentCode) {
-    const employees = await Employee.find({
-      companyId: scope.companyId,
-      schoolId: scope.schoolId,
-      area: scope.departmentCode,
-      activo: true,
-    })
-      .select("_id")
-      .lean();
-
-    return employees.map((item) => item._id);
-  }
-  const employees = await Employee.find({
-    companyId: scope.companyId,
-    schoolId: scope.schoolId,
-    managerId: scope.employeeId,
-    activo: true,
-  })
-    .select("_id")
-    .lean();
-
-  return employees.map((item) => item._id);
-}
 
 export async function buildEvaluationFilter(req) {
   const filter = buildScopedFilter(req, {});
   let jefeTeamIds = null;
-  const roleKey = req.scope.roleKey || req.scope.roleCode;
 
-  if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
-    jefeTeamIds = await getTeamEmployeeIds(req.scope);
+  if (isManagerScope(req.scope)) {
+    jefeTeamIds = await getScopedEmployeeIds(req.scope);
     filter.employeeId = { $in: jefeTeamIds };
   }
 
-  if (roleKey === "EMPLOYEE" || req.scope.roleCode === "EMPLEADO") {
+  if (isEmployeeScope(req.scope)) {
     filter.employeeId = req.scope.employeeId;
   }
 
-  if (req.query.employeeId && roleKey !== "EMPLOYEE" && req.scope.roleCode !== "EMPLEADO") {
-    if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
+  if (req.query.employeeId && !isEmployeeScope(req.scope)) {
+    if (isManagerScope(req.scope)) {
       const requested = String(req.query.employeeId);
       const allowed = (jefeTeamIds || []).some((id) => String(id) === requested);
       if (!allowed) {
@@ -99,16 +73,15 @@ async function validateEvaluationCreation(req) {
     return { error: { status: 404, mensaje: "Ciclo no encontrado para este colegio" } };
   }
 
-  const roleKey = req.scope.roleKey || req.scope.roleCode;
-  if (roleKey === "MANAGER" || req.scope.roleCode === "JEFE") {
-    const teamIds = await getTeamEmployeeIds(req.scope);
+  if (isManagerScope(req.scope)) {
+    const teamIds = await getScopedEmployeeIds(req.scope);
     const allowed = teamIds.some((id) => String(id) === String(employee._id));
     if (!allowed || req.body.tipo !== "JEFATURA") {
       return { error: { status: 403, mensaje: "Solo puedes evaluar a tu equipo en modalidad jefatura" } };
     }
   }
 
-  if (roleKey === "EMPLOYEE" || req.scope.roleCode === "EMPLEADO") {
+  if (isEmployeeScope(req.scope)) {
     if (String(employee._id) !== String(req.scope.employeeId) || req.body.tipo !== "AUTOEVALUACION") {
       return { error: { status: 403, mensaje: "Solo puedes crear tu propia autoevaluacion" } };
     }

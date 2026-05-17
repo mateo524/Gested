@@ -8,6 +8,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
 
@@ -94,9 +95,7 @@ router.get(
       return res.status(404).json({ mensaje: "Empleado no encontrado" });
     }
 
-    const roleKey = req.scope.roleKey || req.scope.roleCode;
-
-    if ((roleKey === "MANAGER" || req.scope.roleCode === "JEFE") && req.scope.employeeId) {
+    if (isManagerScope(req.scope) && req.scope.employeeId) {
       const isSelf = String(employee._id) === String(req.scope.employeeId);
       const isTeam =
         req.scope.roleScope === "DEPARTMENT" && req.scope.departmentCode
@@ -107,7 +106,7 @@ router.get(
       }
     }
 
-    if ((roleKey === "EMPLOYEE" || req.scope.roleCode === "EMPLEADO") && req.scope.employeeId) {
+    if (isEmployeeScope(req.scope) && req.scope.employeeId) {
       const isSelf = String(employee._id) === String(req.scope.employeeId);
       if (!isSelf) {
         return res.status(403).json({ mensaje: "Solo puedes ver tu propia ficha" });
