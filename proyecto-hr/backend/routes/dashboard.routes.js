@@ -20,6 +20,7 @@ import { resolveCompanyScope } from "../utils/companyScope.js";
 import { Parser } from "json2csv";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import { buildPredictiveInsights, buildLayer3Forecast, simulateTrainingImpact } from "../utils/predictiveInsights.js";
+import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
 
@@ -67,9 +68,18 @@ function groupTimeline(items) {
 
 async function buildDashboardDataScope(req, company) {
   const companyObjectId = company._id;
-  const roleCode = req.user?.roleCode || "";
   const schoolObjectId = !req.user?.isSuperAdmin ? toObjectId(req.user?.schoolId) : null;
   const employeeObjectId = toObjectId(req.user?.employeeId);
+  const scopeContext = {
+    companyId: companyObjectId,
+    schoolId: schoolObjectId,
+    employeeId: employeeObjectId,
+    roleKey: req.user?.roleKey || null,
+    roleCode: req.user?.roleCode || null,
+    roleScope: req.user?.roleScope || req.user?.scope || null,
+    departmentCode: req.user?.departmentCode || "",
+    isSuperAdmin: req.user?.isSuperAdmin || false,
+  };
 
   const baseFilter = { companyId: companyObjectId };
   if (schoolObjectId) {
@@ -80,27 +90,20 @@ async function buildDashboardDataScope(req, company) {
   const evaluationFilter = { ...baseFilter };
   const planFilter = { ...baseFilter };
 
-  if (roleCode === "JEFE") {
-    if (!employeeObjectId) {
+  if (isManagerScope(scopeContext)) {
+    const teamIds = await getScopedEmployeeIds(scopeContext);
+    if (!Array.isArray(teamIds) || teamIds.length === 0) {
       employeeFilter._id = { $in: [] };
       evaluationFilter.employeeId = { $in: [] };
       planFilter.employeeId = { $in: [] };
     } else {
-      const team = await Employee.find({
-        ...baseFilter,
-        managerId: employeeObjectId,
-        activo: true,
-      })
-        .select("_id")
-        .lean();
-      const teamIds = team.map((item) => item._id);
       employeeFilter._id = { $in: teamIds };
       evaluationFilter.employeeId = { $in: teamIds };
       planFilter.employeeId = { $in: teamIds };
     }
   }
 
-  if (roleCode === "EMPLEADO") {
+  if (isEmployeeScope(scopeContext)) {
     const selfIds = employeeObjectId ? [employeeObjectId] : [];
     employeeFilter._id = { $in: selfIds };
     evaluationFilter.employeeId = { $in: selfIds };

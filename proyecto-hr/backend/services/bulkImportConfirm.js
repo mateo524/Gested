@@ -2,6 +2,8 @@ import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
 import Employee from "../models/Employee.js";
 import ImportJob from "../models/ImportJob.js";
+import KPIRecord from "../models/KPIRecord.js";
+import OKRRecord from "../models/OKRRecord.js";
 import Role from "../models/Role.js";
 import User from "../models/User.js";
 import { logAudit } from "../utils/audit.js";
@@ -25,6 +27,18 @@ function toBooleanWord(value, fallback = true) {
   if (["yes", "si", "true", "1", "active"].includes(normalized)) return true;
   if (["no", "false", "0", "inactive"].includes(normalized)) return false;
   return fallback;
+}
+
+function toNumber(value, fallback = null) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function buildLookupKey(...parts) {
+  return parts
+    .map((part) => normalizeText(part).toLowerCase())
+    .filter(Boolean)
+    .join("|");
 }
 
 function parseDateValue(value) {
@@ -311,10 +325,98 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
         result.managers.updated += 1;
       }
 
-      result.kpis.processed = (preview.kpis || []).length;
-      result.kpis.skipped = result.kpis.processed;
-      result.okrs.processed = (preview.okrs || []).length;
-      result.okrs.skipped = result.okrs.processed;
+      for (const row of preview.kpis || []) {
+        result.kpis.processed += 1;
+        const employee =
+          employeeByCode.get(normalizeText(row.owner_employee_code)) ||
+          employeeByEmail.get(normalizeEmail(row.employee_email || row.work_email));
+        if (!employee) {
+          result.kpis.skipped += 1;
+          continue;
+        }
+
+        const lookupKey = buildLookupKey(row.kpi_code || row.kpi_name, row.kpi_name);
+        const payload = {
+          companyId: job.companyId,
+          schoolId: job.schoolId || null,
+          employeeId: employee._id,
+          departmentCode: normalizeText(row.department_code || employee.area),
+          lookupKey,
+          kpiCode: normalizeText(row.kpi_code),
+          name: normalizeText(row.kpi_name),
+          targetValue: toNumber(row.target_value, 0),
+          unit: normalizeText(row.unit),
+          frequency: normalizeText(row.frequency),
+          status: normalizeText(row.status || "active").toLowerCase(),
+          active: toBooleanWord(row.active, true),
+          sourceImportJobId: job._id,
+          lastImportedAt: new Date(),
+        };
+
+        const existing = await KPIRecord.findOne({
+          companyId: job.companyId,
+          schoolId: job.schoolId || null,
+          employeeId: employee._id,
+          lookupKey,
+        }).session(session);
+
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save({ session });
+          result.kpis.updated += 1;
+        } else {
+          await KPIRecord.create([payload], { session });
+          result.kpis.created += 1;
+        }
+      }
+
+      for (const row of preview.okrs || []) {
+        result.okrs.processed += 1;
+        const employee =
+          employeeByCode.get(normalizeText(row.owner_employee_code)) ||
+          employeeByEmail.get(normalizeEmail(row.employee_email || row.work_email));
+        if (!employee) {
+          result.okrs.skipped += 1;
+          continue;
+        }
+
+        const lookupKey = buildLookupKey(
+          row.okr_code || row.objective_title,
+          row.objective_title,
+          row.key_result_title
+        );
+        const payload = {
+          companyId: job.companyId,
+          schoolId: job.schoolId || null,
+          employeeId: employee._id,
+          departmentCode: normalizeText(row.department_code || employee.area),
+          lookupKey,
+          okrCode: normalizeText(row.okr_code),
+          objectiveTitle: normalizeText(row.objective_title),
+          keyResultTitle: normalizeText(row.key_result_title),
+          quarter: normalizeText(row.quarter),
+          targetValue: toNumber(row.target_value, null),
+          status: normalizeText(row.status || "active").toLowerCase(),
+          sourceImportJobId: job._id,
+          lastImportedAt: new Date(),
+        };
+
+        const existing = await OKRRecord.findOne({
+          companyId: job.companyId,
+          schoolId: job.schoolId || null,
+          employeeId: employee._id,
+          lookupKey,
+        }).session(session);
+
+        if (existing) {
+          Object.assign(existing, payload);
+          await existing.save({ session });
+          result.okrs.updated += 1;
+        } else {
+          await OKRRecord.create([payload], { session });
+          result.okrs.created += 1;
+        }
+      }
 
       const finalIssues = [...result.errors.map((item) => ({ ...item, severity: "error" }))];
       const finalWarnings = result.warnings.map((message) =>

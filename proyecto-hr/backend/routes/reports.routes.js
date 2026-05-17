@@ -6,11 +6,14 @@ import EvaluationScore from "../models/EvaluationScore.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import Metric from "../models/Metric.js";
 import Competency from "../models/Competency.js";
+import KPIRecord from "../models/KPIRecord.js";
+import OKRRecord from "../models/OKRRecord.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope } from "../middleware/tenantScope.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
+import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
 const EXECUTIVE_PERMISSION_SET = [
@@ -27,14 +30,6 @@ function createHttpError(status, message) {
   const error = new Error(message);
   error.status = status;
   return error;
-}
-
-function isEmployeeScope(scope = {}) {
-  return scope.roleKey === "EMPLOYEE" || scope.roleCode === "EMPLEADO";
-}
-
-function isManagerScope(scope = {}) {
-  return scope.roleKey === "MANAGER" || scope.roleCode === "JEFE";
 }
 
 function isDepartmentManager(scope = {}) {
@@ -100,18 +95,7 @@ async function getAllowedManagerEmployeeIds(scope, baseFilter) {
   if (!isManagerScope(scope) || isDepartmentManager(scope)) {
     return null;
   }
-  if (!scope.employeeId) {
-    return [];
-  }
-
-  const team = await Employee.find({
-    ...baseFilter,
-    managerId: scope.employeeId,
-  })
-    .select("_id")
-    .lean();
-
-  return team.map((item) => item._id);
+  return getScopedEmployeeIds(scope, { extraFilter: baseFilter });
 }
 
 function summarizeEmployees(employees, evaluationMap, plansMap, managerMap) {
@@ -296,8 +280,13 @@ async function resolveExecutiveDataset(req) {
     ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
     employeeId: { $in: allowedEmployeeIds },
   };
+  const recordFilter = {
+    companyId: company._id,
+    ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
+    employeeId: { $in: allowedEmployeeIds },
+  };
 
-  const [evaluations, plans, managerRefs] = await Promise.all([
+  const [evaluations, plans, managerRefs, kpiRecords, okrRecords] = await Promise.all([
     allowedEmployeeIds.length
       ? Evaluation.find(evaluationFilter)
           .sort({ createdAt: -1 })
@@ -315,6 +304,16 @@ async function resolveExecutiveDataset(req) {
     })
       .select("_id nombre apellido")
       .lean(),
+    allowedEmployeeIds.length
+      ? KPIRecord.find(recordFilter)
+          .sort({ updatedAt: -1, createdAt: -1 })
+          .lean()
+      : [],
+    allowedEmployeeIds.length
+      ? OKRRecord.find(recordFilter)
+          .sort({ updatedAt: -1, createdAt: -1 })
+          .lean()
+      : [],
   ]);
 
   const managerMap = new Map(managerRefs.map((item) => [String(item._id), formatEmployeeName(item)]));
@@ -385,6 +384,8 @@ async function resolveExecutiveDataset(req) {
     selectedEmployee,
     selectedCycleId,
     actions,
+    kpiRecords,
+    okrRecords,
   };
 }
 
@@ -448,12 +449,14 @@ router.get(
           : null,
         actions: dataset.actions,
         kpis: {
-          available: false,
-          message: KPI_EMPTY_MESSAGE,
+          available: dataset.kpiRecords.length > 0,
+          message: dataset.kpiRecords.length > 0 ? "" : KPI_EMPTY_MESSAGE,
+          total: dataset.kpiRecords.length,
         },
         okrs: {
-          available: false,
-          message: OKR_EMPTY_MESSAGE,
+          available: dataset.okrRecords.length > 0,
+          message: dataset.okrRecords.length > 0 ? "" : OKR_EMPTY_MESSAGE,
+          total: dataset.okrRecords.length,
         },
       });
     } catch (error) {
@@ -485,7 +488,7 @@ router.get(
         throw createHttpError(404, "Empleado no encontrado en este alcance.");
       }
 
-      const [employeeDoc, employeeEvaluations, employeePlans] = await Promise.all([
+      const [employeeDoc, employeeEvaluations, employeePlans, employeeKpis, employeeOkrs] = await Promise.all([
         Employee.findById(employee._id).lean(),
         Evaluation.find({
           companyId: dataset.company._id,
@@ -502,6 +505,20 @@ router.get(
           employeeId: employee._id,
         })
           .sort({ createdAt: -1 })
+          .lean(),
+        KPIRecord.find({
+          companyId: dataset.company._id,
+          ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
+          employeeId: employee._id,
+        })
+          .sort({ updatedAt: -1, createdAt: -1 })
+          .lean(),
+        OKRRecord.find({
+          companyId: dataset.company._id,
+          ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
+          employeeId: employee._id,
+        })
+          .sort({ updatedAt: -1, createdAt: -1 })
           .lean(),
       ]);
 
@@ -634,12 +651,35 @@ router.get(
         })),
         metricSignals,
         kpis: {
-          available: false,
-          message: KPI_EMPTY_MESSAGE,
+          available: employeeKpis.length > 0,
+          message: employeeKpis.length > 0 ? "" : KPI_EMPTY_MESSAGE,
+          items: employeeKpis.map((item) => ({
+            _id: String(item._id),
+            code: item.kpiCode || "",
+            name: item.name,
+            targetValue: item.targetValue,
+            unit: item.unit || "",
+            frequency: item.frequency || "",
+            status: item.status || "",
+            active: item.active !== false,
+            departmentCode: item.departmentCode || "",
+            updatedAt: item.updatedAt,
+          })),
         },
         okrs: {
-          available: false,
-          message: OKR_EMPTY_MESSAGE,
+          available: employeeOkrs.length > 0,
+          message: employeeOkrs.length > 0 ? "" : OKR_EMPTY_MESSAGE,
+          items: employeeOkrs.map((item) => ({
+            _id: String(item._id),
+            code: item.okrCode || "",
+            objectiveTitle: item.objectiveTitle,
+            keyResultTitle: item.keyResultTitle,
+            quarter: item.quarter || "",
+            targetValue: item.targetValue,
+            status: item.status || "",
+            departmentCode: item.departmentCode || "",
+            updatedAt: item.updatedAt,
+          })),
         },
         actions: employeeActions,
       });
