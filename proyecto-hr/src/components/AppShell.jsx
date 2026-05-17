@@ -158,19 +158,19 @@ export default function AppShell({ view, setView, children }) {
           hasPermission("download_reports") ||
           hasPermission("download_team_reports") ||
           hasPermission("download_self_report"),
-        section: isSuperAdmin ? "reportes-globales" : "reportes",
+        section: "reportes",
       },
       {
         key: "carga-masiva",
-        label: isReadOnly ? "Datos" : "Carga masiva",
-        shortLabel: isReadOnly ? "Datos" : "Carga masiva",
+        label: isSuperAdmin ? "Importacion" : isReadOnly ? "Datos" : "Carga masiva",
+        shortLabel: isSuperAdmin ? "Importacion" : isReadOnly ? "Datos" : "Carga masiva",
         show:
           hasPermission("manage_users") ||
           hasPermission("manage_school_users") ||
           hasPermission("manage_employees") ||
           hasPermission("manage_roles") ||
           hasPermission("view_audit"),
-        section: "datos",
+        section: isSuperAdmin ? "importacion" : "datos",
       },
       {
         key: "usuarios",
@@ -190,7 +190,7 @@ export default function AppShell({ view, setView, children }) {
         key: "settings",
         label: isSuperAdmin ? "Configuracion global" : "Configuracion",
         shortLabel: "Configuracion",
-        show: hasPermission("manage_settings") || isSuperAdmin,
+        show: !isSuperAdmin && hasPermission("manage_settings"),
         section: isSuperAdmin ? "plataforma" : "configuracion",
       },
       {
@@ -225,6 +225,7 @@ export default function AppShell({ view, setView, children }) {
       return [
         { key: "organizaciones", label: "Organizaciones" },
         { key: "reportes-globales", label: "Reportes globales" },
+        { key: "importacion", label: "Importacion" },
         { key: "plataforma", label: "Plataforma" },
       ];
     }
