@@ -14,23 +14,10 @@ import { ensureCompanyStructure } from "../utils/bootstrap.js";
 import { logAudit } from "../utils/audit.js";
 import { generateTempPassword } from "../utils/password.js";
 import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
+import { isForbiddenPlatformRoleInput, mapRoleInputToLegacyRoleCode } from "../utils/legacyRoleMapping.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
-
-function normalizeRoleCode(input) {
-  const v = String(input || "")
-    .trim()
-    .toUpperCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
-  if (!v) return "EMPLEADO";
-  if (["DIRECTOR", "ADMIN", "ADMIN_COLEGIO", "DIRECTIVO"].includes(v)) return "ADMIN_COLEGIO";
-  if (["RRHH", "RH"].includes(v)) return "RRHH";
-  if (["JEFE", "LIDER"].includes(v)) return "JEFE";
-  if (["LECTOR", "AUDITOR"].includes(v)) return "LECTOR";
-  return "EMPLEADO";
-}
 
 async function parseUploadedRows(file) {
   if (!file) return [];
@@ -193,7 +180,13 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
         });
         imported.employees += 1;
 
-        const roleCode = normalizeRoleCode(row.rol || row.role);
+        const requestedRole = row.rol || row.role || row.roleKey;
+        if (isForbiddenPlatformRoleInput(requestedRole)) {
+          imported.errors += 1;
+          continue;
+        }
+
+        const roleCode = mapRoleInputToLegacyRoleCode(requestedRole);
         const role = roleMap.get(roleCode) || roleMap.get("EMPLEADO");
         if (email && role) {
           const exists = await User.findOne({ email });

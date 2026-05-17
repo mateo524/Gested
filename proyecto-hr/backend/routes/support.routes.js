@@ -5,6 +5,7 @@ import { PERMISSIONS } from "../utils/permissions.js";
 import SupportQueryLog from "../models/SupportQueryLog.js";
 import ContactRequest from "../models/ContactRequest.js";
 import { sendContactRequestNotification } from "../utils/mailer.js";
+import { buildHealthStatus } from "../utils/health.js";
 
 const router = express.Router();
 const cache = new Map();
@@ -135,11 +136,7 @@ export function validateContactPayload(payload) {
 }
 
 router.get("/health", (_req, res) => {
-  res.json({
-    ok: true,
-    service: "performia-support",
-    timestamp: new Date().toISOString(),
-  });
+  res.json(buildHealthStatus("performia-support"));
 });
 
 router.post("/contact", async (req, res) => {

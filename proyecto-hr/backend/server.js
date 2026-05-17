@@ -31,6 +31,7 @@ import bulkImportRoutes from "./routes/bulkImport.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
 import onboardingRoutes from "./routes/onboarding.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
+import { buildHealthStatus } from "./utils/health.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -146,13 +147,12 @@ app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
 
 app.get("/health", (_req, res) => {
-  res.json({
-    ok: true,
-    service: "performia-backend",
-    timestamp: new Date().toISOString(),
-    mongoConnected: mongoose.connection?.readyState === 1,
-    nodeEnv: process.env.NODE_ENV || "development",
-  });
+  res.json(
+    buildHealthStatus("performia-backend", {
+      mongoConnected: mongoose.connection?.readyState === 1,
+      nodeEnv: process.env.NODE_ENV || "development",
+    })
+  );
 });
 
 app.get("/", (req, res) => {

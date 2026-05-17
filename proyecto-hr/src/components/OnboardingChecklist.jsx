@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
+import { canManageOnboardingUser } from "../lib/roleHelpers";
 
 const stepFallbackViews = {
   configure_organization: "settings",
@@ -42,13 +43,7 @@ export default function OnboardingChecklist() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [pendingStep, setPendingStep] = useState("");
 
-  const canManageOnboarding =
-    user?.isSuperAdmin ||
-    user?.roleCode === "ADMIN_COLEGIO" ||
-    user?.roleCode === "RRHH" ||
-    user?.permisos?.includes("manage_settings") ||
-    user?.permisos?.includes("manage_employees") ||
-    user?.permisos?.includes("manage_users");
+  const canManageOnboarding = canManageOnboardingUser(user);
 
   const loadStatus = useCallback(async () => {
     if (!token || !canManageOnboarding) return;
