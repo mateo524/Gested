@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import AppLogo from "./brand/AppLogo";
 
 function NotificationBell({ announcementSummary, onMarkRead }) {
@@ -78,11 +79,10 @@ export default function AppShell({ view, setView, children }) {
     tokenNearExpiry,
   } = useAuth();
 
-  const roleCode = user?.roleCode || "";
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
-  const isEmployee = roleCode === "EMPLEADO";
-  const isManager = roleCode === "JEFE";
-  const isReadOnly = ["LECTOR", "LECTOR_AUDITOR"].includes(roleCode) || hasPermission("read_only_access");
+  const isEmployee = isEmployeeUser(user);
+  const isManager = isManagerUser(user);
+  const isReadOnly = isReadOnlyUser(user, hasPermission);
 
   const allViews = useMemo(
     () => [

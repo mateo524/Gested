@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
+import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import { useView } from "../context/ViewContext";
 import OnboardingChecklist from "../components/OnboardingChecklist";
 
 function getDashboardCacheKey(user, companyId) {
-  const role = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
+  const role = user?.roleKey || user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const scope = companyId || user?.companyId || "global";
   return `pf_dashboard_summary_${role}_${scope}`;
 }
@@ -25,12 +26,11 @@ export default function DashboardPage() {
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
-  const roleCode = user?.roleCode || "";
-  const isSuperOrDirector = user?.isSuperAdmin || roleCode === "ADMIN_COLEGIO";
-  const isRRHH = roleCode === "RRHH";
-  const isJefe = roleCode === "JEFE";
-  const isEmpleado = roleCode === "EMPLEADO";
-  const isLector = ["LECTOR", "LECTOR_AUDITOR"].includes(roleCode);
+  const isSuperOrDirector = user?.isSuperAdmin || user?.roleKey === "ORG_OWNER" || user?.roleKey === "ORG_ADMIN" || user?.roleCode === "ADMIN_COLEGIO";
+  const isRRHH = user?.roleKey === "HR" || user?.roleCode === "RRHH";
+  const isJefe = isManagerUser(user);
+  const isEmpleado = isEmployeeUser(user);
+  const isLector = isReadOnlyUser(user);
 
   useEffect(() => {
     if (!token) return;
@@ -224,7 +224,7 @@ export default function DashboardPage() {
 
   return (
     <div className="pf-stack">
-      {(isSuperOrDirector || isRRHH) ? <OnboardingChecklist /> : null}
+      {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
 
       <section className="pf-surface pf-surface-pad">
         <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Resumen del día</p>

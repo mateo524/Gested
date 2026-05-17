@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
+import { isEmployeeUser } from "../lib/roleHelpers";
 
 const tabs = [
   { key: "resumen", label: "Resumen" },
@@ -76,7 +77,7 @@ export default function ExecutiveReportPage() {
     user?.permisos?.includes("download_team_reports") ||
     user?.permisos?.includes("view_audit");
 
-  const isEmployee = user?.roleCode === "EMPLEADO" || user?.roleKey === "EMPLOYEE";
+  const isEmployee = isEmployeeUser(user);
 
   const loadOverview = useCallback(async () => {
     if (!token || !canViewExecutive || isEmployee) return;

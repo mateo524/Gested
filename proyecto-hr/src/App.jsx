@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
+import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
@@ -115,12 +116,11 @@ function AppContent() {
     if (!isAuthenticated || !user) return;
 
     const preloaders = [loadDashboardPage];
-    const roleCode = user.roleCode || "";
 
-    if (["ADMIN_COLEGIO", "RRHH", "JEFE", "EMPLEADO"].includes(roleCode)) {
+    if (isAdminOrgUser(user) || isManagerUser(user) || isEmployeeUser(user)) {
       preloaders.push(loadEvaluationsPage, loadDevelopmentPlansPage);
     }
-    if (["ADMIN_COLEGIO", "RRHH"].includes(roleCode)) {
+    if (isAdminOrgUser(user)) {
       preloaders.push(loadEmployeesPage, loadMetricsPage, loadEvaluationCyclesPage);
     }
     if (user.isSuperAdmin) {
