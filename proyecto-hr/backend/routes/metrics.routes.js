@@ -2,6 +2,9 @@ import express from "express";
 import Metric from "../models/Metric.js";
 import MetricLevel from "../models/MetricLevel.js";
 import Competency from "../models/Competency.js";
+import Employee from "../models/Employee.js";
+import KPIRecord from "../models/KPIRecord.js";
+import OKRRecord from "../models/OKRRecord.js";
 import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
@@ -51,6 +54,40 @@ function normalizeLevels(levels) {
   return { levels: normalized };
 }
 
+function buildOperationalRecordFilter(req) {
+  const filter = buildScopedFilter(req, {});
+  if (req.query.employeeId) filter.employeeId = req.query.employeeId;
+  if (req.query.departmentCode) filter.departmentCode = String(req.query.departmentCode).trim();
+  if (req.query.schoolId && req.scope.isSuperAdmin) filter.schoolId = req.query.schoolId;
+  return filter;
+}
+
+async function attachEmployeeSnapshot(records) {
+  const employeeIds = [...new Set(records.map((item) => String(item.employeeId || "")).filter(Boolean))];
+  if (!employeeIds.length) return records;
+
+  const employees = await Employee.find({ _id: { $in: employeeIds } })
+    .select("_id nombre apellido cargo area email")
+    .lean();
+  const employeeMap = new Map(
+    employees.map((item) => [
+      String(item._id),
+      {
+        _id: String(item._id),
+        fullName: [item.apellido, item.nombre].filter(Boolean).join(", "),
+        cargo: item.cargo || "",
+        area: item.area || "",
+        email: item.email || "",
+      },
+    ])
+  );
+
+  return records.map((item) => ({
+    ...item,
+    employee: employeeMap.get(String(item.employeeId)) || null,
+  }));
+}
+
 router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_METRICS), async (req, res) => {
   const filter = buildScopedFilter(req, {});
 
@@ -74,6 +111,42 @@ router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_ME
 
   res.json(metrics.map((metric) => ({ ...metric, levels: levelMap.get(String(metric._id)) || [] })));
 });
+
+router.get(
+  "/kpi-records",
+  auth,
+  attachTenantScope,
+  requirePermission(PERMISSIONS.MANAGE_METRICS),
+  async (req, res) => {
+    const filter = buildOperationalRecordFilter(req);
+    const records = await KPIRecord.find(filter).sort({ updatedAt: -1, createdAt: -1 }).lean();
+    const withEmployee = await attachEmployeeSnapshot(records);
+    res.json(
+      withEmployee.map((item) => ({
+        ...item,
+        _id: String(item._id),
+      }))
+    );
+  }
+);
+
+router.get(
+  "/okr-records",
+  auth,
+  attachTenantScope,
+  requirePermission(PERMISSIONS.MANAGE_METRICS),
+  async (req, res) => {
+    const filter = buildOperationalRecordFilter(req);
+    const records = await OKRRecord.find(filter).sort({ updatedAt: -1, createdAt: -1 }).lean();
+    const withEmployee = await attachEmployeeSnapshot(records);
+    res.json(
+      withEmployee.map((item) => ({
+        ...item,
+        _id: String(item._id),
+      }))
+    );
+  }
+);
 
 router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_METRICS), async (req, res) => {
   const { companyId, schoolId } = resolveTenantIds(req);

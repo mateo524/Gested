@@ -22,6 +22,12 @@ const emptyForm = {
   levels: buildDefaultLevels(),
 };
 
+const insightsTabs = [
+  { key: "metricas", label: "Indicadores base" },
+  { key: "kpis", label: "KPIs cargados" },
+  { key: "okrs", label: "OKRs cargados" },
+];
+
 export default function MetricsPage() {
   const { token } = useAuth();
   const [schools, setSchools] = useState([]);
@@ -35,6 +41,9 @@ export default function MetricsPage() {
   const [editingId, setEditingId] = useState("");
   const [query, setQuery] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [activeTab, setActiveTab] = useState("metricas");
+  const [kpiRecords, setKpiRecords] = useState([]);
+  const [okrRecords, setOkrRecords] = useState([]);
   const selectedSchool = schools.find((school) => school._id === form.schoolId) || null;
 
   const visibleCompetencies = useMemo(
@@ -59,9 +68,15 @@ export default function MetricsPage() {
         apiFetch("/competencies", { token }),
         apiFetch("/metrics", { token }),
       ]);
+      const [kpiData, okrData] = await Promise.all([
+        apiFetch("/metrics/kpi-records", { token }),
+        apiFetch("/metrics/okr-records", { token }),
+      ]);
       setSchools(schoolsData);
       setCompetencies(competenciesData);
       setMetrics(metricsData);
+      setKpiRecords(kpiData);
+      setOkrRecords(okrData);
       if (!form.schoolId && schoolsData[0]?._id) {
         setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
       }
@@ -144,12 +159,17 @@ export default function MetricsPage() {
     setFieldErrors({});
   }
 
-  function cancelEdit() {
+function cancelEdit() {
     setEditingId("");
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId, levels: buildDefaultLevels() }));
     setMessageType("info");
     setMessage("Edición cancelada.");
     setFieldErrors({});
+  }
+
+  function formatRecordDate(value) {
+    if (!value) return "-";
+    return new Date(value).toLocaleDateString("es-AR", { dateStyle: "medium" });
   }
 
   async function handleDelete(metric) {
@@ -258,9 +278,25 @@ export default function MetricsPage() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {insightsTabs.map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`rounded-xl px-4 py-2 text-sm transition ${
+                  activeTab === tab.key
+                    ? "bg-[#1e3a8a] text-white"
+                    : "border border-white/10 bg-[#0f1f28] text-[#AFC3CE]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
           <div className="mt-6 space-y-4">
             {isLoading ? <p className="pf-alert-info">Cargando indicadores...</p> : null}
-            {!isLoading && filteredMetrics.length ? filteredMetrics.map((metric) => (
+            {!isLoading && activeTab === "metricas" && filteredMetrics.length ? filteredMetrics.map((metric) => (
               <article key={metric._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <p className="text-lg font-semibold text-white">{metric.nombre}</p>
                 <p className="mt-1 text-sm text-[#9fb6c4]">
@@ -284,7 +320,62 @@ export default function MetricsPage() {
                 </div>
               </article>
             )) : null}
-            {!isLoading && !filteredMetrics.length ? <p className="pf-alert-warning">No hay indicadores para los filtros actuales.</p> : null}
+            {!isLoading && activeTab === "metricas" && !filteredMetrics.length ? <p className="pf-alert-warning">No hay indicadores para los filtros actuales.</p> : null}
+
+            {!isLoading && activeTab === "kpis" && kpiRecords.length ? kpiRecords.map((item) => (
+              <article key={item._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-white">{item.name}</p>
+                    <p className="mt-1 text-sm text-[#9fb6c4]">
+                      {item.employee?.fullName || "Sin empleado"} {item.employee?.area ? `· ${item.employee.area}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {item.status ? <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{item.status}</span> : null}
+                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                      Actualizado {formatRecordDate(item.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-[#c8d8df]">
+                  Meta {item.targetValue ?? "-"} {item.unit || ""} {item.frequency ? `· ${item.frequency}` : ""}
+                </p>
+                <p className="mt-2 text-xs text-[#8FA9B7]">
+                  {item.kpiCode || "Sin codigo"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
+                </p>
+              </article>
+            )) : null}
+            {!isLoading && activeTab === "kpis" && !kpiRecords.length ? <p className="pf-alert-warning">Todavia no hay KPIs operativos cargados para este alcance.</p> : null}
+
+            {!isLoading && activeTab === "okrs" && okrRecords.length ? okrRecords.map((item) => (
+              <article key={item._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-lg font-semibold text-white">{item.objectiveTitle}</p>
+                    <p className="mt-1 text-sm text-[#9fb6c4]">
+                      {item.keyResultTitle}
+                    </p>
+                    <p className="mt-1 text-sm text-[#9fb6c4]">
+                      {item.employee?.fullName || "Sin empleado"} {item.employee?.area ? `· ${item.employee.area}` : ""}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    {item.status ? <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{item.status}</span> : null}
+                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                      Actualizado {formatRecordDate(item.updatedAt)}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-3 text-sm text-[#c8d8df]">
+                  Meta {item.targetValue ?? "-"} {item.quarter ? `· ${item.quarter}` : ""}
+                </p>
+                <p className="mt-2 text-xs text-[#8FA9B7]">
+                  {item.okrCode || "Sin codigo"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
+                </p>
+              </article>
+            )) : null}
+            {!isLoading && activeTab === "okrs" && !okrRecords.length ? <p className="pf-alert-warning">Todavia no hay OKRs operativos cargados para este alcance.</p> : null}
           </div>
         </section>
       </div>
