@@ -12,6 +12,18 @@ const sheetLabels = {
   okrs: "OKRs",
 };
 
+const templateSheets = [
+  { key: "instructions", label: "Instrucciones", detail: "Uso general de la plantilla y reglas de carga." },
+  { key: "organization", label: "Organizacion", detail: "Datos institucionales de referencia." },
+  { key: "departments", label: "Departamentos", detail: "Areas, departamentos o unidades internas." },
+  { key: "employees", label: "Empleados", detail: "Personas, legajos y datos base." },
+  { key: "usersAndRoles", label: "Usuarios_y_Roles", detail: "Accesos, roles y scopes permitidos." },
+  { key: "managers", label: "Managers", detail: "Relaciones de liderazgo y responsables." },
+  { key: "kpis", label: "KPIs", detail: "Indicadores operativos cuando existan." },
+  { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del periodo." },
+  { key: "catalogs", label: "Catalogos", detail: "Valores validos de roles, scopes y estados." },
+];
+
 const previewTabs = [
   { key: "employees", label: "Empleados" },
   { key: "usersAndRoles", label: "Usuarios y Roles" },
@@ -20,6 +32,16 @@ const previewTabs = [
   { key: "kpis", label: "KPIs" },
   { key: "okrs", label: "OKRs" },
   { key: "errors", label: "Errores" },
+];
+
+const stepDefinitions = [
+  { key: "template", number: 1, title: "Descargar plantilla", detail: "Baja la plantilla oficial y revisa sus hojas." },
+  { key: "complete", number: 2, title: "Completar plantilla", detail: "Carga personas, roles, managers, KPIs y OKRs." },
+  { key: "upload", number: 3, title: "Subir archivo", detail: "Selecciona o arrastra el archivo .xlsx." },
+  { key: "validation", number: 4, title: "Validacion", detail: "Revisamos estructura, filas validas y bloqueos." },
+  { key: "preview", number: 5, title: "Vista previa", detail: "Chequea cada hoja antes de confirmar." },
+  { key: "confirm", number: 6, title: "Confirmar importacion", detail: "Solo si no hay errores bloqueantes." },
+  { key: "result", number: 7, title: "Resultado", detail: "Consulta creados, actualizados y omitidos." },
 ];
 
 function formatDate(value) {
@@ -57,27 +79,110 @@ function getNormalizedSheetName(tabKey) {
   if (tabKey === "managers") return "Managers";
   if (tabKey === "kpis") return "KPIs";
   if (tabKey === "okrs") return "OKRs";
-  if (tabKey === "organization") return "Organización";
+  if (tabKey === "organization") return "Organizacion";
   return sheetLabels[tabKey] || tabKey;
 }
 
 function statusMeta(status) {
   if (status === "error") {
-    return {
-      label: "Error",
-      className: "border-rose-300/30 bg-rose-500/10 text-rose-200",
-    };
+    return { label: "Error", className: "border-rose-300/30 bg-rose-500/10 text-rose-200", tone: "rose" };
   }
   if (status === "warning") {
-    return {
-      label: "Advertencia",
-      className: "border-amber-300/30 bg-amber-500/10 text-amber-200",
-    };
+    return { label: "Advertencia", className: "border-amber-300/30 bg-amber-500/10 text-amber-200", tone: "amber" };
   }
-  return {
-    label: "Valido",
-    className: "border-emerald-300/30 bg-emerald-500/10 text-emerald-200",
-  };
+  return { label: "Valido", className: "border-emerald-300/30 bg-emerald-500/10 text-emerald-200", tone: "emerald" };
+}
+
+function SurfaceCard({ title, subtitle, actions, children }) {
+  return (
+    <section className="pf-card p-5 md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-[#93acbb]">{subtitle}</p> : null}
+        </div>
+        {actions}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
+function StepCard({ step, status }) {
+  const palette =
+    status === "completed"
+      ? "border-emerald-300/25 bg-emerald-500/10"
+      : status === "active"
+        ? "border-blue-300/30 bg-blue-500/10"
+        : status === "error"
+          ? "border-rose-300/25 bg-rose-500/10"
+          : "border-white/10 bg-[#0f1f28]";
+
+  const badgePalette =
+    status === "completed"
+      ? "bg-emerald-500 text-white"
+      : status === "active"
+        ? "bg-[#1e3a8a] text-white"
+        : status === "error"
+          ? "bg-rose-500 text-white"
+          : "bg-[#132530] text-[#a8bdc8]";
+
+  return (
+    <article className={`rounded-3xl border p-4 transition ${palette}`}>
+      <div className="flex items-start gap-3">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-semibold ${badgePalette}`}>
+          {step.number}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white">{step.title}</p>
+          <p className="mt-1 text-sm leading-relaxed text-[#9ab0bc]">{step.detail}</p>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function StatCard({ label, value, hint, tone = "default" }) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-300/20 bg-emerald-500/10"
+      : tone === "warning"
+        ? "border-amber-300/20 bg-amber-500/10"
+        : tone === "danger"
+          ? "border-rose-300/20 bg-rose-500/10"
+          : "border-white/10 bg-[#0f1f28]";
+
+  return (
+    <div className={`rounded-3xl border p-4 ${toneClass}`}>
+      <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className="mt-2 text-sm text-[#9ab0bc]">{hint}</p>
+    </div>
+  );
+}
+
+function SheetStatusCard({ label, stats = {} }) {
+  const errors = Number(stats.errors || 0);
+  const warnings = Number(stats.warnings || 0);
+  const tone = errors > 0 ? "danger" : warnings > 0 ? "warning" : "success";
+  const headerTone =
+    tone === "danger" ? "text-rose-200" : tone === "warning" ? "text-amber-200" : "text-emerald-200";
+
+  return (
+    <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-white">{label}</p>
+        <span className={`rounded-full px-3 py-1 text-xs font-medium ${headerTone}`}>
+          {errors > 0 ? "Con errores" : warnings > 0 ? "Con advertencias" : "Lista"}
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2">
+        <StatCard label="Validos" value={stats.validRows || 0} hint="Listos" tone={tone === "success" ? "success" : "default"} />
+        <StatCard label="Adv." value={stats.warnings || 0} hint="Revisar" tone={warnings > 0 ? "warning" : "default"} />
+        <StatCard label="Errores" value={stats.errors || 0} hint="Bloquean" tone={errors > 0 ? "danger" : "default"} />
+      </div>
+    </article>
+  );
 }
 
 function PreviewCard({ row, issues }) {
@@ -87,32 +192,30 @@ function PreviewCard({ row, issues }) {
   const meta = statusMeta(status);
   const principal = Object.entries(row)
     .filter(([key]) => key !== "_rowNumber")
-    .slice(0, 4);
+    .slice(0, 5);
 
   return (
-    <article className="rounded-xl border border-white/10 bg-[#142028] p-4">
+    <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
       <div className="flex flex-wrap items-center gap-2">
-        <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.className}`}>
-          {meta.label}
-        </span>
+        <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
         <span className="text-xs text-[#8FA9B7]">Fila {row._rowNumber || "-"}</span>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-2">
+      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {principal.map(([key, value]) => (
-          <div key={key} className="rounded-lg bg-[#0F1A21] px-3 py-2">
+          <div key={key} className="rounded-2xl border border-white/10 bg-[#122530] px-3 py-3">
             <p className="text-[11px] uppercase tracking-[0.08em] text-[#7A9AAA]">{key}</p>
             <p className="mt-1 break-words text-sm text-[#E8EEF1]">{String(value ?? "-")}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-3 space-y-2">
+      <div className="mt-4 space-y-2">
         {issues.length ? (
           issues.map((issue, index) => (
             <p
               key={`${issue.field || "msg"}-${index}`}
-              className={`rounded-lg border px-3 py-2 text-sm ${
+              className={`rounded-2xl border px-3 py-3 text-sm ${
                 issue.severity === "error"
                   ? "border-rose-300/20 bg-rose-500/10 text-rose-200"
                   : "border-amber-300/20 bg-amber-500/10 text-amber-200"
@@ -122,8 +225,8 @@ function PreviewCard({ row, issues }) {
             </p>
           ))
         ) : (
-          <p className="rounded-lg border border-emerald-300/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
-            Lista para importar.
+          <p className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-200">
+            El registro se valido correctamente.
           </p>
         )}
       </div>
@@ -153,10 +256,10 @@ function JobResultCards({ result }) {
 
   return (
     <div className="grid gap-3 md:grid-cols-4">
-      <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Creados</p><p className="mt-1 text-2xl font-semibold text-white">{created}</p></div>
-      <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Actualizados</p><p className="mt-1 text-2xl font-semibold text-white">{updated}</p></div>
-      <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Omitidos</p><p className="mt-1 text-2xl font-semibold text-white">{skipped}</p></div>
-      <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Errores</p><p className="mt-1 text-2xl font-semibold text-rose-300">{errors}</p></div>
+      <StatCard label="Creados" value={created} hint="Nuevos registros" tone="success" />
+      <StatCard label="Actualizados" value={updated} hint="Cambios aplicados" tone="default" />
+      <StatCard label="Omitidos" value={skipped} hint="No procesados" tone="warning" />
+      <StatCard label="Errores" value={errors} hint="Pendientes" tone="danger" />
     </div>
   );
 }
@@ -245,6 +348,28 @@ export default function BulkImportPage() {
     loadJobs();
   }, [activeCompanyId, loadJobs]);
 
+  const stepStatuses = useMemo(() => {
+    const statuses = {
+      template: file ? "completed" : "active",
+      complete: file ? "completed" : "pending",
+      upload: file ? "completed" : "active",
+      validation: summary ? (blockingErrors > 0 ? "error" : "completed") : isAnalyzing ? "active" : "pending",
+      preview: preview ? "completed" : "pending",
+      confirm: result ? "completed" : analyzeResponse ? (blockingErrors > 0 ? "error" : "active") : "pending",
+      result: result ? "completed" : "pending",
+    };
+    if (isAnalyzing) statuses.validation = "active";
+    if (isConfirming) statuses.confirm = "active";
+    return statuses;
+  }, [file, summary, blockingErrors, preview, result, analyzeResponse, isAnalyzing, isConfirming]);
+
+  const previewCountLabel = useMemo(() => {
+    const rows = previewRowsByTab[selectedTab] || [];
+    if (!rows.length) return "No encontramos datos para mostrar todavia.";
+    if (rows.length > 8) return `Mostrando 8 de ${rows.length} registros en la vista previa.`;
+    return `${rows.length} registros visibles en esta vista previa.`;
+  }, [previewRowsByTab, selectedTab]);
+
   function renderMessage() {
     if (!message.text) return null;
     if (message.type === "success") return <div className="pf-alert-success">{message.text}</div>;
@@ -328,10 +453,12 @@ export default function BulkImportPage() {
       setSelectedJob(null);
       setSelectedTab(data.summary?.errors ? "errors" : "employees");
       setFeedback(
-        data.summary?.errors ? "warning" : "success",
         data.summary?.errors
-          ? "El archivo tiene errores bloqueantes. Revisa el detalle antes de confirmar."
-          : "Archivo validado. Ya puedes revisar la vista previa."
+          ? "warning"
+          : "success",
+        data.summary?.errors
+          ? "Hay errores que deben corregirse antes de importar."
+          : "El archivo se valido correctamente."
       );
       await loadJobs();
     } catch (error) {
@@ -370,9 +497,11 @@ export default function BulkImportPage() {
       const text = String(error.message || "").toLowerCase();
       setFeedback(
         "error",
-        text.includes("tardo demasiado")
-          ? "La confirmacion demoro demasiado. Revisa el historial antes de reintentar."
-          : error.message
+        text.includes("expir")
+          ? "La vista previa expiro. Volve a subir el archivo."
+          : text.includes("tardo demasiado")
+            ? "La confirmacion demoro demasiado. Revisa el historial antes de reintentar."
+            : error.message
       );
     } finally {
       setIsConfirming(false);
@@ -390,17 +519,55 @@ export default function BulkImportPage() {
   }
 
   const currentRows = previewRowsByTab[selectedTab] || [];
+  const visibleRows = currentRows.slice(0, 8);
+
+  if (!canReadHistory && !canManageImport) {
+    return (
+      <div className="space-y-5">
+        <section className="pf-surface pf-surface-pad">
+          <p className="pf-section-title">Datos / Carga masiva</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Carga masiva unificada</h1>
+          <p className="mt-3 text-sm text-[#a8bdc8]">No tienes permisos para acceder a esta pantalla.</p>
+        </section>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      <section className="pf-card p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#7A9AAA]">Datos &gt; Carga masiva</p>
-        <h2 className="mt-2 text-2xl font-bold text-white">Carga Masiva Unificada</h2>
-        <p className="mt-2 max-w-3xl text-sm text-[#A9BFCA]">
-          Usá esta plantilla para cargar empleados, usuarios, roles, managers, KPIs y OKRs.
-        </p>
+    <div className="space-y-5">
+      <section className="pf-surface pf-surface-pad">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="max-w-3xl">
+            <p className="pf-section-title">Datos / Carga masiva</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Carga masiva unificada</h1>
+            <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
+              Importa y actualiza personas, roles, managers, KPIs, OKRs y datos clave desde una plantilla oficial validada.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              disabled={isDownloadingTemplate || !canManageImport}
+              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
+            >
+              {isDownloadingTemplate ? "Descargando..." : "Descargar plantilla"}
+            </button>
+            <button
+              type="button"
+              onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
+            >
+              Ver historial
+            </button>
+            <button type="button" className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white">
+              Ver guia
+            </button>
+          </div>
+        </div>
+
         {isReadOnly ? (
-          <div className="mt-4 rounded-xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
+          <div className="mt-5 rounded-2xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
             Tu acceso en esta pantalla es solo lectura. Puedes revisar historial y resultados.
           </div>
         ) : null}
@@ -408,21 +575,40 @@ export default function BulkImportPage() {
 
       {renderMessage()}
 
-      <details className="pf-card overflow-hidden" open>
-        <summary className="cursor-pointer list-none px-6 py-5 text-lg font-semibold text-white">1. Descargar plantilla</summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
-          <p className="text-sm text-[#A9BFCA]">
-            Descarga la plantilla oficial y complétala antes de subir el archivo.
-          </p>
-          <button type="button" onClick={handleDownloadTemplate} disabled={isDownloadingTemplate || !canManageImport} className="pf-button-primary mt-4">
-            {isDownloadingTemplate ? "Descargando..." : "Descargar plantilla Excel"}
-          </button>
+      <SurfaceCard title="Flujo de importacion" subtitle="La carga se hace en 7 pasos para evitar inserciones incompletas y errores de tenant.">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
+          {stepDefinitions.map((step) => (
+            <StepCard key={step.key} step={step} status={stepStatuses[step.key]} />
+          ))}
         </div>
-      </details>
+      </SurfaceCard>
 
-      <details className="pf-card overflow-hidden" open>
-        <summary className="cursor-pointer list-none px-6 py-5 text-lg font-semibold text-white">2. Subir archivo</summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
+      <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <SurfaceCard
+          title="Plantilla oficial"
+          subtitle="Archivo base: Plantilla_Performia_Importacion.xlsx"
+          actions={
+            <button
+              type="button"
+              onClick={handleDownloadTemplate}
+              disabled={isDownloadingTemplate || !canManageImport}
+              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm text-white disabled:opacity-60"
+            >
+              {isDownloadingTemplate ? "Descargando..." : "Descargar"}
+            </button>
+          }
+        >
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+            {templateSheets.map((sheet) => (
+              <article key={sheet.key} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+                <p className="text-sm font-semibold text-white">{sheet.label}</p>
+                <p className="mt-2 text-sm leading-relaxed text-[#9ab0bc]">{sheet.detail}</p>
+              </article>
+            ))}
+          </div>
+        </SurfaceCard>
+
+        <SurfaceCard title="Subir archivo" subtitle="Solo aceptamos .xlsx y validamos antes de permitir cualquier confirmacion.">
           <div
             onDragEnter={(event) => {
               event.preventDefault();
@@ -439,266 +625,283 @@ export default function BulkImportPage() {
               if (!canManageImport) return;
               handleFileChange(event.dataTransfer.files?.[0] || null);
             }}
-            className={`rounded-2xl border border-dashed p-6 transition ${
-              dragActive ? "border-[#28964D] bg-[#123224]" : "border-white/15 bg-[#0F1A21]"
+            className={`rounded-[28px] border-2 border-dashed p-6 transition ${
+              dragActive ? "border-[#28964D] bg-[#123224]" : "border-white/15 bg-[#0f1f28]"
             }`}
           >
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <p className="text-base font-semibold text-white">Arrastra la plantilla aquí o selecciónala desde tu equipo.</p>
-                <p className="mt-1 text-sm text-[#8FA9B7]">Solo formato `.xlsx`.</p>
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-14 w-14 items-center justify-center rounded-3xl border border-white/10 bg-[#122530] text-white">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+                  <path d="M12 4v10" />
+                  <path d="M8 10l4 4 4-4" />
+                  <path d="M4 20h16" />
+                </svg>
               </div>
-              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={!canManageImport} className="pf-button-secondary">
+              <p className="mt-4 text-base font-semibold text-white">Arrastra la plantilla aqui o seleccionala desde tu equipo</p>
+              <p className="mt-2 text-sm text-[#8FA9B7]">Archivo permitido: .xlsx</p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!canManageImport}
+                className="mt-4 rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
+              >
                 Seleccionar archivo
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(event) => handleFileChange(event.target.files?.[0] || null)}
+              />
             </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx"
-              className="hidden"
-              onChange={(event) => handleFileChange(event.target.files?.[0] || null)}
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <StatCard label="Archivo" value={file?.name || "Sin archivo"} hint="Seleccion actual" tone="default" />
+            <StatCard label="Tamano" value={file ? formatFileSize(file.size) : "-"} hint="Peso del archivo" tone="default" />
+            <StatCard
+              label="Estado"
+              value={isAnalyzing ? "Validando" : file ? "Listo" : "Pendiente"}
+              hint={isAnalyzing ? "Revisando estructura y filas" : file ? "Preparado para analyze" : "Todavia no se cargo un archivo"}
+              tone={isAnalyzing ? "warning" : file ? "success" : "default"}
             />
+            <div className="flex items-end">
+              <button
+                type="button"
+                onClick={handleAnalyze}
+                disabled={!canManageImport || !file || isAnalyzing}
+                className="w-full rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {isAnalyzing ? "Validando archivo..." : "Validar archivo"}
+              </button>
+            </div>
           </div>
+        </SurfaceCard>
+      </section>
 
-          <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Archivo</p><p className="mt-1 break-words text-sm text-white">{file?.name || "Sin archivo"}</p></div>
-            <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Tamano</p><p className="mt-1 text-sm text-white">{file ? formatFileSize(file.size) : "-"}</p></div>
-            <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Estado</p><p className="mt-1 text-sm text-white">{isAnalyzing ? "Validando" : file ? "Listo para validar" : "Pendiente"}</p></div>
-            <div className="flex items-end"><button type="button" onClick={handleAnalyze} disabled={!canManageImport || !file || isAnalyzing} className="pf-button-primary w-full">{isAnalyzing ? "Validando archivo..." : "Validar archivo"}</button></div>
-          </div>
-        </div>
-      </details>
-
-      <details className="pf-card overflow-hidden" open={Boolean(summary)}>
-        <summary className="cursor-pointer list-none px-6 py-5 text-lg font-semibold text-white">3. Validacion</summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
+      <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        <SurfaceCard title="Validacion" subtitle="Resumen general del analyze y estado por solapa.">
           {!summary ? (
-            <p className="text-sm text-[#8FA9B7]">Todavía no hay una validación para mostrar.</p>
+            <EmptyState text="No encontramos datos para mostrar todavia. Sube y valida una plantilla para ver el resumen." />
           ) : (
-            <>
-              <div className="grid gap-3 md:grid-cols-4">
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Total filas</p><p className="mt-1 text-2xl font-semibold text-white">{summary.totalRows}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Validas</p><p className="mt-1 text-2xl font-semibold text-emerald-300">{summary.validRows}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Advertencias</p><p className="mt-1 text-2xl font-semibold text-amber-300">{summary.warnings}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Errores</p><p className="mt-1 text-2xl font-semibold text-rose-300">{summary.errors}</p></div>
+            <div className="space-y-5">
+              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                <StatCard label="Total filas" value={summary.totalRows || 0} hint="Procesadas" />
+                <StatCard label="Validas" value={summary.validRows || 0} hint="Listas" tone="success" />
+                <StatCard label="Advertencias" value={summary.warnings || 0} hint="Revisar" tone="warning" />
+                <StatCard label="Errores" value={summary.errors || 0} hint="Bloquean" tone="danger" />
+                <StatCard label="A crear" value={confirmSummary.employeesToCreate + confirmSummary.usersToCreate + confirmSummary.departmentsToCreate} hint="Estimado inicial" />
+                <StatCard label="A actualizar" value={confirmSummary.employeesToUpdate} hint="Segun preview" />
               </div>
 
-              <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-                <table className="pf-table">
-                  <thead className="bg-[#0F1A21] text-[#8FA9B7]">
-                    <tr>
-                      <th className="px-4 py-3">Solapa</th>
-                      <th className="px-4 py-3">Total</th>
-                      <th className="px-4 py-3">Validas</th>
-                      <th className="px-4 py-3">Advertencias</th>
-                      <th className="px-4 py-3">Errores</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(summary.bySheet || {}).map(([sheetKey, item]) => (
-                      <tr key={sheetKey} className="border-t border-white/10 text-[#E8EEF1]">
-                        <td className="px-4 py-3">{sheetLabels[sheetKey] || sheetKey}</td>
-                        <td className="px-4 py-3">{item.totalRows}</td>
-                        <td className="px-4 py-3">{item.validRows}</td>
-                        <td className="px-4 py-3">{item.warnings}</td>
-                        <td className="px-4 py-3">{item.errors}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                <SheetStatusCard label="Empleados" stats={summary.bySheet?.employees} />
+                <SheetStatusCard label="Usuarios y Roles" stats={summary.bySheet?.usersAndRoles} />
+                <SheetStatusCard label="Departamentos" stats={summary.bySheet?.departments} />
+                <SheetStatusCard label="Managers" stats={summary.bySheet?.managers} />
+                <SheetStatusCard label="KPIs" stats={summary.bySheet?.kpis} />
+                <SheetStatusCard label="OKRs" stats={summary.bySheet?.okrs} />
               </div>
-            </>
+            </div>
           )}
-        </div>
-      </details>
+        </SurfaceCard>
 
-      <details className="pf-card overflow-hidden" open={Boolean(preview)}>
-        <summary className="cursor-pointer list-none px-6 py-5 text-lg font-semibold text-white">4. Vista previa</summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
-          {!preview ? (
-            <p className="text-sm text-[#8FA9B7]">Valida el archivo para ver una vista previa.</p>
-          ) : (
-            <>
-              <div className="flex flex-wrap gap-2">
-                {previewTabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setSelectedTab(tab.key)}
-                    className={`rounded-xl px-4 py-2.5 text-sm transition ${
-                      selectedTab === tab.key
-                        ? "bg-[#1e3a8a] text-white"
-                        : "border border-white/10 bg-[#142028] text-[#AFC3CE]"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-
-              <div className="mt-4">
-                {selectedTab === "errors" ? (
-                  <div className="space-y-3">
-                    {[...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])].length ? (
-                      [...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])].map((issue, index) => {
-                        const meta = statusMeta(issue.severity);
-                        return (
-                          <article key={`${issue.sheet}-${issue.rowNumber || "general"}-${index}`} className="rounded-xl border border-white/10 bg-[#142028] p-4">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
-                              <span className="text-sm text-white">{issue.sheet || "General"}</span>
-                              <span className="text-xs text-[#8FA9B7]">{issue.rowNumber ? `Fila ${issue.rowNumber}` : "Regla general"}</span>
-                            </div>
-                            <p className="mt-3 text-sm text-[#E8EEF1]">{issue.message}</p>
-                          </article>
-                        );
-                      })
-                    ) : (
-                      <div className="pf-alert-success">No se detectaron errores ni advertencias.</div>
-                    )}
-                  </div>
-                ) : currentRows.length ? (
-                  <div className="space-y-3">
-                    {currentRows.map((row) => {
-                      const issues = issueMap.get(`${getNormalizedSheetName(selectedTab)}:${String(row._rowNumber || "")}`) || [];
-                      return <PreviewCard key={`${selectedTab}-${row._rowNumber}`} row={row} issues={issues} />;
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-sm text-[#8FA9B7]">No hay filas para mostrar en esta solapa.</p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </details>
-
-      <details className="pf-card overflow-hidden" open={Boolean(summary)}>
-        <summary className="cursor-pointer list-none px-6 py-5 text-lg font-semibold text-white">5. Confirmar importacion</summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
+        <SurfaceCard title="Confirmacion" subtitle="Esta accion creara o actualizara registros en la organizacion activa.">
           {!summary ? (
-            <p className="text-sm text-[#8FA9B7]">Primero valida el archivo.</p>
+            <EmptyState text="Primero valida el archivo para habilitar la confirmacion." />
           ) : (
-            <>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Empleados a crear</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.employeesToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Empleados a actualizar</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.employeesToUpdate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Usuarios a crear</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.usersToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Roles/asignaciones</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.roleAssignmentsToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Departamentos</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.departmentsToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Managers</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.managersToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">KPIs</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.kpisToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">OKRs</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.okrsToCreate}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Omitidos</p><p className="mt-1 text-lg font-semibold text-white">{confirmSummary.skipped}</p></div>
-                <div className="rounded-xl border border-white/10 bg-[#0F1A21] px-4 py-3"><p className="text-xs text-[#7A9AAA]">Errores bloqueantes</p><p className="mt-1 text-lg font-semibold text-rose-300">{blockingErrors}</p></div>
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <StatCard label="Empleados a crear" value={confirmSummary.employeesToCreate} hint="Desde la hoja Empleados" />
+                <StatCard label="Empleados a actualizar" value={confirmSummary.employeesToUpdate} hint="No estimado en frontend" />
+                <StatCard label="Usuarios a crear" value={confirmSummary.usersToCreate} hint="Accesos detectados" />
+                <StatCard label="Roles / asignaciones" value={confirmSummary.roleAssignmentsToCreate} hint="Relacion usuario + scope" />
+                <StatCard label="Departamentos" value={confirmSummary.departmentsToCreate} hint="Areas detectadas" />
+                <StatCard label="Managers" value={confirmSummary.managersToCreate} hint="Responsables detectados" />
+                <StatCard label="KPIs detectados" value={confirmSummary.kpisToCreate} hint="Registros operativos" />
+                <StatCard label="OKRs detectados" value={confirmSummary.okrsToCreate} hint="Registros operativos" />
               </div>
 
               {blockingErrors ? (
-                <div className="mt-4 pf-alert-error">Hay errores bloqueantes. Corrige la plantilla y vuelve a validar antes de confirmar.</div>
-              ) : null}
+                <div className="pf-alert-error">Hay errores que deben corregirse antes de importar.</div>
+              ) : (
+                <div className="pf-alert-info">La vista previa esta lista para confirmar en la organizacion activa.</div>
+              )}
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button type="button" onClick={handleConfirm} disabled={!canManageImport || isReadOnly || isConfirming || !analyzeResponse?.previewToken || blockingErrors > 0} className="pf-button-primary">
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  onClick={handleConfirm}
+                  disabled={!canManageImport || isReadOnly || isConfirming || !analyzeResponse?.previewToken || blockingErrors > 0}
+                  className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                >
                   {isConfirming ? "Confirmando importacion..." : "Confirmar importacion"}
                 </button>
-                <button type="button" onClick={clearFlow} className="pf-button-secondary">Limpiar</button>
-              </div>
-            </>
-          )}
-        </div>
-      </details>
-
-      <details className="pf-card overflow-hidden" open={Boolean(result)}>
-        <summary className="cursor-pointer list-none px-6 py-5 text-lg font-semibold text-white">6. Resultado</summary>
-        <div className="border-t border-white/10 px-6 pb-6 pt-4">
-          {!result ? (
-            <p className="text-sm text-[#8FA9B7]">Todavía no hay una importacion confirmada en esta sesión.</p>
-          ) : (
-            <>
-              <div className={result.ok ? "pf-alert-success" : "pf-alert-error"}>
-                {result.ok ? "Importacion completada." : "La importacion no pudo completarse."}
-              </div>
-              <div className="mt-4">
-                <JobResultCards result={result.result || {}} />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3">
-                {result.reportUrl || result.downloadUrl ? (
-                  <a href={result.reportUrl || result.downloadUrl} target="_blank" rel="noreferrer" className="pf-button-secondary">
-                    Descargar reporte
-                  </a>
-                ) : null}
-                <button type="button" onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} className="pf-button-secondary">
-                  Ver historial
+                <button type="button" onClick={clearFlow} className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white">
+                  Limpiar flujo
                 </button>
               </div>
-            </>
+            </div>
           )}
-        </div>
-      </details>
+        </SurfaceCard>
+      </section>
 
-      <section ref={historyRef} className="pf-card p-6">
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-white">Historial</h3>
-            <p className="mt-1 text-sm text-[#8FA9B7]">Revisa validaciones y resultados del tenant activo.</p>
-          </div>
-          {isLoadingJobs ? <p className="text-sm text-[#8FA9B7]">Actualizando historial...</p> : null}
-        </div>
-
-        <div className="mt-4 overflow-x-auto rounded-xl border border-white/10">
-          <table className="pf-table">
-            <thead className="bg-[#0F1A21] text-[#8FA9B7]">
-              <tr>
-                <th className="px-4 py-3">Fecha</th>
-                <th className="px-4 py-3">Archivo</th>
-                <th className="px-4 py-3">Estado</th>
-                <th className="px-4 py-3">Filas</th>
-                <th className="px-4 py-3">Errores</th>
-                <th className="px-4 py-3">Accion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map((job) => (
-                <tr key={job._id} className="border-t border-white/10 text-[#E8EEF1]">
-                  <td className="px-4 py-3">{formatDate(job.createdAt)}</td>
-                  <td className="px-4 py-3">{job.sourceFileName}</td>
-                  <td className="px-4 py-3">{job.stage}</td>
-                  <td className="px-4 py-3">{job.totalRows}</td>
-                  <td className="px-4 py-3">{job.errorCount}</td>
-                  <td className="px-4 py-3">
-                    <button type="button" onClick={() => handleJobDetail(job._id)} className="text-sm font-semibold text-[#8CB8FF]">
-                      Ver detalle
-                    </button>
-                  </td>
-                </tr>
+      <SurfaceCard title="Vista previa" subtitle={previewCountLabel}>
+        {!preview ? (
+          <EmptyState text="Valida el archivo para ver una vista previa por hoja antes de confirmar." />
+        ) : (
+          <div className="space-y-5">
+            <div className="flex flex-wrap gap-2">
+              {previewTabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setSelectedTab(tab.key)}
+                  className={`rounded-2xl px-4 py-2.5 text-sm transition ${
+                    selectedTab === tab.key
+                      ? "bg-[#1e3a8a] text-white"
+                      : "border border-white/10 bg-[#122530] text-[#a8bdc8]"
+                  }`}
+                >
+                  {tab.label}
+                </button>
               ))}
-              {!jobs.length ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-5 text-sm text-[#8FA9B7]">
-                    Todavia no hay importaciones registradas.
-                  </td>
-                </tr>
-              ) : null}
-            </tbody>
-          </table>
-        </div>
+            </div>
 
-        {selectedJob ? (
-          <div className="mt-4 rounded-xl border border-white/10 bg-[#0F1A21] p-4">
-            <p className="text-base font-semibold text-white">{selectedJob.sourceFileName}</p>
-            <p className="mt-1 text-sm text-[#8FA9B7]">
-              Estado {selectedJob.stage} · creado {formatDate(selectedJob.createdAt)}
-            </p>
-            <div className="mt-4 grid gap-3 md:grid-cols-4">
-              <div className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2"><p className="text-xs text-[#7A9AAA]">Validas</p><p className="mt-1 text-lg font-semibold text-white">{selectedJob.validRows}</p></div>
-              <div className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2"><p className="text-xs text-[#7A9AAA]">Errores</p><p className="mt-1 text-lg font-semibold text-white">{selectedJob.errorCount}</p></div>
-              <div className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2"><p className="text-xs text-[#7A9AAA]">Creados</p><p className="mt-1 text-lg font-semibold text-white">{selectedJob.createdCount || 0}</p></div>
-              <div className="rounded-lg border border-white/10 bg-[#142028] px-3 py-2"><p className="text-xs text-[#7A9AAA]">Actualizados</p><p className="mt-1 text-lg font-semibold text-white">{selectedJob.updatedCount || 0}</p></div>
+            {selectedTab === "errors" ? (
+              <div className="space-y-3">
+                {[...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])].length ? (
+                  [...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])].map((issue, index) => {
+                    const meta = statusMeta(issue.severity);
+                    return (
+                      <article key={`${issue.sheet}-${issue.rowNumber || "general"}-${index}`} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${meta.className}`}>{meta.label}</span>
+                          <span className="text-sm text-white">{issue.sheet || "General"}</span>
+                          <span className="text-xs text-[#8FA9B7]">{issue.rowNumber ? `Fila ${issue.rowNumber}` : "Regla general"}</span>
+                        </div>
+                        <p className="mt-3 text-sm text-[#E8EEF1]">{issue.message}</p>
+                      </article>
+                    );
+                  })
+                ) : (
+                  <div className="pf-alert-success">No se detectaron errores ni advertencias.</div>
+                )}
+              </div>
+            ) : visibleRows.length ? (
+              <div className="space-y-3">
+                {visibleRows.map((row) => {
+                  const issues = issueMap.get(`${getNormalizedSheetName(selectedTab)}:${String(row._rowNumber || "")}`) || [];
+                  return <PreviewCard key={`${selectedTab}-${row._rowNumber}`} row={row} issues={issues} />;
+                })}
+              </div>
+            ) : (
+              <EmptyState text="No hay filas para mostrar en esta solapa." />
+            )}
+          </div>
+        )}
+      </SurfaceCard>
+
+      <SurfaceCard title="Resultado" subtitle="Resumen final despues de confirmar la importacion.">
+        {!result ? (
+          <EmptyState text="Todavia no hay una importacion confirmada en esta sesion." />
+        ) : (
+          <div className="space-y-4">
+            <div className={result.ok ? "pf-alert-success" : "pf-alert-error"}>
+              {result.ok ? "Importacion completada." : "La importacion no pudo completarse."}
+            </div>
+            <JobResultCards result={result.result || {}} />
+            <div className="flex flex-wrap gap-3">
+              {result.reportUrl || result.downloadUrl ? (
+                <a href={result.reportUrl || result.downloadUrl} target="_blank" rel="noreferrer" className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white">
+                  Descargar reporte
+                </a>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white"
+              >
+                Ver historial
+              </button>
             </div>
           </div>
-        ) : null}
+        )}
+      </SurfaceCard>
+
+      <section ref={historyRef}>
+        <SurfaceCard
+          title="Historial"
+          subtitle="Revisa validaciones y resultados del tenant activo."
+          actions={isLoadingJobs ? <span className="text-sm text-[#8FA9B7]">Actualizando historial...</span> : null}
+        >
+          <div className="overflow-x-auto rounded-3xl border border-white/10">
+            <table className="min-w-full text-sm">
+              <thead className="bg-[#0f1f28] text-left text-[#8FA9B7]">
+                <tr>
+                  <th className="px-4 py-3">Fecha</th>
+                  <th className="px-4 py-3">Archivo</th>
+                  <th className="px-4 py-3">Estado</th>
+                  <th className="px-4 py-3">Filas</th>
+                  <th className="px-4 py-3">Errores</th>
+                  <th className="px-4 py-3">Accion</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10 bg-[#122530]">
+                {jobs.map((job) => (
+                  <tr key={job._id} className="text-[#E8EEF1]">
+                    <td className="px-4 py-3">{formatDate(job.createdAt)}</td>
+                    <td className="px-4 py-3">{job.sourceFileName}</td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">
+                        {job.stage}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">{job.totalRows}</td>
+                    <td className="px-4 py-3">{job.errorCount}</td>
+                    <td className="px-4 py-3">
+                      <button type="button" onClick={() => handleJobDetail(job._id)} className="text-sm font-semibold text-[#8CB8FF]">
+                        Ver detalle
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {!jobs.length ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-6 text-sm text-[#8FA9B7]">
+                      No encontramos datos para mostrar todavia.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+
+          {selectedJob ? (
+            <div className="mt-5 rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-base font-semibold text-white">{selectedJob.sourceFileName}</p>
+                  <p className="mt-1 text-sm text-[#8FA9B7]">
+                    Estado {selectedJob.stage} · creado {formatDate(selectedJob.createdAt)}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
+                <StatCard label="Validas" value={selectedJob.validRows || 0} hint="Listas" />
+                <StatCard label="Errores" value={selectedJob.errorCount || 0} hint="Detectados" tone="danger" />
+                <StatCard label="Creados" value={selectedJob.createdCount || 0} hint="Resultado final" tone="success" />
+                <StatCard label="Actualizados" value={selectedJob.updatedCount || 0} hint="Resultado final" />
+              </div>
+            </div>
+          ) : null}
+        </SurfaceCard>
       </section>
     </div>
   );
+}
+
+function EmptyState({ text }) {
+  return <div className="rounded-2xl border border-dashed border-white/10 bg-[#0f1f28] px-4 py-6 text-sm text-[#8ea5b3]">{text}</div>;
 }
