@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const emptyForm = {
   employeeId: "",
@@ -20,6 +21,7 @@ export default function DevelopmentPlansPage() {
   const [form, setForm] = useState(emptyForm);
   const [filters, setFilters] = useState({ employeeId: "", estado: "" });
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBase, setIsLoadingBase] = useState(false);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
@@ -78,7 +80,10 @@ export default function DevelopmentPlansPage() {
 
     const controller = new AbortController();
     loadBaseData(controller.signal).catch((error) => {
-      if (!controller.signal.aborted) setMessage(error.message);
+      if (!controller.signal.aborted) {
+        setMessageType("error");
+        setMessage(error.message);
+      }
     });
     return () => controller.abort();
   }, [baseCacheKey, loadBaseData]);
@@ -95,7 +100,10 @@ export default function DevelopmentPlansPage() {
 
     const controller = new AbortController();
     loadPlans(controller.signal).catch((error) => {
-      if (!controller.signal.aborted) setMessage(error.message);
+      if (!controller.signal.aborted) {
+        setMessageType("error");
+        setMessage(error.message);
+      }
     });
     return () => controller.abort();
   }, [loadPlans, plansCacheKey]);
@@ -103,12 +111,14 @@ export default function DevelopmentPlansPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.employeeId || !form.aspectoDesarrollar) {
+      setMessageType("warning");
       setMessage("Selecciona empleado y define el aspecto a desarrollar.");
       return;
     }
     try {
       setIsSubmitting(true);
       setMessage("");
+      setMessageType("info");
       await apiFetch("/development-plans", {
         method: "POST",
         token,
@@ -121,9 +131,11 @@ export default function DevelopmentPlansPage() {
         }),
       });
       setForm(emptyForm);
+      setMessageType("success");
       setMessage("Plan de desarrollo creado.");
       await loadPlans();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
@@ -135,10 +147,24 @@ export default function DevelopmentPlansPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento profesional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Planes de desarrollo</h3>
-        <p className="mt-3 max-w-3xl text-[#9fb6c4]">Define fortalezas, objetivo de mejora, medicion y fecha de seguimiento.</p>
-        {isLoadingBase || isLoadingPlans ? (
-          <p className="mt-3 text-xs text-[#9fb6c4]">Actualizando datos...</p>
-        ) : null}
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">Define fortalezas, objetivos de mejora y seguimientos con una vista simple del estado de cada plan.</p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">
+            Seguimiento por persona y estado
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              loadPlans().catch((error) => {
+                setMessageType("error");
+                setMessage(error.message);
+              })
+            }
+            className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
+          >
+            Actualizar planes
+          </button>
+        </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -209,7 +235,28 @@ export default function DevelopmentPlansPage() {
           </div>
 
           <div className="mt-6 space-y-4">
-            {plans.length ? (
+            {isLoadingBase || isLoadingPlans ? (
+              <LoadingState
+                compact
+                title="Actualizando planes"
+                description="Estamos trayendo evaluaciones base, personas y seguimientos."
+              />
+            ) : null}
+            {!isLoadingBase && !isLoadingPlans && messageType === "error" && !plans.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar los planes"
+                description="Reintenta para recuperar el seguimiento actual."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadPlans().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
+            {!isLoadingBase && !isLoadingPlans && plans.length ? (
               plans.map((plan) => (
                 <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex items-center justify-between gap-3">
@@ -222,15 +269,37 @@ export default function DevelopmentPlansPage() {
                 </article>
               ))
             ) : (
-              <p className="text-[#9fb6c4]">
-                {user?.roleCode === "EMPLEADO" ? "Todavia no tienes planes asociados." : "Todavia no hay planes cargados."}
-              </p>
+              !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
+                <EmptyState
+                  compact
+                  title={user?.roleCode === "EMPLEADO" ? "Todavia no tienes planes asociados" : "Todavia no hay planes cargados"}
+                  description={
+                    user?.roleCode === "EMPLEADO"
+                      ? "Cuando te asignen un plan, lo vas a ver aca con su proximo seguimiento."
+                      : "Crea el primer plan para empezar a seguir desarrollo por persona."
+                  }
+                />
+              ) : null
             )}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? (
+        <p
+          className={
+            messageType === "error"
+              ? "pf-alert-error"
+              : messageType === "success"
+                ? "pf-alert-success"
+                : messageType === "warning"
+                  ? "pf-alert-warning"
+                  : "pf-alert-info"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

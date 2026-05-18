@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const baseLevels = [
   { nivel: 1, etiqueta: "Insatisfactorio", descripcion: "" },
@@ -197,6 +198,23 @@ function cancelEdit() {
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Define indicadores claros por competencia y usa la misma escala para comparar resultados.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">
+            Indicadores base + KPIs y OKRs operativos
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              loadData().catch((error) => {
+                setMessageType("error");
+                setMessage(error.message);
+              })
+            }
+            className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
+          >
+            Actualizar datos
+          </button>
+        </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -295,7 +313,27 @@ function cancelEdit() {
             ))}
           </div>
           <div className="mt-6 space-y-4">
-            {isLoading ? <p className="pf-alert-info">Cargando indicadores...</p> : null}
+            {isLoading ? (
+              <LoadingState
+                compact
+                title="Cargando indicadores"
+                description="Estamos trayendo indicadores base, KPIs y OKRs operativos."
+              />
+            ) : null}
+            {!isLoading && messageType === "error" && !metrics.length && !kpiRecords.length && !okrRecords.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar los indicadores"
+                description="Reintenta para recuperar competencias, metricas y registros operativos."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadData().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
             {!isLoading && activeTab === "metricas" && filteredMetrics.length ? filteredMetrics.map((metric) => (
               <article key={metric._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <p className="text-lg font-semibold text-white">{metric.nombre}</p>
@@ -320,7 +358,13 @@ function cancelEdit() {
                 </div>
               </article>
             )) : null}
-            {!isLoading && activeTab === "metricas" && !filteredMetrics.length ? <p className="pf-alert-warning">No hay indicadores para los filtros actuales.</p> : null}
+            {!isLoading && activeTab === "metricas" && !filteredMetrics.length ? (
+              <EmptyState
+                compact
+                title="No hay indicadores para mostrar"
+                description={query ? "Prueba con otra busqueda o limpia el filtro actual." : "Crea el primer indicador base para empezar a evaluar."}
+              />
+            ) : null}
 
             {!isLoading && activeTab === "kpis" && kpiRecords.length ? kpiRecords.map((item) => (
               <article key={item._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
@@ -346,7 +390,13 @@ function cancelEdit() {
                 </p>
               </article>
             )) : null}
-            {!isLoading && activeTab === "kpis" && !kpiRecords.length ? <p className="pf-alert-warning">Todavia no hay KPIs operativos cargados para este alcance.</p> : null}
+            {!isLoading && activeTab === "kpis" && !kpiRecords.length ? (
+              <EmptyState
+                compact
+                title="No hay KPIs operativos cargados"
+                description="Todavia no hay KPIs persistidos para este alcance o periodo."
+              />
+            ) : null}
 
             {!isLoading && activeTab === "okrs" && okrRecords.length ? okrRecords.map((item) => (
               <article key={item._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
@@ -375,7 +425,13 @@ function cancelEdit() {
                 </p>
               </article>
             )) : null}
-            {!isLoading && activeTab === "okrs" && !okrRecords.length ? <p className="pf-alert-warning">Todavia no hay OKRs operativos cargados para este alcance.</p> : null}
+            {!isLoading && activeTab === "okrs" && !okrRecords.length ? (
+              <EmptyState
+                compact
+                title="No hay OKRs operativos cargados"
+                description="Todavia no hay OKRs persistidos para este alcance o periodo."
+              />
+            ) : null}
           </div>
         </section>
       </div>
