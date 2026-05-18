@@ -176,7 +176,7 @@ export default function DevelopmentPlansPage() {
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Seguimiento</span>
           </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Relacion base</p>
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Relación base</p>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
               <option value="">Selecciona empleado</option>
               {employees.map((employee) => (
@@ -187,7 +187,7 @@ export default function DevelopmentPlansPage() {
             </select>
 
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.evaluationId} onChange={(event) => setForm({ ...form, evaluationId: event.target.value })}>
-              <option value="">Sin evaluacion base</option>
+              <option value="">Sin evaluación base</option>
               {evaluations.map((evaluation) => (
                 <option key={evaluation._id} value={evaluation._id}>
                   {evaluation.tipo} - {evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}
@@ -198,7 +198,7 @@ export default function DevelopmentPlansPage() {
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definicion del plan</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Fortalezas (separadas por coma)" value={form.fortalezas} onChange={(event) => setForm({ ...form, fortalezas: event.target.value })} />
             <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
-            <textarea className="min-h-20 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Como se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
+            <textarea className="min-h-20 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cómo se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Seguimiento</p>
             <div className="grid gap-4 md:grid-cols-2">
@@ -264,7 +264,7 @@ export default function DevelopmentPlansPage() {
                     <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{plan.estado}</span>
                   </div>
                   <p className="mt-2 text-sm text-[#c5d5de]">{plan.aspectoDesarrollar}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Medicion: {plan.medicion || "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Medición: {plan.medicion || "-"}</p>
                   <p className="mt-1 text-sm text-[#9fb6c4]">Seguimiento: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
                 </article>
               ))
@@ -272,10 +272,10 @@ export default function DevelopmentPlansPage() {
               !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavia no tienes planes asociados" : "Todavia no hay planes cargados"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tienes planes asociados" : "Todavía no hay planes cargados"}
                   description={
                     user?.roleCode === "EMPLEADO"
-                      ? "Cuando te asignen un plan, lo vas a ver aca con su proximo seguimiento."
+                      ? "Cuando te asignen un plan, lo vas a ver acá con su próximo seguimiento."
                       : "Crea el primer plan para empezar a seguir desarrollo por persona."
                   }
                 />

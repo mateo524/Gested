@@ -5,7 +5,7 @@ import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const baseLevels = [
   { nivel: 1, etiqueta: "Insatisfactorio", descripcion: "" },
-  { nivel: 2, etiqueta: "Minimo", descripcion: "" },
+  { nivel: 2, etiqueta: "Mínimo", descripcion: "" },
   { nivel: 3, etiqueta: "En desarrollo", descripcion: "" },
   { nivel: 4, etiqueta: "Competente", descripcion: "" },
   { nivel: 5, etiqueta: "Excepcional", descripcion: "" },
@@ -324,7 +324,7 @@ function cancelEdit() {
               <ErrorState
                 compact
                 title="No pudimos cargar los indicadores"
-                description="Reintenta para recuperar competencias, metricas y registros operativos."
+                description="Reintenta para recuperar competencias, métricas y registros operativos."
                 actionLabel="Reintentar"
                 onAction={() =>
                   loadData().catch((error) => {
@@ -362,7 +362,7 @@ function cancelEdit() {
               <EmptyState
                 compact
                 title="No hay indicadores para mostrar"
-                description={query ? "Prueba con otra busqueda o limpia el filtro actual." : "Crea el primer indicador base para empezar a evaluar."}
+                description={query ? "Prueba con otra búsqueda o limpia el filtro actual." : "Crea el primer indicador base para empezar a evaluar."}
               />
             ) : null}
 
@@ -386,7 +386,7 @@ function cancelEdit() {
                   Meta {item.targetValue ?? "-"} {item.unit || ""} {item.frequency ? `· ${item.frequency}` : ""}
                 </p>
                 <p className="mt-2 text-xs text-[#8FA9B7]">
-                  {item.kpiCode || "Sin codigo"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
+                  {item.kpiCode || "Sin código"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
                 </p>
               </article>
             )) : null}
@@ -394,7 +394,7 @@ function cancelEdit() {
               <EmptyState
                 compact
                 title="No hay KPIs operativos cargados"
-                description="Todavia no hay KPIs persistidos para este alcance o periodo."
+                description="Todavía no hay KPIs persistidos para este alcance o período."
               />
             ) : null}
 
@@ -421,7 +421,7 @@ function cancelEdit() {
                   Meta {item.targetValue ?? "-"} {item.quarter ? `· ${item.quarter}` : ""}
                 </p>
                 <p className="mt-2 text-xs text-[#8FA9B7]">
-                  {item.okrCode || "Sin codigo"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
+                  {item.okrCode || "Sin código"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
                 </p>
               </article>
             )) : null}
@@ -429,7 +429,7 @@ function cancelEdit() {
               <EmptyState
                 compact
                 title="No hay OKRs operativos cargados"
-                description="Todavia no hay OKRs persistidos para este alcance o periodo."
+                description="Todavía no hay OKRs persistidos para este alcance o período."
               />
             ) : null}
           </div>

@@ -39,12 +39,12 @@ function buildPrintableReport(data) {
         <div class="card">
           <p><strong>Nombre:</strong> ${data.employee?.nombreCompleto || "-"}</p>
           <p><strong>Cargo:</strong> ${data.employee?.cargo || "-"}</p>
-          <p><strong>Area:</strong> ${data.employee?.area || "-"}</p>
+          <p><strong>Área:</strong> ${data.employee?.area || "-"}</p>
           <p><strong>Email:</strong> ${data.employee?.email || "-"}</p>
           <p><strong>Colegio:</strong> ${data.schoolName || "-"}</p>
         </div>
 
-        <h2>Evaluacion</h2>
+        <h2>Evaluación</h2>
         <div class="card">
           <p><strong>Tipo:</strong> ${data.evaluation?.tipo || "-"}</p>
           <p><strong>Estado:</strong> ${data.evaluation?.estado || "-"}</p>
@@ -179,7 +179,7 @@ export default function EvaluationsPage() {
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
       setMessageType("success");
-      setMessage("Evaluacion creada.");
+      setMessage("Evaluación creada.");
       await loadEvaluations();
     } catch (error) {
       setMessageType("error");
@@ -357,11 +357,11 @@ export default function EvaluationsPage() {
               !isLoadingBase && !isLoadingEvaluations && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavia no tienes evaluaciones cargadas" : "Todavia no hay evaluaciones registradas"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tienes evaluaciones cargadas" : "Todavía no hay evaluaciones registradas"}
                   description={
                     user?.roleCode === "EMPLEADO"
-                      ? "Cuando te asignen un ciclo o una autoevaluacion, la vas a ver aca."
-                      : "Crea la primera evaluacion para empezar a seguir resultados por persona."
+                      ? "Cuando te asignen un ciclo o una autoevaluación, la vas a ver acá."
+                      : "Crea la primera evaluación para empezar a seguir resultados por persona."
                   }
                 />
               ) : null

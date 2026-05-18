@@ -224,7 +224,7 @@ export default function EducationalExportsPage() {
       setImportPreview(null);
       setImportFile(null);
       setMessageType("success");
-      setMessage("Importacion confirmada.");
+      setMessage("Importación confirmada.");
       await Promise.all([loadOverview(), loadDataset(), loadImportJobs()]);
     } catch (error) {
       const msg = String(error.message || "");
@@ -292,7 +292,7 @@ export default function EducationalExportsPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-2xl font-bold text-white">Centro de datos</h3>
         <p className="mt-2 text-[#9fb6c4]">
-          Descargas, historial e importacion avanzada. Recomendado: usar la plantilla oficial desde Carga masiva.
+          Descargas, historial e importación avanzada. Recomendado: usar la plantilla oficial desde Carga masiva.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <button
@@ -303,7 +303,7 @@ export default function EducationalExportsPage() {
             Ir a Carga masiva
           </button>
           <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            Importacion avanzada / legacy
+            Importación avanzada
           </span>
           <button
             type="button"
@@ -325,7 +325,7 @@ export default function EducationalExportsPage() {
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
-        <h4 className="text-lg font-semibold text-white">Importacion avanzada</h4>
+        <h4 className="text-lg font-semibold text-white">Importación avanzada</h4>
         <p className="text-sm text-[#9fb6c4]">
           Este flujo queda disponible para casos especiales. Para el uso diario conviene trabajar desde la plantilla oficial.
         </p>
@@ -339,10 +339,10 @@ export default function EducationalExportsPage() {
             Plantilla empleados
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("metrics")}>
-            Plantilla metricas
+            Plantilla métricas
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("cycles")}>
-            Plantilla periodos
+            Plantilla períodos
           </button>
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("roles")}>
             Plantilla perfiles
@@ -353,7 +353,7 @@ export default function EducationalExportsPage() {
           <PermissionState
             compact
             title="Tu rol no tiene permiso para importar"
-            description="Este flujo avanzado queda disponible solo para perfiles con gestion de datos."
+            description="Este flujo avanzado queda disponible solo para perfiles con gestión de datos."
           />
         ) : null}
         {message ? (
@@ -377,7 +377,7 @@ export default function EducationalExportsPage() {
             <option value="auto">Auto detectar</option>
             <option value="employees">Empleados</option>
             <option value="metrics">Indicadores</option>
-            <option value="cycles">Periodos</option>
+            <option value="cycles">Períodos</option>
             <option value="roles">Perfiles</option>
           </select>
           <input className="pf-input text-sm" type="file" accept=".csv,.xlsx,.xls" onChange={(e) => setImportFile(e.target.files?.[0] || null)} />
@@ -424,7 +424,7 @@ export default function EducationalExportsPage() {
           <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8] space-y-2">
             <p>Tipo detectado: {importPreview.datasetDetected}</p>
             <p>Total filas: {importPreview.totalRows}</p>
-            <p>Validas: {importPreview.validCount}</p>
+            <p>Válidas: {importPreview.validCount}</p>
             <p>Con errores: {importPreview.invalidCount}</p>
             {importPreview.warningCount ? <p>Advertencias: {importPreview.warningCount}</p> : null}
             {analysis?.sheetName ? <p>Hoja detectada: {analysis.sheetName} (encabezado en fila {analysis.headerRowNumber})</p> : null}
@@ -501,7 +501,7 @@ export default function EducationalExportsPage() {
 
             {Array.isArray(importPreview.sampleValidRows) && importPreview.sampleValidRows.length ? (
               <div className="rounded-xl border border-white/10 bg-[#1A2C38] p-3">
-                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Vista previa de filas validas</p>
+                <p className="mb-2 text-xs uppercase tracking-[0.12em] text-[#9FB6C1]">Vista previa de filas válidas</p>
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-xs">
                     <thead>
@@ -556,7 +556,7 @@ export default function EducationalExportsPage() {
                   </label>
                 ) : null}
                 <button className="pf-button rounded-xl bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60" onClick={confirmImport} disabled={isImporting || (importPreview.validCount === 0 && editableErrors.length === 0) || (needsManualMapping && !confirmMapping) || (hasWarnings && !confirmWarnings)}>
-                  {isImporting ? "Importando..." : "Confirmar importacion"}
+                  {isImporting ? "Importando..." : "Confirmar importación"}
                 </button>
               </div>
             ) : (
@@ -576,18 +576,18 @@ export default function EducationalExportsPage() {
 
         {selectedJob ? (
           <div className="rounded-2xl border border-white/15 bg-[#142028] p-4 text-sm text-[#D4E1E8]">
-            <p className="font-semibold text-white">Trazabilidad de importacion</p>
+            <p className="font-semibold text-white">Trazabilidad de importación</p>
             <p className="mt-1">Archivo: {selectedJob.sourceFileName}</p>
             <p>Estado: {selectedJob.stage}</p>
             <p>Parser: {selectedJob.parserType}</p>
             <p>Dataset detectado: {selectedJob.datasetDetected}</p>
-            <p>Filas: {selectedJob.totalRows} | Validas: {selectedJob.validRows} | Errores: {selectedJob.errorCount}</p>
+            <p>Filas: {selectedJob.totalRows} | Válidas: {selectedJob.validRows} | Errores: {selectedJob.errorCount}</p>
             <button
               type="button"
               onClick={() => setShowTechnicalDetails((v) => !v)}
               className="mt-3 rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]"
             >
-              {showTechnicalDetails ? "Ocultar detalle tecnico" : "Ver detalle tecnico"}
+              {showTechnicalDetails ? "Ocultar detalle técnico" : "Ver detalle técnico"}
             </button>
             {showTechnicalDetails ? (
               <pre className="mt-2 max-h-56 overflow-auto rounded-xl border border-white/10 bg-[#0f1f28] p-3 text-xs text-[#c5d5de]">
@@ -628,8 +628,8 @@ export default function EducationalExportsPage() {
                   <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>
                     <EmptyState
                       compact
-                      title="Todavia no hay importaciones registradas"
-                      description="Cuando uses este flujo avanzado, vas a ver el historial aca."
+                      title="Todavía no hay importaciones registradas"
+                      description="Cuando uses este flujo avanzado, vas a ver el historial acá."
                     />
                   </td>
                 </tr>
@@ -657,7 +657,7 @@ export default function EducationalExportsPage() {
             <option value="">Todos los colegios</option>
             {(overview?.schools || []).map((school) => <option key={school._id} value={school._id}>{school.nombre}</option>)}
           </select>
-          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Area" value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })} />
+          <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Área" value={filters.area} onChange={(e) => setFilters({ ...filters, area: e.target.value })} />
           <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cargo" value={filters.cargo} onChange={(e) => setFilters({ ...filters, cargo: e.target.value })} />
           <div className="flex gap-2">
             <button className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-50" disabled={!datasetData.canDownload} onClick={() => downloadDataset("csv")}>CSV</button>
@@ -696,8 +696,8 @@ export default function EducationalExportsPage() {
                   <td className="px-4 py-6" colSpan={2}>
                     <EmptyState
                       compact
-                      title="No hay actividad reciente todavia"
-                      description="Cuando se generen descargas o exportaciones, las vas a ver aca."
+                      title="No hay actividad reciente todavía"
+                      description="Cuando se generen descargas o exportaciones, las vas a ver acá."
                     />
                   </td>
                 </tr>
