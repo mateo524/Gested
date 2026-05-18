@@ -13,45 +13,43 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="relative rounded-xl border border-white/10 bg-[#142028] px-3 py-2 text-white"
+        className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
         aria-label="Novedades"
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          className="h-5 w-5"
-        >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
           <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5" />
           <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
         </svg>
         {unreadCount ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-[#22c55e] px-1.5 text-xs font-semibold text-white">
+          <span className="absolute -right-1 -top-1 rounded-full bg-[#2563eb] px-1.5 text-[11px] font-semibold text-white">
             {unreadCount}
           </span>
         ) : null}
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-20 mt-2 w-80 rounded-2xl border border-white/10 bg-[#142028] p-3 shadow-xl">
-          <p className="text-sm font-semibold text-white">Novedades</p>
-          <div className="mt-3 space-y-2">
+        <div className="absolute right-0 z-30 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+          <div className="flex items-center justify-between gap-3 px-2 pb-2">
+            <p className="text-sm font-semibold text-white">Notificaciones</p>
+            <span className="text-xs text-[#89a3b1]">{unreadCount ? `${unreadCount} nuevas` : "Al dia"}</span>
+          </div>
+          <div className="space-y-2">
             {announcementSummary?.latest?.length ? (
               announcementSummary.latest.map((item) => (
                 <button
                   key={item._id}
                   type="button"
                   onClick={() => onMarkRead(item)}
-                  className="w-full rounded-xl border border-white/10 bg-[#1A2C38] px-3 py-2 text-left"
+                  className="w-full rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-left transition hover:bg-[#152833]"
                 >
                   <p className="text-sm font-medium text-white">{item.titulo}</p>
-                  <p className="text-xs text-[#7A9AAA]">{item.cuerpo}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">{item.cuerpo}</p>
                 </button>
               ))
             ) : (
-              <p className="text-sm text-[#7A9AAA]">Sin novedades.</p>
+              <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-4 text-sm text-[#8ea5b3]">
+                No hay notificaciones recientes.
+              </div>
             )}
           </div>
         </div>
@@ -60,8 +58,112 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
   );
 }
 
+function AppIcon({ name, active }) {
+  const className = `h-5 w-5 ${active ? "text-white" : "text-[#8ea5b3]"}`;
+  switch (name) {
+    case "inicio":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M3 10.5L12 3l9 7.5" />
+          <path d="M5.5 9.5V20h13V9.5" />
+        </svg>
+      );
+    case "personas":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
+          <path d="M16 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+          <path d="M3.5 20a5.5 5.5 0 0 1 9 0" />
+          <path d="M13 20a4.5 4.5 0 0 1 7.5-2.8" />
+        </svg>
+      );
+    case "evaluaciones":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M7 4.5h10" />
+          <path d="M7 8.5h10" />
+          <path d="M7 12.5h5" />
+          <rect x="4" y="3" width="16" height="18" rx="2.5" />
+          <path d="M14.5 16.5l1.7 1.7 3.3-4" />
+        </svg>
+      );
+    case "objetivos":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M12 12m-8 0a8 8 0 1 0 16 0 8 8 0 1 0-16 0" />
+          <path d="M12 12l5-5" />
+          <path d="M12 12l-3 1" />
+          <path d="M17 7h2v2" />
+        </svg>
+      );
+    case "desarrollo":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M8 16l-2 5" />
+          <path d="M16 16l2 5" />
+          <path d="M12 3l6 6-6 6-6-6 6-6z" />
+        </svg>
+      );
+    case "reportes":
+    case "reportes-globales":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M5 20V8" />
+          <path d="M12 20V4" />
+          <path d="M19 20v-6" />
+        </svg>
+      );
+    case "datos":
+    case "importacion":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M12 4v10" />
+          <path d="M8 10l4 4 4-4" />
+          <path d="M4 20h16" />
+        </svg>
+      );
+    case "configuracion":
+    case "plataforma":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M12 8.5A3.5 3.5 0 1 0 12 15.5A3.5 3.5 0 1 0 12 8.5z" />
+          <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.9.6z" />
+        </svg>
+      );
+    case "organizaciones":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M4 20V6l8-3 8 3v14" />
+          <path d="M9 20v-4h6v4" />
+          <path d="M8 9h.01" />
+          <path d="M12 9h.01" />
+          <path d="M16 9h.01" />
+          <path d="M8 13h.01" />
+          <path d="M12 13h.01" />
+          <path d="M16 13h.01" />
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M4 12h16" />
+        </svg>
+      );
+  }
+}
+
 function firstVisibleView(items) {
   return items.find((item) => item.show)?.key || null;
+}
+
+function buildConfigSubmenu(visibleViews) {
+  return [
+    { label: "Organizacion", viewKey: visibleViews.some((item) => item.key === "settings") ? "settings" : null },
+    { label: "Departamentos", viewKey: visibleViews.some((item) => item.key === "empleados") ? "empleados" : null },
+    { label: "Ciclos", viewKey: visibleViews.some((item) => item.key === "ciclos") ? "ciclos" : null },
+    { label: "Plantillas", viewKey: visibleViews.some((item) => item.key === "carga-masiva") ? "carga-masiva" : null },
+    { label: "Roles y accesos", viewKey: visibleViews.some((item) => item.key === "roles") ? "roles" : null },
+  ].filter((item) => item.viewKey);
 }
 
 export default function AppShell({ view, setView, children }) {
@@ -79,6 +181,7 @@ export default function AppShell({ view, setView, children }) {
     tokenNearExpiry,
   } = useAuth();
 
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
   const isManager = isManagerUser(user);
@@ -107,8 +210,8 @@ export default function AppShell({ view, setView, children }) {
       },
       {
         key: "ciclos",
-        label: "Periodos",
-        shortLabel: "Periodos",
+        label: "Ciclos",
+        shortLabel: "Ciclos",
         show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee),
         section: "evaluaciones",
       },
@@ -182,7 +285,7 @@ export default function AppShell({ view, setView, children }) {
       {
         key: "roles",
         label: "Roles y accesos",
-        shortLabel: "Roles",
+        shortLabel: "Roles y accesos",
         show: hasPermission("manage_roles") || hasPermission("view_audit"),
         section: "configuracion",
       },
@@ -207,13 +310,6 @@ export default function AppShell({ view, setView, children }) {
         show: isSuperAdmin,
         section: "plataforma",
       },
-      {
-        key: "novedades",
-        label: "Comunicados",
-        shortLabel: "Comunicados",
-        show: false,
-        section: "inicio",
-      },
     ],
     [hasPermission, isEmployee, isManager, isReadOnly, isSuperAdmin]
   );
@@ -229,7 +325,6 @@ export default function AppShell({ view, setView, children }) {
         { key: "plataforma", label: "Plataforma" },
       ];
     }
-
     if (isEmployee) {
       return [
         { key: "inicio", label: "Inicio" },
@@ -237,7 +332,6 @@ export default function AppShell({ view, setView, children }) {
         { key: "desarrollo", label: "Desarrollo" },
       ];
     }
-
     if (isManager) {
       return [
         { key: "inicio", label: "Inicio" },
@@ -247,7 +341,6 @@ export default function AppShell({ view, setView, children }) {
         { key: "reportes", label: "Reportes" },
       ];
     }
-
     if (isReadOnly) {
       return [
         { key: "inicio", label: "Inicio" },
@@ -255,7 +348,6 @@ export default function AppShell({ view, setView, children }) {
         { key: "datos", label: "Datos" },
       ];
     }
-
     return [
       { key: "inicio", label: "Inicio" },
       { key: "personas", label: "Personas" },
@@ -268,16 +360,19 @@ export default function AppShell({ view, setView, children }) {
     ];
   }, [isEmployee, isManager, isReadOnly, isSuperAdmin]);
 
-  const visiblePrimaryTabs = primaryTabs.filter((tab) =>
-    visibleViews.some((item) => item.section === tab.key)
-  );
-
+  const visiblePrimaryTabs = primaryTabs.filter((tab) => visibleViews.some((item) => item.section === tab.key));
   const viewSection = visibleViews.find((item) => item.key === view)?.section;
   const activePrimary = visiblePrimaryTabs.some((tab) => tab.key === viewSection)
     ? viewSection
     : visiblePrimaryTabs[0]?.key || "inicio";
-
   const secondaryTabs = visibleViews.filter((item) => item.section === activePrimary);
+  const configSubmenu = buildConfigSubmenu(visibleViews);
+
+  const contextualSubtitle = isSuperAdmin
+    ? "Gestion global multi-organizacion"
+    : user?.companyName
+      ? `Operacion en ${user.companyName}`
+      : "Gestion del desempeno institucional";
 
   async function handleMarkRead(item) {
     if (!token || item.isRead || isSuperAdmin) return;
@@ -291,91 +386,203 @@ export default function AppShell({ view, setView, children }) {
     if (nextView) setView(nextView);
   }
 
-  const contextualSubtitle = isSuperAdmin
-    ? "Gestion global multi-organizacion"
-    : user?.companyName
-      ? `Operacion en ${user.companyName}`
-      : "Gestion de desempeño institucional";
-
   return (
-    <div className="min-h-screen bg-[#0E1A20] text-[#E8EEF1]">
-      <header className="sticky top-0 z-30 border-b border-white/10 bg-[#0E1A20]/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-[1280px] items-center justify-between gap-4 px-4 py-4">
-          <div className="min-w-0">
-            <AppLogo variant="dark" />
-            <p className="mt-1 text-sm text-[#7A9AAA]">{contextualSubtitle}</p>
-          </div>
-
-          <div className="hidden items-center gap-2 lg:flex">
-            {visiblePrimaryTabs.map((tab) => (
+    <div className="min-h-screen bg-[#091319] text-[#E8EEF1]">
+      <div className="flex min-h-screen">
+        <aside
+          className={`hidden border-r border-white/10 bg-[#0c171d] transition-all lg:flex lg:flex-col ${
+            sidebarCollapsed ? "w-[92px]" : "w-[288px]"
+          }`}
+        >
+          <div className="border-b border-white/10 px-4 py-5">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0 overflow-hidden">
+                <AppLogo variant="dark" compact={sidebarCollapsed} />
+              </div>
               <button
-                key={tab.key}
-                onClick={() => openPrimary(tab.key)}
-                className={`rounded-xl px-4 py-3 text-sm font-medium transition ${
-                  activePrimary === tab.key
-                    ? "bg-[#28964D] text-white"
-                    : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
-                }`}
+                type="button"
+                onClick={() => setSidebarCollapsed((value) => !value)}
+                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#c7d5dc]"
+                aria-label="Colapsar sidebar"
               >
-                {tab.label}
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                  {sidebarCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}
+                </svg>
               </button>
-            ))}
+            </div>
+            {!sidebarCollapsed ? <p className="mt-3 text-sm text-[#7c97a6]">{contextualSubtitle}</p> : null}
           </div>
 
-          <div className="flex items-center gap-2">
-            {isSuperAdmin && companies.length ? (
-              <select
-                className="max-w-56 rounded-xl border border-white/10 bg-[#142028] px-3 py-3 text-sm text-white"
-                value={activeCompanyId}
-                onChange={(event) => setActiveCompanyId(event.target.value)}
-              >
-                {companies.map((company) => (
-                  <option key={company._id} value={company._id}>
-                    {company.nombre}
-                  </option>
-                ))}
-              </select>
+          <div className="flex-1 overflow-y-auto px-3 py-4">
+            <nav className="space-y-2">
+              {visiblePrimaryTabs.map((tab) => {
+                const isActive = activePrimary === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => openPrimary(tab.key)}
+                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
+                      isActive
+                        ? "bg-[#1e3a8a] text-white shadow-[0_10px_24px_rgba(30,58,138,0.28)]"
+                        : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
+                    }`}
+                  >
+                    <AppIcon name={tab.key} active={isActive} />
+                    {!sidebarCollapsed ? <span>{tab.label}</span> : null}
+                  </button>
+                );
+              })}
+            </nav>
+
+            {!sidebarCollapsed && activePrimary === "configuracion" && configSubmenu.length ? (
+              <div className="mt-6 rounded-3xl border border-white/10 bg-[#101d25] p-3">
+                <p className="px-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#7f99a8]">Configuracion</p>
+                <div className="mt-3 space-y-1.5">
+                  {configSubmenu.map((item) => {
+                    const isActive = view === item.viewKey;
+                    return (
+                      <button
+                        key={item.label}
+                        type="button"
+                        onClick={() => setView(item.viewKey)}
+                        className={`flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-sm transition ${
+                          isActive ? "bg-[#122f55] text-white" : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        {isActive ? <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" /> : null}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             ) : null}
-            <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
-            <button
-              onClick={logout}
-              className="rounded-xl border border-white/15 bg-[#1A2C38] px-4 py-3 text-sm text-white"
-            >
-              Salir
-            </button>
           </div>
-        </div>
 
-        <div className="mx-auto w-full max-w-[1280px] px-4 pb-4">
-          <div className="flex flex-wrap gap-2">
-            {secondaryTabs.map((item) => (
-              <button
-                key={item.key}
-                onClick={() => setView(item.key)}
-                className={`rounded-xl px-4 py-2.5 text-sm transition ${
-                  view === item.key
-                    ? "bg-[#1e3a8a] text-white"
-                    : "border border-white/10 bg-[#142028] text-[#AFC3CE] hover:text-white"
-                }`}
-              >
-                {item.shortLabel || item.label}
-              </button>
-            ))}
+          <div className="border-t border-white/10 px-3 py-4">
+            {!sidebarCollapsed ? (
+              <div className="rounded-3xl border border-white/10 bg-[#101d25] p-4">
+                <p className="text-sm font-semibold text-white">{user?.nombre || "Usuario"}</p>
+                <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#7ea3ff]">
+                  {user?.roleKey || user?.roleCode || "ROL"}
+                </p>
+                <p className="mt-2 text-xs text-[#7c97a6]">{user?.companyName || "Organizacion activa"}</p>
+              </div>
+            ) : (
+              <div className="flex justify-center">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#101d25] text-sm font-semibold text-white">
+                  {(user?.nombre || "U").slice(0, 1)}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      </header>
+        </aside>
 
-      <main className="mx-auto w-full max-w-[1280px] px-4 py-6">
-        <div className="mb-4 rounded-2xl border border-white/10 bg-[#142028] px-4 py-3 text-sm text-[#AFC3CE]">
-          {user?.nombre} - {user?.roleLabel || user?.roleName} - {user?.companyName || "Organizacion"}
+        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-20 border-b border-white/10 bg-[#091319]/95 backdrop-blur">
+            <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                <div className="lg:hidden">
+                  <AppLogo variant="dark" compact />
+                </div>
+                {isSuperAdmin && companies.length ? (
+                  <select
+                    className="min-w-[220px] rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3 text-sm text-white"
+                    value={activeCompanyId}
+                    onChange={(event) => setActiveCompanyId(event.target.value)}
+                  >
+                    {companies.map((company) => (
+                      <option key={company._id} value={company._id}>
+                        {company.nombre}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
+                    <p className="text-xs text-[#7f99a8]">Organizacion activa</p>
+                    <p className="text-sm font-medium text-white">{user?.companyName || "Organizacion"}</p>
+                  </div>
+                )}
+
+                <div className="hidden min-w-[320px] flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3 md:flex">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-[#7f99a8]">
+                    <path d="M11 19a8 8 0 1 1 5.3-14l4.2 4.2" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  <input
+                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-[#7f99a8]"
+                    placeholder="Buscar personas, roles, permisos, reportes..."
+                    readOnly
+                    aria-label="Buscador global"
+                  />
+                  <span className="rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8]">K</span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
+                <button
+                  type="button"
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white"
+                  title="Modo oscuro activo"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                    <path d="M21 12.8A9 9 0 0 1 11.2 3 7 7 0 1 0 21 12.8z" />
+                  </svg>
+                </button>
+                <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 md:flex">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1e3a8a] text-sm font-semibold text-white">
+                    {(user?.nombre || "U").slice(0, 1).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{user?.nombre || "Usuario actual"}</p>
+                    <p className="truncate text-xs text-[#7ea3ff]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={logout}
+                  className="rounded-2xl border border-white/15 bg-[#152833] px-4 py-3 text-sm text-white"
+                >
+                  Salir
+                </button>
+              </div>
+            </div>
+
+            {secondaryTabs.length ? (
+              <div className="border-t border-white/10 px-4 pb-4 pt-3 md:px-6">
+                <div className="flex flex-wrap gap-2">
+                  {secondaryTabs.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setView(item.key)}
+                      className={`rounded-2xl px-4 py-2.5 text-sm transition ${
+                        view === item.key
+                          ? "bg-[#1e3a8a] text-white"
+                          : "border border-white/10 bg-[#12222d] text-[#a8bdc8] hover:text-white"
+                      }`}
+                    >
+                      {item.shortLabel || item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </header>
+
+          <main className="flex-1 px-4 py-6 md:px-6">
+            <div className="mx-auto w-full max-w-[1440px]">
+              {tokenNearExpiry ? (
+                <div className="mb-5 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
+                </div>
+              ) : null}
+              {children}
+            </div>
+          </main>
         </div>
-        {tokenNearExpiry ? (
-          <div className="mb-4 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
-          </div>
-        ) : null}
-        {children}
-      </main>
+      </div>
     </div>
   );
 }
