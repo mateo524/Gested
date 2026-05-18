@@ -511,12 +511,12 @@ export default function AppShell({ view, setView, children }) {
                     <path d="M21 21l-4.35-4.35" />
                   </svg>
                   <input
-                    className="w-full bg-transparent text-sm text-white outline-none placeholder:text-[#7f99a8]"
+                    className="w-full cursor-not-allowed bg-transparent text-sm text-[#9fb6c4] outline-none placeholder:text-[#7f99a8]"
                     placeholder="Buscar personas, roles, permisos, reportes..."
-                    readOnly
+                    disabled
                     aria-label="Buscador global"
                   />
-                  <span className="rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8]">K</span>
+                  <span className="rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8]">Pronto</span>
                 </div>
               </div>
 
@@ -524,8 +524,10 @@ export default function AppShell({ view, setView, children }) {
                 <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
                 <button
                   type="button"
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white"
-                  title="Modo oscuro activo"
+                  disabled
+                  aria-disabled="true"
+                  className="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#9fb6c4] opacity-75"
+                  title="Modo oscuro activo (indicador visual)"
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                     <path d="M21 12.8A9 9 0 0 1 11.2 3 7 7 0 1 0 21 12.8z" />

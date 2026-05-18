@@ -283,7 +283,13 @@ export default function ExecutiveReportPage() {
             >
               Guardar vista
             </button>
-            <button type="button" className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white">
+            <button
+              type="button"
+              disabled
+              aria-disabled="true"
+              className="cursor-not-allowed rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm font-semibold text-[#718693] opacity-75"
+              title="Guia disponible proximamente"
+            >
               Ver guia
             </button>
           </div>

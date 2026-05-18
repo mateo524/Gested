@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { ErrorState, LoadingState } from "../components/AppStates";
 
 const defaultSettings = {
   nombreVisible: "",
@@ -22,6 +23,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState(defaultSettings);
   const [securityStatus, setSecurityStatus] = useState(null);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [securityStatusState, setSecurityStatusState] = useState("loading");
 
   useEffect(() => {
     apiFetch("/settings", { token })
@@ -34,13 +37,24 @@ export default function SettingsPage() {
           }));
         }
       })
-      .catch(() => {});
+      .catch((error) => {
+        setMessageType("warning");
+        setMessage(error.message);
+      });
   }, [token]);
 
   useEffect(() => {
+    setSecurityStatusState("loading");
     apiFetch("/auth/security-status", { token })
-      .then(setSecurityStatus)
-      .catch(() => {});
+      .then((data) => {
+        setSecurityStatus(data);
+        setSecurityStatusState("ready");
+      })
+      .catch((error) => {
+        setSecurityStatusState("error");
+        setMessageType("error");
+        setMessage(error.message);
+      });
   }, [token]);
 
   async function save() {
@@ -53,8 +67,10 @@ export default function SettingsPage() {
       });
       setSettings((prev) => ({ ...prev, ...(data.settings || {}) }));
       await refreshBranding();
+      setMessageType("success");
       setMessage("Configuracion actualizada.");
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -120,13 +136,60 @@ export default function SettingsPage() {
           <button onClick={save} className="mt-6 rounded-2xl px-6 py-3 font-semibold text-white" style={{ backgroundColor: settings.primaryColor }}>
             Guardar configuracion
           </button>
-          {message ? <p className="mt-3 text-sm text-[#c5d5de]">{message}</p> : null}
+          {message ? (
+            <p
+              className={`mt-3 ${
+                messageType === "error"
+                  ? "pf-alert-error"
+                  : messageType === "success"
+                    ? "pf-alert-success"
+                    : messageType === "warning"
+                      ? "pf-alert-warning"
+                      : "pf-alert-info"
+              }`}
+            >
+              {message}
+            </p>
+          ) : null}
         </div>
       </section>
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-xl font-semibold text-white">Seguridad de accesos</h3>
-        {securityStatus ? (
+        {securityStatusState === "loading" ? (
+          <div className="mt-4">
+            <LoadingState
+              compact
+              title="Cargando estado de seguridad"
+              description="Estamos revisando politicas e intentos recientes."
+            />
+          </div>
+        ) : null}
+        {securityStatusState === "error" ? (
+          <div className="mt-4">
+            <ErrorState
+              compact
+              title="No pudimos cargar el estado de seguridad"
+              description="Reintenta para revisar politicas, logins recientes y bloqueos."
+              actionLabel="Reintentar"
+              onAction={() => {
+                setMessage("");
+                setSecurityStatusState("loading");
+                apiFetch("/auth/security-status", { token })
+                  .then((data) => {
+                    setSecurityStatus(data);
+                    setSecurityStatusState("ready");
+                  })
+                  .catch((error) => {
+                    setSecurityStatusState("error");
+                    setMessageType("error");
+                    setMessage(error.message);
+                  });
+              }}
+            />
+          </div>
+        ) : null}
+        {securityStatusState === "ready" && securityStatus ? (
           <div className="mt-4 space-y-2 text-sm text-[#c5d5de]">
             <p>
               Politica activa: {securityStatus.policy.maxAttempts} intentos en {securityStatus.policy.windowMinutes} min,
@@ -135,9 +198,7 @@ export default function SettingsPage() {
             <p>Logins fallidos recientes: {securityStatus.recentFailedLogins?.length || 0}</p>
             <p>Logins exitosos recientes: {securityStatus.recentSuccessLogins?.length || 0}</p>
           </div>
-        ) : (
-          <p className="mt-4 text-sm text-[#9fb6c4]">Cargando estado de seguridad...</p>
-        )}
+        ) : null}
       </section>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const emptyForm = {
   nombre: "",
@@ -17,9 +18,11 @@ export default function UsersPage() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkPasswords, setBulkPasswords] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const deferredQuery = useDeferredValue(query);
@@ -38,16 +41,26 @@ export default function UsersPage() {
     filteredUsers.length > 0 && filteredUsers.every((user) => selectedIds.includes(user._id));
 
   const loadData = useCallback(async () => {
-    const [usersData, rolesData] = await Promise.all([
-      apiFetch("/users", { token }),
-      apiFetch("/roles", { token }),
-    ]);
-    setUsers(usersData);
-    setRoles(rolesData);
+    try {
+      setIsLoading(true);
+      const [usersData, rolesData] = await Promise.all([
+        apiFetch("/users", { token }),
+        apiFetch("/roles", { token }),
+      ]);
+      setUsers(usersData);
+      setRoles(rolesData);
+      setMessage("");
+      setMessageType("info");
+    } finally {
+      setIsLoading(false);
+    }
   }, [token]);
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
+    loadData().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [loadData]);
 
   function resetForm() {
@@ -65,6 +78,7 @@ export default function UsersPage() {
       roleId: user.roleId?._id || user.roleId || "",
       activo: Boolean(user.activo),
     });
+    setMessageType("info");
     setMessage("Editando usuario seleccionado.");
     setFieldErrors({});
   }
@@ -77,11 +91,13 @@ export default function UsersPage() {
     if (!form.roleId) nextErrors.roleId = "Selecciona un rol.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
+      setMessageType("warning");
       setMessage("Completa nombre, email y rol para guardar.");
       return;
     }
     try {
       setMessage("");
+      setMessageType("info");
       setBulkPasswords([]);
       setIsSubmitting(true);
       const path = editingId ? `/users/${editingId}` : "/users";
@@ -104,6 +120,7 @@ export default function UsersPage() {
       await loadData();
       const wasEditing = Boolean(editingId);
       resetForm();
+      setMessageType("success");
       setMessage(wasEditing ? "Usuario actualizado." : "Usuario creado.");
       setFieldErrors({});
 
@@ -118,6 +135,7 @@ export default function UsersPage() {
         ]);
       }
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
@@ -146,6 +164,7 @@ export default function UsersPage() {
 
   async function runBulkAction(action) {
     if (!selectedIds.length) {
+      setMessageType("warning");
       setMessage("Selecciona al menos un usuario.");
       return;
     }
@@ -162,11 +181,13 @@ export default function UsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action, userIds: selectedIds }),
       });
+      setMessageType("success");
       setMessage(data.mensaje || "Accion masiva aplicada.");
       setBulkPasswords(data.temporaryPasswords || []);
       setSelectedIds([]);
       await loadData();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -178,8 +199,10 @@ export default function UsersPage() {
       await apiFetch(`/users/${userId}`, { method: "DELETE", token });
       await loadData();
       if (editingId === userId) resetForm();
+      setMessageType("success");
       setMessage("Usuario eliminado.");
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -271,7 +294,28 @@ export default function UsersPage() {
           ) : null}
 
           <div className="mt-5 space-y-3">
-            {filteredUsers.length ? (
+            {isLoading ? (
+              <LoadingState
+                compact
+                title="Cargando usuarios"
+                description="Estamos trayendo accesos, roles y credenciales."
+              />
+            ) : null}
+            {!isLoading && messageType === "error" && !users.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar los usuarios"
+                description="Reintenta para recuperar la lista de accesos."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadData().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
+            {!isLoading && filteredUsers.length ? (
               filteredUsers.map((user) => (
                 <article key={user._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -290,14 +334,37 @@ export default function UsersPage() {
                   </div>
                 </article>
               ))
-            ) : (
-              <p className="text-[#9fb6c4]">No hay usuarios para mostrar.</p>
-            )}
+            ) : null}
+            {!isLoading && messageType !== "error" && !filteredUsers.length ? (
+              <EmptyState
+                compact
+                title="No hay usuarios para mostrar"
+                description={
+                  query
+                    ? "Prueba con otra busqueda o limpia el filtro actual."
+                    : "Crea el primer acceso para empezar a asignar roles."
+                }
+              />
+            ) : null}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? (
+        <p
+          className={
+            messageType === "error"
+              ? "pf-alert-error"
+              : messageType === "success"
+                ? "pf-alert-success"
+                : messageType === "warning"
+                  ? "pf-alert-warning"
+                  : "pf-alert-info"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }
