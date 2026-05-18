@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const emptyForm = {
   employeeId: "",
@@ -66,6 +67,7 @@ export default function EvaluationsPage() {
   const [form, setForm] = useState(emptyForm);
   const [scores, setScores] = useState([]);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBase, setIsLoadingBase] = useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
@@ -133,10 +135,16 @@ export default function EvaluationsPage() {
 
     const controller = new AbortController();
     loadBaseData(controller.signal).catch((error) => {
-      if (!controller.signal.aborted) setMessage(error.message);
+      if (!controller.signal.aborted) {
+        setMessageType("error");
+        setMessage(error.message);
+      }
     });
     loadEvaluations(controller.signal).catch((error) => {
-      if (!controller.signal.aborted) setMessage(error.message);
+      if (!controller.signal.aborted) {
+        setMessageType("error");
+        setMessage(error.message);
+      }
     });
     return () => controller.abort();
   }, [baseCacheKey, evaluationsCacheKey, loadBaseData, loadEvaluations]);
@@ -154,12 +162,14 @@ export default function EvaluationsPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.employeeId || !form.cycleId) {
+      setMessageType("warning");
       setMessage("Selecciona empleado y periodo para guardar la evaluación.");
       return;
     }
     try {
       setIsSubmitting(true);
       setMessage("");
+      setMessageType("info");
       await apiFetch("/evaluations", {
         method: "POST",
         token,
@@ -168,9 +178,11 @@ export default function EvaluationsPage() {
       });
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
+      setMessageType("success");
       setMessage("Evaluacion creada.");
       await loadEvaluations();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
@@ -180,10 +192,12 @@ export default function EvaluationsPage() {
   async function downloadIndividualReport(evaluationId) {
     try {
       setMessage("");
+      setMessageType("info");
       const data = await apiFetch(`/education-exports/evaluation-report/${evaluationId}`, { token });
       const printable = buildPrintableReport(data);
       const popup = window.open("", "_blank", "width=900,height=800");
       if (!popup) {
+        setMessageType("warning");
         setMessage("Tu navegador bloqueo la ventana del reporte.");
         return;
       }
@@ -193,6 +207,7 @@ export default function EvaluationsPage() {
       popup.focus();
       popup.print();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -203,11 +218,25 @@ export default function EvaluationsPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Evaluaciones</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Crea evaluaciónes por empleado, por periodo y con puntaje por indicador.
+          Crea, revisa y sigue evaluaciones por persona y por ciclo con una vista clara del estado actual.
         </p>
-        {isLoadingBase || isLoadingEvaluations ? (
-          <p className="mt-3 text-xs text-[#9fb6c4]">Actualizando datos...</p>
-        ) : null}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">
+            Ciclos, personas y puntajes en una sola vista
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              loadEvaluations().catch((error) => {
+                setMessageType("error");
+                setMessage(error.message);
+              })
+            }
+            className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
+          >
+            Actualizar lista
+          </button>
+        </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
@@ -275,9 +304,41 @@ export default function EvaluationsPage() {
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
+              <p className="mt-1 text-sm text-[#9fb6c4]">
+                Revisa el avance por persona y abre el reporte individual cuando haga falta.
+              </p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Registros</p>
+              <p className="mt-1 text-lg font-semibold text-white">{evaluations.length}</p>
+            </div>
+          </div>
           <div className="mt-6 space-y-4">
-            {evaluations.length ? (
+            {isLoadingBase || isLoadingEvaluations ? (
+              <LoadingState
+                compact
+                title="Actualizando evaluaciones"
+                description="Estamos trayendo ciclos, personas y resultados recientes."
+              />
+            ) : null}
+            {!isLoadingBase && !isLoadingEvaluations && messageType === "error" && !evaluations.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar las evaluaciones"
+                description="Reintenta para recuperar la lista del ciclo actual."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadEvaluations().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
+            {!isLoadingBase && !isLoadingEvaluations && evaluations.length ? (
               evaluations.map((evaluation) => (
                 <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex flex-wrap items-center gap-2">
@@ -288,20 +349,42 @@ export default function EvaluationsPage() {
                   <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} - Resultado final: {evaluation.resultadoFinal}</p>
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
                   <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="mt-3 rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
-                    Reporte individual (PDF)
+                    Ver reporte individual
                   </button>
                 </article>
               ))
             ) : (
-              <p className="text-[#9fb6c4]">
-                {user?.roleCode === "EMPLEADO" ? "Todavía no tienes evaluaciónes cargadas." : "Todavía no hay evaluaciónes registradas."}
-              </p>
+              !isLoadingBase && !isLoadingEvaluations && messageType !== "error" ? (
+                <EmptyState
+                  compact
+                  title={user?.roleCode === "EMPLEADO" ? "Todavia no tienes evaluaciones cargadas" : "Todavia no hay evaluaciones registradas"}
+                  description={
+                    user?.roleCode === "EMPLEADO"
+                      ? "Cuando te asignen un ciclo o una autoevaluacion, la vas a ver aca."
+                      : "Crea la primera evaluacion para empezar a seguir resultados por persona."
+                  }
+                />
+              ) : null
             )}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? (
+        <p
+          className={
+            messageType === "error"
+              ? "pf-alert-error"
+              : messageType === "success"
+                ? "pf-alert-success"
+                : messageType === "warning"
+                  ? "pf-alert-warning"
+                  : "pf-alert-info"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

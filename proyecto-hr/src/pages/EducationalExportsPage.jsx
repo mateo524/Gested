@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState, PermissionState } from "../components/AppStates";
 
 const datasetLabels = {
   employees: "Empleados",
@@ -44,6 +45,7 @@ export default function EducationalExportsPage() {
   const [isLoadingDataset, setIsLoadingDataset] = useState(false);
   const [isLoadingOverview, setIsLoadingOverview] = useState(false);
   const [showTechnicalDetails, setShowTechnicalDetails] = useState(false);
+  const [messageType, setMessageType] = useState("info");
 
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -56,6 +58,8 @@ export default function EducationalExportsPage() {
       setIsLoadingOverview(true);
       const data = await apiFetch("/education-exports/overview", { token });
       setOverview(data);
+      setMessage("");
+      setMessageType("info");
       if (!filters.schoolId && data.schools?.[0]?._id) {
         setFilters((prev) => ({ ...prev, schoolId: prev.schoolId || data.schools[0]._id }));
       }
@@ -80,12 +84,21 @@ export default function EducationalExportsPage() {
   }, [token]);
 
   useEffect(() => {
-    loadOverview().catch((error) => setMessage(error.message));
-    loadImportJobs().catch((error) => setMessage(error.message));
+    loadOverview().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
+    loadImportJobs().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [activeCompanyId, loadImportJobs, loadOverview]);
 
   useEffect(() => {
-    loadDataset().catch((error) => setMessage(error.message));
+    loadDataset().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [activeCompanyId, loadDataset]);
 
   async function downloadDataset(format) {
@@ -105,18 +118,24 @@ export default function EducationalExportsPage() {
       anchor.download = `${dataset}.${format === "xlsx" ? "xlsx" : "csv"}`;
       anchor.click();
       window.URL.revokeObjectURL(url);
+      setMessageType("success");
       setMessage("Descarga generada.");
       await loadOverview();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
 
   async function previewImport(mode = "preview") {
-    if (!importFile) return setMessage("Selecciona un archivo.");
+    if (!importFile) {
+      setMessageType("warning");
+      return setMessage("Selecciona un archivo.");
+    }
     try {
       setIsImporting(true);
       setMessage("");
+      setMessageType("info");
       const body = new FormData();
       body.append("file", importFile);
       body.append("dataset", importDataset);
@@ -143,8 +162,10 @@ export default function EducationalExportsPage() {
     } catch (error) {
       const msg = String(error.message || "");
       if (msg.toLowerCase().includes("demoro")) {
+        setMessageType("warning");
         setMessage("La validacion tardo demasiado. Reintenta con un archivo mas chico o vuelve a intentar en unos segundos.");
       } else {
+        setMessageType("error");
         setMessage(msg);
       }
       setImportPreview(null);
@@ -162,6 +183,7 @@ export default function EducationalExportsPage() {
     setImportResult(null);
     setSelectedJob(null);
     setMessage("");
+    setMessageType("info");
   }
 
   function downloadTemplate(kind) {
@@ -185,6 +207,7 @@ export default function EducationalExportsPage() {
     if (!importPreview?.previewToken) return;
     try {
       setIsImporting(true);
+      setMessageType("info");
       const data = await apiFetch("/education-exports/import/confirm", {
         method: "POST",
         token,
@@ -200,15 +223,19 @@ export default function EducationalExportsPage() {
       setImportResult(data);
       setImportPreview(null);
       setImportFile(null);
+      setMessageType("success");
       setMessage("Importacion confirmada.");
       await Promise.all([loadOverview(), loadDataset(), loadImportJobs()]);
     } catch (error) {
       const msg = String(error.message || "");
       if (msg.toLowerCase().includes("preview expirada")) {
+        setMessageType("warning");
         setMessage("La previsualizacion vencio o el servidor se reinicio. Vuelve a subir el archivo para continuar.");
       } else if (msg.toLowerCase().includes("demoro")) {
+        setMessageType("warning");
         setMessage("La confirmacion tardo demasiado. Reintenta; si persiste, divide el archivo en lotes.");
       } else {
+        setMessageType("error");
         setMessage(msg);
       }
     } finally {
@@ -224,6 +251,7 @@ export default function EducationalExportsPage() {
 
   function reintentarSoloFilasConError() {
     if (!editableErrors.length) {
+      setMessageType("warning");
       setMessage("No hay filas con error para reintentar.");
       return;
     }
@@ -237,6 +265,7 @@ export default function EducationalExportsPage() {
         sampleValidRows: [],
       };
     });
+    setMessageType("warning");
     setMessage("Reintento preparado: corrige filas con error y confirma importacion.");
   }
 
@@ -276,6 +305,22 @@ export default function EducationalExportsPage() {
           <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             Importacion avanzada / legacy
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              loadOverview().catch((error) => {
+                setMessageType("error");
+                setMessage(error.message);
+              });
+              loadDataset().catch((error) => {
+                setMessageType("error");
+                setMessage(error.message);
+              });
+            }}
+            className="rounded-xl border border-white/15 bg-[#122530] px-4 py-2 text-sm font-medium text-white"
+          >
+            Actualizar vista
+          </button>
         </div>
       </section>
 
@@ -304,8 +349,28 @@ export default function EducationalExportsPage() {
           </button>
         </div>
 
-        {!canImport ? <div className="pf-alert-warning">Tu rol no tiene permiso para importar.</div> : null}
-          {message ? <div className={`${message.toLowerCase().includes("confirmada") ? "pf-alert-success" : "pf-alert-error"}`}>{message}</div> : null}
+        {!canImport ? (
+          <PermissionState
+            compact
+            title="Tu rol no tiene permiso para importar"
+            description="Este flujo avanzado queda disponible solo para perfiles con gestion de datos."
+          />
+        ) : null}
+        {message ? (
+          <div
+            className={
+              messageType === "error"
+                ? "pf-alert-error"
+                : messageType === "success"
+                  ? "pf-alert-success"
+                  : messageType === "warning"
+                    ? "pf-alert-warning"
+                    : "pf-alert-info"
+            }
+          >
+            {message}
+          </div>
+        ) : null}
 
         <div className="grid gap-3 md:grid-cols-3">
           <select className="pf-select" value={importDataset} onChange={(e) => setImportDataset(e.target.value)}>
@@ -560,7 +625,13 @@ export default function EducationalExportsPage() {
               ))}
               {!importJobs.length ? (
                 <tr>
-                  <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>Todav?a no hay importaciones registradas.</td>
+                  <td className="px-3 py-4 text-[#9fb6c4]" colSpan={6}>
+                    <EmptyState
+                      compact
+                      title="Todavia no hay importaciones registradas"
+                      description="Cuando uses este flujo avanzado, vas a ver el historial aca."
+                    />
+                  </td>
                 </tr>
               ) : null}
             </tbody>
@@ -597,7 +668,13 @@ export default function EducationalExportsPage() {
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         {isLoadingDataset || isLoadingOverview ? (
-          <p className="mb-3 text-xs text-[#9fb6c4]">Actualizando vista de datos...</p>
+          <div className="mb-4">
+            <LoadingState
+              compact
+              title="Actualizando vista de datos"
+              description="Estamos preparando descargas, historial y actividad reciente."
+            />
+          </div>
         ) : null}
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -614,6 +691,17 @@ export default function EducationalExportsPage() {
                   <td className="px-4 py-3 text-[#c5d5de]">{formatDate(download.downloadedAt)}</td>
                 </tr>
               ))}
+              {!isLoadingDataset && !isLoadingOverview && !(overview?.recentDownloads || []).length ? (
+                <tr>
+                  <td className="px-4 py-6" colSpan={2}>
+                    <EmptyState
+                      compact
+                      title="No hay actividad reciente todavia"
+                      description="Cuando se generen descargas o exportaciones, las vas a ver aca."
+                    />
+                  </td>
+                </tr>
+              ) : null}
             </tbody>
           </table>
         </div>
