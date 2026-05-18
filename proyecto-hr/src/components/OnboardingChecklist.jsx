@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { canManageOnboardingUser } from "../lib/roleHelpers";
+import { ErrorState, LoadingState } from "./AppStates";
 
 const stepFallbackViews = {
   configure_organization: "settings",
@@ -97,7 +98,25 @@ export default function OnboardingChecklist() {
   if (loading) {
     return (
       <section className="pf-surface pf-surface-pad">
-        <p className="text-sm text-[#9fb6c4]">Cargando onboarding institucional...</p>
+        <LoadingState
+          compact
+          title="Cargando onboarding institucional"
+          description="Estamos revisando el progreso de tu organizacion."
+        />
+      </section>
+    );
+  }
+
+  if (message.type === "error" && !status) {
+    return (
+      <section className="pf-surface pf-surface-pad">
+        <ErrorState
+          compact
+          title="No pudimos cargar el onboarding"
+          description="Reintenta en unos segundos para ver los pasos pendientes."
+          actionLabel="Reintentar"
+          onAction={loadStatus}
+        />
       </section>
     );
   }

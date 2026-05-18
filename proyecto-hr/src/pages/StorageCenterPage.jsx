@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 function formatDate(value) {
   return new Date(value).toLocaleString("es-AR", {
@@ -21,6 +22,8 @@ export default function StorageCenterPage() {
   const [detail, setDetail] = useState(null);
   const [filters, setFilters] = useState(emptyFilters);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadForm, setUploadForm] = useState({
     companyId: "",
@@ -39,9 +42,18 @@ export default function StorageCenterPage() {
   }, [filters]);
 
   useEffect(() => {
+    setIsLoading(true);
     apiFetch(`/storage/overview${queryString}`, { token })
-      .then(setData)
-      .catch((error) => setMessage(error.message));
+      .then((next) => {
+        setData(next);
+        setMessage("");
+        setMessageType("info");
+      })
+      .catch((error) => {
+        setMessageType("error");
+        setMessage(error.message);
+      })
+      .finally(() => setIsLoading(false));
   }, [token, queryString]);
 
   async function openDetail(fileId) {
@@ -49,6 +61,7 @@ export default function StorageCenterPage() {
       const next = await apiFetch(`/storage/${fileId}/detail`, { token });
       setDetail(next);
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -58,10 +71,12 @@ export default function StorageCenterPage() {
     if (!confirmed) return;
     try {
       setMessage("");
+      setMessageType("info");
       await apiFetch(`/storage/${file._id}`, {
         method: "DELETE",
         token,
       });
+      setMessageType("success");
       setMessage("Archivo eliminado correctamente");
       if (detail?.file?._id === file._id) {
         setDetail(null);
@@ -69,6 +84,7 @@ export default function StorageCenterPage() {
       const next = await apiFetch(`/storage/overview${queryString}`, { token });
       setData(next);
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -77,6 +93,7 @@ export default function StorageCenterPage() {
     event.preventDefault();
 
     if (!uploadForm.companyId || !uploadForm.nombreVisible || !uploadForm.file) {
+      setMessageType("warning");
       setMessage("Completa empresa, nombre visible y archivo");
       return;
     }
@@ -84,6 +101,7 @@ export default function StorageCenterPage() {
     try {
       setIsUploading(true);
       setMessage("");
+      setMessageType("info");
       const body = new FormData();
       body.append("companyId", uploadForm.companyId);
       body.append("nombreVisible", uploadForm.nombreVisible);
@@ -102,20 +120,38 @@ export default function StorageCenterPage() {
         tipoArchivo: "documento",
         file: null,
       });
+      setMessageType("success");
       setMessage("Documento agregado al archivo central");
       const input = document.getElementById("storage-upload-file");
       if (input) input.value = "";
       const next = await apiFetch(`/storage/overview${queryString}`, { token });
       setData(next);
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsUploading(false);
     }
   }
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <LoadingState
+          title="Cargando archivo central"
+          description="Estamos preparando la vista global de archivos, empresas y documentos."
+        />
+      </div>
+    );
+  }
+
   if (!data) {
-    return <p className="text-slate-500">Cargando archivo central...</p>;
+    return (
+      <ErrorState
+        title="No pudimos cargar el archivo central"
+        description="Reintenta para recuperar documentos, empresas y vistas previas."
+      />
+    );
   }
 
   return (
@@ -264,7 +300,7 @@ export default function StorageCenterPage() {
           <p className="mt-1 text-slate-500">Listado central con empresa, tipo, estado y fecha de carga.</p>
 
           <div className="mt-6 space-y-4">
-            {data.files.map((file) => (
+            {data.files.length ? data.files.map((file) => (
               <article key={file._id} className="rounded-[1.75rem] border border-slate-200 p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -307,7 +343,12 @@ export default function StorageCenterPage() {
                   Eliminar
                 </button>
               </article>
-            ))}
+            )) : (
+              <EmptyState
+                title="No hay archivos cargados todavia"
+                description="Sube el primer documento operativo para empezar a centralizar contenido por empresa."
+              />
+            )}
           </div>
         </div>
 
@@ -345,18 +386,41 @@ export default function StorageCenterPage() {
                       </div>
                     ))
                   ) : (
-                    <p className="text-slate-500">Este archivo no tiene vista previa disponible.</p>
+                    <EmptyState
+                      compact
+                      title="Sin vista previa disponible"
+                      description="Este archivo no tiene registros recientes o no admite preview."
+                    />
                   )}
                 </div>
               </div>
             </div>
           ) : (
-            <p className="mt-6 text-slate-500">Selecciona un archivo para ver su detalle.</p>
+            <div className="mt-6">
+              <EmptyState
+                title="Selecciona un archivo para ver su detalle"
+                description="Cuando elijas un documento, vas a ver su vista previa y los registros recientes."
+              />
+            </div>
           )}
         </div>
       </section>
 
-      {message ? <p className="text-sm text-red-500">{message}</p> : null}
+      {message ? (
+        <p
+          className={
+            messageType === "error"
+              ? "pf-alert-error"
+              : messageType === "success"
+                ? "pf-alert-success"
+                : messageType === "warning"
+                  ? "pf-alert-warning"
+                  : "pf-alert-info"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

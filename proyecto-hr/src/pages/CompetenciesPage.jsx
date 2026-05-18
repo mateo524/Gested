@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const emptyForm = {
   schoolId: "",
@@ -17,40 +18,54 @@ export default function CompetenciesPage() {
   const [form, setForm] = useState(emptyForm);
   const [filters, setFilters] = useState({ q: "", tipo: "", componente: "" });
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const selectedSchool = schools.find((school) => school._id === form.schoolId) || null;
 
   const loadData = useCallback(async () => {
-    const params = new URLSearchParams();
-    if (filters.q.trim()) params.set("q", filters.q.trim());
-    if (filters.tipo) params.set("tipo", filters.tipo);
-    if (filters.componente) params.set("componente", filters.componente);
+    try {
+      setIsLoading(true);
+      const params = new URLSearchParams();
+      if (filters.q.trim()) params.set("q", filters.q.trim());
+      if (filters.tipo) params.set("tipo", filters.tipo);
+      if (filters.componente) params.set("componente", filters.componente);
 
-    const [schoolsData, competenciesData] = await Promise.all([
-      apiFetch("/schools", { token }),
-      apiFetch(`/competencies${params.toString() ? `?${params.toString()}` : ""}`, { token }),
-    ]);
-    setSchools(schoolsData);
-    setCompetencies(competenciesData);
-    if (!form.schoolId && schoolsData[0]?._id) {
-      setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
+      const [schoolsData, competenciesData] = await Promise.all([
+        apiFetch("/schools", { token }),
+        apiFetch(`/competencies${params.toString() ? `?${params.toString()}` : ""}`, { token }),
+      ]);
+      setSchools(schoolsData);
+      setCompetencies(competenciesData);
+      setMessage("");
+      setMessageType("info");
+      if (!form.schoolId && schoolsData[0]?._id) {
+        setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
+      }
+    } finally {
+      setIsLoading(false);
     }
   }, [filters.componente, filters.q, filters.tipo, form.schoolId, token]);
 
   useEffect(() => {
-    loadData().catch((error) => setMessage(error.message));
+    loadData().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
   }, [loadData]);
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.schoolId || !form.nombre) {
+      setMessageType("warning");
       setMessage("Completa colegio y nombre de competencia para guardar.");
       return;
     }
     try {
       setIsSubmitting(true);
       setMessage("");
+      setMessageType("info");
       const isEditing = Boolean(editingId);
       await apiFetch(isEditing ? `/competencies/${editingId}` : "/competencies", {
         method: isEditing ? "PUT" : "POST",
@@ -60,9 +75,11 @@ export default function CompetenciesPage() {
       });
       setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
       setEditingId("");
+      setMessageType("success");
       setMessage(isEditing ? "Competencia actualizada." : "Competencia creada.");
       await loadData();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
@@ -78,12 +95,14 @@ export default function CompetenciesPage() {
       tipo: competency.tipo || "DOCENTE",
       componente: competency.componente || "C",
     });
+    setMessageType("info");
     setMessage("Editando competencia seleccionada.");
   }
 
   function cancelEdit() {
     setEditingId("");
     setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
+    setMessageType("info");
     setMessage("Edicion cancelada.");
   }
 
@@ -95,9 +114,11 @@ export default function CompetenciesPage() {
       if (editingId === competency._id) {
         cancelEdit();
       }
+      setMessageType("success");
       setMessage("Competencia eliminada.");
       await loadData();
     } catch (error) {
+      setMessageType("error");
       setMessage(error.message);
     }
   }
@@ -166,7 +187,28 @@ export default function CompetenciesPage() {
             </select>
           </div>
           <div className="mt-6 space-y-4">
-            {competencies.length ? competencies.map((competency) => (
+            {isLoading ? (
+              <LoadingState
+                compact
+                title="Cargando competencias"
+                description="Estamos actualizando el modelo de desempeno."
+              />
+            ) : null}
+            {!isLoading && messageType === "error" && !competencies.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar las competencias"
+                description="Reintenta para recuperar el modelo institucional."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadData().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
+            {!isLoading && competencies.length ? competencies.map((competency) => (
               <article key={competency._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-lg font-semibold text-white">{competency.nombre}</p>
@@ -183,12 +225,33 @@ export default function CompetenciesPage() {
                   </button>
                 </div>
               </article>
-            )) : <p className="text-[#9fb6c4]">Todavía no hay competencias cargadas.</p>}
+            )) : null}
+            {!isLoading && messageType !== "error" && !competencies.length ? (
+              <EmptyState
+                compact
+                title="Todavia no hay competencias cargadas"
+                description="Crea la primera competencia para ordenar indicadores y evaluaciones."
+              />
+            ) : null}
           </div>
         </section>
       </div>
 
-      {message ? <p className="text-sm text-[#c5d5de]">{message}</p> : null}
+      {message ? (
+        <p
+          className={
+            messageType === "error"
+              ? "pf-alert-error"
+              : messageType === "success"
+                ? "pf-alert-success"
+                : messageType === "warning"
+                  ? "pf-alert-warning"
+                  : "pf-alert-info"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
     </div>
   );
 }

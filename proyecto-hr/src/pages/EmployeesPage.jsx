@@ -2,6 +2,7 @@ import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "rea
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const emptyForm = {
   schoolId: "",
@@ -278,7 +279,27 @@ export default function EmployeesPage() {
           ) : null}
 
           <div className="mt-5 space-y-3">
-            {isLoading ? <p className="pf-alert-info">Cargando empleados...</p> : null}
+            {isLoading ? (
+              <LoadingState
+                compact
+                title="Cargando empleados"
+                description="Estamos actualizando la nomina y sus responsables."
+              />
+            ) : null}
+            {!isLoading && messageType === "error" && !employees.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar los empleados"
+                description="Reintenta para recuperar la lista de personas."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadBase().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
             {!isLoading && employees.length ? (
               employees.map((employee) => {
                 const manager = employeesById.get(employee.managerId);
@@ -305,7 +326,19 @@ export default function EmployeesPage() {
                 );
               })
             ) : null}
-            {!isLoading && !employees.length ? <p className="pf-alert-warning">No hay empleados cargados para los filtros actuales.</p> : null}
+            {!isLoading && messageType !== "error" && !employees.length ? (
+              <EmptyState
+                compact
+                title="No hay empleados cargados todavia"
+                description={
+                  filters.q || filters.schoolId
+                    ? "No encontramos personas para los filtros actuales."
+                    : "Carga tu plantilla oficial o crea el primer empleado para empezar."
+                }
+                actionLabel={!filters.q && !filters.schoolId ? "Ir a carga masiva" : undefined}
+                onAction={!filters.q && !filters.schoolId ? () => setView("carga-masiva") : undefined}
+              />
+            ) : null}
           </div>
         </section>
       </div>
