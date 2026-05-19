@@ -213,8 +213,16 @@ export default function UsersPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Accesos de plataforma</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Usuarios y credenciales</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Crea accesos por rol. Si no defines password, el sistema genera una temporal automaticamente.
+          Gestiona credenciales de acceso. Los permisos, scopes y gobierno del rol se administran desde Roles y accesos.
         </p>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
+            Para administración
+          </span>
+          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
+            Credenciales y acceso
+          </span>
+        </div>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">

@@ -543,6 +543,14 @@ export default function BulkImportPage() {
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
               Importa y actualiza personas, roles, managers, KPIs, OKRs y datos clave desde una plantilla oficial validada.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
+                Flujo principal recomendado
+              </span>
+              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
+                Para altas y actualizaciones institucionales
+              </span>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button

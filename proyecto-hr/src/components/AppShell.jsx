@@ -254,8 +254,8 @@ export default function AppShell({ view, setView, children }) {
       },
       {
         key: "bases-descargas",
-        label: isManager ? "Reportes de equipo" : "Reportes",
-        shortLabel: "Reportes",
+        label: isManager ? "Centro de datos del equipo" : "Centro de datos",
+        shortLabel: "Centro de datos",
         show:
           hasPermission("view_reports") ||
           hasPermission("download_reports") ||
@@ -277,7 +277,7 @@ export default function AppShell({ view, setView, children }) {
       },
       {
         key: "usuarios",
-        label: "Usuarios",
+        label: "Usuarios y credenciales",
         shortLabel: "Usuarios",
         show: hasPermission("manage_users"),
         section: "configuracion",
