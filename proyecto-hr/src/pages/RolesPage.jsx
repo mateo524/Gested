@@ -450,6 +450,14 @@ export default function RolesPage() {
                 <p className="mt-3 text-sm leading-relaxed text-[#a5bcc8] md:text-base">
                   Define roles base, scopes y permisos para controlar el acceso a la informacion y las acciones en Performia.
                 </p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
+                    Lugar principal para permisos y scopes
+                  </span>
+                  <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
+                    Gobierno de acceso
+                  </span>
+                </div>
               </div>
               <button
                 type="button"

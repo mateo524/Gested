@@ -266,6 +266,14 @@ export default function ExecutiveReportPage() {
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
               Analizá desempeño, objetivos, evaluaciones y desarrollo en una vista interactiva para tomar mejores decisiones.
             </p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
+                Vista recomendada para dirección y RR. HH.
+              </span>
+              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
+                Cierre principal del recorrido institucional
+              </span>
+            </div>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -296,7 +304,7 @@ export default function ExecutiveReportPage() {
         </div>
       </section>
 
-      <SurfaceCard title="Filtros" subtitle="Cambia ciclo, area o empleado sin salir de la pantalla.">
+      <SurfaceCard title="Filtros" subtitle="Cambia ciclo, área o empleado sin salir de la pantalla.">
         <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
           <label className="block">
             <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo</span>

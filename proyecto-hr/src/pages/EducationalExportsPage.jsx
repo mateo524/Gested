@@ -292,9 +292,12 @@ export default function EducationalExportsPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-2xl font-bold text-white">Centro de datos</h3>
         <p className="mt-2 text-[#9fb6c4]">
-          Descargas, historial e importación avanzada. Recomendado: usar la plantilla oficial desde Carga masiva.
+          Herramienta operativa para descargas, historial e importación avanzada. Recomendado: usar Carga masiva unificada para el flujo principal.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
+          <span className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
+            Operativo
+          </span>
           <button
             type="button"
             onClick={() => setView("carga-masiva")}
@@ -303,7 +306,7 @@ export default function EducationalExportsPage() {
             Ir a Carga masiva
           </button>
           <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
-            Importación avanzada
+            Avanzado / legacy
           </span>
           <button
             type="button"
@@ -327,7 +330,7 @@ export default function EducationalExportsPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 space-y-4">
         <h4 className="text-lg font-semibold text-white">Importación avanzada</h4>
         <p className="text-sm text-[#9fb6c4]">
-          Este flujo queda disponible para casos especiales. Para el uso diario conviene trabajar desde la plantilla oficial.
+          Este flujo queda disponible para casos especiales, históricos o de soporte. Para el uso diario conviene trabajar desde la plantilla oficial y el flujo unificado.
         </p>
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">1. Subir archivo</span>
@@ -600,6 +603,9 @@ export default function EducationalExportsPage() {
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h4 className="text-lg font-semibold text-white">Historial de importaciones</h4>
+        <p className="mt-2 text-sm text-[#9fb6c4]">
+          Revisión operativa de lotes ejecutados, útil para seguimiento y soporte.
+        </p>
         <div className="mt-3 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead>
@@ -649,6 +655,11 @@ export default function EducationalExportsPage() {
       ) : null}
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
+            Exportaciones operativas
+          </span>
+        </div>
         <div className="grid gap-3 xl:grid-cols-5">
           <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={dataset} onChange={(e) => setDataset(e.target.value)}>
             {Object.entries(datasetLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
