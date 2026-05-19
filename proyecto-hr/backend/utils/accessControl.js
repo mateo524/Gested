@@ -1,6 +1,12 @@
 import Role from "../models/Role.js";
 import UserRoleAssignment from "../models/UserRoleAssignment.js";
 import {
+  getScopedEmployeeIds,
+  isDepartmentManagerScope,
+  isEmployeeScope,
+  isManagerScope,
+} from "./employeeScope.js";
+import {
   getPresetByLegacyRoleCode,
   getRolePreset,
   isValidRoleKey,
@@ -14,6 +20,23 @@ function normalizeDepartmentCode(value) {
 
 function sameId(left, right) {
   return String(left || "") === String(right || "");
+}
+
+function buildTenantBoundFilter(scope = {}, extra = {}) {
+  if (scope.isSuperAdmin) {
+    return { ...extra };
+  }
+
+  const base = {
+    ...extra,
+    companyId: scope.companyId,
+  };
+
+  if (scope.schoolId) {
+    base.schoolId = scope.schoolId;
+  }
+
+  return base;
 }
 
 export function getLegacyRoleCodeForPreset(roleKey) {
@@ -201,6 +224,77 @@ export function assertScopeAccess(user, resource = {}) {
     throw error;
   }
   return true;
+}
+
+export async function buildEmployeeScopedFilter(
+  req,
+  {
+    extra = {},
+    employeeField = "employeeId",
+    departmentField = "",
+    requestedEmployeeId = req?.query?.employeeId,
+    requestedDepartmentCode = "",
+    superAdminCompanyId = req?.query?.companyId || req?.get?.("X-Company-Id") || null,
+    superAdminSchoolId = req?.query?.schoolId || null,
+    outOfScopeMessage = "No puedes consultar empleados fuera de tu alcance",
+  } = {}
+) {
+  const scope = req?.scope || {};
+  const filter = buildTenantBoundFilter(scope, extra);
+
+  if (scope.isSuperAdmin) {
+    if (superAdminCompanyId && !("companyId" in filter)) {
+      filter.companyId = superAdminCompanyId;
+    }
+    if (superAdminSchoolId && !("schoolId" in filter)) {
+      filter.schoolId = superAdminSchoolId;
+    }
+  }
+
+  const requestedEmployee = String(requestedEmployeeId || "").trim();
+  const requestedDepartment = normalizeDepartmentCode(requestedDepartmentCode);
+
+  if (isEmployeeScope(scope)) {
+    if (scope.employeeId) {
+      filter[employeeField] = scope.employeeId;
+    }
+    return filter;
+  }
+
+  if (isManagerScope(scope)) {
+    const scopedEmployeeIds = await getScopedEmployeeIds(scope);
+    const allowedIds = Array.isArray(scopedEmployeeIds) ? scopedEmployeeIds : [];
+
+    if (departmentField && isDepartmentManagerScope(scope)) {
+      filter[departmentField] = normalizeDepartmentCode(scope.departmentCode);
+    } else if (departmentField && requestedDepartment) {
+      filter[departmentField] = requestedDepartment;
+    }
+
+    if (requestedEmployee) {
+      const allowed = allowedIds.some((id) => sameId(id, requestedEmployee));
+      if (!allowed) {
+        const error = new Error(outOfScopeMessage);
+        error.status = 403;
+        throw error;
+      }
+      filter[employeeField] = requestedEmployee;
+      return filter;
+    }
+
+    filter[employeeField] = { $in: allowedIds };
+    return filter;
+  }
+
+  if (departmentField && requestedDepartment) {
+    filter[departmentField] = requestedDepartment;
+  }
+
+  if (requestedEmployee) {
+    filter[employeeField] = requestedEmployee;
+  }
+
+  return filter;
 }
 
 export function validateRoleAssignmentInput(payload = {}) {

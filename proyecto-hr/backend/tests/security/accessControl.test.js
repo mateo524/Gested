@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import Employee from "../../models/Employee.js";
 import {
+  buildEmployeeScopedFilter,
   buildAssignmentSyncPlanForLegacyRole,
   can,
   scopeAccessAllowed,
@@ -10,6 +12,18 @@ import {
   getPresetByLegacyRoleCode,
   getRolePreset,
 } from "../../utils/rolePresets.js";
+
+function patchTeamIds(teamIds) {
+  const original = Employee.find;
+  Employee.find = () => ({
+    select: () => ({
+      lean: async () => teamIds.map((id) => ({ _id: id })),
+    }),
+  });
+  return () => {
+    Employee.find = original;
+  };
+}
 
 test("MANAGER con TEAM no puede acceder a empleado fuera de su equipo", () => {
   const allowed = scopeAccessAllowed(
@@ -89,6 +103,96 @@ test("VIEWER y AUDITOR quedan en solo lectura", async () => {
   assert.equal(viewerWrite, false);
   assert.equal(auditorWrite, false);
   assert.equal(auditorRead, true);
+});
+
+test("MANAGER con TEAM no puede ampliar employeeId por query fuera de su equipo", async () => {
+  const restore = patchTeamIds(["emp-team-1"]);
+  try {
+    await assert.rejects(
+      () =>
+        buildEmployeeScopedFilter(
+          {
+            scope: {
+              companyId: "org-a",
+              schoolId: "school-a",
+              roleKey: "MANAGER",
+              roleCode: "JEFE",
+              roleScope: "TEAM",
+              employeeId: "mgr-1",
+              isSuperAdmin: false,
+            },
+            query: {
+              employeeId: "emp-outside-9",
+            },
+          },
+          {
+            outOfScopeMessage: "No puedes consultar empleados fuera de tu alcance",
+          }
+        ),
+      /fuera de tu alcance/
+    );
+  } finally {
+    restore();
+  }
+});
+
+test("MANAGER con DEPARTMENT queda filtrado a su departamento y no cambia tenant por query", async () => {
+  const restore = patchTeamIds(["emp-dep-1", "emp-dep-2"]);
+  try {
+    const filter = await buildEmployeeScopedFilter(
+      {
+        scope: {
+          companyId: "org-a",
+          schoolId: "school-a",
+          roleKey: "MANAGER",
+          roleCode: "JEFE",
+          roleScope: "DEPARTMENT",
+          departmentCode: "SECUNDARIA",
+          employeeId: "mgr-1",
+          isSuperAdmin: false,
+        },
+        query: {
+          companyId: "org-b",
+          schoolId: "school-b",
+          employeeId: "emp-dep-2",
+          departmentCode: "PRIMARIA",
+        },
+      },
+      {
+        departmentField: "departmentCode",
+      }
+    );
+
+    assert.equal(filter.companyId, "org-a");
+    assert.equal(filter.schoolId, "school-a");
+    assert.equal(filter.employeeId, "emp-dep-2");
+    assert.equal(filter.departmentCode, "SECUNDARIA");
+  } finally {
+    restore();
+  }
+});
+
+test("EMPLOYEE con SELF siempre queda limitado a su propio employeeId", async () => {
+  const filter = await buildEmployeeScopedFilter({
+    scope: {
+      companyId: "org-a",
+      schoolId: "school-a",
+      roleKey: "EMPLOYEE",
+      roleCode: "EMPLEADO",
+      roleScope: "SELF",
+      employeeId: "emp-self-1",
+      isSuperAdmin: false,
+    },
+    query: {
+      employeeId: "emp-other-9",
+      companyId: "org-b",
+      schoolId: "school-b",
+    },
+  });
+
+  assert.equal(filter.companyId, "org-a");
+  assert.equal(filter.schoolId, "school-a");
+  assert.equal(filter.employeeId, "emp-self-1");
 });
 
 test("roleKey invalido se rechaza en asignaciones", () => {
