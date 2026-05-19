@@ -329,7 +329,7 @@ export default function EmployeesPage() {
             {!isLoading && messageType !== "error" && !employees.length ? (
               <EmptyState
                 compact
-                title="No hay empleados cargados todavia"
+                title="No hay empleados cargados todavía"
                 description={
                   filters.q || filters.schoolId
                     ? "No encontramos personas para los filtros actuales."

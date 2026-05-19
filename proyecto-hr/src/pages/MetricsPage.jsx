@@ -4,11 +4,11 @@ import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const baseLevels = [
-  { nivel: 1, etiqueta: "Insatisfactorio", descripcion: "" },
+  { nivel: 1, etiqueta: "Mínimo", descripcion: "" },
   { nivel: 2, etiqueta: "Mínimo", descripcion: "" },
-  { nivel: 3, etiqueta: "En desarrollo", descripcion: "" },
-  { nivel: 4, etiqueta: "Competente", descripcion: "" },
-  { nivel: 5, etiqueta: "Excepcional", descripcion: "" },
+  { nivel: 3, etiqueta: "Mínimo", descripcion: "" },
+  { nivel: 4, etiqueta: "Mínimo", descripcion: "" },
+  { nivel: 5, etiqueta: "Mínimo", descripcion: "" },
 ];
 
 const buildDefaultLevels = () => baseLevels.map((level) => ({ ...level }));

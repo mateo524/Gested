@@ -266,7 +266,7 @@ export default function EducationalExportsPage() {
       };
     });
     setMessageType("warning");
-    setMessage("Reintento preparado: corrige filas con error y confirma importacion.");
+    setMessage("Reintento preparado: corrige filas con error y confirma importación.");
   }
 
   function getEditableFields() {

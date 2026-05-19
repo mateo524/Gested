@@ -165,7 +165,7 @@ export default function DashboardPage() {
     if (training.length) {
       items.push({
         title: `${training.length} focos de desarrollo detectados`,
-        detail: "Alinear planes y prioridades para el proximo seguimiento.",
+        detail: "Alinear planes y prioridades para el próximo seguimiento.",
       });
     }
     return items.slice(0, 4);
@@ -191,14 +191,14 @@ export default function DashboardPage() {
       items.push({
         priority: "MEDIA",
         title: "Revisar el reporte ejecutivo",
-        detail: "Consolida personas, resultados y prioridades del periodo.",
+        detail: "Consolida personas, resultados y prioridades del per?odo.",
         actionLabel: "Abrir reporte",
         goTo: "reporte-ejecutivo",
       });
       if (activeUsers === 0) {
         items.push({
           priority: "MEDIA",
-          title: "Todavia no hay usuarios activos",
+          title: "Todavía no hay usuarios activos",
           detail: "Activa accesos para acompañar evaluaciones y autoevaluaciones.",
           actionLabel: "Ir a Usuarios",
           goTo: "usuarios",
@@ -209,7 +209,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Finalizar ${pendingEvaluations} evaluaciones`,
-          detail: "Asi podras consolidar planes y acciones del equipo.",
+          detail: "Así podrás consolidar planes y acciones del equipo.",
           actionLabel: "Ir a Evaluaciones",
           goTo: "evaluaciones",
         });
@@ -217,7 +217,7 @@ export default function DashboardPage() {
       items.push({
         priority: "MEDIA",
         title: "Validar proximas cargas masivas",
-        detail: "Importa empleados, usuarios y catalogos con la plantilla oficial.",
+        detail: "Importa empleados, usuarios y cat?logos con la plantilla oficial.",
         actionLabel: "Ir a Carga masiva",
         goTo: "carga-masiva",
       });
@@ -235,7 +235,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Completar ${pendingEvaluations} evaluaciones del equipo`,
-          detail: "Te permite pasar a seguimiento y desarrollo sin friccion.",
+          detail: "Te permite pasar a seguimiento y desarrollo sin fricci?n.",
           actionLabel: "Ir a Evaluaciones",
           goTo: "evaluaciones",
         });
@@ -250,15 +250,15 @@ export default function DashboardPage() {
     } else if (isEmpleado) {
       items.push({
         priority: "MEDIA",
-        title: "Completar mi autoevaluacion",
-        detail: "Ordena tu feedback y tu conversacion con jefatura.",
+        title: "Completar mi autoevaluación",
+        detail: "Ordena tu feedback y tu conversaci?n con jefatura.",
         actionLabel: "Ir a Evaluaciones",
         goTo: "evaluaciones",
       });
       items.push({
         priority: "BAJA",
         title: "Actualizar mi desarrollo",
-        detail: "Deja una accion concreta para las proximas semanas.",
+        detail: "Deja una acción concreta para las próximas semanas.",
         actionLabel: "Ir a Desarrollo",
         goTo: "planes",
       });
@@ -266,7 +266,7 @@ export default function DashboardPage() {
       items.push({
         priority: "MEDIA",
         title: "Revisar reportes visibles",
-        detail: "Consulta el estado actual sin modificar configuracion ni datos.",
+        detail: "Consulta el estado actual sin modificar configuración ni datos.",
         actionLabel: "Ir a Reportes",
         goTo: "bases-descargas",
       });
@@ -300,7 +300,7 @@ export default function DashboardPage() {
         {
           label: "Empleados visibles",
           value: summary.cards?.[0]?.value || 0,
-          hint: "Dentro de la organizacion activa",
+          hint: "Dentro de la organización activa",
           accent: "green",
         },
         {
@@ -321,7 +321,7 @@ export default function DashboardPage() {
 
     cards.push(
       {
-        label: isEmpleado ? "Mi desempeno actual" : "Empleados activos",
+        label: isEmpleado ? "Mi desempeño actual" : "Empleados activos",
         value: isEmpleado ? summary.cards?.[3]?.value || "0.00" : summary.cards?.[0]?.value || 0,
         hint: isEmpleado ? summary.cards?.[3]?.hint || "Sin datos" : `${summary.educational?.activeUsers || 0} usuarios activos`,
         accent: "blue",
@@ -341,7 +341,7 @@ export default function DashboardPage() {
       {
         label: "Planes de desarrollo",
         value: training.length || 0,
-        hint: training.length ? "Focos abiertos de seguimiento" : "Todavia sin planes visibles",
+        hint: training.length ? "Focos abiertos de seguimiento" : "Todavía sin planes visibles",
         accent: "green",
       }
     );
@@ -412,10 +412,10 @@ export default function DashboardPage() {
                   ? "Tu espacio principal"
                   : isJefe
                     ? "Vista general de tu equipo"
-                    : "Vista general de la organizacion"}
+                    : "Vista general de la organización"}
             </h1>
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Una vista 360 simple para ver personas, evaluaciones, desarrollo y proximos pasos sin saturar la operacion.
+              Una vista 360 simple para ver personas, evaluaciones, desarrollo y próximos pasos sin saturar la operación.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -448,7 +448,7 @@ export default function DashboardPage() {
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <SurfaceCard
           title="Acciones de hoy"
-          subtitle="Tareas concretas segun tu rol y el estado actual de la organizacion."
+          subtitle="Tareas concretas según tu rol y el estado actual de la organización."
           actions={
             actionsToday.length ? (
               <button
@@ -456,7 +456,7 @@ export default function DashboardPage() {
                 onClick={() => setView(actionsToday[0].goTo)}
                 className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm text-white"
               >
-                Ver primera accion
+                Ver primera acción
               </button>
             ) : null
           }
@@ -518,7 +518,7 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <EmptyState text="No hay actividad reciente todavia." />
+              <EmptyState text="No hay actividad reciente todavía." />
             )}
           </div>
         </SurfaceCard>
@@ -533,12 +533,12 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <EmptyState text="No hay proximos hitos con fecha visible todavia." />
+              <EmptyState text="No hay próximos hitos con fecha visible todavía." />
             )}
           </div>
         </SurfaceCard>
 
-        <SurfaceCard title="Accesos rapidos" subtitle="Atajos a los modulos mas usados para avanzar sin dar vueltas.">
+        <SurfaceCard title="Accesos rápidos" subtitle="Atajos a los módulos más usados para avanzar sin dar vueltas.">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             {quickLinks.map((item) => (
               <button
@@ -548,7 +548,7 @@ export default function DashboardPage() {
                 className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-left transition hover:border-blue-400/30 hover:bg-[#132530]"
               >
                 <p className="text-sm font-semibold text-white">{item.label}</p>
-                <p className="mt-1 text-sm text-[#8ea5b3]">Abrir modulo</p>
+                <p className="mt-1 text-sm text-[#8ea5b3]">Abrir módulo</p>
               </button>
             ))}
           </div>
@@ -556,7 +556,7 @@ export default function DashboardPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <SurfaceCard title="Resumen del desempeno" subtitle="Se apoya en datos visibles del alcance actual.">
+        <SurfaceCard title="Resumen del desempeño" subtitle="Se apoya en datos visibles del alcance actual.">
           <div className="grid gap-3 md:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-sm text-[#8ea5b3]">Promedio general</p>
@@ -584,7 +584,7 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <EmptyState text="Todavia no hay objetivos o indicadores visibles para este alcance." />
+              <EmptyState text="Todavía no hay objetivos o indicadores visibles para este alcance." />
             )}
           </div>
         </SurfaceCard>

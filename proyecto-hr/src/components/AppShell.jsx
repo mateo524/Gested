@@ -31,7 +31,7 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
         <div className="absolute right-0 z-30 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
           <div className="flex items-center justify-between gap-3 px-2 pb-2">
             <p className="text-sm font-semibold text-white">Notificaciones</p>
-            <span className="text-xs text-[#89a3b1]">{unreadCount ? `${unreadCount} nuevas` : "Al dia"}</span>
+            <span className="text-xs text-[#89a3b1]">{unreadCount ? `${unreadCount} nuevas` : "Al d?a"}</span>
           </div>
           <div className="space-y-2">
             {announcementSummary?.latest?.length ? (
@@ -158,7 +158,7 @@ function firstVisibleView(items) {
 
 function buildConfigSubmenu(visibleViews) {
   return [
-    { label: "Organizacion", viewKey: visibleViews.some((item) => item.key === "settings") ? "settings" : null },
+    { label: "Organización", viewKey: visibleViews.some((item) => item.key === "settings") ? "settings" : null },
     { label: "Departamentos", viewKey: visibleViews.some((item) => item.key === "empleados") ? "empleados" : null },
     { label: "Ciclos", viewKey: visibleViews.some((item) => item.key === "ciclos") ? "ciclos" : null },
     { label: "Plantillas", viewKey: visibleViews.some((item) => item.key === "carga-masiva") ? "carga-masiva" : null },
@@ -265,8 +265,8 @@ export default function AppShell({ view, setView, children }) {
       },
       {
         key: "carga-masiva",
-        label: isSuperAdmin ? "Importacion" : isReadOnly ? "Datos" : "Carga masiva",
-        shortLabel: isSuperAdmin ? "Importacion" : isReadOnly ? "Datos" : "Carga masiva",
+        label: isSuperAdmin ? "Importación" : isReadOnly ? "Datos" : "Carga masiva",
+        shortLabel: isSuperAdmin ? "Importación" : isReadOnly ? "Datos" : "Carga masiva",
         show:
           hasPermission("manage_users") ||
           hasPermission("manage_school_users") ||
@@ -291,8 +291,8 @@ export default function AppShell({ view, setView, children }) {
       },
       {
         key: "settings",
-        label: isSuperAdmin ? "Configuracion global" : "Configuracion",
-        shortLabel: "Configuracion",
+        label: isSuperAdmin ? "Configuración global" : "Configuración",
+        shortLabel: "Configuración",
         show: !isSuperAdmin && hasPermission("manage_settings"),
         section: isSuperAdmin ? "plataforma" : "configuracion",
       },
@@ -321,7 +321,7 @@ export default function AppShell({ view, setView, children }) {
       return [
         { key: "organizaciones", label: "Organizaciones" },
         { key: "reportes-globales", label: "Reportes globales" },
-        { key: "importacion", label: "Importacion" },
+        { key: "importacion", label: "Importación" },
         { key: "plataforma", label: "Plataforma" },
       ];
     }
@@ -356,7 +356,7 @@ export default function AppShell({ view, setView, children }) {
       { key: "desarrollo", label: "Desarrollo" },
       { key: "reportes", label: "Reportes" },
       { key: "datos", label: "Datos / Carga masiva" },
-      { key: "configuracion", label: "Configuracion" },
+      { key: "configuracion", label: "Configuración" },
     ];
   }, [isEmployee, isManager, isReadOnly, isSuperAdmin]);
 
@@ -369,10 +369,10 @@ export default function AppShell({ view, setView, children }) {
   const configSubmenu = buildConfigSubmenu(visibleViews);
 
   const contextualSubtitle = isSuperAdmin
-    ? "Gestion global multi-organizacion"
+    ? "Gestión global multi-organización"
     : user?.companyName
-      ? `Operacion en ${user.companyName}`
-      : "Gestion del desempeno institucional";
+      ? `Operaci?n en ${user.companyName}`
+      : "Gestión del desempeño institucional";
 
   async function handleMarkRead(item) {
     if (!token || item.isRead || isSuperAdmin) return;
@@ -437,7 +437,7 @@ export default function AppShell({ view, setView, children }) {
 
             {!sidebarCollapsed && activePrimary === "configuracion" && configSubmenu.length ? (
               <div className="mt-6 rounded-3xl border border-white/10 bg-[#101d25] p-3">
-                <p className="px-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#7f99a8]">Configuracion</p>
+                <p className="px-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#7f99a8]">Configuración</p>
                 <div className="mt-3 space-y-1.5">
                   {configSubmenu.map((item) => {
                     const isActive = view === item.viewKey;
@@ -467,7 +467,7 @@ export default function AppShell({ view, setView, children }) {
                 <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#7ea3ff]">
                   {user?.roleKey || user?.roleCode || "ROL"}
                 </p>
-                <p className="mt-2 text-xs text-[#7c97a6]">{user?.companyName || "Organizacion activa"}</p>
+                <p className="mt-2 text-xs text-[#7c97a6]">{user?.companyName || "Organización activa"}</p>
               </div>
             ) : (
               <div className="flex justify-center">
@@ -500,8 +500,8 @@ export default function AppShell({ view, setView, children }) {
                   </select>
                 ) : (
                   <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
-                    <p className="text-xs text-[#7f99a8]">Organizacion activa</p>
-                    <p className="text-sm font-medium text-white">{user?.companyName || "Organizacion"}</p>
+                    <p className="text-xs text-[#7f99a8]">Organización activa</p>
+                    <p className="text-sm font-medium text-white">{user?.companyName || "Organización"}</p>
                   </div>
                 )}
 
@@ -577,7 +577,7 @@ export default function AppShell({ view, setView, children }) {
             <div className="mx-auto w-full max-w-[1440px]">
               {tokenNearExpiry ? (
                 <div className="mb-5 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  Tu sesion vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesion.
+                  Tu sesión vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesión.
                 </div>
               ) : null}
               {children}
