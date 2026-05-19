@@ -147,12 +147,12 @@ app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
 
 app.get("/health", (_req, res) => {
-  res.json(
-    buildHealthStatus("performia-backend", {
-      mongoConnected: mongoose.connection?.readyState === 1,
-      nodeEnv: process.env.NODE_ENV || "development",
-    })
-  );
+  const payload = buildHealthStatus("performia-backend", {
+    databaseReadyState: mongoose.connection?.readyState,
+    nodeEnv: process.env.NODE_ENV || "development",
+  });
+
+  res.status(payload.ok ? 200 : 503).json(payload);
 });
 
 app.get("/", (req, res) => {
