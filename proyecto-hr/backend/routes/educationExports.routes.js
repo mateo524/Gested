@@ -18,6 +18,7 @@ import CompanySetting from "../models/CompanySetting.js";
 import ImportJob from "../models/ImportJob.js";
 import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
+import { buildEmployeeScopedFilter } from "../utils/accessControl.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { uploadBufferToStorage } from "../utils/storageProvider.js";
@@ -33,7 +34,7 @@ import {
   sanitizeHeader,
   normalizeText,
 } from "../utils/importIntelligence.js";
-import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
+import { isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
 const upload = multer({
@@ -121,17 +122,18 @@ async function buildScopedFilter(req, dataset) {
   if (dataset === "evaluations") {
     if (req.query.estado) filter.estado = req.query.estado;
     if (req.query.tipo) filter.tipo = req.query.tipo;
-    if (req.query.employeeId) filter.employeeId = req.query.employeeId;
     if (req.query.cycleId) filter.cycleId = req.query.cycleId;
-
-    if (isManagerScope(scopeContext)) {
-      const teamIds = await getScopedEmployeeIds(scopeContext);
-      filter.employeeId = { $in: Array.isArray(teamIds) ? teamIds : [] };
-    }
-
-    if (isEmployeeScope(scopeContext) && req.user.employeeId) {
-      filter.employeeId = req.user.employeeId;
-    }
+    return buildEmployeeScopedFilter(
+      {
+        ...req,
+        scope: scopeContext,
+      },
+      {
+        extra: filter,
+        employeeField: "employeeId",
+        outOfScopeMessage: "No puedes descargar evaluaciones de empleados fuera de tu alcance",
+      }
+    );
   }
 
   if (dataset === "metrics" && req.query.competencyId) {
@@ -140,16 +142,17 @@ async function buildScopedFilter(req, dataset) {
 
   if (dataset === "developmentPlans") {
     if (req.query.estado) filter.estado = req.query.estado;
-    if (req.query.employeeId) filter.employeeId = req.query.employeeId;
-
-    if (isManagerScope(scopeContext)) {
-      const teamIds = await getScopedEmployeeIds(scopeContext);
-      filter.employeeId = { $in: Array.isArray(teamIds) ? teamIds : [] };
-    }
-
-    if (isEmployeeScope(scopeContext) && req.user.employeeId) {
-      filter.employeeId = req.user.employeeId;
-    }
+    return buildEmployeeScopedFilter(
+      {
+        ...req,
+        scope: scopeContext,
+      },
+      {
+        extra: filter,
+        employeeField: "employeeId",
+        outOfScopeMessage: "No puedes descargar planes de empleados fuera de tu alcance",
+      }
+    );
   }
 
   return filter;

@@ -9,6 +9,7 @@ import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requirePermission } from "../middleware/rbac.js";
+import { buildEmployeeScopedFilter } from "../utils/accessControl.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 
@@ -54,19 +55,29 @@ function normalizeLevels(levels) {
   return { levels: normalized };
 }
 
-function buildOperationalRecordFilter(req) {
-  const filter = buildScopedFilter(req, {});
-  if (req.query.employeeId) filter.employeeId = req.query.employeeId;
-  if (req.query.departmentCode) filter.departmentCode = String(req.query.departmentCode).trim();
-  if (req.query.schoolId && req.scope.isSuperAdmin) filter.schoolId = req.query.schoolId;
-  return filter;
+export async function buildOperationalRecordFilter(req) {
+  return buildEmployeeScopedFilter(req, {
+    extra: {},
+    employeeField: "employeeId",
+    departmentField: "departmentCode",
+    requestedDepartmentCode: req.query.departmentCode,
+    outOfScopeMessage: "No puedes consultar métricas operativas de empleados fuera de tu alcance",
+  });
 }
 
-async function attachEmployeeSnapshot(records) {
+async function attachEmployeeSnapshot(records, scope = {}) {
   const employeeIds = [...new Set(records.map((item) => String(item.employeeId || "")).filter(Boolean))];
   if (!employeeIds.length) return records;
 
-  const employees = await Employee.find({ _id: { $in: employeeIds } })
+  const employeeFilter = { _id: { $in: employeeIds } };
+  if (!scope.isSuperAdmin && scope.companyId) {
+    employeeFilter.companyId = scope.companyId;
+  }
+  if (!scope.isSuperAdmin && scope.schoolId) {
+    employeeFilter.schoolId = scope.schoolId;
+  }
+
+  const employees = await Employee.find(employeeFilter)
     .select("_id nombre apellido cargo area email")
     .lean();
   const employeeMap = new Map(
@@ -118,9 +129,14 @@ router.get(
   attachTenantScope,
   requirePermission(PERMISSIONS.MANAGE_METRICS),
   async (req, res) => {
-    const filter = buildOperationalRecordFilter(req);
+    let filter;
+    try {
+      filter = await buildOperationalRecordFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
     const records = await KPIRecord.find(filter).sort({ updatedAt: -1, createdAt: -1 }).lean();
-    const withEmployee = await attachEmployeeSnapshot(records);
+    const withEmployee = await attachEmployeeSnapshot(records, req.scope);
     res.json(
       withEmployee.map((item) => ({
         ...item,
@@ -136,9 +152,14 @@ router.get(
   attachTenantScope,
   requirePermission(PERMISSIONS.MANAGE_METRICS),
   async (req, res) => {
-    const filter = buildOperationalRecordFilter(req);
+    let filter;
+    try {
+      filter = await buildOperationalRecordFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
     const records = await OKRRecord.find(filter).sort({ updatedAt: -1, createdAt: -1 }).lean();
-    const withEmployee = await attachEmployeeSnapshot(records);
+    const withEmployee = await attachEmployeeSnapshot(records, req.scope);
     res.json(
       withEmployee.map((item) => ({
         ...item,
