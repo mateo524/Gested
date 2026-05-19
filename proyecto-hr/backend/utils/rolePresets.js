@@ -121,12 +121,22 @@ export const ROLE_PRESETS = [
   },
 ];
 
+const LEGACY_ROLE_CANONICAL_PRESET = {
+  ADMIN_COLEGIO: "ORG_ADMIN",
+};
+
 export function getRolePreset(roleKey) {
   return ROLE_PRESETS.find((item) => item.roleKey === roleKey) || null;
 }
 
 export function getPresetByLegacyRoleCode(roleCode) {
-  return ROLE_PRESETS.find((item) => item.legacyRoleCode === roleCode) || null;
+  const normalizedRoleCode = String(roleCode || "").trim().toUpperCase();
+  const canonicalRoleKey = LEGACY_ROLE_CANONICAL_PRESET[normalizedRoleCode];
+  if (canonicalRoleKey) {
+    return getRolePreset(canonicalRoleKey);
+  }
+
+  return ROLE_PRESETS.find((item) => item.legacyRoleCode === normalizedRoleCode) || null;
 }
 
 export function isValidRoleKey(roleKey) {

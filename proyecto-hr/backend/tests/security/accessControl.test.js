@@ -6,6 +6,10 @@ import {
   scopeAccessAllowed,
   validateRoleAssignmentInput,
 } from "../../utils/accessControl.js";
+import {
+  getPresetByLegacyRoleCode,
+  getRolePreset,
+} from "../../utils/rolePresets.js";
 
 test("MANAGER con TEAM no puede acceder a empleado fuera de su equipo", () => {
   const allowed = scopeAccessAllowed(
@@ -158,4 +162,35 @@ test("al cambiar rol legacy a uno incompatible se rechaza para evitar degradar a
       }),
     /no es compatible con el alcance actual/i
   );
+});
+
+test("ADMIN_COLEGIO legacy resuelve canonicamente a ORG_ADMIN", () => {
+  const preset = getPresetByLegacyRoleCode("ADMIN_COLEGIO");
+
+  assert.equal(preset?.roleKey, "ORG_ADMIN");
+});
+
+test("ORG_OWNER sigue existiendo como preset valido", () => {
+  const preset = getRolePreset("ORG_OWNER");
+
+  assert.equal(preset?.roleKey, "ORG_OWNER");
+  assert.equal(preset?.legacyRoleCode, "ADMIN_COLEGIO");
+});
+
+test("ORG_OWNER y ORG_ADMIN conservan sus allowedScopes y permisos actuales", () => {
+  const owner = getRolePreset("ORG_OWNER");
+  const admin = getRolePreset("ORG_ADMIN");
+
+  assert.deepEqual(owner?.allowedScopes, ["ORGANIZATION"]);
+  assert.deepEqual(admin?.allowedScopes, ["ORGANIZATION"]);
+  assert.equal(owner?.defaultPermissions.includes("manage_schools"), true);
+  assert.equal(admin?.defaultPermissions.includes("manage_schools"), false);
+  assert.equal(owner?.defaultPermissions.includes("manage_users"), true);
+  assert.equal(admin?.defaultPermissions.includes("manage_users"), true);
+});
+
+test("otros legacyRoleCode siguen resolviendo como antes", () => {
+  assert.equal(getPresetByLegacyRoleCode("RRHH")?.roleKey, "HR");
+  assert.equal(getPresetByLegacyRoleCode("JEFE")?.roleKey, "MANAGER");
+  assert.equal(getPresetByLegacyRoleCode("EMPLEADO")?.roleKey, "EMPLOYEE");
 });
