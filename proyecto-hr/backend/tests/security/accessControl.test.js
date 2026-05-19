@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { can, scopeAccessAllowed, validateRoleAssignmentInput } from "../../utils/accessControl.js";
+import {
+  buildAssignmentSyncPlanForLegacyRole,
+  can,
+  scopeAccessAllowed,
+  validateRoleAssignmentInput,
+} from "../../utils/accessControl.js";
 
 test("MANAGER con TEAM no puede acceder a empleado fuera de su equipo", () => {
   const allowed = scopeAccessAllowed(
@@ -93,5 +98,64 @@ test("scope invalido se rechaza en asignaciones", () => {
   assert.throws(
     () => validateRoleAssignmentInput({ roleKey: "HR", scope: "GLOBAL" }),
     /scope invalido/
+  );
+});
+
+test("al cambiar rol legacy desde usuarios se preserva el scope fino si es compatible", () => {
+  const plan = buildAssignmentSyncPlanForLegacyRole({
+    currentAssignment: {
+      roleKey: "MANAGER",
+      scope: "DEPARTMENT",
+      departmentCode: "Academico",
+      teamId: "",
+      active: true,
+    },
+    targetLegacyRoleCode: "RRHH",
+  });
+
+  assert.deepEqual(plan, {
+    roleKey: "HR",
+    scope: "DEPARTMENT",
+    departmentCode: "Academico",
+    teamId: "",
+    active: true,
+  });
+});
+
+test("al cambiar rol legacy con mismo codigo se preserva el roleKey actual", () => {
+  const plan = buildAssignmentSyncPlanForLegacyRole({
+    currentAssignment: {
+      roleKey: "AUDITOR",
+      scope: "ORGANIZATION",
+      departmentCode: "",
+      teamId: "",
+      active: true,
+    },
+    targetLegacyRoleCode: "LECTOR",
+  });
+
+  assert.deepEqual(plan, {
+    roleKey: "AUDITOR",
+    scope: "ORGANIZATION",
+    departmentCode: "",
+    teamId: "",
+    active: true,
+  });
+});
+
+test("al cambiar rol legacy a uno incompatible se rechaza para evitar degradar alcance", () => {
+  assert.throws(
+    () =>
+      buildAssignmentSyncPlanForLegacyRole({
+        currentAssignment: {
+          roleKey: "MANAGER",
+          scope: "TEAM",
+          departmentCode: "",
+          teamId: "team-1",
+          active: true,
+        },
+        targetLegacyRoleCode: "EMPLEADO",
+      }),
+    /no es compatible con el alcance actual/i
   );
 });

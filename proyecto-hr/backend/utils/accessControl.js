@@ -237,6 +237,56 @@ export function validateRoleAssignmentInput(payload = {}) {
   };
 }
 
+export function buildAssignmentSyncPlanForLegacyRole({
+  currentAssignment = null,
+  targetLegacyRoleCode,
+}) {
+  const legacyRoleCode = String(targetLegacyRoleCode || "").trim().toUpperCase();
+  if (!legacyRoleCode) return null;
+
+  const targetPreset = getPresetByLegacyRoleCode(legacyRoleCode);
+  if (!targetPreset || targetPreset.roleKey === "SUPER_ADMIN") {
+    return null;
+  }
+
+  if (!currentAssignment?.roleKey) {
+    return {
+      roleKey: targetPreset.roleKey,
+      scope: targetPreset.allowedScopes?.[0] || "ORGANIZATION",
+      departmentCode: "",
+      teamId: "",
+      active: true,
+    };
+  }
+
+  const currentPreset = getRolePreset(currentAssignment.roleKey);
+  if (currentPreset?.legacyRoleCode === legacyRoleCode) {
+    return {
+      roleKey: currentAssignment.roleKey,
+      scope: currentAssignment.scope,
+      departmentCode: normalizeDepartmentCode(currentAssignment.departmentCode),
+      teamId: String(currentAssignment.teamId || "").trim(),
+      active: currentAssignment.active !== false,
+    };
+  }
+
+  if (!targetPreset.allowedScopes.includes(currentAssignment.scope)) {
+    const error = new Error(
+      "El rol base seleccionado no es compatible con el alcance actual. Actualizalo desde Roles y accesos."
+    );
+    error.status = 400;
+    throw error;
+  }
+
+  return {
+    roleKey: targetPreset.roleKey,
+    scope: currentAssignment.scope,
+    departmentCode: normalizeDepartmentCode(currentAssignment.departmentCode),
+    teamId: String(currentAssignment.teamId || "").trim(),
+    active: currentAssignment.active !== false,
+  };
+}
+
 export async function syncPrimaryRoleAssignmentForUser({
   user,
   companyId,

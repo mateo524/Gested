@@ -8,13 +8,17 @@ import Company from "../models/Company.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Announcement from "../models/Announcement.js";
 import CompanySetting from "../models/CompanySetting.js";
+import UserRoleAssignment from "../models/UserRoleAssignment.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { generateTempPassword } from "../utils/password.js";
 import { uploadBufferToStorage } from "../utils/storageProvider.js";
-import { syncPrimaryRoleAssignmentForUser } from "../utils/accessControl.js";
+import {
+  buildAssignmentSyncPlanForLegacyRole,
+  syncPrimaryRoleAssignmentForUser,
+} from "../utils/accessControl.js";
 import { getPresetByLegacyRoleCode } from "../utils/rolePresets.js";
 
 const router = express.Router();
@@ -108,6 +112,33 @@ async function syncAssignmentFromRole({ user, role }) {
     departmentCode: "",
     teamId: "",
     active: true,
+  });
+}
+
+async function getAssignmentSyncPlanForUser({ user, role, preserveExistingScope = false }) {
+  if (!user || !role?.code) return null;
+
+  if (!preserveExistingScope) {
+    const preset = getPresetByLegacyRoleCode(role.code);
+    if (!preset || preset.roleKey === "SUPER_ADMIN") return null;
+    return {
+      roleKey: preset.roleKey,
+      scope: preset.allowedScopes[0],
+      departmentCode: "",
+      teamId: "",
+      active: true,
+    };
+  }
+
+  const currentAssignment = await UserRoleAssignment.findOne({
+    companyId: user.companyId,
+    userId: user._id,
+    active: true,
+  }).lean();
+
+  return buildAssignmentSyncPlanForLegacyRole({
+    currentAssignment,
+    targetLegacyRoleCode: role.code,
   });
 }
 
@@ -529,13 +560,28 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     update.email = normalizedEmail;
   }
 
+  let roleChanged = false;
+  let assignmentSyncPlan = null;
   if (roleId) {
     const role = await Role.findOne({ _id: roleId, companyId: user.companyId });
     if (!role) {
       return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
     }
 
+    roleChanged = String(roleId) !== String(user.roleId || "");
     update.roleId = roleId;
+
+    if (roleChanged) {
+      try {
+        assignmentSyncPlan = await getAssignmentSyncPlanForUser({
+          user,
+          role,
+          preserveExistingScope: true,
+        });
+      } catch (error) {
+        return res.status(error.status || 400).json({ mensaje: error.message });
+      }
+    }
   }
 
   if (password) {
@@ -549,10 +595,18 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     .select("-passwordHash")
     .populate("roleId", "nombre permisos");
 
-  if (update.roleId) {
-    const role = await Role.findById(update.roleId).lean();
+  if (roleChanged && assignmentSyncPlan) {
     const rawUser = await User.findById(req.params.id);
-    await syncAssignmentFromRole({ user: rawUser, role });
+    await syncPrimaryRoleAssignmentForUser({
+      user: rawUser,
+      companyId: rawUser.companyId,
+      employeeId: rawUser.employeeId || null,
+      roleKey: assignmentSyncPlan.roleKey,
+      scope: assignmentSyncPlan.scope,
+      departmentCode: assignmentSyncPlan.departmentCode,
+      teamId: assignmentSyncPlan.teamId,
+      active: assignmentSyncPlan.active,
+    });
   }
 
   await logAudit({
