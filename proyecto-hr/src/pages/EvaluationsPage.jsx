@@ -239,6 +239,27 @@ export default function EvaluationsPage() {
         </div>
       </section>
 
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Que son las evaluaciones</p>
+            <h4 className="mt-2 text-xl font-semibold text-white">Medir desempeno para dar feedback y orientar desarrollo</h4>
+            <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
+              Las evaluaciones permiten medir el desempeno de una persona o equipo durante un ciclo. Sirven para generar feedback,
+              detectar brechas y alimentar planes de desarrollo.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-5 xl:grid-cols-1">
+            {["Ciclo", "Evaluacion", "Feedback", "Plan de desarrollo", "Reporte"].map((step, index) => (
+              <div key={step} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
+                <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Paso {index + 1}</p>
+                <p className="mt-2 text-sm font-semibold text-white">{step}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>

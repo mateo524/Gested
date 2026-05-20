@@ -45,6 +45,35 @@ function buildCycleLabel(cycle) {
   return [cycle.anio, cycle.periodo, cycle.etapa].filter(Boolean).join(" - ");
 }
 
+function calculateProgress(currentValue, targetValue) {
+  const current = Number(currentValue);
+  const target = Number(targetValue);
+  if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return null;
+  return Math.max(0, Math.min(100, (current / target) * 100));
+}
+
+function summarizeOperationalStatus(records = []) {
+  return records.reduce(
+    (acc, record) => {
+      const progress = calculateProgress(record.currentValue, record.targetValue);
+      const rawStatus = String(record.status || "").trim().toLowerCase();
+
+      if (rawStatus === "completed" || progress >= 100) {
+        acc.completed += 1;
+      } else if (progress === null) {
+        acc.noData += 1;
+      } else if (progress < 70 || rawStatus === "at_risk") {
+        acc.atRisk += 1;
+      } else {
+        acc.inProgress += 1;
+      }
+
+      return acc;
+    },
+    { total: records.length, completed: 0, inProgress: 0, atRisk: 0, noData: 0 }
+  );
+}
+
 export function assertExecutiveReportAccess(req) {
   const permissions = Array.isArray(req.user?.permisos) ? req.user.permisos : [];
   const allowed = req.user?.isSuperAdmin || EXECUTIVE_PERMISSION_SET.some((permission) => permissions.includes(permission));
@@ -214,12 +243,16 @@ function buildRecommendedActions({ cycles, employees, evaluations, plans, select
   return actions;
 }
 
-async function resolveExecutiveDataset(req) {
+async function resolveExecutiveDataset(req, overrides = {}) {
   assertExecutiveReportAccess(req);
   const { company } = await resolveCompanyScope(req);
+  const query = {
+    ...(req?.query || {}),
+    ...(overrides.query || {}),
+  };
   const baseFilter = buildExecutiveBaseEmployeeFilter(req.scope, {
     companyId: company._id,
-    department: req.query.department,
+    department: query.department,
   });
 
   let managerTeamIds = await getAllowedManagerEmployeeIds(req.scope, baseFilter);
@@ -247,7 +280,7 @@ async function resolveExecutiveDataset(req) {
   const allowedEmployees = employeesRaw;
   const allowedEmployeeIds = allowedEmployees.map((item) => item._id);
 
-  const requestedEmployeeId = String(req.query.employeeId || "").trim();
+  const requestedEmployeeId = String(query.employeeId || "").trim();
   if (requestedEmployeeId) {
     const allowed = allowedEmployees.some((item) => String(item._id) === requestedEmployeeId);
     if (!allowed) {
@@ -255,7 +288,7 @@ async function resolveExecutiveDataset(req) {
     }
   }
 
-  const requestedCycleId = String(req.query.cycleId || "").trim();
+  const requestedCycleId = String(query.cycleId || "").trim();
   const selectedCycle =
     (requestedCycleId && cycles.find((item) => String(item._id) === requestedCycleId)) ||
     cycles.find((item) => item.estado === "ABIERTO") ||
@@ -452,11 +485,53 @@ router.get(
           available: dataset.kpiRecords.length > 0,
           message: dataset.kpiRecords.length > 0 ? "" : KPI_EMPTY_MESSAGE,
           total: dataset.kpiRecords.length,
+          summaryByStatus: summarizeOperationalStatus(dataset.kpiRecords),
         },
         okrs: {
           available: dataset.okrRecords.length > 0,
           message: dataset.okrRecords.length > 0 ? "" : OKR_EMPTY_MESSAGE,
           total: dataset.okrRecords.length,
+          summaryByStatus: summarizeOperationalStatus(dataset.okrRecords),
+        },
+        development: {
+          total: dataset.plans.length,
+          active: dataset.plans.filter((item) => item.estado !== "CERRADO").length,
+          overdue: dataset.plans.filter(
+            (item) => item.estado !== "CERRADO" && item.fechaSeguimiento && new Date(item.fechaSeguimiento) < new Date()
+          ).length,
+          completed: dataset.plans.filter((item) => item.estado === "CERRADO").length,
+        },
+        departments: dataset.departments.map((department) => {
+          const departmentEmployees = dataset.employees.filter((item) => (item.area || "Sin area") === department.code);
+          const employeeIds = new Set(departmentEmployees.map((item) => String(item._id)));
+          const departmentPlans = dataset.plans.filter((item) => employeeIds.has(String(item.employeeId)));
+          const departmentKpis = dataset.kpiRecords.filter(
+            (item) =>
+              String(item.departmentCode || "").trim() === department.code ||
+              employeeIds.has(String(item.employeeId || ""))
+          );
+          const departmentOkrs = dataset.okrRecords.filter(
+            (item) =>
+              String(item.departmentCode || "").trim() === department.code ||
+              employeeIds.has(String(item.employeeId || ""))
+          );
+
+          return {
+            ...department,
+            employees: departmentEmployees.length,
+            kpis: departmentKpis.length,
+            okrs: departmentOkrs.length,
+            pendingPlans: departmentPlans.filter((item) => item.estado !== "CERRADO").length,
+          };
+        }),
+        tabGuidance: {
+          resumen: "Vista rapida de estado general.",
+          personas: "Seguimiento por empleado o equipo.",
+          kpis: "Indicadores medibles y avance contra metas.",
+          okrs: "Objetivos y resultados clave.",
+          evaluaciones: "Estado del ciclo de evaluacion.",
+          desarrollo: "Planes y acciones de mejora.",
+          acciones: "Recomendaciones operativas segun los datos disponibles.",
         },
       });
     } catch (error) {
@@ -475,10 +550,8 @@ router.get(
   requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
   async (req, res) => {
     try {
-      const dataset = await resolveExecutiveDataset({
-        ...req,
+      const dataset = await resolveExecutiveDataset(req, {
         query: {
-          ...req.query,
           employeeId: req.params.employeeId,
         },
       });
@@ -658,8 +731,10 @@ router.get(
             code: item.kpiCode || "",
             name: item.name,
             targetValue: item.targetValue,
+            currentValue: item.currentValue,
             unit: item.unit || "",
-            frequency: item.frequency || "",
+            period: item.period || "",
+            weight: item.weight,
             status: item.status || "",
             active: item.active !== false,
             departmentCode: item.departmentCode || "",
@@ -672,10 +747,12 @@ router.get(
           items: employeeOkrs.map((item) => ({
             _id: String(item._id),
             code: item.okrCode || "",
-            objectiveTitle: item.objectiveTitle,
-            keyResultTitle: item.keyResultTitle,
-            quarter: item.quarter || "",
+            objectiveTitle: item.objectiveTitle || item.objective || "",
+            keyResultTitle: item.keyResultTitle || item.keyResult || "",
+            quarter: item.quarter || item.period || "",
             targetValue: item.targetValue,
+            currentValue: item.currentValue,
+            weight: item.weight,
             status: item.status || "",
             departmentCode: item.departmentCode || "",
             updatedAt: item.updatedAt,

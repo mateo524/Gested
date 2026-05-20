@@ -32,6 +32,20 @@ function combineSignals(timeoutSignal, externalSignal) {
   return bridge.signal;
 }
 
+function normalizeHeaders(headers) {
+  if (!headers) return {};
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+  if (typeof headers === "object") {
+    return { ...headers };
+  }
+  return {};
+}
+
 function buildApiError({ response, data }) {
   const baseMessage =
     (typeof data === "object" && (data?.mensaje || data?.message)) ||
@@ -59,7 +73,7 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
     ...options,
     signal: requestSignal,
     headers: {
-      ...(headers || {}),
+      ...normalizeHeaders(headers),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
     },
