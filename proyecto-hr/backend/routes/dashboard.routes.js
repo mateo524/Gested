@@ -15,6 +15,8 @@ import Metric from "../models/Metric.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Evaluation from "../models/Evaluation.js";
 import EvaluationScore from "../models/EvaluationScore.js";
+import KPIRecord from "../models/KPIRecord.js";
+import OKRRecord from "../models/OKRRecord.js";
 import DownloadLog from "../models/DownloadLog.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { Parser } from "json2csv";
@@ -146,6 +148,8 @@ router.get("/summary", auth, async (req, res) => {
     docentesTotal,
     competenciesTotal,
     metricsTotal,
+    activeKpis,
+    activeOkrs,
     activeCyclesCount,
     evaluationsTotal,
     pendingEvaluations,
@@ -175,6 +179,8 @@ router.get("/summary", auth, async (req, res) => {
     Employee.countDocuments({ ...employeeFilter, tipoEmpleado: "DOCENTE" }),
     Competency.countDocuments(baseFilter),
     Metric.countDocuments(baseFilter),
+    KPIRecord.countDocuments({ ...baseFilter, active: true }),
+    OKRRecord.countDocuments({ ...baseFilter, active: true }),
     EvaluationCycle.countDocuments({ ...baseFilter, estado: "ABIERTO" }),
     Evaluation.countDocuments(evaluationFilter),
     Evaluation.countDocuments({ ...evaluationFilter, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
@@ -441,6 +447,8 @@ router.get("/summary", auth, async (req, res) => {
       rolesTotal,
       competenciesTotal,
       metricsTotal,
+      activeKpis,
+      activeOkrs,
       activeFiles,
       totalFiles,
       recordsTotal,
