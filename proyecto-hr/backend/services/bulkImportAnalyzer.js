@@ -15,7 +15,7 @@ export const BULK_IMPORT_DATASET = "bulk-unified";
 export const BULK_IMPORT_PERSISTENCE_WARNINGS = [
   "La hoja Organización es informativa: la organización real la determina el backend autenticado.",
   "Los Departamentos se validan y se usan para mapear area en Empleados, pero hoy no existe un modelo Department persistente.",
-  "KPIs y OKRs se validan por plantilla y se persisten en registros operativos simples. Aun no reemplazan un modulo avanzado de objetivos.",
+  "KPIs y OKRs se validan por plantilla y se persisten como registros reales del tenant. Aun no reemplazan un modulo avanzado de objetivos.",
 ];
 
 export const BULK_IMPORT_ROLE_KEY_MAP = {

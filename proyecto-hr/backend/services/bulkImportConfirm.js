@@ -49,6 +49,14 @@ function parseDateValue(value) {
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+function resolvePeriodValue(...values) {
+  for (const value of values) {
+    const normalized = normalizeText(value);
+    if (normalized) return normalized;
+  }
+  return "";
+}
+
 function buildIssue(sheet, rowNumber, field, message, severity = "error") {
   return { sheet, rowNumber: String(rowNumber ?? ""), field, message, severity };
 }
@@ -335,22 +343,41 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           continue;
         }
 
-        const lookupKey = buildLookupKey(row.kpi_code || row.kpi_name, row.kpi_name);
+        const ownerUser = userByEmail.get(normalizeEmail(row.employee_email || row.work_email)) || null;
+        const period = resolvePeriodValue(row.period, row.quarter, row.frequency);
+        const lookupKey = buildLookupKey(
+          row.kpi_code || row.kpi_name,
+          row.kpi_name,
+          period,
+          employee._id,
+          row.department_code,
+          row.team_id
+        );
         const payload = {
           companyId: job.companyId,
           schoolId: job.schoolId || null,
           employeeId: employee._id,
+          ownerUserId: ownerUser?._id || null,
           departmentCode: normalizeText(row.department_code || employee.area),
+          teamId: normalizeText(row.team_id),
+          cycleId: null,
           lookupKey,
           kpiCode: normalizeText(row.kpi_code),
           name: normalizeText(row.kpi_name),
           targetValue: toNumber(row.target_value, 0),
+          currentValue: toNumber(row.current_value, null),
           unit: normalizeText(row.unit),
           frequency: normalizeText(row.frequency),
+          period,
+          weight: toNumber(row.weight, 1) || 1,
           status: normalizeText(row.status || "active").toLowerCase(),
           active: toBooleanWord(row.active, true),
+          source: "bulk_import",
+          importJobId: job._id,
           sourceImportJobId: job._id,
           lastImportedAt: new Date(),
+          createdBy: req.user.userId,
+          updatedBy: req.user.userId,
         };
 
         const existing = await KPIRecord.findOne({
@@ -380,25 +407,45 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           continue;
         }
 
+        const ownerUser = userByEmail.get(normalizeEmail(row.employee_email || row.work_email)) || null;
+        const period = resolvePeriodValue(row.period, row.quarter);
         const lookupKey = buildLookupKey(
           row.okr_code || row.objective_title,
           row.objective_title,
           row.key_result_title
+          ,
+          period,
+          employee._id,
+          row.department_code,
+          row.team_id
         );
         const payload = {
           companyId: job.companyId,
           schoolId: job.schoolId || null,
           employeeId: employee._id,
+          ownerUserId: ownerUser?._id || null,
           departmentCode: normalizeText(row.department_code || employee.area),
+          teamId: normalizeText(row.team_id),
+          cycleId: null,
           lookupKey,
           okrCode: normalizeText(row.okr_code),
+          objective: normalizeText(row.objective_title),
           objectiveTitle: normalizeText(row.objective_title),
+          keyResult: normalizeText(row.key_result_title),
           keyResultTitle: normalizeText(row.key_result_title),
-          quarter: normalizeText(row.quarter),
+          period,
+          quarter: period,
           targetValue: toNumber(row.target_value, null),
+          currentValue: toNumber(row.current_value, null),
+          weight: toNumber(row.weight, 1) || 1,
           status: normalizeText(row.status || "active").toLowerCase(),
+          active: toBooleanWord(row.active, true),
+          source: "bulk_import",
+          importJobId: job._id,
           sourceImportJobId: job._id,
           lastImportedAt: new Date(),
+          createdBy: req.user.userId,
+          updatedBy: req.user.userId,
         };
 
         const existing = await OKRRecord.findOne({
@@ -428,12 +475,18 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
       job.expiresAt = null;
       job.createdCount =
         result.employees.created +
-        result.users.created;
+        result.users.created +
+        result.roleAssignments.created +
+        result.managers.created +
+        result.kpis.created +
+        result.okrs.created;
       job.updatedCount =
         result.employees.updated +
         result.users.updated +
         result.roleAssignments.updated +
-        result.managers.updated;
+        result.managers.updated +
+        result.kpis.updated +
+        result.okrs.updated;
       job.errorCount = finalIssues.length;
       job.issues = sanitizeIssuesForJob([...finalIssues, ...finalWarnings]);
       job.resultSummary = {

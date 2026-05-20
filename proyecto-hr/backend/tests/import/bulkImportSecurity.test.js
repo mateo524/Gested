@@ -1,7 +1,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import mongoose from "mongoose";
+import AuditLog from "../../models/AuditLog.js";
 import Employee from "../../models/Employee.js";
 import ImportJob from "../../models/ImportJob.js";
+import KPIRecord from "../../models/KPIRecord.js";
+import OKRRecord from "../../models/OKRRecord.js";
+import Role from "../../models/Role.js";
 import User from "../../models/User.js";
 import { buildBulkImportTenantFilter, createBulkImportAnalysisJob } from "../../services/bulkImportAnalyzer.js";
 import { confirmBulkImportJob } from "../../services/bulkImportConfirm.js";
@@ -140,6 +145,172 @@ test("analyze crea ImportJob en estado analyzed", async () => {
     assert.equal(calls[0].datasetDetected, "bulk-unified");
   } finally {
     ImportJob.create = originalCreate;
+  }
+});
+
+test("bulk import confirm persiste KPIRecord y OKRRecord con source e importJobId", async () => {
+  const originalStartSession = mongoose.startSession;
+  const originalImportJobFindOne = ImportJob.findOne;
+  const originalImportJobFindById = ImportJob.findById;
+  const originalRoleFind = Role.find;
+  const originalEmployeeFind = Employee.find;
+  const originalUserFind = User.find;
+  const originalKpiFindOne = KPIRecord.findOne;
+  const originalKpiCreate = KPIRecord.create;
+  const originalOkrFindOne = OKRRecord.findOne;
+  const originalOkrCreate = OKRRecord.create;
+  const originalAuditCreate = AuditLog.create;
+
+  const createdKpis = [];
+  const createdOkrs = [];
+  const job = {
+    _id: "job-metrics-1",
+    companyId: "org-a",
+    schoolId: "school-a",
+    stage: "analyzed",
+    sourceFileName: "bulk.xlsx",
+    previewSummary: {
+      preview: {
+        employees: [],
+        usersAndRoles: [],
+        managers: [],
+        kpis: [
+          {
+            _rowNumber: 2,
+            kpi_code: "KPI-001",
+            kpi_name: "Satisfacción del estudiante",
+            owner_employee_code: "EMP-1",
+            employee_email: "ana@demo.local",
+            department_code: "DEP-ACA",
+            target_value: 92,
+            current_value: 88,
+            frequency: "quarterly",
+            period: "2026-Q2",
+            unit: "percent",
+            weight: 2,
+            active: "yes",
+            status: "active",
+          },
+        ],
+        okrs: [
+          {
+            _rowNumber: 3,
+            okr_code: "OKR-001",
+            objective_title: "Mejorar participación",
+            key_result_title: "Alcanzar 90% de participación",
+            owner_employee_code: "EMP-1",
+            employee_email: "ana@demo.local",
+            department_code: "DEP-ACA",
+            quarter: "2026-Q2",
+            target_value: 90,
+            current_value: 60,
+            weight: 3,
+            active: "yes",
+            status: "active",
+          },
+        ],
+      },
+      summary: { totalRows: 2, validRows: 2, warnings: 0, errors: 0 },
+      persistenceWarnings: [],
+    },
+    issues: [],
+    auditTrail: [],
+    save: async function save() {
+      return this;
+    },
+  };
+
+  mongoose.startSession = async () => ({
+    async withTransaction(callback) {
+      await callback();
+    },
+    async endSession() {},
+  });
+  ImportJob.findOne = () => ({
+    sort: async () => job,
+  });
+  ImportJob.findById = () => ({
+    lean: async () => job,
+  });
+  Role.find = () => ({
+    session() {
+      return {
+        lean: async () => [],
+      };
+    },
+  });
+  Employee.find = () => ({
+    session: async () => [
+      {
+        _id: "emp-1",
+        legajo: "EMP-1",
+        email: "ana@demo.local",
+        area: "Académica",
+      },
+    ],
+  });
+  User.find = () => ({
+    session: async () => [
+      {
+        _id: "user-ana",
+        email: "ana@demo.local",
+      },
+    ],
+  });
+  KPIRecord.findOne = () => ({
+    session: async () => null,
+  });
+  KPIRecord.create = async ([payload]) => {
+    createdKpis.push(payload);
+    return [payload];
+  };
+  OKRRecord.findOne = () => ({
+    session: async () => null,
+  });
+  OKRRecord.create = async ([payload]) => {
+    createdOkrs.push(payload);
+    return [payload];
+  };
+  AuditLog.create = async () => ({ _id: "audit-1" });
+
+  try {
+    const response = await confirmBulkImportJob({
+      req: {
+        scope: { companyId: "org-a", schoolId: "school-a", isSuperAdmin: false },
+        user: { userId: "user-admin-1" },
+      },
+      importJobId: "job-metrics-1",
+      previewToken: null,
+    });
+
+    assert.equal(response.status, 200);
+    assert.equal(createdKpis.length, 1);
+    assert.equal(createdOkrs.length, 1);
+    assert.equal(createdKpis[0].source, "bulk_import");
+    assert.equal(createdKpis[0].importJobId, "job-metrics-1");
+    assert.equal(createdKpis[0].ownerUserId, "user-ana");
+    assert.equal(createdKpis[0].period, "2026-Q2");
+    assert.equal(createdKpis[0].currentValue, 88);
+    assert.equal(createdOkrs[0].source, "bulk_import");
+    assert.equal(createdOkrs[0].importJobId, "job-metrics-1");
+    assert.equal(createdOkrs[0].ownerUserId, "user-ana");
+    assert.equal(createdOkrs[0].period, "2026-Q2");
+    assert.equal(createdOkrs[0].objective, "Mejorar participación");
+    assert.equal(createdOkrs[0].keyResult, "Alcanzar 90% de participación");
+    assert.equal(response.payload.result.kpis.created, 1);
+    assert.equal(response.payload.result.okrs.created, 1);
+  } finally {
+    mongoose.startSession = originalStartSession;
+    ImportJob.findOne = originalImportJobFindOne;
+    ImportJob.findById = originalImportJobFindById;
+    Role.find = originalRoleFind;
+    Employee.find = originalEmployeeFind;
+    User.find = originalUserFind;
+    KPIRecord.findOne = originalKpiFindOne;
+    KPIRecord.create = originalKpiCreate;
+    OKRRecord.findOne = originalOkrFindOne;
+    OKRRecord.create = originalOkrCreate;
+    AuditLog.create = originalAuditCreate;
   }
 });
 
