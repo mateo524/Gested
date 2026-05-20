@@ -146,8 +146,11 @@ export default function DevelopmentPlansPage() {
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento profesional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Planes de desarrollo</h3>
-        <p className="mt-3 max-w-3xl text-[#9fb6c4]">Define fortalezas, objetivos de mejora y seguimientos con una vista simple del estado de cada plan.</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Desarrollo</h3>
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
+          Desarrollo es el seguimiento de las acciones de mejora de las personas y equipos. Aca ves que planes estan activos,
+          vencidos o completados.
+        </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">
             Seguimiento por persona y estado
@@ -167,9 +170,35 @@ export default function DevelopmentPlansPage() {
         </div>
       </section>
 
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+          <div>
+            <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Para que sirven los planes</p>
+            <h4 className="mt-2 text-xl font-semibold text-white">Convertir una necesidad detectada en acciones concretas</h4>
+            <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
+              Los planes de desarrollo convierten una evaluacion o necesidad detectada en acciones concretas de mejora, con
+              responsable, fecha objetivo y seguimiento.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {[
+              ["Plan", "La mejora o brecha a trabajar."],
+              ["Responsable", "Quien acompana o hace seguimiento."],
+              ["Accion", "La accion concreta de mejora."],
+              ["Proximo paso", "La fecha y el estado del siguiente seguimiento."],
+            ].map(([title, text]) => (
+              <article key={title} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                <p className="text-sm font-semibold text-white">{title}</p>
+                <p className="mt-2 text-sm text-[#9fb6c4]">{text}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Nuevo plan</h4>
+          <h4 className="text-xl font-semibold text-white">Nuevo plan de desarrollo</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Objetivo</span>
@@ -261,22 +290,31 @@ export default function DevelopmentPlansPage() {
                 <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-lg font-semibold text-white">{plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
-                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{plan.estado}</span>
+                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
+                      {plan.estado === "CERRADO"
+                        ? "Completado"
+                        : plan.fechaSeguimiento && new Date(plan.fechaSeguimiento) < new Date()
+                          ? "Vencido"
+                          : plan.estado === "EN_CURSO"
+                            ? "Activo"
+                            : "Sin seguimiento"}
+                    </span>
                   </div>
                   <p className="mt-2 text-sm text-[#c5d5de]">{plan.aspectoDesarrollar}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Medición: {plan.medicion || "-"}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Seguimiento: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Responsable: {plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Accion / metrica: {plan.medicion || "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Proximo paso: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
                 </article>
               ))
             ) : (
               !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tienes planes asociados" : "Todavía no hay planes cargados"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todavia no tienes planes asociados" : "No hay planes todavia"}
                   description={
                     user?.roleCode === "EMPLEADO"
-                      ? "Cuando te asignen un plan, lo vas a ver acá con su próximo seguimiento."
-                      : "Crea el primer plan para empezar a seguir desarrollo por persona."
+                      ? "Cuando te asignen un plan, lo vas a ver aca con su proximo seguimiento."
+                      : "Podes crear uno desde una evaluacion o cargarlo manualmente."
                   }
                 />
               ) : null

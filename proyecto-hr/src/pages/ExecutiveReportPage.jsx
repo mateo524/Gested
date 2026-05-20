@@ -85,6 +85,35 @@ function ActionBadge({ severity }) {
   );
 }
 
+function MiniBarChart({ title, items, emptyText = "Sin datos para mostrar." }) {
+  const maxValue = Math.max(...items.map((item) => Number(item.value || 0)), 0);
+  return (
+    <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+      <p className="text-sm font-semibold text-white">{title}</p>
+      <div className="mt-4 space-y-3">
+        {items.some((item) => Number(item.value || 0) > 0) ? (
+          items.map((item) => {
+            const width = maxValue > 0 ? Math.max(6, Math.round((Number(item.value || 0) / maxValue) * 100)) : 0;
+            return (
+              <div key={item.label}>
+                <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+                  <span>{item.label}</span>
+                  <span className="font-semibold text-white">{item.value}</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div className={`h-full rounded-full ${item.tone || "bg-sky-400"}`} style={{ width: `${width}%` }} />
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <p className="text-sm text-[#8fa9b7]">{emptyText}</p>
+        )}
+      </div>
+    </article>
+  );
+}
+
 function mapActionDestination(action) {
   const text = `${action?.key || ""} ${action?.title || ""} ${action?.description || ""}`.toLowerCase();
   if (text.includes("evalu")) return "evaluaciones";
@@ -164,6 +193,7 @@ export default function ExecutiveReportPage() {
       if (!token || !currentEmployeeId || !canViewExecutive || isEmployee) return;
       try {
         setLoadingDetail(true);
+        setError("");
         const params = new URLSearchParams();
         if (filters.cycleId) params.set("cycleId", filters.cycleId);
         const query = params.toString() ? `?${params.toString()}` : "";
@@ -228,6 +258,58 @@ export default function ExecutiveReportPage() {
         "Revisa evaluaciones, managers y planes para cerrar el ciclo con mejor trazabilidad.",
     };
   }, [actionList, overview]);
+
+  const tabGuidance = overview?.tabGuidance || {};
+
+  const evaluationChart = useMemo(
+    () => [
+      {
+        label: "Completadas",
+        value: Number(overview?.summary?.completedEvaluations || 0),
+        tone: "bg-emerald-400",
+      },
+      {
+        label: "Pendientes",
+        value: Number(overview?.summary?.evaluationsPending || 0),
+        tone: "bg-amber-400",
+      },
+      {
+        label: "Ciclos abiertos",
+        value: Number(overview?.summary?.cyclesOpen || 0),
+        tone: "bg-sky-400",
+      },
+    ],
+    [overview]
+  );
+
+  const kpiChart = useMemo(() => {
+    const summary = overview?.kpis?.summaryByStatus || {};
+    return [
+      { label: "Cumplidos", value: Number(summary.completed || 0), tone: "bg-emerald-400" },
+      { label: "En curso", value: Number(summary.inProgress || 0), tone: "bg-amber-400" },
+      { label: "En riesgo", value: Number(summary.atRisk || 0), tone: "bg-rose-400" },
+      { label: "Sin datos", value: Number(summary.noData || 0), tone: "bg-slate-400" },
+    ];
+  }, [overview]);
+
+  const okrChart = useMemo(() => {
+    const summary = overview?.okrs?.summaryByStatus || {};
+    return [
+      { label: "Cumplidos", value: Number(summary.completed || 0), tone: "bg-emerald-400" },
+      { label: "En curso", value: Number(summary.inProgress || 0), tone: "bg-amber-400" },
+      { label: "En riesgo", value: Number(summary.atRisk || 0), tone: "bg-rose-400" },
+      { label: "Sin datos", value: Number(summary.noData || 0), tone: "bg-slate-400" },
+    ];
+  }, [overview]);
+
+  const developmentChart = useMemo(
+    () => [
+      { label: "Activos", value: Number(overview?.development?.active || 0), tone: "bg-sky-400" },
+      { label: "Vencidos", value: Number(overview?.development?.overdue || 0), tone: "bg-rose-400" },
+      { label: "Completados", value: Number(overview?.development?.completed || 0), tone: "bg-emerald-400" },
+    ],
+    [overview]
+  );
 
   function moveEmployee(offset) {
     if (!employees.length || selectedEmployeeIndex < 0) return;
@@ -378,7 +460,24 @@ export default function ExecutiveReportPage() {
         ) : null}
       </SurfaceCard>
 
-      {error ? <div className="pf-alert-error">{error}</div> : null}
+      {error ? (
+        <div className="rounded-2xl border border-rose-300/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-100">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p>Hubo un problema cargando el reporte. Intenta nuevamente.</p>
+            <button
+              type="button"
+              onClick={() => {
+                loadOverview();
+                if (selectedEmployeeId) loadEmployeeDetail(selectedEmployeeId);
+              }}
+              className="rounded-2xl border border-rose-200/30 px-4 py-2 text-sm font-semibold text-rose-50"
+            >
+              Reintentar
+            </button>
+          </div>
+          <p className="mt-2 text-xs text-rose-100/80">{error}</p>
+        </div>
+      ) : null}
 
       {loadingOverview ? (
         <EmptyPanel text="Cargando reporte ejecutivo..." />
@@ -423,6 +522,9 @@ export default function ExecutiveReportPage() {
                   Siguiente
                 </button>
               </div>
+            </div>
+            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#9fb6c4]">
+              {tabGuidance[activeTab] || "Vista rapida del estado general y del seguimiento disponible."}
             </div>
           </SurfaceCard>
 
@@ -483,6 +585,46 @@ export default function ExecutiveReportPage() {
                   </div>
                 </SurfaceCard>
               </section>
+
+              <section className="grid gap-4 xl:grid-cols-2">
+                <MiniBarChart title="Avance de evaluaciones" items={evaluationChart} />
+                <MiniBarChart title="KPIs por estado" items={kpiChart} emptyText={overview?.kpis?.message || "No hay KPIs visibles."} />
+                <MiniBarChart title="OKRs por estado" items={okrChart} emptyText={overview?.okrs?.message || "No hay OKRs visibles."} />
+                <MiniBarChart title="Planes de desarrollo" items={developmentChart} />
+              </section>
+
+              <SurfaceCard title="Distribucion por departamento" subtitle="Cantidad de personas, objetivos y planes pendientes dentro del alcance actual.">
+                {overview?.departments?.length ? (
+                  <div className="grid gap-3 xl:grid-cols-2">
+                    {overview.departments.map((item) => (
+                      <article key={item.code} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <div className="flex items-center justify-between gap-3">
+                          <p className="font-semibold text-white">{item.label}</p>
+                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
+                            {item.count} personas
+                          </span>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
+                            <p className="mt-2 text-base font-semibold text-white">{item.kpis || 0}</p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
+                            <p className="mt-2 text-base font-semibold text-white">{item.okrs || 0}</p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Planes pendientes</p>
+                            <p className="mt-2 text-base font-semibold text-white">{item.pendingPlans || 0}</p>
+                          </div>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <EmptyPanel text="No hay departamentos con datos suficientes para resumir." />
+                )}
+              </SurfaceCard>
 
               {selectedEmployee ? (
                 <SurfaceCard

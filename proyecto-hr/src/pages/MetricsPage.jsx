@@ -246,7 +246,7 @@ function ProgressBar({ progress }) {
   );
 }
 
-function RecordCard({ kind, record, canManage, onEdit, onDelete }) {
+function RecordCard({ kind, record, canManage, onEdit, onProgress, onDelete }) {
   const progress = calculateProgress(record.currentValue, record.targetValue);
   const visualStatus = getVisualStatus(record);
 
@@ -300,6 +300,9 @@ function RecordCard({ kind, record, canManage, onEdit, onDelete }) {
 
       {canManage ? (
         <div className="mt-4 flex flex-wrap gap-2">
+          <button type="button" onClick={() => onProgress(record)} className="rounded-2xl border border-emerald-300/30 px-4 py-2 text-sm text-emerald-100">
+            Actualizar avance
+          </button>
           <button type="button" onClick={() => onEdit(record)} className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white">
             Editar
           </button>
@@ -367,16 +370,26 @@ function RecordForm({
   onSubmit,
   onCancel,
   editing,
+  mode = "full",
 }) {
   const isKpi = kind === "kpi";
+  const isProgressMode = mode === "progress";
 
   return (
     <SurfaceCard
-      title={editing ? `Editar ${isKpi ? "KPI" : "OKR"}` : `Nuevo ${isKpi ? "KPI" : "OKR"}`}
+      title={
+        editing
+          ? isProgressMode
+            ? `Actualizar avance ${isKpi ? "del KPI" : "del OKR"}`
+            : `Editar ${isKpi ? "KPI" : "OKR"}`
+          : `Nuevo ${isKpi ? "KPI" : "OKR"}`
+      }
       subtitle={
-        isKpi
-          ? "Registra un KPI real del tenant con periodo, responsable y seguimiento."
-          : "Registra un OKR con objetivo, key result y avance real."
+        isProgressMode
+          ? "Actualiza el valor actual para reflejar avance, porcentaje y estado sin tocar la logica del modulo."
+          : isKpi
+            ? "Registra un KPI real del tenant con periodo, responsable y seguimiento."
+            : "Registra un OKR con objetivo, key result y avance real."
       }
       actions={
         <button type="button" onClick={onCancel} className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white">
@@ -385,6 +398,11 @@ function RecordForm({
       }
     >
       <form className="space-y-4" onSubmit={onSubmit}>
+        {isProgressMode ? (
+          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            Ejemplo: si la meta es 100 y el valor actual es 65, el avance visible sera 65%.
+          </div>
+        ) : null}
         <div className="grid gap-4 md:grid-cols-2">
           <div>
             <label className="mb-1 block text-xs text-[#9fb6c4]">{isKpi ? "Codigo KPI" : "Codigo OKR"}</label>
@@ -596,6 +614,7 @@ export default function MetricsPage() {
   const [activeTab, setActiveTab] = useState("resumen");
   const [activeEditor, setActiveEditor] = useState(null);
   const [editorRecordId, setEditorRecordId] = useState("");
+  const [editorMode, setEditorMode] = useState("full");
   const [baseMetrics, setBaseMetrics] = useState([]);
   const [kpiRecords, setKpiRecords] = useState([]);
   const [okrRecords, setOkrRecords] = useState([]);
@@ -843,6 +862,7 @@ export default function MetricsPage() {
   const resetEditor = useCallback(() => {
     setActiveEditor(null);
     setEditorRecordId("");
+    setEditorMode("full");
     setKpiForm(KPI_FORM);
     setOkrForm(OKR_FORM);
     setKpiErrors({});
@@ -910,6 +930,7 @@ export default function MetricsPage() {
   function openCreateEditor(kind) {
     setActiveEditor(kind);
     setEditorRecordId("");
+    setEditorMode("full");
     setKpiForm(KPI_FORM);
     setOkrForm(OKR_FORM);
     setKpiErrors({});
@@ -917,9 +938,10 @@ export default function MetricsPage() {
     setMessage("");
   }
 
-  function openEditEditor(kind, record) {
+  function openEditEditor(kind, record, mode = "full") {
     setActiveEditor(kind);
     setEditorRecordId(record._id);
+    setEditorMode(mode);
     setMessage("");
 
     if (kind === "kpi") {
@@ -965,6 +987,10 @@ export default function MetricsPage() {
     }
     setOkrForm((current) => ({ ...current, [field]: value }));
     if (okrErrors[field]) setOkrErrors((current) => ({ ...current, [field]: "" }));
+  }
+
+  function openProgressEditor(kind, record) {
+    openEditEditor(kind, record, "progress");
   }
 
   async function handleSaveRecord(event) {
@@ -1104,6 +1130,7 @@ export default function MetricsPage() {
           onSubmit={handleSaveRecord}
           onCancel={resetEditor}
           editing={Boolean(editorRecordId)}
+          mode={editorMode}
         />
       ) : null}
 
@@ -1122,6 +1149,7 @@ export default function MetricsPage() {
           onSubmit={handleSaveRecord}
           onCancel={resetEditor}
           editing={Boolean(editorRecordId)}
+          mode={editorMode}
         />
       ) : null}
 
@@ -1220,6 +1248,26 @@ export default function MetricsPage() {
                 <SummaryCard label="Promedio de avance" value={formatPercent(summary.averageProgress)} hint="Promedio general del alcance" />
               </section>
 
+              <SurfaceCard
+                title="Como usar esta vista"
+                subtitle="Los KPIs y OKRs muestran objetivos medibles. Actualiza el valor actual para ver avance y estado."
+              >
+                <div className="grid gap-3 md:grid-cols-3">
+                  <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                    <p className="text-sm font-semibold text-white">1. Crea el objetivo</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">Define meta, periodo, responsable y alcance operativo del KPI u OKR.</p>
+                  </article>
+                  <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                    <p className="text-sm font-semibold text-white">2. Actualiza el avance</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">Usa "Actualizar avance" para cargar el valor actual sin rehacer todo el registro.</p>
+                  </article>
+                  <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                    <p className="text-sm font-semibold text-white">3. Lee el estado</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">Ejemplo: si la meta es 100 y el valor actual es 65, el avance visible sera 65%.</p>
+                  </article>
+                </div>
+              </SurfaceCard>
+
               {emptyOperational ? (
                 <EmptyState
                   title="No hay KPIs/OKRs cargados todavia"
@@ -1307,6 +1355,7 @@ export default function MetricsPage() {
                       record={item}
                       canManage={canManage}
                       onEdit={(record) => openEditEditor("kpi", record)}
+                      onProgress={(record) => openProgressEditor("kpi", record)}
                       onDelete={(record) => handleDeleteRecord("kpi", record)}
                     />
                   ))}
@@ -1333,6 +1382,7 @@ export default function MetricsPage() {
                       record={item}
                       canManage={canManage}
                       onEdit={(record) => openEditEditor("okr", record)}
+                      onProgress={(record) => openProgressEditor("okr", record)}
                       onDelete={(record) => handleDeleteRecord("okr", record)}
                     />
                   ))}

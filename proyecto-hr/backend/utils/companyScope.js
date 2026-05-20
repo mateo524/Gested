@@ -1,7 +1,7 @@
 import Company from "../models/Company.js";
 
 export async function resolveCompanyScope(req) {
-  const requestedCompanyId = req.headers["x-company-id"];
+  const requestedCompanyId = req?.headers?.["x-company-id"] || null;
 
   if (!req.user) {
     throw new Error("No autorizado");
