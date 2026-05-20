@@ -82,6 +82,24 @@ const SHEET_COLUMN_CONFIG = {
   },
 };
 
+function createAnalyzeError({
+  status = 500,
+  code = "BULK_IMPORT_ANALYZE_FAILED",
+  message = "No pudimos analizar el archivo.",
+  detail = "",
+  errors = [],
+  warnings = [],
+} = {}) {
+  const error = new Error(message);
+  error.status = status;
+  error.code = code;
+  error.publicMessage = message;
+  error.detail = detail;
+  error.errors = errors;
+  error.warnings = warnings;
+  return error;
+}
+
 function normalizeHeader(value) {
   return String(value || "")
     .normalize("NFD")
@@ -154,6 +172,30 @@ function readSheetRows(workbook, sheetName) {
   });
 
   return { headers, rows };
+}
+
+async function loadWorkbookSafely(buffer) {
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(buffer);
+  } catch (error) {
+    throw createAnalyzeError({
+      status: 400,
+      code: "BULK_IMPORT_INVALID_FILE",
+      message: "No pudimos leer el archivo .xlsx. Verifica que no esté dañado y vuelve a exportarlo antes de reintentar.",
+      detail: error?.message || "",
+    });
+  }
+
+  if (!Array.isArray(workbook.worksheets) || workbook.worksheets.length === 0) {
+    throw createAnalyzeError({
+      status: 400,
+      code: "BULK_IMPORT_INVALID_FILE",
+      message: "El archivo .xlsx no contiene hojas válidas para analizar.",
+    });
+  }
+
+  return workbook;
 }
 
 function buildBySheetSummary(rawSummary) {
@@ -535,8 +577,7 @@ function validateOkrsRows(rows, issues, summaryBySheet, context) {
 }
 
 export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId }) {
-  const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer);
+  const workbook = await loadWorkbookSafely(buffer);
 
   const missingSheets = REQUIRED_SHEETS.filter((name) => !workbook.getWorksheet(name));
   const issues = [];
