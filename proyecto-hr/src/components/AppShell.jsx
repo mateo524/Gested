@@ -159,10 +159,9 @@ function firstVisibleView(items) {
 function buildConfigSubmenu(visibleViews) {
   return [
     { label: "Organización", viewKey: visibleViews.some((item) => item.key === "settings") ? "settings" : null },
-    { label: "Departamentos", viewKey: visibleViews.some((item) => item.key === "empleados") ? "empleados" : null },
+    { label: "Usuarios", viewKey: visibleViews.some((item) => item.key === "usuarios") ? "usuarios" : null },
     { label: "Ciclos", viewKey: visibleViews.some((item) => item.key === "ciclos") ? "ciclos" : null },
-    { label: "Plantillas", viewKey: visibleViews.some((item) => item.key === "carga-masiva") ? "carga-masiva" : null },
-    { label: "Roles y accesos", viewKey: visibleViews.some((item) => item.key === "roles") ? "roles" : null },
+    { label: "Importación", viewKey: visibleViews.some((item) => item.key === "carga-masiva") ? "carga-masiva" : null },
   ].filter((item) => item.viewKey);
 }
 
@@ -265,8 +264,8 @@ export default function AppShell({ view, setView, children }) {
       },
       {
         key: "carga-masiva",
-        label: isSuperAdmin ? "Importación" : isReadOnly ? "Datos" : "Carga masiva",
-        shortLabel: isSuperAdmin ? "Importación" : isReadOnly ? "Datos" : "Carga masiva",
+        label: "Importación",
+        shortLabel: "Importación",
         show:
           hasPermission("manage_users") ||
           hasPermission("manage_school_users") ||
@@ -280,20 +279,20 @@ export default function AppShell({ view, setView, children }) {
         label: "Usuarios y credenciales",
         shortLabel: "Usuarios",
         show: hasPermission("manage_users"),
-        section: "configuracion",
+        section: "personas",
       },
       {
         key: "roles",
         label: "Roles y accesos",
         shortLabel: "Roles y accesos",
-        show: hasPermission("manage_roles") || hasPermission("view_audit"),
+        show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")),
         section: "configuracion",
       },
       {
         key: "settings",
         label: isSuperAdmin ? "Configuración global" : "Configuración",
         shortLabel: "Configuración",
-        show: !isSuperAdmin && hasPermission("manage_settings"),
+        show: isSuperAdmin ? false : hasPermission("manage_settings"),
         section: isSuperAdmin ? "plataforma" : "configuracion",
       },
       {
@@ -311,7 +310,7 @@ export default function AppShell({ view, setView, children }) {
         section: "plataforma",
       },
     ],
-    [hasPermission, isEmployee, isManager, isReadOnly, isSuperAdmin]
+    [hasPermission, isEmployee, isManager, isSuperAdmin]
   );
 
   const visibleViews = allViews.filter((item) => item.show);
@@ -345,7 +344,7 @@ export default function AppShell({ view, setView, children }) {
       return [
         { key: "inicio", label: "Inicio" },
         { key: "reportes", label: "Reportes" },
-        { key: "datos", label: "Datos" },
+        { key: "datos", label: "Importación" },
       ];
     }
     return [
@@ -355,8 +354,7 @@ export default function AppShell({ view, setView, children }) {
       { key: "objetivos", label: "Objetivos / Indicadores" },
       { key: "desarrollo", label: "Desarrollo" },
       { key: "reportes", label: "Reportes" },
-      { key: "datos", label: "Datos / Carga masiva" },
-      { key: "configuracion", label: "Configuración" },
+      { key: "datos", label: "Importación" },
     ];
   }, [isEmployee, isManager, isReadOnly, isSuperAdmin]);
 
@@ -588,3 +586,4 @@ export default function AppShell({ view, setView, children }) {
     </div>
   );
 }
+

@@ -292,6 +292,7 @@ export default function BulkImportPage() {
 
   const canReadHistory = canManageImport || user?.permisos?.includes("view_audit");
   const isReadOnly = canReadHistory && !canManageImport;
+  const showHistory = false;
 
   const [file, setFile] = useState(null);
   const [dragActive, setDragActive] = useState(false);
@@ -566,8 +567,8 @@ export default function BulkImportPage() {
     return (
       <div className="space-y-5">
         <section className="pf-surface pf-surface-pad">
-          <p className="pf-section-title">Datos / Carga masiva</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Carga masiva unificada</h1>
+          <p className="pf-section-title">Datos / Importación</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Importación</h1>
           <p className="mt-3 text-sm text-[#a8bdc8]">No tienes permisos para acceder a esta pantalla.</p>
         </section>
       </div>
@@ -579,10 +580,10 @@ export default function BulkImportPage() {
       <section className="pf-surface pf-surface-pad">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="pf-section-title">Datos / Carga masiva</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Carga masiva unificada</h1>
+            <p className="pf-section-title">Datos / Importación</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Importación</h1>
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Importa y actualiza personas, roles, managers, KPIs, OKRs y datos clave desde una plantilla oficial validada.
+              Importá personas, roles, managers, KPIs y OKRs desde la plantilla oficial.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
               <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
@@ -602,13 +603,15 @@ export default function BulkImportPage() {
             >
               {isDownloadingTemplate ? "Descargando..." : "Descargar plantilla"}
             </button>
-            <button
-              type="button"
-              onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
-            >
-              Ver historial
-            </button>
+            {showHistory ? (
+              <button
+                type="button"
+                onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
+              >
+                Ver historial
+              </button>
+            ) : null}
             <button
               type="button"
               disabled
@@ -873,18 +876,21 @@ export default function BulkImportPage() {
                   Descargar reporte
                 </a>
               ) : null}
-              <button
-                type="button"
-                onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white"
-              >
-                Ver historial
-              </button>
+              {showHistory ? (
+                <button
+                  type="button"
+                  onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+                  className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white"
+                >
+                  Ver historial
+                </button>
+              ) : null}
             </div>
           </div>
         )}
       </SurfaceCard>
 
+      {showHistory ? (
       <section ref={historyRef}>
         <SurfaceCard
           title="Historial"
@@ -953,6 +959,7 @@ export default function BulkImportPage() {
           ) : null}
         </SurfaceCard>
       </section>
+      ) : null}
     </div>
   );
 }

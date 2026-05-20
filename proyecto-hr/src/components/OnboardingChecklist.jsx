@@ -43,6 +43,7 @@ export default function OnboardingChecklist() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [pendingStep, setPendingStep] = useState("");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const canManageOnboarding = canManageOnboardingUser(user);
 
@@ -121,7 +122,28 @@ export default function OnboardingChecklist() {
     );
   }
 
-  if (!status || status.completedAll) return null;
+  if (!status) return null;
+
+  if (status.completedAll && !isExpanded) {
+    return (
+      <section className="pf-surface pf-surface-pad">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Onboarding institucional</p>
+            <h3 className="pf-title-lg mt-2">Onboarding completado</h3>
+            <p className="mt-2 text-sm text-[#A9BFCA]">
+              {status.progress?.completed || 0} de {status.progress?.total || 0} pasos completados.
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setIsExpanded(true)} className="rounded-xl border border-white/15 bg-[#142028] px-3 py-2 text-sm text-white">
+              Ver checklist
+            </button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="pf-surface pf-surface-pad">
@@ -136,6 +158,11 @@ export default function OnboardingChecklist() {
         <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0F1A21] px-4 py-3">
           <ProgressBar completed={status.progress?.completed || 0} total={status.progress?.total || 0} />
         </div>
+        {status.completedAll ? (
+          <button type="button" onClick={() => setIsExpanded(false)} className="rounded-xl border border-white/15 bg-[#142028] px-3 py-2 text-sm text-white">
+            Ocultar checklist
+          </button>
+        ) : null}
       </div>
 
       {message.text ? (

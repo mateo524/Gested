@@ -287,7 +287,10 @@ export default function EvaluationsPage() {
               ))}
             </select>
 
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Contexto evaluativo</p>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Cómo se evaluará</p>
+            <p className="text-sm text-[#9fb6c4]">
+              El contexto define a quién se evalúa, con qué criterios y en qué período.
+            </p>
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
                 <option value="AUTOEVALUACION">Autoevaluación</option>

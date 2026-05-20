@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -135,6 +135,7 @@ export default function ExecutiveReportPage() {
   const [loadingOverview, setLoadingOverview] = useState(true);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
+  const detailRef = useRef(null);
 
   const canViewExecutive =
     user?.isSuperAdmin ||
@@ -228,6 +229,15 @@ export default function ExecutiveReportPage() {
   const selectedEmployeeId = overview?.filters?.selectedEmployeeId || filters.employeeId;
   const selectedEmployeeIndex = employees.findIndex((item) => item._id === selectedEmployeeId);
   const selectedEmployee = detail?.employee || overview?.selectedEmployee || null;
+
+  const focusEmployeeDetail = useCallback((employeeId) => {
+    setActiveTab("resumen");
+    setDraftFilters((current) => ({ ...current, employeeId }));
+    setFilters((current) => ({ ...current, employeeId }));
+    window.requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
 
   const actionList = useMemo(() => {
     const items = [...(overview?.actions || []), ...(detail?.actions || [])];
@@ -627,41 +637,65 @@ export default function ExecutiveReportPage() {
               </SurfaceCard>
 
               {selectedEmployee ? (
-                <SurfaceCard
-                  title="Detalle de la persona seleccionada"
-                  subtitle={`${selectedEmployee.fullName} · ${selectedEmployee.cargo || "Sin cargo"}${selectedEmployee.area ? ` · ${selectedEmployee.area}` : ""}`}
-                  actions={
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setView("evaluaciones")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
-                        Ir a Evaluaciones
-                      </button>
-                      <button type="button" onClick={() => setView("planes")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
-                        Ir a Desarrollo
-                      </button>
-                    </div>
-                  }
-                >
-                  {loadingDetail ? (
-                    <EmptyPanel text="Cargando detalle del empleado..." />
-                  ) : detail ? (
-                    <div className="grid gap-3 md:grid-cols-4">
-                      <StatCard label="Evaluaciones" value={detail.summary?.evaluationCount || 0} />
-                      <StatCard label="Pendientes" value={detail.summary?.pendingEvaluations || 0} tone="warning" />
-                      <StatCard label="Planes abiertos" value={detail.summary?.openPlans || 0} />
-                      <StatCard label="Promedio" value={detail.summary?.averageScore || 0} tone="success" />
-                    </div>
-                  ) : (
-                    <EmptyPanel text="No hay detalle adicional para esta persona." />
-                  )}
-                </SurfaceCard>
+                <div ref={detailRef}>
+                  <SurfaceCard
+                    title="Detalle de la persona seleccionada"
+                    subtitle={`${selectedEmployee.fullName} · ${selectedEmployee.cargo || "Sin cargo"}${selectedEmployee.area ? ` · ${selectedEmployee.area}` : ""}`}
+                    actions={
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setView("evaluaciones")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
+                          Ir a Evaluaciones
+                        </button>
+                        <button type="button" onClick={() => setView("planes")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
+                          Ir a Desarrollo
+                        </button>
+                      </div>
+                    }
+                  >
+                    {loadingDetail ? (
+                      <EmptyPanel text="Cargando detalle del empleado..." />
+                    ) : detail ? (
+                      <div className="space-y-4">
+                        <div className="grid gap-3 md:grid-cols-4">
+                          <StatCard label="Evaluaciones" value={detail.summary?.evaluationCount || 0} />
+                          <StatCard label="Pendientes" value={detail.summary?.pendingEvaluations || 0} tone="warning" />
+                          <StatCard label="Planes abiertos" value={detail.summary?.openPlans || 0} />
+                          <StatCard label="Promedio" value={detail.summary?.averageScore || 0} tone="success" />
+                        </div>
+                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Departamento / equipo</p>
+                            <p className="mt-2 text-sm font-semibold text-white">
+                              {selectedEmployee.area || detail.employee?.area || "Sin dato visible"}
+                            </p>
+                          </article>
+                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">KPIs asignados</p>
+                            <p className="mt-2 text-sm font-semibold text-white">{detail.kpis?.items?.length || 0}</p>
+                          </article>
+                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">OKRs asignados</p>
+                            <p className="mt-2 text-sm font-semibold text-white">{detail.okrs?.items?.length || 0}</p>
+                          </article>
+                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Acciones pendientes</p>
+                            <p className="mt-2 text-sm font-semibold text-white">{detail.actions?.length || 0}</p>
+                          </article>
+                        </div>
+                      </div>
+                    ) : (
+                      <EmptyPanel text="No hay detalle adicional para esta persona." />
+                    )}
+                  </SurfaceCard>
+                </div>
               ) : null}
             </div>
           ) : null}
 
           {activeTab === "personas" ? (
             employees.length ? (
-              <SurfaceCard title="Personas visibles" subtitle="Cambia de persona sin salir del reporte.">
-                <div className="grid gap-3 xl:grid-cols-2">
+                <SurfaceCard title="Personas visibles" subtitle="Cambia de persona sin salir del reporte.">
+                  <div className="grid gap-3 xl:grid-cols-2">
                   {employees.map((employee) => (
                     <article
                       key={employee._id}
@@ -693,10 +727,7 @@ export default function ExecutiveReportPage() {
                       <div className="mt-4 flex justify-end">
                         <button
                           type="button"
-                          onClick={() => {
-                            setDraftFilters((current) => ({ ...current, employeeId: employee._id }));
-                            setFilters((current) => ({ ...current, employeeId: employee._id }));
-                          }}
+                          onClick={() => focusEmployeeDetail(employee._id)}
                           className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
                         >
                           Ver detalle

@@ -9,7 +9,7 @@ import { logAudit } from "../utils/audit.js";
 
 const router = express.Router();
 
-function resolveTenantIds(req) {
+export function resolveTenantIds(req) {
   const companyFromHeader = req.get("X-Company-Id");
   return {
     companyId: req.scope.isSuperAdmin
@@ -32,11 +32,11 @@ function validateCycleDates({ fechaInicio, fechaFin }) {
   const end = new Date(fechaFin);
 
   if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-    return { ok: false, mensaje: "Las fechas del periodo no son validas" };
+    return { ok: false, mensaje: "Las fechas del período no son válidas." };
   }
 
   if (start > end) {
-    return { ok: false, mensaje: "La fecha de inicio no puede ser posterior a la fecha de fin" };
+    return { ok: false, mensaje: "La fecha de inicio no puede ser posterior a la fecha de fin." };
   }
 
   return { ok: true, start, end };
@@ -75,12 +75,16 @@ router.post(
   async (req, res) => {
     const { companyId, schoolId } = resolveTenantIds(req);
 
-    if (!companyId || !schoolId || !req.body.anio || !req.body.periodo || !req.body.etapa) {
-      return res.status(400).json({ mensaje: "Debes indicar colegio, año, periodo y etapa" });
+    if (!companyId || !schoolId) {
+      return res.status(400).json({ mensaje: "No pudimos resolver la institución activa para crear el ciclo." });
+    }
+
+    if (!req.body.anio || !req.body.periodo || !req.body.etapa) {
+      return res.status(400).json({ mensaje: "Debes indicar año, período y etapa." });
     }
 
     if (!(await assertSchoolInCompany(companyId, schoolId))) {
-      return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
+      return res.status(400).json({ mensaje: "La institución activa no pertenece a tu organización." });
     }
 
     const dateValidation = validateCycleDates(req.body);

@@ -292,7 +292,7 @@ export default function EducationalExportsPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-2xl font-bold text-white">Centro de datos</h3>
         <p className="mt-2 text-[#9fb6c4]">
-          Herramienta operativa para descargas, historial e importación avanzada. Recomendado: usar Carga masiva unificada para el flujo principal.
+          Herramienta operativa para descargas, historial e importación avanzada. Recomendado: usar Importación para el flujo principal.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-2 text-xs text-sky-100">
@@ -303,7 +303,7 @@ export default function EducationalExportsPage() {
             onClick={() => setView("carga-masiva")}
             className="rounded-xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white"
           >
-            Ir a Carga masiva
+            Ir a Importación
           </button>
           <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
             Avanzado / legacy
