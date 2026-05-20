@@ -270,7 +270,7 @@ function RecordCard({ kind, record, canManage, onEdit, onProgress, onDelete }) {
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
           <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
             <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Meta</p>
             <p className="mt-2 text-base font-semibold text-white">
@@ -282,14 +282,6 @@ function RecordCard({ kind, record, canManage, onEdit, onProgress, onDelete }) {
             <p className="mt-2 text-base font-semibold text-white">
               {formatNumber(record.currentValue)} {kind === "kpi" ? record.unit || "" : ""}
             </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Peso</p>
-            <p className="mt-2 text-base font-semibold text-white">{record.weight ?? 1}</p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Origen</p>
-            <p className="mt-2 text-base font-semibold text-white">{record.source || "manual"}</p>
           </div>
         </div>
 
@@ -468,6 +460,7 @@ function RecordForm({
                 </option>
               ))}
             </select>
+            {errors.employeeId ? <p className="mt-1 text-xs text-rose-300">{errors.employeeId}</p> : null}
           </div>
 
           <div>
@@ -563,6 +556,7 @@ function RecordForm({
                 placeholder="Ej: 25"
               />
               {errors.weight ? <p className="mt-1 text-xs text-rose-300">{errors.weight}</p> : null}
+              <p className="mt-1 text-xs text-[#7f99a8]">Peso indica cuánto impacta este indicador dentro del conjunto total.</p>
             </div>
           )}
 
@@ -579,6 +573,7 @@ function RecordForm({
                 placeholder="Ej: 25"
               />
               {errors.weight ? <p className="mt-1 text-xs text-rose-300">{errors.weight}</p> : null}
+              <p className="mt-1 text-xs text-[#7f99a8]">Peso indica cuánto impacta este indicador dentro del conjunto total.</p>
             </div>
           ) : null}
 
@@ -668,6 +663,8 @@ export default function MetricsPage() {
 
     return [...byId.values()].sort((left, right) => left.label.localeCompare(right.label));
   }, [employees, kpiRecords, okrRecords]);
+
+  const allowedEmployeeIds = useMemo(() => new Set(employeeOptions.map((item) => item._id)), [employeeOptions]);
 
   const departmentOptions = useMemo(() => {
     const values = new Set();
@@ -999,6 +996,9 @@ export default function MetricsPage() {
 
     const form = activeEditor === "kpi" ? kpiForm : okrForm;
     const errors = validateRecordForm(activeEditor, form);
+    if (form.employeeId && !allowedEmployeeIds.has(form.employeeId)) {
+      errors.employeeId = "Selecciona un responsable dentro de tu alcance visible.";
+    }
     if (Object.keys(errors).length) {
       if (activeEditor === "kpi") setKpiErrors(errors);
       else setOkrErrors(errors);
@@ -1272,7 +1272,7 @@ export default function MetricsPage() {
                 <EmptyState
                   title="No hay KPIs/OKRs cargados todavia"
                   description="Podés crearlos manualmente o importarlos desde la plantilla oficial."
-                  actionLabel="Ir a Carga masiva"
+                  actionLabel="Ir a Importación"
                   onAction={() => setView("carga-masiva")}
                 />
               ) : null}

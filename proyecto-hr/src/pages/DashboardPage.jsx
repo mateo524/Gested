@@ -216,9 +216,9 @@ export default function DashboardPage() {
       }
       items.push({
         priority: "MEDIA",
-        title: "Validar proximas cargas masivas",
+        title: "Validar próximas importaciones",
         detail: "Importa empleados, usuarios y cat?logos con la plantilla oficial.",
-        actionLabel: "Ir a Carga masiva",
+        actionLabel: "Ir a Importación",
         goTo: "carga-masiva",
       });
       if (lowPerformance > 0) {
@@ -361,8 +361,7 @@ export default function DashboardPage() {
   const quickLinks = useMemo(() => {
     const items = [
       { label: "Personas", view: "empleados", show: !isEmpleado },
-      { label: "Carga masiva", view: "carga-masiva", show: !isEmpleado && !isLector },
-      { label: "Roles y accesos", view: "roles", show: !isEmpleado },
+      { label: "Importación", view: "carga-masiva", show: !isEmpleado && !isLector },
       { label: "Reporte ejecutivo", view: "reporte-ejecutivo", show: !isEmpleado },
       { label: "Evaluaciones", view: "evaluaciones", show: true },
       { label: "Objetivos / Indicadores", view: "metricas", show: !isEmpleado && !isLector },
