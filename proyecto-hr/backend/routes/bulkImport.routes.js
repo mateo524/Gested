@@ -76,6 +76,31 @@ export function buildBulkImportAnalyzeErrorPayload(error) {
   return { status, payload };
 }
 
+export function buildBulkImportAnalyzeResponsePayload({ analysis, job, previewToken }) {
+  const hasBlockingErrors = Array.isArray(analysis?.errors) && analysis.errors.length > 0;
+  const hasWarnings = Array.isArray(analysis?.warnings) && analysis.warnings.length > 0;
+  const message = hasBlockingErrors
+    ? "El archivo contiene errores de validacion. Revisa los detalles antes de continuar."
+    : hasWarnings
+      ? "El archivo se analizo con advertencias. Revisa la vista previa antes de confirmar."
+      : "El archivo se valido correctamente.";
+
+  return {
+    status: hasBlockingErrors ? 422 : 200,
+    payload: {
+      ok: !hasBlockingErrors,
+      code: hasBlockingErrors ? "BULK_IMPORT_VALIDATION_ERRORS" : "BULK_IMPORT_ANALYZED",
+      message,
+      importJobId: job._id,
+      previewToken,
+      summary: analysis.summary,
+      preview: analysis.preview,
+      errors: analysis.errors,
+      warnings: analysis.warnings,
+    },
+  };
+}
+
 router.get(
   "/template",
   auth,
@@ -127,16 +152,12 @@ router.post(
         schoolId,
         analysis,
       });
-
-      res.status(analysis.errors.length ? 422 : 200).json({
-        ok: analysis.errors.length === 0,
-        importJobId: job._id,
+      const { status, payload } = buildBulkImportAnalyzeResponsePayload({
+        analysis,
+        job,
         previewToken,
-        summary: analysis.summary,
-        preview: analysis.preview,
-        errors: analysis.errors,
-        warnings: analysis.warnings,
       });
+      res.status(status).json(payload);
     } catch (error) {
       const { status, payload } = buildBulkImportAnalyzeErrorPayload(error);
       res.status(status).json(payload);
