@@ -6,7 +6,10 @@ import Role from "../../models/Role.js";
 import School from "../../models/School.js";
 import User from "../../models/User.js";
 import { analyzeBulkImportWorkbook } from "../../services/bulkImportAnalyzer.js";
-import { buildBulkImportAnalyzeErrorPayload } from "../../routes/bulkImport.routes.js";
+import {
+  buildBulkImportAnalyzeErrorPayload,
+  buildBulkImportAnalyzeResponsePayload,
+} from "../../routes/bulkImport.routes.js";
 
 async function buildWorkbookBuffer(mutator) {
   const workbook = new ExcelJS.Workbook();
@@ -526,4 +529,26 @@ test("route helper serializa errores inesperados del analyze sin exponer stack",
   assert.equal(payload.message, "No pudimos analizar el archivo.");
   assert.deepEqual(payload.errors, []);
   assert.deepEqual(payload.warnings, []);
+});
+
+test("route helper serializa 422 de validacion con message, code y errores", () => {
+  const { status, payload } = buildBulkImportAnalyzeResponsePayload({
+    analysis: {
+      summary: { totalRows: 4, validRows: 2, warnings: 1, errors: 2, bySheet: {} },
+      preview: { employees: [] },
+      errors: [{ sheet: "Empleados", rowNumber: "2", field: "work_email", message: "work_email es obligatorio" }],
+      warnings: [{ sheet: "KPIs", rowNumber: "3", field: "active", message: "active sera normalizado", severity: "warning" }],
+    },
+    job: { _id: "job-1" },
+    previewToken: "preview-1",
+  });
+
+  assert.equal(status, 422);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.code, "BULK_IMPORT_VALIDATION_ERRORS");
+  assert.match(payload.message, /errores de validaci/i);
+  assert.equal(payload.importJobId, "job-1");
+  assert.equal(payload.previewToken, "preview-1");
+  assert.equal(Array.isArray(payload.errors), true);
+  assert.equal(Array.isArray(payload.warnings), true);
 });

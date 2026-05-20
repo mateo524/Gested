@@ -32,6 +32,24 @@ function combineSignals(timeoutSignal, externalSignal) {
   return bridge.signal;
 }
 
+function buildApiError({ response, data }) {
+  const baseMessage =
+    (typeof data === "object" && (data?.mensaje || data?.message)) ||
+    (typeof data === "string" && sanitizeServerMessage(data)) ||
+    "Ocurrió un error del servidor.";
+  const code = typeof data === "object" && data?.code ? ` [code: ${data.code}]` : "";
+  const request = typeof data === "object" && data?.request ? ` [request: ${data.request}]` : "";
+  const error = new Error(`${baseMessage}${code}${request}`);
+
+  error.status = response.status;
+  error.code = typeof data === "object" ? data?.code || "" : "";
+  error.data = typeof data === "object" ? data : null;
+  error.errors = Array.isArray(data?.errors) ? data.errors : [];
+  error.warnings = Array.isArray(data?.warnings) ? data.warnings : [];
+
+  return error;
+}
+
 export async function apiFetch(path, { token, headers, timeoutMs, signal, ...options } = {}) {
   const activeCompanyId = localStorage.getItem("active_company_id");
   const isGet = (options.method || "GET").toUpperCase() === "GET";
@@ -79,13 +97,7 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
   }
 
   if (!response.ok) {
-    const baseMessage =
-      (typeof data === "object" && (data?.mensaje || data?.message)) ||
-      (typeof data === "string" && sanitizeServerMessage(data)) ||
-      "Ocurrió un error del servidor.";
-    const code = typeof data === "object" && data?.code ? ` [code: ${data.code}]` : "";
-    const request = typeof data === "object" && data?.request ? ` [request: ${data.request}]` : "";
-    throw new Error(`${baseMessage}${code}${request}`);
+    throw buildApiError({ response, data });
   }
 
   return data;

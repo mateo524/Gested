@@ -93,6 +93,20 @@ function statusMeta(status) {
   return { label: "Valido", className: "border-emerald-300/30 bg-emerald-500/10 text-emerald-200", tone: "emerald" };
 }
 
+function getServerMessage(error) {
+  return error?.data?.message || error?.data?.mensaje || error?.message || "Ocurrió un error en el servidor.";
+}
+
+function isAnalyzeValidationError(error) {
+  return (
+    Number(error?.status) === 422 &&
+    error?.data &&
+    typeof error.data === "object" &&
+    error.data.summary &&
+    Array.isArray(error.data.errors)
+  );
+}
+
 function SurfaceCard({ title, subtitle, actions, children }) {
   return (
     <section className="pf-card p-5 md:p-6">
@@ -456,20 +470,47 @@ export default function BulkImportPage() {
         data.summary?.errors
           ? "warning"
           : "success",
-        data.summary?.errors
-          ? "Hay errores que deben corregirse antes de importar."
-          : "El archivo se valido correctamente."
+        data.message ||
+          (data.summary?.errors
+            ? "El archivo contiene errores de validación. Revisá los detalles antes de continuar."
+            : "El archivo se validó correctamente.")
       );
       await loadJobs();
     } catch (error) {
       const text = String(error.message || "").toLowerCase();
-      setFeedback(
-        "error",
-        text.includes("tardo demasiado")
-          ? "La validacion demoro demasiado. Reintenta con un archivo mas chico o vuelve a intentar en unos segundos."
-          : error.message
-      );
-      setAnalyzeResponse(null);
+
+      if (isAnalyzeValidationError(error)) {
+        setAnalyzeResponse(error.data);
+        setResult(null);
+        setSelectedJob(null);
+        setSelectedTab(error.data.summary?.errors ? "errors" : "employees");
+        setFeedback(
+          "warning",
+          error.data.message || "El archivo contiene errores de validación. Revisá los detalles antes de continuar."
+        );
+        await loadJobs();
+      } else if (text.includes("tardo demasiado")) {
+        setAnalyzeResponse(null);
+        setFeedback(
+          "error",
+          "La validación tardó demasiado. Probá con un archivo más chico o intentá nuevamente."
+        );
+      } else if (Number(error?.status) === 400 && error?.code === "BULK_IMPORT_INVALID_FILE") {
+        setAnalyzeResponse(null);
+        setFeedback(
+          "error",
+          getServerMessage(error) || "No pudimos leer el archivo .xlsx. Verifica que no esté dañado y vuelve a exportarlo antes de reintentar."
+        );
+      } else if (Number(error?.status) === 401) {
+        setAnalyzeResponse(null);
+        setFeedback("error", "Tu sesión expiró. Vuelve a iniciar sesión e intenta nuevamente.");
+      } else if (Number(error?.status) === 403) {
+        setAnalyzeResponse(null);
+        setFeedback("error", "No tienes permisos para validar archivos en esta organización.");
+      } else {
+        setAnalyzeResponse(null);
+        setFeedback("error", getServerMessage(error));
+      }
     } finally {
       setIsAnalyzing(false);
     }
