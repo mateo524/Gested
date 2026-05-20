@@ -6,6 +6,7 @@ import Role from "../../models/Role.js";
 import School from "../../models/School.js";
 import User from "../../models/User.js";
 import { analyzeBulkImportWorkbook } from "../../services/bulkImportAnalyzer.js";
+import { buildBulkImportAnalyzeErrorPayload } from "../../routes/bulkImport.routes.js";
 
 async function buildWorkbookBuffer(mutator) {
   const workbook = new ExcelJS.Workbook();
@@ -386,4 +387,143 @@ test("analyze ignora companyId y schoolId del Excel y los marca como warning", a
   } finally {
     restores.forEach((restore) => restore());
   }
+});
+
+test("analyze devuelve error controlado cuando el archivo xlsx esta dañado", async () => {
+  await assert.rejects(
+    () =>
+      analyzeBulkImportWorkbook({
+        buffer: Buffer.from("esto-no-es-un-xlsx-real"),
+        companyId: "company1",
+        schoolId: "school1",
+      }),
+    (error) => {
+      assert.equal(error.status, 400);
+      assert.equal(error.code, "BULK_IMPORT_INVALID_FILE");
+      assert.match(error.message, /No pudimos leer el archivo/i);
+      return true;
+    }
+  );
+});
+
+test("analyze no explota con una hoja vacia", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      const kpis = workbook.getWorksheet("KPIs");
+      kpis.spliceRows(2, kpis.rowCount - 1);
+    });
+
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(analysis.summary.bySheet.KPIs.totalRows, 0);
+    assert.equal(Array.isArray(analysis.errors), true);
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze no explota cuando falta una columna requerida", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("KPIs").getCell("A1").value = "";
+    });
+
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.sheet === "KPIs" && item.message.includes("Falta la columna requerida kpi_name")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze no explota con KPI incompleto y devuelve error de fila", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("KPIs").getCell("C2").value = "";
+    });
+
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.sheet === "KPIs" && item.field === "target_value" && item.message.includes("numerico")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("analyze no explota con OKR incompleto y devuelve error de fila", async () => {
+  const restores = [
+    patchCollection(Employee, []),
+    patchCollection(User, []),
+    patchCollection(Role, [{ _id: "r1", code: "RRHH", nombre: "RRHH" }]),
+    patchCollection(School, [{ _id: "school1", nombre: "School 1" }]),
+  ];
+
+  try {
+    const buffer = await buildWorkbookBuffer((workbook) => {
+      workbook.getWorksheet("OKRs").getCell("B2").value = "";
+    });
+
+    const analysis = await analyzeBulkImportWorkbook({
+      buffer,
+      companyId: "company1",
+      schoolId: "school1",
+    });
+
+    assert.equal(
+      analysis.errors.some((item) => item.sheet === "OKRs" && item.field === "key_result_title" && item.message.includes("obligatorio")),
+      true
+    );
+  } finally {
+    restores.forEach((restore) => restore());
+  }
+});
+
+test("route helper serializa errores inesperados del analyze sin exponer stack", () => {
+  const { status, payload } = buildBulkImportAnalyzeErrorPayload(new Error("boom"));
+
+  assert.equal(status, 500);
+  assert.equal(payload.ok, false);
+  assert.equal(payload.code, "BULK_IMPORT_ANALYZE_FAILED");
+  assert.equal(payload.message, "No pudimos analizar el archivo.");
+  assert.deepEqual(payload.errors, []);
+  assert.deepEqual(payload.warnings, []);
 });

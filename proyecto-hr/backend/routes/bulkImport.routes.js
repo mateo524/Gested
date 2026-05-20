@@ -50,6 +50,32 @@ export const bulkImportReadAccess = requireAnyPermission(
   PERMISSIONS.VIEW_AUDIT
 );
 
+export function buildBulkImportAnalyzeErrorPayload(error) {
+  const isDevelopment = process.env.NODE_ENV === "development";
+  const status = Number(error?.status || 500);
+  const code = error?.code || "BULK_IMPORT_ANALYZE_FAILED";
+  const message =
+    status >= 500
+      ? "No pudimos analizar el archivo."
+      : error?.publicMessage || error?.message || "No pudimos analizar el archivo.";
+
+  const payload = {
+    ok: false,
+    code,
+    message,
+    errors: Array.isArray(error?.errors) ? error.errors : [],
+    warnings: Array.isArray(error?.warnings) ? error.warnings : [],
+  };
+
+  if (isDevelopment && error?.detail) {
+    payload.detail = error.detail;
+  } else if (isDevelopment && status >= 500 && error?.message) {
+    payload.detail = error.message;
+  }
+
+  return { status, payload };
+}
+
 router.get(
   "/template",
   auth,
@@ -88,28 +114,33 @@ router.post(
       return res.status(400).json({ ok: false, mensaje: "No se pudo resolver la organizacion desde el scope autenticado" });
     }
 
-    const analysis = await analyzeBulkImportWorkbook({
-      buffer: req.file.buffer,
-      companyId,
-      schoolId,
-    });
-    const { job, previewToken } = await createBulkImportAnalysisJob({
-      req,
-      file: req.file,
-      companyId,
-      schoolId,
-      analysis,
-    });
+    try {
+      const analysis = await analyzeBulkImportWorkbook({
+        buffer: req.file.buffer,
+        companyId,
+        schoolId,
+      });
+      const { job, previewToken } = await createBulkImportAnalysisJob({
+        req,
+        file: req.file,
+        companyId,
+        schoolId,
+        analysis,
+      });
 
-    res.status(analysis.errors.length ? 422 : 200).json({
-      ok: analysis.errors.length === 0,
-      importJobId: job._id,
-      previewToken,
-      summary: analysis.summary,
-      preview: analysis.preview,
-      errors: analysis.errors,
-      warnings: analysis.warnings,
-    });
+      res.status(analysis.errors.length ? 422 : 200).json({
+        ok: analysis.errors.length === 0,
+        importJobId: job._id,
+        previewToken,
+        summary: analysis.summary,
+        preview: analysis.preview,
+        errors: analysis.errors,
+        warnings: analysis.warnings,
+      });
+    } catch (error) {
+      const { status, payload } = buildBulkImportAnalyzeErrorPayload(error);
+      res.status(status).json(payload);
+    }
   }
 );
 
