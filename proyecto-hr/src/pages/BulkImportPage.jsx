@@ -4,25 +4,31 @@ import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
 const sheetLabels = {
-  organization: "Organizacion",
+  organization: "Organización",
   departments: "Departamentos",
   employees: "Empleados",
   usersAndRoles: "Usuarios y Roles",
   managers: "Managers",
   kpis: "KPIs",
   okrs: "OKRs",
+  evaluations: "Evaluaciones",
+  performanceMeasurements: "Mediciones_Desempeno",
+  developmentPlans: "Planes_Desarrollo",
 };
 
 const templateSheets = [
   { key: "instructions", label: "Instrucciones", detail: "Uso general de la plantilla y reglas de carga." },
-  { key: "organization", label: "Organizacion", detail: "Datos institucionales de referencia." },
+  { key: "organization", label: "Organización", detail: "Datos institucionales de referencia." },
   { key: "departments", label: "Departamentos", detail: "Areas, departamentos o unidades internas." },
   { key: "employees", label: "Empleados", detail: "Personas, legajos y datos base." },
   { key: "usersAndRoles", label: "Usuarios_y_Roles", detail: "Accesos, roles y scopes permitidos." },
   { key: "managers", label: "Managers", detail: "Relaciones de liderazgo y responsables." },
   { key: "kpis", label: "KPIs", detail: "Indicadores operativos cuando existan." },
   { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del periodo." },
-  { key: "catalogs", label: "Catalogos", detail: "Valores validos de roles, scopes y estados." },
+  { key: "evaluations", label: "Evaluaciones", detail: "Cabecera de evaluaciones existentes por empleado y ciclo." },
+  { key: "performanceMeasurements", label: "Mediciones_Desempeno", detail: "Metas, competencias, autoevaluaciones y evidencias por evaluación." },
+  { key: "developmentPlans", label: "Planes_Desarrollo", detail: "Planes de desarrollo previos o activos para importar o validar." },
+  { key: "catalogs", label: "Catálogos", detail: "Valores válidos de roles, scopes y estados." },
 ];
 
 const previewTabs = [
@@ -32,16 +38,19 @@ const previewTabs = [
   { key: "managers", label: "Managers" },
   { key: "kpis", label: "KPIs" },
   { key: "okrs", label: "OKRs" },
+  { key: "evaluations", label: "Evaluaciones" },
+  { key: "performanceMeasurements", label: "Mediciones" },
+  { key: "developmentPlans", label: "Desarrollo" },
   { key: "errors", label: "Errores" },
 ];
 
 const stepDefinitions = [
   { key: "template", number: 1, title: "Descargar plantilla", detail: "Baja la plantilla oficial y revisa sus hojas." },
-  { key: "complete", number: 2, title: "Completar plantilla", detail: "Carga personas, roles, managers, KPIs y OKRs." },
+  { key: "complete", number: 2, title: "Completar plantilla", detail: "Carga personas, roles, managers, KPIs, OKRs, evaluaciones y planes si ya existen." },
   { key: "upload", number: 3, title: "Subir archivo", detail: "Selecciona o arrastra el archivo .xlsx." },
-  { key: "validation", number: 4, title: "Validacion", detail: "Revisamos estructura, filas validas y bloqueos." },
+  { key: "validation", number: 4, title: "Validación", detail: "Revisamos estructura, filas válidas y bloqueos." },
   { key: "preview", number: 5, title: "Vista previa", detail: "Chequea cada hoja antes de confirmar." },
-  { key: "confirm", number: 6, title: "Confirmar importacion", detail: "Solo si no hay errores bloqueantes." },
+  { key: "confirm", number: 6, title: "Confirmar importación", detail: "Solo si no hay errores bloqueantes." },
   { key: "result", number: 7, title: "Resultado", detail: "Consulta creados, actualizados y omitidos." },
 ];
 
@@ -80,7 +89,10 @@ function getNormalizedSheetName(tabKey) {
   if (tabKey === "managers") return "Managers";
   if (tabKey === "kpis") return "KPIs";
   if (tabKey === "okrs") return "OKRs";
-  if (tabKey === "organization") return "Organizacion";
+  if (tabKey === "evaluations") return "Evaluaciones";
+  if (tabKey === "performanceMeasurements") return "Mediciones_Desempeno";
+  if (tabKey === "developmentPlans") return "Planes_Desarrollo";
+  if (tabKey === "organization") return "Organización";
   return sheetLabels[tabKey] || tabKey;
 }
 
@@ -327,6 +339,9 @@ export default function BulkImportPage() {
       managers: preview?.managers || [],
       kpis: preview?.kpis || [],
       okrs: preview?.okrs || [],
+      evaluations: preview?.evaluations || [],
+      performanceMeasurements: preview?.performanceMeasurements || [],
+      developmentPlans: preview?.developmentPlans || [],
     }),
     [preview]
   );
@@ -363,6 +378,9 @@ export default function BulkImportPage() {
       managersToCreate: preview?.managers?.length || 0,
       kpisToCreate: preview?.kpis?.length || 0,
       okrsToCreate: preview?.okrs?.length || 0,
+      evaluationsToReview: preview?.evaluations?.length || 0,
+      measurementsToReview: preview?.performanceMeasurements?.length || 0,
+      developmentPlansToReview: preview?.developmentPlans?.length || 0,
       skipped: 0,
     }),
     [preview]
@@ -406,7 +424,7 @@ export default function BulkImportPage() {
 
   const previewCountLabel = useMemo(() => {
     const rows = previewRowsByTab[selectedTab] || [];
-    if (!rows.length) return "No encontramos datos para mostrar todavia.";
+    if (!rows.length) return "No encontramos datos para mostrar todav?a.";
     if (rows.length > 8) return `Mostrando 8 de ${rows.length} registros en la vista previa.`;
     return `${rows.length} registros visibles en esta vista previa.`;
   }, [previewRowsByTab, selectedTab]);
@@ -565,7 +583,7 @@ export default function BulkImportPage() {
         timeoutMs: 120000,
       });
       setResult(data);
-      setFeedback(data.ok ? "success" : "error", data.ok ? "Importacion completada." : "La importacion no pudo completarse.");
+      setFeedback(data.ok ? "success" : "error", data.ok ? "Importaci?n completada." : "La importaci?n no pudo completarse.");
       window.requestAnimationFrame(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -771,9 +789,9 @@ export default function BulkImportPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <SurfaceCard title="Validacion" subtitle="Resumen general del analyze y estado por solapa.">
+        <SurfaceCard title="Validaci?n" subtitle="Resumen general del an?lisis y estado por solapa.">
           {!summary ? (
-            <EmptyState text="No encontramos datos para mostrar todavia. Sube y valida una plantilla para ver el resumen." />
+            <EmptyState text="No encontramos datos para mostrar todav?a. Sube y valida una plantilla para ver el resumen." />
           ) : (
             <div className="space-y-5">
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -792,6 +810,9 @@ export default function BulkImportPage() {
                 <SheetStatusCard label="Managers" stats={summary.bySheet?.managers} />
                 <SheetStatusCard label="KPIs" stats={summary.bySheet?.kpis} />
                 <SheetStatusCard label="OKRs" stats={summary.bySheet?.okrs} />
+                <SheetStatusCard label="Evaluaciones" stats={summary.bySheet?.evaluations} />
+                <SheetStatusCard label="Mediciones" stats={summary.bySheet?.performanceMeasurements} />
+                <SheetStatusCard label="Planes de desarrollo" stats={summary.bySheet?.developmentPlans} />
               </div>
             </div>
           )}
@@ -811,7 +832,16 @@ export default function BulkImportPage() {
                 <StatCard label="Managers" value={confirmSummary.managersToCreate} hint="Responsables detectados" />
                 <StatCard label="KPIs detectados" value={confirmSummary.kpisToCreate} hint="Registros operativos" />
                 <StatCard label="OKRs detectados" value={confirmSummary.okrsToCreate} hint="Registros operativos" />
+                <StatCard label="Evaluaciones" value={confirmSummary.evaluationsToReview} hint="Se validan en preview" />
+                <StatCard label="Mediciones" value={confirmSummary.measurementsToReview} hint="Se validan en preview" />
+                <StatCard label="Planes desarrollo" value={confirmSummary.developmentPlansToReview} hint="Se validan en preview" />
               </div>
+
+              {(confirmSummary.evaluationsToReview || confirmSummary.measurementsToReview || confirmSummary.developmentPlansToReview) ? (
+                <div className="pf-alert-info">
+                  Evaluaciones, Mediciones_Desempeno y Planes_Desarrollo ya pueden validarse y verse en la vista previa. Su confirmación completa todavía queda fuera de esta importación guiada.
+                </div>
+              ) : null}
 
               {blockingErrors ? (
                 <div className="pf-alert-error">Hay errores que deben corregirse antes de importar.</div>
@@ -826,7 +856,7 @@ export default function BulkImportPage() {
                   disabled={!canManageImport || isReadOnly || isConfirming || !analyzeResponse?.previewToken || blockingErrors > 0}
                   className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {isConfirming ? "Confirmando importacion..." : "Confirmar importacion"}
+                  {isConfirming ? "Confirmando importaci?n..." : "Confirmar importaci?n"}
                 </button>
                 <button type="button" onClick={clearFlow} className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white">
                   Limpiar flujo
@@ -902,7 +932,7 @@ export default function BulkImportPage() {
         ) : (
           <div className="space-y-4">
             <div className={result.ok ? "pf-alert-success" : "pf-alert-error"}>
-              {result.ok ? "Importacion completada." : "La importacion no pudo completarse."}
+              {result.ok ? "Importaci?n completada." : "La importaci?n no pudo completarse."}
             </div>
             <JobResultCards result={result.result || {}} />
             <div className="flex flex-wrap gap-3">
@@ -967,7 +997,7 @@ export default function BulkImportPage() {
                 {!jobs.length ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-6 text-sm text-[#8FA9B7]">
-                      No encontramos datos para mostrar todavia.
+                      No encontramos datos para mostrar todav?a.
                     </td>
                   </tr>
                 ) : null}

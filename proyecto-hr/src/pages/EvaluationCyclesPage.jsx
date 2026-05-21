@@ -12,6 +12,12 @@ const emptyForm = {
   fechaFin: "",
 };
 
+function formatStage(value) {
+  if (value === "REVISION_INTERMEDIA") return "Seguimiento";
+  if (value === "EVALUACION_FINAL") return "Evaluación final";
+  return "Inicio";
+}
+
 export default function EvaluationCyclesPage() {
   const { token } = useAuth();
   const { searchQuery } = useView();
@@ -25,6 +31,7 @@ export default function EvaluationCyclesPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const formRef = useRef(null);
   const listRef = useRef(null);
+
   const visibleCycles = useMemo(() => {
     const term = String(searchQuery || "").trim().toLowerCase();
     if (!term) return cycles;
@@ -56,12 +63,12 @@ export default function EvaluationCyclesPage() {
     event.preventDefault();
     const nextErrors = {};
     if (!form.periodo?.trim()) nextErrors.periodo = "El período es obligatorio.";
-    if (!form.fechaInicio) nextErrors.fechaInicio = "Fecha de inicio obligatoria.";
-    if (!form.fechaFin) nextErrors.fechaFin = "Fecha de cierre obligatoria.";
+    if (!form.fechaInicio) nextErrors.fechaInicio = "La fecha de inicio es obligatoria.";
+    if (!form.fechaFin) nextErrors.fechaFin = "La fecha de cierre es obligatoria.";
     setFieldErrors(nextErrors);
 
     if (Object.keys(nextErrors).length) {
-      setMessage("Completá período y rango de fechas para guardar.");
+      setMessage("Completá período y rango de fechas para guardar el ciclo.");
       setMessageType("warning");
       return;
     }
@@ -138,28 +145,23 @@ export default function EvaluationCyclesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+    <div className="space-y-5">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Ciclos de evaluación</h3>
+        <h3 className="mt-3 text-3xl font-bold text-white">Ciclos</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Definí ciclos claros para ordenar evaluaciones, seguimiento y reportes dentro de la institución activa.
+          Definí el ciclo, el período y las fechas clave. La organización se toma automáticamente desde tu tenant activo.
         </p>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
-            El ciclo se crea en la institución activa. Solo definí período, etapa, estado y fechas.
+            Completá período, estado, etapa y rango de fechas. No hace falta elegir institución.
           </p>
 
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución</p>
-              <p className="mt-1 text-sm text-white">Se toma automáticamente desde tu tenant activo.</p>
-            </div>
-
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Año</label>
@@ -174,13 +176,13 @@ export default function EvaluationCyclesPage() {
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Período</label>
                 <input
                   className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"}`}
-                  placeholder="Ej: 1er trimestre"
+                  placeholder="Ej: Anual 2026 o Segundo semestre"
                   value={form.periodo}
                   onChange={(e) => setForm({ ...form, periodo: e.target.value })}
                 />
+                {fieldErrors.periodo ? <p className="mt-1 text-xs text-rose-300">{fieldErrors.periodo}</p> : null}
               </div>
             </div>
-            {fieldErrors.periodo ? <p className="text-xs text-rose-300">{fieldErrors.periodo}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
@@ -249,18 +251,28 @@ export default function EvaluationCyclesPage() {
           </form>
         </section>
 
-        <section ref={listRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Ciclos cargados</h4>
-          <div className="mt-6 space-y-4">
+        <section ref={listRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h4 className="text-xl font-semibold text-white">Ciclos cargados</h4>
+              <p className="mt-1 text-sm text-[#9fb6c4]">Priorizamos período, etapa, estado y fechas para que la lectura sea simple.</p>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
+              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Registros</p>
+              <p className="mt-1 text-lg font-semibold text-white">{visibleCycles.length}</p>
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-4">
             {isLoading ? <p className="pf-alert-info">Cargando ciclos...</p> : null}
             {!isLoading && visibleCycles.length
               ? visibleCycles.map((cycle) => (
-                  <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                  <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-semibold text-white">
                         {cycle.periodo} {cycle.anio}
                       </p>
-                      <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{cycle.etapa}</span>
+                      <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{formatStage(cycle.etapa)}</span>
                       <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{cycle.estado}</span>
                     </div>
                     <p className="mt-2 text-sm text-[#9fb6c4]">
@@ -286,7 +298,11 @@ export default function EvaluationCyclesPage() {
                   </article>
                 ))
               : null}
-            {!isLoading && !visibleCycles.length ? <p className="pf-alert-warning">{searchQuery ? "No encontramos ciclos para la búsqueda actual." : "Todavía no hay ciclos definidos."}</p> : null}
+            {!isLoading && !visibleCycles.length ? (
+              <p className="pf-alert-warning">
+                {searchQuery ? "No encontramos ciclos para la búsqueda actual." : "Todavía no hay ciclos definidos."}
+              </p>
+            ) : null}
           </div>
         </section>
       </div>

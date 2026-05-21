@@ -13,23 +13,23 @@ test("la plantilla oficial incluye todas las solapas requeridas", async () => {
   await workbook.xlsx.load(buffer);
 
   assert.equal(BULK_IMPORT_TEMPLATE_FILENAME, "Plantilla_Performia_Importacion.xlsx");
-  assert.deepEqual(
-    workbook.worksheets.map((sheet) => sheet.name),
-    [
-      "Instrucciones",
-      "Organización",
-      "Departamentos",
-      "Empleados",
-      "Usuarios_y_Roles",
-      "Managers",
-      "KPIs",
-      "OKRs",
-      "Catálogos",
-    ]
-  );
+  assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), [
+    "Instrucciones",
+    "Organización",
+    "Departamentos",
+    "Empleados",
+    "Usuarios_y_Roles",
+    "Managers",
+    "KPIs",
+    "OKRs",
+    "Evaluaciones",
+    "Mediciones_Desempeno",
+    "Planes_Desarrollo",
+    "Catálogos",
+  ]);
 });
 
-test("la hoja Catalogos expone valores permitidos y excluye SUPER_ADMIN/PLATFORM", async () => {
+test("la hoja Catálogos expone valores permitidos y excluye SUPER_ADMIN/PLATFORM", async () => {
   const buffer = await buildBulkImportTemplateBuffer();
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);

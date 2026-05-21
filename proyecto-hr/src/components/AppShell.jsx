@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
-import { isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
+import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
 import AppLogo from "./brand/AppLogo";
 import useClickOutside from "../hooks/useClickOutside";
 
@@ -66,7 +66,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
             <div>
               <p className="text-sm font-semibold text-white">{t("topbar.news", "Novedades")}</p>
               <span className="text-xs text-[#89a3b1]">
-                {unreadCount ? `${unreadCount} nuevas` : t("topbar.upToDate", "Al d?a")}
+                {unreadCount ? `${unreadCount} nuevas` : t("topbar.upToDate", "Al día")}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -96,9 +96,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                 <div
                   key={item._id}
                   className={`rounded-2xl border px-3 py-3 text-left ${
-                    item.isRead
-                      ? "border-white/10 bg-[#0f1d26]"
-                      : "border-[#4f7cff]/30 bg-[#12243b]"
+                    item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#4f7cff]/30 bg-[#12243b]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -111,9 +109,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                           </span>
                         ) : null}
                       </div>
-                      <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">
-                        {item.body || item.cuerpo}
-                      </p>
+                      <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">{item.body || item.cuerpo}</p>
                     </div>
                     <span
                       className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
@@ -158,7 +154,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
   );
 }
 
-function LanguageMenu({ language, setLanguage, t }) {
+function LanguageMenu({ setLanguage, t }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   useClickOutside(containerRef, () => setOpen(false), open);
@@ -171,32 +167,45 @@ function LanguageMenu({ language, setLanguage, t }) {
         className="rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm text-white transition hover:bg-[#172c39]"
         aria-label={t("common.language", "Idioma")}
       >
-        {language === "en" ? "EN" : "ES"}
+        ES
       </button>
       {open ? (
-        <div className="absolute right-0 z-30 mt-3 w-40 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
-          {[
-            { key: "es", label: t("common.spanish", "Español") },
-            { key: "en", label: t("common.english", "English") },
-          ].map((option) => (
-            <button
-              key={option.key}
-              type="button"
-              onClick={() => {
-                setLanguage(option.key);
-                setOpen(false);
-              }}
-              className={`flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm transition ${
-                language === option.key ? "bg-[#122f55] text-white" : "text-[#c7d5dc] hover:bg-white/5 hover:text-white"
-              }`}
-            >
-              <span>{option.label}</span>
-              {language === option.key ? <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" /> : null}
-            </button>
-          ))}
+        <div className="absolute right-0 z-30 mt-3 w-44 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+          <button
+            type="button"
+            onClick={() => {
+              setLanguage("es");
+              setOpen(false);
+            }}
+            className="flex w-full items-center justify-between rounded-2xl bg-[#122f55] px-3 py-2 text-left text-sm text-white"
+          >
+            <span>{t("common.spanish", "Español")}</span>
+            <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" />
+          </button>
+          <div className="mt-2 rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-2 text-left text-xs text-[#8ea5b3]">
+            English próximamente
+          </div>
         </div>
       ) : null}
     </div>
+  );
+}
+
+function SearchResultItem({ item, onSelect }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(item)}
+      className="flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-white/5"
+    >
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-white">{item.label}</p>
+        <p className="mt-1 text-xs text-[#8ea5b3]">{item.detail}</p>
+      </div>
+      <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
+        {item.group}
+      </span>
+    </button>
   );
 }
 
@@ -204,6 +213,7 @@ function AppIcon({ name, active }) {
   const className = `h-5 w-5 ${active ? "text-white" : "text-[#8ea5b3]"}`;
   switch (name) {
     case "inicio":
+    case "dashboard":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
           <path d="M3 10.5L12 3l9 7.5" />
@@ -211,12 +221,27 @@ function AppIcon({ name, active }) {
         </svg>
       );
     case "personas":
+    case "empleados":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
           <path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
           <path d="M16 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
           <path d="M3.5 20a5.5 5.5 0 0 1 9 0" />
           <path d="M13 20a4.5 4.5 0 0 1 7.5-2.8" />
+        </svg>
+      );
+    case "usuarios":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
+          <path d="M4 20a8 8 0 0 1 16 0" />
+        </svg>
+      );
+    case "ciclos":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
+          <path d="M7 3v4M17 3v4M3.5 10h17" />
         </svg>
       );
     case "evaluaciones":
@@ -229,7 +254,15 @@ function AppIcon({ name, active }) {
           <path d="M14.5 16.5l1.7 1.7 3.3-4" />
         </svg>
       );
+    case "competencias":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7l7-4z" />
+          <path d="M9 12l2 2 4-4" />
+        </svg>
+      );
     case "objetivos":
+    case "metricas":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
           <path d="M12 12m-8 0a8 8 0 1 0 16 0 8 8 0 1 0-16 0" />
@@ -239,6 +272,7 @@ function AppIcon({ name, active }) {
         </svg>
       );
     case "desarrollo":
+    case "planes":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
           <path d="M8 16l-2 5" />
@@ -247,7 +281,7 @@ function AppIcon({ name, active }) {
         </svg>
       );
     case "reportes":
-    case "reportes-globales":
+    case "reporte-ejecutivo":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
           <path d="M5 20V8" />
@@ -255,8 +289,8 @@ function AppIcon({ name, active }) {
           <path d="M19 20v-6" />
         </svg>
       );
-    case "datos":
     case "importacion":
+    case "carga-masiva":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
           <path d="M12 4v10" />
@@ -264,25 +298,13 @@ function AppIcon({ name, active }) {
           <path d="M4 20h16" />
         </svg>
       );
-    case "configuracion":
-    case "plataforma":
+    case "novedades":
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M12 8.5A3.5 3.5 0 1 0 12 15.5A3.5 3.5 0 1 0 12 8.5z" />
-          <path d="M19.4 15a1 1 0 0 0 .2 1.1l.1.1a2 2 0 0 1-2.8 2.8l-.1-.1a1 1 0 0 0-1.1-.2 1 1 0 0 0-.6.9V20a2 2 0 0 1-4 0v-.2a1 1 0 0 0-.6-.9 1 1 0 0 0-1.1.2l-.1.1a2 2 0 0 1-2.8-2.8l.1-.1a1 1 0 0 0 .2-1.1 1 1 0 0 0-.9-.6H4a2 2 0 0 1 0-4h.2a1 1 0 0 0 .9-.6 1 1 0 0 0-.2-1.1l-.1-.1a2 2 0 0 1 2.8-2.8l.1.1a1 1 0 0 0 1.1.2 1 1 0 0 0 .6-.9V4a2 2 0 0 1 4 0v.2a1 1 0 0 0 .6.9 1 1 0 0 0 1.1-.2l.1-.1a2 2 0 0 1 2.8 2.8l-.1.1a1 1 0 0 0-.2 1.1 1 1 0 0 0 .9.6h.2a2 2 0 0 1 0 4h-.2a1 1 0 0 0-.9.6z" />
-        </svg>
-      );
-    case "organizaciones":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M4 20V6l8-3 8 3v14" />
-          <path d="M9 20v-4h6v4" />
-          <path d="M8 9h.01" />
-          <path d="M12 9h.01" />
-          <path d="M16 9h.01" />
-          <path d="M8 13h.01" />
-          <path d="M12 13h.01" />
-          <path d="M16 13h.01" />
+          <path d="M6 5h12" />
+          <path d="M6 10h12" />
+          <path d="M6 15h8" />
+          <rect x="4" y="3" width="16" height="18" rx="2.5" />
         </svg>
       );
     default:
@@ -294,47 +316,23 @@ function AppIcon({ name, active }) {
   }
 }
 
-function firstVisibleView(items) {
-  return items.find((item) => item.show)?.key || null;
-}
-
-function buildConfigSubmenu(visibleViews) {
-  return [
-    { label: "Organización", viewKey: visibleViews.some((item) => item.key === "settings") ? "settings" : null },
-    { label: "Usuarios", viewKey: visibleViews.some((item) => item.key === "usuarios") ? "usuarios" : null },
-    { label: "Ciclos", viewKey: visibleViews.some((item) => item.key === "ciclos") ? "ciclos" : null },
-    { label: "Importación", viewKey: visibleViews.some((item) => item.key === "carga-masiva") ? "carga-masiva" : null },
-  ].filter((item) => item.viewKey);
-}
-
 function translateNavLabel(key, fallback, t) {
   const map = {
     dashboard: "nav.home",
     empleados: "nav.people",
-    evaluaciones: "nav.evaluations",
+    usuarios: "nav.users",
     ciclos: "nav.cycles",
-    metricas: "nav.metrics",
+    evaluaciones: "nav.evaluations",
     competencias: "nav.skills",
+    metricas: "nav.metrics",
     planes: "nav.development",
     "reporte-ejecutivo": "nav.report",
-    "bases-descargas": "nav.dataCenter",
     "carga-masiva": "nav.import",
-    usuarios: "nav.users",
-    roles: "nav.settings",
-    settings: "nav.settings",
-    organizaciones: "nav.organizations",
-    "archivo-central": "nav.platform",
-    inicio: "nav.home",
-    personas: "nav.people",
-    objetivos: "nav.metricsShort",
-    desarrollo: "nav.development",
-    reportes: "nav.report",
-    datos: "nav.import",
-    configuracion: "nav.settings",
-    plataforma: "nav.platform",
-    importacion: "nav.import",
-    "reportes-globales": "nav.report",
     novedades: "nav.news",
+    organizaciones: "nav.organizations",
+    settings: "nav.settings",
+    roles: "nav.settings",
+    "archivo-central": "nav.platform",
   };
   return t(map[key] || "", fallback);
 }
@@ -366,203 +364,78 @@ export default function AppShell({
   } = useAuth();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
   const isManager = isManagerUser(user);
-  const isReadOnly = isReadOnlyUser(user, hasPermission);
+  const searchRef = useRef(null);
+  useClickOutside(searchRef, () => setSearchOpen(false), searchOpen);
 
   const allViews = useMemo(
     () => [
-      { key: "dashboard", label: "Inicio", shortLabel: "Inicio", show: true, section: isSuperAdmin ? "plataforma" : "inicio" },
-      {
-        key: "novedades",
-        label: "Novedades",
-        shortLabel: "Novedades",
-        show: true,
-        section: "inicio",
-      },
-      {
-        key: "empleados",
-        label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas",
-        shortLabel: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas",
-        show: hasPermission("manage_employees"),
-        section: "personas",
-      },
-      {
-        key: "evaluaciones",
-        label: isEmployee ? "Mis evaluaciones" : "Evaluaciones",
-        shortLabel: isEmployee ? "Mis evaluaciones" : "Evaluaciones",
-        show:
-          hasPermission("manage_evaluations") ||
-          hasPermission("evaluate_team") ||
-          hasPermission("self_evaluate") ||
-          hasPermission("view_reports"),
-        section: "evaluaciones",
-      },
-      {
-        key: "ciclos",
-        label: "Ciclos",
-        shortLabel: "Ciclos",
-        show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee),
-        section: "evaluaciones",
-      },
-      {
-        key: "metricas",
-        label: "Objetivos / Indicadores",
-        shortLabel: "Indicadores",
-        show: hasPermission("manage_metrics"),
-        section: "objetivos",
-      },
-      {
-        key: "competencias",
-        label: "Competencias",
-        shortLabel: "Competencias",
-        show: hasPermission("manage_competencies"),
-        section: "objetivos",
-      },
-      {
-        key: "planes",
-        label: isEmployee ? "Mi desarrollo" : "Desarrollo",
-        shortLabel: isEmployee ? "Mi desarrollo" : "Desarrollo",
-        show:
-          hasPermission("manage_development_plans") ||
-          hasPermission("evaluate_team") ||
-          hasPermission("self_evaluate") ||
-          hasPermission("download_self_report") ||
-          hasPermission("view_reports"),
-        section: "desarrollo",
-      },
-      {
-        key: "reporte-ejecutivo",
-        label: "Reporte ejecutivo",
-        shortLabel: "Reporte ejecutivo",
-        show:
-          hasPermission("view_reports") ||
-          hasPermission("download_reports") ||
-          hasPermission("download_team_reports") ||
-          hasPermission("view_audit"),
-        section: isSuperAdmin ? "reportes-globales" : "reportes",
-      },
-      {
-        key: "bases-descargas",
-        label: isManager ? "Centro de datos del equipo" : "Centro de datos",
-        shortLabel: "Centro de datos",
-        show:
-          hasPermission("view_reports") ||
-          hasPermission("download_reports") ||
-          hasPermission("download_team_reports") ||
-          hasPermission("download_self_report"),
-        section: "reportes",
-      },
-      {
-        key: "carga-masiva",
-        label: "Importación",
-        shortLabel: "Importación",
-        show:
-          hasPermission("manage_users") ||
-          hasPermission("manage_school_users") ||
-          hasPermission("manage_employees") ||
-          hasPermission("manage_roles") ||
-          hasPermission("view_audit"),
-        section: isSuperAdmin ? "importacion" : "datos",
-      },
-      {
-        key: "usuarios",
-        label: "Usuarios y credenciales",
-        shortLabel: "Usuarios",
-        show: hasPermission("manage_users"),
-        section: "personas",
-      },
-      {
-        key: "roles",
-        label: "Roles y accesos",
-        shortLabel: "Roles y accesos",
-        show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")),
-        section: "configuracion",
-      },
-      {
-        key: "settings",
-        label: isSuperAdmin ? "Configuración global" : "Configuración",
-        shortLabel: "Configuración",
-        show: isSuperAdmin ? false : hasPermission("manage_settings"),
-        section: isSuperAdmin ? "plataforma" : "configuracion",
-      },
-      {
-        key: "organizaciones",
-        label: "Organizaciones",
-        shortLabel: "Organizaciones",
-        show: isSuperAdmin,
-        section: "organizaciones",
-      },
-      {
-        key: "archivo-central",
-        label: "Plataforma",
-        shortLabel: "Plataforma",
-        show: isSuperAdmin,
-        section: "plataforma",
-      },
+      { key: "dashboard", label: "Inicio", show: true, keywords: ["inicio", "dashboard", "panel", "resumen"] },
+      { key: "empleados", label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas", show: hasPermission("manage_employees"), keywords: ["personas", "empleados", "equipo", "perfil"] },
+      { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), keywords: ["usuarios", "credenciales", "accesos"] },
+      { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee), keywords: ["ciclos", "periodo", "período", "calendario"] },
+      { key: "evaluaciones", label: "Evaluaciones", show: hasPermission("manage_evaluations") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("view_reports"), keywords: ["evaluaciones", "autoevaluacion", "autoevaluación", "feedback", "desempeño"] },
+      { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), keywords: ["competencias", "transversales", "docentes"] },
+      { key: "metricas", label: "Objetivos / Indicadores", show: hasPermission("manage_metrics"), keywords: ["objetivos", "indicadores", "kpi", "okr", "metas", "mediciones"] },
+      { key: "planes", label: isEmployee ? "Mi desarrollo" : "Desarrollo", show: hasPermission("manage_development_plans") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("download_self_report") || hasPermission("view_reports"), keywords: ["desarrollo", "planes", "seguimiento"] },
+      { key: "reporte-ejecutivo", label: "Reportes", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["reportes", "reporte ejecutivo", "personas", "acciones", "insights"] },
+      { key: "carga-masiva", label: "Importación", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "excel", "carga", "plantilla"] },
+      { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
+      { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
+      { key: "roles", label: "Roles y accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "scope", "permisos"] },
+      { key: "settings", label: "Configuración", show: isSuperAdmin ? false : hasPermission("manage_settings"), keywords: ["configuracion", "configuración", "ajustes"] },
+      { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
     ],
     [hasPermission, isEmployee, isManager, isSuperAdmin]
   );
 
-  const visibleViews = allViews.filter((item) => item.show);
+  const visibleViews = useMemo(() => allViews.filter((item) => item.show), [allViews]);
+  const sidebarViews = useMemo(
+    () =>
+      visibleViews.filter(
+        (item) => !["roles", "settings", "archivo-central", "organizaciones"].includes(item.key) && item.key !== "bases-descargas"
+      ),
+    [visibleViews]
+  );
 
-  const primaryTabs = useMemo(() => {
-    if (isSuperAdmin) {
-      return [
-        { key: "organizaciones", label: "Organizaciones" },
-        { key: "reportes-globales", label: "Reportes globales" },
-        { key: "importacion", label: "Importación" },
-        { key: "plataforma", label: "Plataforma" },
-      ];
-    }
-    if (isEmployee) {
-      return [
-        { key: "inicio", label: "Inicio" },
-        { key: "evaluaciones", label: "Evaluaciones" },
-        { key: "desarrollo", label: "Desarrollo" },
-      ];
-    }
-    if (isManager) {
-      return [
-        { key: "inicio", label: "Inicio" },
-        { key: "personas", label: "Personas" },
-        { key: "evaluaciones", label: "Evaluaciones" },
-        { key: "desarrollo", label: "Desarrollo" },
-        { key: "reportes", label: "Reportes" },
-      ];
-    }
-    if (isReadOnly) {
-      return [
-        { key: "inicio", label: "Inicio" },
-        { key: "reportes", label: "Reportes" },
-        { key: "datos", label: "Importación" },
-      ];
-    }
-    return [
-      { key: "inicio", label: "Inicio" },
-      { key: "personas", label: "Personas" },
-      { key: "evaluaciones", label: "Evaluaciones" },
-      { key: "objetivos", label: "Objetivos / Indicadores" },
-      { key: "desarrollo", label: "Desarrollo" },
-      { key: "reportes", label: "Reportes" },
-      { key: "datos", label: "Importación" },
-    ];
-  }, [isEmployee, isManager, isReadOnly, isSuperAdmin]);
-
-  const visiblePrimaryTabs = primaryTabs.filter((tab) => visibleViews.some((item) => item.section === tab.key));
-  const viewSection = visibleViews.find((item) => item.key === view)?.section;
-  const activePrimary = visiblePrimaryTabs.some((tab) => tab.key === viewSection)
-    ? viewSection
-    : visiblePrimaryTabs[0]?.key || "inicio";
-  const secondaryTabs = visibleViews.filter((item) => item.section === activePrimary);
-  const configSubmenu = buildConfigSubmenu(visibleViews);
-
+  const organizationLabel = user?.companyName || "Organización activa";
   const contextualSubtitle = isSuperAdmin
     ? "Gestión global multi-organización"
-    : user?.companyName
-      ? `Operaci?n en ${user.companyName}`
-      : "Gestión del desempeño institucional";
+    : `Operación en ${organizationLabel}`;
+
+  const globalSearchItems = useMemo(() => {
+    return visibleViews.map((item) => ({
+      viewKey: item.key,
+      label: translateNavLabel(item.key, item.label, t),
+      group:
+        item.key === "dashboard"
+          ? "Inicio"
+          : item.key === "carga-masiva"
+            ? "Importación"
+            : item.key === "reporte-ejecutivo"
+              ? "Reportes"
+              : item.key === "planes"
+                ? "Desarrollo"
+                : "Módulo",
+      detail: item.key === "metricas"
+        ? "Abrir mediciones, metas, KPIs y OKRs"
+        : item.key === "evaluaciones"
+          ? "Abrir ciclos, formularios y seguimiento"
+          : item.key === "planes"
+            ? "Abrir sugerencias y planes de desarrollo"
+            : `Abrir ${translateNavLabel(item.key, item.label, t).toLowerCase()}`,
+      searchable: [item.label, ...(item.keywords || [])].join(" ").toLowerCase(),
+    }));
+  }, [t, visibleViews]);
+
+  const searchResults = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return globalSearchItems.slice(0, 8);
+    return globalSearchItems.filter((item) => item.searchable.includes(term)).slice(0, 8);
+  }, [globalSearchItems, searchQuery]);
 
   async function handleMarkRead(item) {
     if (!token || item.isRead) return;
@@ -576,10 +449,9 @@ export default function AppShell({
     await refreshAnnouncementSummary();
   }
 
-  function openPrimary(groupKey) {
-    const items = visibleViews.filter((item) => item.section === groupKey);
-    const nextView = firstVisibleView(items);
-    if (nextView) setView(nextView);
+  function handleSearchSelect(item) {
+    setView(item.viewKey);
+    setSearchOpen(false);
   }
 
   return (
@@ -590,7 +462,7 @@ export default function AppShell({
             sidebarCollapsed ? "w-[92px]" : "w-[288px]"
           }`}
         >
-          <div className="border-b border-white/10 px-4 py-5">
+          <div className="border-b border-white/10 px-4 py-4">
             <div className="flex items-center justify-between gap-3">
               <div className="min-w-0 overflow-hidden">
                 <AppLogo variant="dark" compact={sidebarCollapsed} />
@@ -611,49 +483,25 @@ export default function AppShell({
 
           <div className="flex-1 overflow-y-auto px-3 py-4">
             <nav className="space-y-2">
-              {visiblePrimaryTabs.map((tab) => {
-                const isActive = activePrimary === tab.key;
+              {sidebarViews.map((item) => {
+                const isActive = view === item.key;
                 return (
                   <button
-                    key={tab.key}
+                    key={item.key}
                     type="button"
-                    onClick={() => openPrimary(tab.key)}
+                    onClick={() => setView(item.key)}
                     className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
                       isActive
                         ? "bg-[#1e3a8a] text-white shadow-[0_10px_24px_rgba(30,58,138,0.28)]"
                         : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    <AppIcon name={tab.key} active={isActive} />
-                    {!sidebarCollapsed ? <span>{translateNavLabel(tab.key, tab.label, t)}</span> : null}
+                    <AppIcon name={item.key} active={isActive} />
+                    {!sidebarCollapsed ? <span>{translateNavLabel(item.key, item.label, t)}</span> : null}
                   </button>
                 );
               })}
             </nav>
-
-            {!sidebarCollapsed && activePrimary === "configuracion" && configSubmenu.length ? (
-              <div className="mt-6 rounded-3xl border border-white/10 bg-[#101d25] p-3">
-                <p className="px-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#7f99a8]">Configuración</p>
-                <div className="mt-3 space-y-1.5">
-                  {configSubmenu.map((item) => {
-                    const isActive = view === item.viewKey;
-                    return (
-                      <button
-                        key={item.label}
-                        type="button"
-                        onClick={() => setView(item.viewKey)}
-                        className={`flex w-full items-center justify-between rounded-2xl px-3 py-2.5 text-left text-sm transition ${
-                          isActive ? "bg-[#122f55] text-white" : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
-                        }`}
-                      >
-                        <span>{translateNavLabel(item.viewKey, item.label, t)}</span>
-                        {isActive ? <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" /> : null}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : null}
           </div>
 
           <div className="border-t border-white/10 px-3 py-4">
@@ -663,7 +511,7 @@ export default function AppShell({
                 <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#7ea3ff]">
                   {user?.roleKey || user?.roleCode || "ROL"}
                 </p>
-                <p className="mt-2 text-xs text-[#7c97a6]">{user?.companyName || "Organización activa"}</p>
+                <p className="mt-2 text-xs text-[#7c97a6]">{organizationLabel}</p>
               </div>
             ) : (
               <div className="flex justify-center">
@@ -677,8 +525,8 @@ export default function AppShell({
 
         <div className="flex min-h-screen min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#091319]/95 backdrop-blur">
-            <div className="flex flex-wrap items-center justify-between gap-4 px-4 py-4 md:px-6">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="grid gap-4 px-4 py-4 md:grid-cols-[240px_minmax(0,1fr)_auto] md:px-6">
+              <div className="flex min-w-0 items-center gap-3">
                 <div className="lg:hidden">
                   <AppLogo variant="dark" compact />
                 </div>
@@ -697,29 +545,48 @@ export default function AppShell({
                 ) : (
                   <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
                     <p className="text-xs text-[#7f99a8]">{t("topbar.organization", "Organización activa")}</p>
-                    <p className="text-sm font-medium text-white">{user?.companyName || t("common.organization", "Organización")}</p>
+                    <p className="text-sm font-medium text-white">{organizationLabel}</p>
                   </div>
                 )}
+              </div>
 
-                <div className="hidden min-w-[320px] flex-1 items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3 md:flex">
+              <div ref={searchRef} className="relative mx-auto w-full max-w-2xl">
+                <div className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-[#7f99a8]">
                     <path d="M11 19a8 8 0 1 1 5.3-14l4.2 4.2" />
                     <path d="M21 21l-4.35-4.35" />
                   </svg>
                   <input
                     className="w-full bg-transparent text-sm text-[#e8eef1] outline-none placeholder:text-[#7f99a8]"
-                    placeholder={t("topbar.searchPlaceholder", "Buscar en la pantalla actual...")}
+                    placeholder="Buscar módulos, secciones o acciones"
                     value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    aria-label={t("topbar.searchPlaceholder", "Buscar en la pantalla actual...")}
+                    onFocus={() => setSearchOpen(true)}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                      setSearchOpen(true);
+                    }}
+                    aria-label="Buscar módulos, secciones o acciones"
                   />
-                  <span className="rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8]">
-                    {t("topbar.searchHint", "Filtra listas visibles")}
+                  <span className="hidden rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8] lg:inline-flex">
+                    Busca y navega
                   </span>
                 </div>
+                {searchOpen ? (
+                  <div className="absolute inset-x-0 z-30 mt-3 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+                    {searchResults.length ? (
+                      searchResults.map((item) => (
+                        <SearchResultItem key={item.viewKey} item={item} onSelect={handleSearchSelect} />
+                      ))
+                    ) : (
+                      <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-4 text-sm text-[#8ea5b3]">
+                        No encontramos coincidencias en la navegación visible.
+                      </div>
+                    )}
+                  </div>
+                ) : null}
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-end gap-2">
                 <NotificationBell
                   announcementSummary={announcementSummary}
                   onMarkRead={handleMarkRead}
@@ -762,38 +629,9 @@ export default function AppShell({
                 </button>
               </div>
             </div>
-
-            {searchQuery?.trim() ? (
-              <div className="px-4 pb-3 md:px-6">
-                <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3 text-sm text-[#a8bdc8]">
-                  {t("common.searchApplies", "La búsqueda se aplica a las listas visibles de esta pantalla.")}
-                </div>
-              </div>
-            ) : null}
-
-            {secondaryTabs.length ? (
-              <div className="border-t border-white/10 px-4 pb-4 pt-3 md:px-6">
-                <div className="flex flex-wrap gap-2">
-                  {secondaryTabs.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      onClick={() => setView(item.key)}
-                      className={`rounded-2xl px-4 py-2.5 text-sm transition ${
-                        view === item.key
-                          ? "bg-[#1e3a8a] text-white"
-                          : "border border-white/10 bg-[#12222d] text-[#a8bdc8] hover:text-white"
-                      }`}
-                    >
-                      {translateNavLabel(item.key, item.shortLabel || item.label, t)}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            ) : null}
           </header>
 
-          <main className="flex-1 px-4 py-6 md:px-6">
+          <main className="flex-1 px-4 py-5 md:px-6">
             <div className="mx-auto w-full max-w-[1440px]">
               {tokenNearExpiry ? (
                 <div className="mb-5 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
@@ -808,4 +646,3 @@ export default function AppShell({
     </div>
   );
 }
-

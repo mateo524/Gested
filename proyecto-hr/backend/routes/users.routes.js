@@ -187,6 +187,9 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   if (!role || String(role.companyId) !== String(companyId)) {
     return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
   }
+  if (String(role.code || "").toUpperCase() === "SUPER_ADMIN") {
+    return res.status(403).json({ mensaje: "SUPER_ADMIN solo puede gestionarse desde plataforma" });
+  }
 
   const generatedPassword = password?.trim() || generateTempPassword();
   const mustChangePassword = !password?.trim();
@@ -566,6 +569,9 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     const role = await Role.findOne({ _id: roleId, companyId: user.companyId });
     if (!role) {
       return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
+    }
+    if (String(role.code || "").toUpperCase() === "SUPER_ADMIN") {
+      return res.status(403).json({ mensaje: "SUPER_ADMIN solo puede gestionarse desde plataforma" });
     }
 
     roleChanged = String(roleId) !== String(user.roleId || "");

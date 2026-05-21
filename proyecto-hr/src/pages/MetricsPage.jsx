@@ -6,10 +6,11 @@ import { EmptyState, ErrorState, LoadingState, PermissionState } from "../compon
 
 const PAGE_TABS = [
   { key: "resumen", label: "Resumen" },
-  { key: "kpis", label: "KPIs" },
-  { key: "okrs", label: "OKRs" },
-  { key: "equipos", label: "Por equipo / departamento" },
-  { key: "empleados", label: "Por empleado" },
+  { key: "kpis", label: "Metas" },
+  { key: "okrs", label: "Competencias" },
+  { key: "equipos", label: "KPIs / OKRs" },
+  { key: "empleados", label: "Autoevaluaciones" },
+  { key: "evidencias", label: "Evidencias" },
 ];
 
 const STATUS_OPTIONS = [
@@ -618,6 +619,7 @@ export default function MetricsPage() {
   const [okrRecords, setOkrRecords] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [cycles, setCycles] = useState([]);
+  const [evaluations, setEvaluations] = useState([]);
   const [query, setQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -696,6 +698,22 @@ export default function MetricsPage() {
     });
     return [...values].sort();
   }, [kpiRecords, okrRecords]);
+
+  const evaluationSnapshots = useMemo(() => {
+    return evaluations.map((evaluation) => ({
+      id: evaluation._id,
+      employeeName:
+        [evaluation.employeeId?.apellido, evaluation.employeeId?.nombre].filter(Boolean).join(", ") ||
+        evaluation.employeeId?.nombre ||
+        "Sin evaluado",
+      cycleLabel: [evaluation.cycleId?.periodo, evaluation.cycleId?.anio].filter(Boolean).join(" ") || "Sin ciclo",
+      tipo: evaluation.tipo || "Evaluación",
+      estado: evaluation.estado || "BORRADOR",
+      comentarios: evaluation.comentariosGenerales || "",
+      resultadoFinal: evaluation.resultadoFinal,
+      evidencia: Array.isArray(evaluation.evidenciaUrls) ? evaluation.evidenciaUrls.length : 0,
+    }));
+  }, [evaluations]);
 
   const filteredKpis = useMemo(() => {
     const terms = [query, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
@@ -875,12 +893,13 @@ export default function MetricsPage() {
       setError("");
       setPermissionDenied(false);
 
-      const [metricsResult, kpiResult, okrResult, employeesResult, cyclesResult] = await Promise.allSettled([
+      const [metricsResult, kpiResult, okrResult, employeesResult, cyclesResult, evaluationsResult] = await Promise.allSettled([
         apiFetch("/metrics", { token }),
         apiFetch("/metrics/kpi-records", { token }),
         apiFetch("/metrics/okr-records", { token }),
         apiFetch("/employees", { token }),
         apiFetch("/evaluation-cycles", { token }),
+        apiFetch("/evaluations", { token }),
       ]);
 
       if (kpiResult.status === "rejected" || okrResult.status === "rejected") {
@@ -904,6 +923,7 @@ export default function MetricsPage() {
       setOkrRecords(okrResult.status === "fulfilled" ? okrResult.value : []);
       setEmployees(employeesResult.status === "fulfilled" ? employeesResult.value : []);
       setCycles(cyclesResult.status === "fulfilled" ? cyclesResult.value : []);
+      setEvaluations(evaluationsResult.status === "fulfilled" ? evaluationsResult.value : []);
     } finally {
       setLoading(false);
     }
@@ -1074,10 +1094,10 @@ export default function MetricsPage() {
     return (
       <div className="space-y-5">
         <section className="pf-surface pf-surface-pad">
-          <p className="pf-section-title">Objetivos / Indicadores</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Objetivos / Indicadores</h1>
+          <p className="pf-section-title">Desempeño / Mediciones</p>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Mediciones de desempeño</h1>
           <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-            Gestiona KPIs y OKRs por ciclo, equipo, departamento y persona.
+            Combiná metas, competencias, autoevaluaciones, evidencias y resultados medibles dentro del ciclo activo.
           </p>
         </section>
         <PermissionState
@@ -1097,10 +1117,10 @@ export default function MetricsPage() {
       <section className="pf-surface pf-surface-pad">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-4xl">
-            <p className="pf-section-title">Desempeno / Objetivos</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Objetivos / Indicadores</h1>
+            <p className="pf-section-title">Desempeño / Mediciones</p>
+            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Mediciones de desempeño</h1>
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Gestiona KPIs y OKRs por ciclo, equipo, departamento y persona.
+              Las mediciones de desempeño combinan metas, competencias, autoevaluaciones y evidencias para construir el resumen evaluativo.
             </p>
           </div>
 
@@ -1220,7 +1240,7 @@ export default function MetricsPage() {
         </div>
       </SurfaceCard>
 
-      <SurfaceCard title="Vista" subtitle="Cambia entre resumen, registros operativos y agrupaciones.">
+      <SurfaceCard title="Vista" subtitle="Usá una estructura más cercana al formulario de evaluación real: metas, competencias, autoevaluaciones, evidencias y resultados.">
         <div className="flex flex-wrap gap-2">
           {PAGE_TABS.map((tab) => (
             <button
@@ -1263,21 +1283,21 @@ export default function MetricsPage() {
               </section>
 
               <SurfaceCard
-                title="Como usar esta vista"
-                subtitle="Los KPIs y OKRs muestran objetivos medibles. Actualiza el valor actual para ver avance y estado."
+                title="Cómo leer estas mediciones"
+                subtitle="Tomamos como referencia el flujo real de evaluación: datos del evaluado, metas, competencias, autoevaluación, evidencia y cierre."
               >
                 <div className="grid gap-3 md:grid-cols-3">
                   <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                    <p className="text-sm font-semibold text-white">1. Crea el objetivo</p>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">Define meta, periodo, responsable y alcance operativo del KPI u OKR.</p>
+                    <p className="text-sm font-semibold text-white">1. Registrá lo que se mide</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">Usá metas, KPIs u OKRs para lo cuantitativo y competencias para lo cualitativo.</p>
                   </article>
                   <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                    <p className="text-sm font-semibold text-white">2. Actualiza el avance</p>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">Usa "Actualizar avance" para cargar el valor actual sin rehacer todo el registro.</p>
+                    <p className="text-sm font-semibold text-white">2. Actualizá avance y evidencia</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">Cargá valor actual, autoevaluación o evidencia para que el seguimiento tenga contexto real.</p>
                   </article>
                   <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                    <p className="text-sm font-semibold text-white">3. Lee el estado</p>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">Ejemplo: si la meta es 100 y el valor actual es 65, el avance visible sera 65%.</p>
+                    <p className="text-sm font-semibold text-white">3. Cerrá con resumen evaluativo</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">Ejemplo: si la meta es 100 y el valor actual es 65, el avance visible será 65%.</p>
                   </article>
                 </div>
               </SurfaceCard>
@@ -1310,8 +1330,8 @@ export default function MetricsPage() {
                               <p className="font-semibold text-white">{metric.nombre}</p>
                               <p className="mt-1 text-sm text-[#9fb6c4]">{metric.descripcion || "Sin descripcion operativa."}</p>
                             </div>
-                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
-                              Peso {metric.ponderacion || 1}
+                              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
+                              Competencia base
                             </span>
                           </div>
                         </article>
@@ -1360,7 +1380,7 @@ export default function MetricsPage() {
 
           {activeTab === "kpis" ? (
             filteredKpis.length ? (
-              <SurfaceCard title="KPIs persistidos" subtitle="Gestion operativa real conectada al nuevo dominio persistente.">
+              <SurfaceCard title="Metas y resultados medibles" subtitle="Esta vista se parece al bloque de metas del formulario real: nombre de lo que se mide, meta, actual y estado.">
                 <div className="space-y-4">
                   {filteredKpis.map((item) => (
                     <RecordCard
@@ -1377,8 +1397,8 @@ export default function MetricsPage() {
               </SurfaceCard>
             ) : (
               <EmptyState
-                title="No hay KPIs para mostrar"
-                description="Ajusta los filtros o crea el primer KPI manual desde esta pantalla."
+                title="No hay metas para mostrar"
+                description="Ajustá los filtros o creá la primera meta medible desde esta pantalla."
                 actionLabel={canManage ? "Nuevo KPI" : undefined}
                 onAction={canManage ? () => openCreateEditor("kpi") : undefined}
               />
@@ -1387,7 +1407,7 @@ export default function MetricsPage() {
 
           {activeTab === "okrs" ? (
             filteredOkrs.length ? (
-              <SurfaceCard title="OKRs persistidos" subtitle="Objetivos y key results reales dentro del tenant actual.">
+              <SurfaceCard title="Competencias y resultados clave" subtitle="Usamos esta vista para mostrar objetivos cualitativos o resultados clave asociados al período.">
                 <div className="space-y-4">
                   {filteredOkrs.map((item) => (
                     <RecordCard
@@ -1404,8 +1424,8 @@ export default function MetricsPage() {
               </SurfaceCard>
             ) : (
               <EmptyState
-                title="No hay OKRs para mostrar"
-                description="Ajusta los filtros o crea el primer OKR manual desde esta pantalla."
+                title="No hay competencias o resultados clave para mostrar"
+                description="Ajustá los filtros o cargá la primera medición cualitativa desde esta pantalla."
                 actionLabel={canManage ? "Nuevo OKR" : undefined}
                 onAction={canManage ? () => openCreateEditor("okr") : undefined}
               />
@@ -1415,7 +1435,7 @@ export default function MetricsPage() {
           {activeTab === "equipos" ? (
             groupedByArea.length ? (
               <div className="space-y-5">
-                <SurfaceCard title="Por equipo / departamento" subtitle="Agrupacion operativa usando departmentCode o teamId cuando existen.">
+                <SurfaceCard title="KPIs / OKRs por equipo o departamento" subtitle="Agrupación operativa usando departmentCode o teamId cuando existen.">
                   <div className="grid gap-4 xl:grid-cols-2">
                     {groupedByArea.map((group) => (
                       <GroupSummaryCard
@@ -1457,8 +1477,8 @@ export default function MetricsPage() {
               </div>
             ) : (
               <EmptyState
-                title="No hay grupos para mostrar"
-                description="Cuando existan departmentCode o teamId operativos, esta vista agrupara KPIs y OKRs por alcance."
+                title="No hay KPIs u OKRs agrupados"
+                description="Cuando existan equipos o departamentos con registros visibles, esta vista los resumirá por alcance."
               />
             )
           ) : null}
@@ -1466,7 +1486,7 @@ export default function MetricsPage() {
           {activeTab === "empleados" ? (
             groupedByEmployee.length ? (
               <div className="space-y-5">
-                <SurfaceCard title="Por empleado" subtitle="Seguimiento individual con KPIs, OKRs, avance promedio y pendientes.">
+                <SurfaceCard title="Autoevaluaciones y seguimiento individual" subtitle="Acá ves por persona el avance visible, pendientes y contexto del seguimiento actual.">
                   <div className="grid gap-4 xl:grid-cols-2">
                     {groupedByEmployee.map((group) => (
                       <article key={group.key} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
@@ -1514,7 +1534,7 @@ export default function MetricsPage() {
 
                 {selectedEmployee ? (
                   <div ref={employeeDetailRef}>
-                  <SurfaceCard title={`Detalle de ${selectedEmployee.label}`} subtitle="KPIs y OKRs visibles para la persona seleccionada.">
+                  <SurfaceCard title={`Detalle de ${selectedEmployee.label}`} subtitle="Metas, KPIs y OKRs visibles para la persona seleccionada.">
                     <div className="space-y-3">
                       {selectedEmployee.items.map((item) => (
                         <article key={`${selectedEmployee.key}-${item.kind}-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
@@ -1536,8 +1556,40 @@ export default function MetricsPage() {
               </div>
             ) : (
               <EmptyState
-                title="No hay empleados con objetivos visibles"
-                description="Cuando haya KPIs u OKRs asociados a personas, esta vista mostrara su distribucion y avance."
+                title="No hay seguimiento individual visible"
+                description="Cuando haya metas, KPIs u OKRs asociados a personas, esta vista mostrará su distribución y avance."
+              />
+            )
+          ) : null}
+
+          {activeTab === "evidencias" ? (
+            evaluationSnapshots.filter((item) => item.evidencia || item.comentarios).length ? (
+              <SurfaceCard title="Evidencias y comentarios" subtitle="Mostramos evidencia declarada y comentarios visibles como apoyo del resumen evaluativo.">
+                <div className="space-y-3">
+                  {evaluationSnapshots
+                    .filter((item) => item.evidencia || item.comentarios)
+                    .map((item) => (
+                      <article key={`evidence-${item.id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="font-semibold text-white">{item.employeeName}</p>
+                            <p className="mt-1 text-sm text-[#9fb6c4]">
+                              {item.cycleLabel} · {item.tipo}
+                            </p>
+                          </div>
+                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
+                            {item.evidencia ? `${item.evidencia} evidencias` : "Sin adjuntos"}
+                          </span>
+                        </div>
+                        <p className="mt-3 text-sm text-[#9fb6c4]">{item.comentarios || "Sin comentario descriptivo."}</p>
+                      </article>
+                    ))}
+                </div>
+              </SurfaceCard>
+            ) : (
+              <EmptyState
+                title="No hay evidencias visibles"
+                description="Cuando las evaluaciones incluyan comentarios o evidencias, se mostrarán acá."
               />
             )
           ) : null}

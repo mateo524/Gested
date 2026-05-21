@@ -85,6 +85,22 @@ export function buildBulkImportAnalyzeResponsePayload({ analysis, job, previewTo
       ? "El archivo se analizo con advertencias. Revisa la vista previa antes de confirmar."
       : "El archivo se valido correctamente.";
 
+  const bySheet = analysis?.summary?.bySheet || {};
+  const normalizedBySheet = {
+    organization: bySheet["Organización"] || bySheet.organization || {},
+    departments: bySheet.Departamentos || bySheet.departments || {},
+    employees: bySheet.Empleados || bySheet.employees || {},
+    usersAndRoles: bySheet["Usuarios_y_Roles"] || bySheet.usersAndRoles || {},
+    managers: bySheet.Managers || bySheet.managers || {},
+    kpis: bySheet.KPIs || bySheet.kpis || {},
+    okrs: bySheet.OKRs || bySheet.okrs || {},
+    evaluations: bySheet.Evaluaciones || bySheet.evaluations || {},
+    performanceMeasurements:
+      bySheet.Mediciones_Desempeno || bySheet.performanceMeasurements || {},
+    developmentPlans: bySheet.Planes_Desarrollo || bySheet.developmentPlans || {},
+    catalogs: bySheet["Catálogos"] || bySheet.catalogs || {},
+  };
+
   return {
     status: hasBlockingErrors ? 422 : 200,
     payload: {
@@ -93,7 +109,10 @@ export function buildBulkImportAnalyzeResponsePayload({ analysis, job, previewTo
       message,
       importJobId: job._id,
       previewToken,
-      summary: analysis.summary,
+      summary: {
+        ...analysis.summary,
+        bySheet: normalizedBySheet,
+      },
       preview: analysis.preview,
       errors: analysis.errors,
       warnings: analysis.warnings,
