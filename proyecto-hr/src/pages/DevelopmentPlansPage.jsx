@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
@@ -15,6 +16,7 @@ const emptyForm = {
 
 export default function DevelopmentPlansPage() {
   const { token, user } = useAuth();
+  const { searchQuery } = useView();
   const [plans, setPlans] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
@@ -28,6 +30,19 @@ export default function DevelopmentPlansPage() {
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const baseCacheKey = `pf_plans_base_${roleScope}`;
   const plansCacheKey = `pf_plans_list_${roleScope}_${filters.employeeId || "all"}_${filters.estado || "all"}`;
+  const visiblePlans = plans.filter((plan) => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return true;
+    return [
+      plan.employeeId?.nombre,
+      plan.employeeId?.apellido,
+      plan.aspectoDesarrollar,
+      plan.medicion,
+      plan.estado,
+    ]
+      .filter(Boolean)
+      .some((field) => String(field).toLowerCase().includes(term));
+  });
 
   const loadPlans = useCallback(async (signal) => {
     const params = new URLSearchParams();
@@ -285,8 +300,8 @@ export default function DevelopmentPlansPage() {
                 }
               />
             ) : null}
-            {!isLoadingBase && !isLoadingPlans && plans.length ? (
-              plans.map((plan) => (
+            {!isLoadingBase && !isLoadingPlans && visiblePlans.length ? (
+              visiblePlans.map((plan) => (
                 <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-lg font-semibold text-white">{plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
@@ -314,7 +329,9 @@ export default function DevelopmentPlansPage() {
                   description={
                     user?.roleCode === "EMPLEADO"
                       ? "Cuando te asignen un plan, lo vas a ver aca con su proximo seguimiento."
-                      : "Podes crear uno desde una evaluacion o cargarlo manualmente."
+                      : searchQuery
+                        ? "No encontramos planes para la búsqueda actual."
+                        : "Podes crear uno desde una evaluacion o cargarlo manualmente."
                   }
                 />
               ) : null

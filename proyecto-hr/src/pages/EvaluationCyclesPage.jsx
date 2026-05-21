@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 
 const emptyForm = {
@@ -13,6 +14,7 @@ const emptyForm = {
 
 export default function EvaluationCyclesPage() {
   const { token } = useAuth();
+  const { searchQuery } = useView();
   const [cycles, setCycles] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
@@ -21,6 +23,17 @@ export default function EvaluationCyclesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const formRef = useRef(null);
+  const listRef = useRef(null);
+  const visibleCycles = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return cycles;
+    return cycles.filter((cycle) =>
+      [cycle.periodo, cycle.etapa, cycle.estado, cycle.anio]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [cycles, searchQuery]);
 
   const loadData = useCallback(async () => {
     try {
@@ -70,6 +83,9 @@ export default function EvaluationCyclesPage() {
       setMessageType("success");
       setMessage(isEditing ? "Ciclo actualizado." : "Ciclo creado.");
       await loadData();
+      window.requestAnimationFrame(() => {
+        listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -91,6 +107,9 @@ export default function EvaluationCyclesPage() {
     setMessageType("info");
     setMessage("Editando ciclo seleccionado.");
     setFieldErrors({});
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function cancelEdit() {
@@ -129,7 +148,7 @@ export default function EvaluationCyclesPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
             El ciclo se crea en la institución activa. Solo definí período, etapa, estado y fechas.
@@ -230,12 +249,12 @@ export default function EvaluationCyclesPage() {
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <section ref={listRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">Ciclos cargados</h4>
           <div className="mt-6 space-y-4">
             {isLoading ? <p className="pf-alert-info">Cargando ciclos...</p> : null}
-            {!isLoading && cycles.length
-              ? cycles.map((cycle) => (
+            {!isLoading && visibleCycles.length
+              ? visibleCycles.map((cycle) => (
                   <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-semibold text-white">
@@ -267,7 +286,7 @@ export default function EvaluationCyclesPage() {
                   </article>
                 ))
               : null}
-            {!isLoading && !cycles.length ? <p className="pf-alert-warning">Todavía no hay ciclos definidos.</p> : null}
+            {!isLoading && !visibleCycles.length ? <p className="pf-alert-warning">{searchQuery ? "No encontramos ciclos para la búsqueda actual." : "Todavía no hay ciclos definidos."}</p> : null}
           </div>
         </section>
       </div>

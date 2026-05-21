@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
@@ -60,6 +61,7 @@ function buildPrintableReport(data) {
 
 export default function EvaluationsPage() {
   const { token, user } = useAuth();
+  const { searchQuery } = useView();
   const [employees, setEmployees] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [metrics, setMetrics] = useState([]);
@@ -73,6 +75,22 @@ export default function EvaluationsPage() {
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
 
   const metricMap = useMemo(() => new Map(metrics.map((metric) => [metric._id, metric])), [metrics]);
+  const visibleEvaluations = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return evaluations;
+    return evaluations.filter((evaluation) =>
+      [
+        evaluation.employeeId?.nombre,
+        evaluation.employeeId?.apellido,
+        evaluation.tipo,
+        evaluation.estado,
+        evaluation.comentariosGenerales,
+        evaluation.cycleId?.periodo,
+      ]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [evaluations, searchQuery]);
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const baseCacheKey = `pf_eval_base_${roleScope}`;
   const evaluationsCacheKey = `pf_eval_list_${roleScope}`;
@@ -181,6 +199,9 @@ export default function EvaluationsPage() {
       setMessageType("success");
       setMessage("Evaluación creada.");
       await loadEvaluations();
+      window.requestAnimationFrame(() => {
+        document.getElementById("evaluations-list-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -332,12 +353,12 @@ export default function EvaluationsPage() {
             <div>
               <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
               <p className="mt-1 text-sm text-[#9fb6c4]">
-                Revisa el avance por persona y abre el reporte individual cuando haga falta.
+                Revisa el avance por persona, con la b?squeda global aplicada sobre la lista visible.
               </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Registros</p>
-              <p className="mt-1 text-lg font-semibold text-white">{evaluations.length}</p>
+              <p className="mt-1 text-lg font-semibold text-white">{visibleEvaluations.length}</p>
             </div>
           </div>
           <div className="mt-6 space-y-4">

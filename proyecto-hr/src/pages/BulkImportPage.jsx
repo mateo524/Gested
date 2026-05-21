@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
 const sheetLabels = {
@@ -280,8 +281,11 @@ function JobResultCards({ result }) {
 
 export default function BulkImportPage() {
   const { token, user, activeCompanyId } = useAuth();
+  const { searchQuery } = useView();
   const fileInputRef = useRef(null);
   const historyRef = useRef(null);
+  const previewRef = useRef(null);
+  const resultRef = useRef(null);
 
   const canManageImport =
     user?.isSuperAdmin ||
@@ -326,6 +330,28 @@ export default function BulkImportPage() {
     }),
     [preview]
   );
+  const filteredVisibleRows = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    const rows = previewRowsByTab[selectedTab] || [];
+    if (!term) return rows.slice(0, 8);
+    return rows
+      .filter((row) =>
+        Object.entries(row || {})
+          .filter(([key]) => key !== "_rowNumber")
+          .some(([, value]) => String(value ?? "").toLowerCase().includes(term))
+      )
+      .slice(0, 8);
+  }, [previewRowsByTab, searchQuery, selectedTab]);
+  const filteredIssues = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    const issues = [...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])];
+    if (!term) return issues;
+    return issues.filter((issue) =>
+      [issue.sheet, issue.field, issue.message, issue.rowNumber]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [analyzeResponse?.errors, analyzeResponse?.warnings, searchQuery]);
 
   const confirmSummary = useMemo(
     () => ({
@@ -476,6 +502,9 @@ export default function BulkImportPage() {
             ? "El archivo contiene errores de validación. Revisá los detalles antes de continuar."
             : "El archivo se validó correctamente.")
       );
+      window.requestAnimationFrame(() => {
+        previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
       await loadJobs();
     } catch (error) {
       const text = String(error.message || "").toLowerCase();
@@ -489,6 +518,9 @@ export default function BulkImportPage() {
           "warning",
           error.data.message || "El archivo contiene errores de validación. Revisá los detalles antes de continuar."
         );
+        window.requestAnimationFrame(() => {
+          previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
         await loadJobs();
       } else if (text.includes("tardo demasiado")) {
         setAnalyzeResponse(null);
@@ -534,6 +566,9 @@ export default function BulkImportPage() {
       });
       setResult(data);
       setFeedback(data.ok ? "success" : "error", data.ok ? "Importacion completada." : "La importacion no pudo completarse.");
+      window.requestAnimationFrame(() => {
+        resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
       await loadJobs();
     } catch (error) {
       const text = String(error.message || "").toLowerCase();
@@ -559,9 +594,6 @@ export default function BulkImportPage() {
       setFeedback("error", error.message);
     }
   }
-
-  const currentRows = previewRowsByTab[selectedTab] || [];
-  const visibleRows = currentRows.slice(0, 8);
 
   if (!canReadHistory && !canManageImport) {
     return (
@@ -805,6 +837,7 @@ export default function BulkImportPage() {
         </SurfaceCard>
       </section>
 
+      <div ref={previewRef}>
       <SurfaceCard title="Vista previa" subtitle={previewCountLabel}>
         {!preview ? (
           <EmptyState text="Valida el archivo para ver una vista previa por hoja antes de confirmar." />
@@ -829,8 +862,8 @@ export default function BulkImportPage() {
 
             {selectedTab === "errors" ? (
               <div className="space-y-3">
-                {[...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])].length ? (
-                  [...(analyzeResponse?.errors || []), ...(analyzeResponse?.warnings || [])].map((issue, index) => {
+                {filteredIssues.length ? (
+                  filteredIssues.map((issue, index) => {
                     const meta = statusMeta(issue.severity);
                     return (
                       <article key={`${issue.sheet}-${issue.rowNumber || "general"}-${index}`} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
@@ -847,20 +880,22 @@ export default function BulkImportPage() {
                   <div className="pf-alert-success">No se detectaron errores ni advertencias.</div>
                 )}
               </div>
-            ) : visibleRows.length ? (
+            ) : filteredVisibleRows.length ? (
               <div className="space-y-3">
-                {visibleRows.map((row) => {
+                {filteredVisibleRows.map((row) => {
                   const issues = issueMap.get(`${getNormalizedSheetName(selectedTab)}:${String(row._rowNumber || "")}`) || [];
                   return <PreviewCard key={`${selectedTab}-${row._rowNumber}`} row={row} issues={issues} />;
                 })}
               </div>
             ) : (
-              <EmptyState text="No hay filas para mostrar en esta solapa." />
+              <EmptyState text={searchQuery ? "No hay filas que coincidan con la búsqueda actual." : "No hay filas para mostrar en esta solapa."} />
             )}
           </div>
         )}
       </SurfaceCard>
+      </div>
 
+      <div ref={resultRef}>
       <SurfaceCard title="Resultado" subtitle="Resumen final despues de confirmar la importacion.">
         {!result ? (
           <EmptyState text="Todavia no hay una importacion confirmada en esta sesion." />
@@ -889,6 +924,7 @@ export default function BulkImportPage() {
           </div>
         )}
       </SurfaceCard>
+      </div>
 
       {showHistory ? (
       <section ref={historyRef}>

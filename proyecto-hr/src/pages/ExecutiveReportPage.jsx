@@ -126,7 +126,7 @@ function mapActionDestination(action) {
 
 export default function ExecutiveReportPage() {
   const { token, user } = useAuth();
-  const { setView } = useView();
+  const { setView, searchQuery } = useView();
   const [activeTab, setActiveTab] = useState("resumen");
   const [filters, setFilters] = useState({ cycleId: "", department: "", employeeId: "" });
   const [draftFilters, setDraftFilters] = useState({ cycleId: "", department: "", employeeId: "" });
@@ -223,7 +223,16 @@ export default function ExecutiveReportPage() {
     }
   }, [loadEmployeeDetail, overview?.filters?.selectedEmployeeId]);
 
-  const employees = overview?.catalogs?.employees || [];
+  const employees = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    const items = overview?.catalogs?.employees || [];
+    if (!term) return items;
+    return items.filter((employee) =>
+      [employee.fullName, employee.cargo, employee.area]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [overview?.catalogs?.employees, searchQuery]);
   const cycles = overview?.catalogs?.cycles || [];
   const departments = overview?.catalogs?.departments || [];
   const selectedEmployeeId = overview?.filters?.selectedEmployeeId || filters.employeeId;
@@ -241,8 +250,14 @@ export default function ExecutiveReportPage() {
 
   const actionList = useMemo(() => {
     const items = [...(overview?.actions || []), ...(detail?.actions || [])];
-    return items;
-  }, [detail?.actions, overview?.actions]);
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return items;
+    return items.filter((action) =>
+      [action?.title, action?.description, action?.key]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [detail?.actions, overview?.actions, searchQuery]);
 
   const executiveNarrative = useMemo(() => {
     const pending = Number(overview?.summary?.evaluationsPending || 0);
@@ -371,9 +386,10 @@ export default function ExecutiveReportPage() {
             <button
               type="button"
               onClick={loadOverview}
+              disabled={loadingOverview}
               className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
             >
-              Actualizar
+              {loadingOverview ? "Actualizando..." : "Actualizar"}
             </button>
             <button
               type="button"
