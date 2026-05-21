@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -604,7 +604,10 @@ function RecordForm({
 
 export default function MetricsPage() {
   const { token, hasPermission } = useAuth();
-  const { setView } = useView();
+  const { setView, searchQuery } = useView();
+  const editorRef = useRef(null);
+  const groupDetailRef = useRef(null);
+  const employeeDetailRef = useRef(null);
 
   const [activeTab, setActiveTab] = useState("resumen");
   const [activeEditor, setActiveEditor] = useState(null);
@@ -695,36 +698,36 @@ export default function MetricsPage() {
   }, [kpiRecords, okrRecords]);
 
   const filteredKpis = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const terms = [query, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
     return kpiRecords.filter((item) => {
       const visualStatus = getVisualStatus(item);
       const matchesQuery =
-        !term ||
+        !terms.length ||
         [item.name, item.kpiCode, item.employee?.fullName, item.departmentCode, item.period]
           .filter(Boolean)
-          .some((field) => String(field).toLowerCase().includes(term));
+          .some((field) => terms.some((term) => String(field).toLowerCase().includes(term)));
       const matchesDepartment = !departmentFilter || getRecordDepartment(item) === departmentFilter;
       const matchesStatus = !statusFilter || visualStatus.key === statusFilter;
       const matchesPeriod = !periodFilter || item.period === periodFilter;
       return matchesQuery && matchesDepartment && matchesStatus && matchesPeriod;
     });
-  }, [departmentFilter, kpiRecords, periodFilter, query, statusFilter]);
+  }, [departmentFilter, kpiRecords, periodFilter, query, searchQuery, statusFilter]);
 
   const filteredOkrs = useMemo(() => {
-    const term = query.trim().toLowerCase();
+    const terms = [query, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
     return okrRecords.filter((item) => {
       const visualStatus = getVisualStatus(item);
       const matchesQuery =
-        !term ||
+        !terms.length ||
         [item.objective, item.objectiveTitle, item.keyResult, item.keyResultTitle, item.okrCode, item.employee?.fullName, item.departmentCode, item.period]
           .filter(Boolean)
-          .some((field) => String(field).toLowerCase().includes(term));
+          .some((field) => terms.some((term) => String(field).toLowerCase().includes(term)));
       const matchesDepartment = !departmentFilter || getRecordDepartment(item) === departmentFilter;
       const matchesStatus = !statusFilter || visualStatus.key === statusFilter;
       const matchesPeriod = !periodFilter || (item.period || item.quarter) === periodFilter;
       return matchesQuery && matchesDepartment && matchesStatus && matchesPeriod;
     });
-  }, [departmentFilter, okrRecords, periodFilter, query, statusFilter]);
+  }, [departmentFilter, okrRecords, periodFilter, query, searchQuery, statusFilter]);
 
   const filteredOperationalRecords = useMemo(
     () => [
@@ -933,6 +936,9 @@ export default function MetricsPage() {
     setKpiErrors({});
     setOkrErrors({});
     setMessage("");
+    window.requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function openEditEditor(kind, record, mode = "full") {
@@ -974,6 +980,10 @@ export default function MetricsPage() {
       });
       setOkrErrors({});
     }
+
+    window.requestAnimationFrame(() => {
+      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   function updateForm(kind, field, value) {
@@ -1116,41 +1126,45 @@ export default function MetricsPage() {
       </section>
 
       {activeEditor === "kpi" ? (
-        <RecordForm
-          kind="kpi"
-          form={kpiForm}
-          errors={kpiErrors}
-          employees={employeeOptions}
-          cycles={cycles}
-          departmentOptions={departmentOptions}
-          teamOptions={teamOptions}
-          periodOptions={periodOptions}
-          submitting={submitting}
-          onChange={(field, value) => updateForm("kpi", field, value)}
-          onSubmit={handleSaveRecord}
-          onCancel={resetEditor}
-          editing={Boolean(editorRecordId)}
-          mode={editorMode}
-        />
+        <div ref={editorRef}>
+          <RecordForm
+            kind="kpi"
+            form={kpiForm}
+            errors={kpiErrors}
+            employees={employeeOptions}
+            cycles={cycles}
+            departmentOptions={departmentOptions}
+            teamOptions={teamOptions}
+            periodOptions={periodOptions}
+            submitting={submitting}
+            onChange={(field, value) => updateForm("kpi", field, value)}
+            onSubmit={handleSaveRecord}
+            onCancel={resetEditor}
+            editing={Boolean(editorRecordId)}
+            mode={editorMode}
+          />
+        </div>
       ) : null}
 
       {activeEditor === "okr" ? (
-        <RecordForm
-          kind="okr"
-          form={okrForm}
-          errors={okrErrors}
-          employees={employeeOptions}
-          cycles={cycles}
-          departmentOptions={departmentOptions}
-          teamOptions={teamOptions}
-          periodOptions={periodOptions}
-          submitting={submitting}
-          onChange={(field, value) => updateForm("okr", field, value)}
-          onSubmit={handleSaveRecord}
-          onCancel={resetEditor}
-          editing={Boolean(editorRecordId)}
-          mode={editorMode}
-        />
+        <div ref={editorRef}>
+          <RecordForm
+            kind="okr"
+            form={okrForm}
+            errors={okrErrors}
+            employees={employeeOptions}
+            cycles={cycles}
+            departmentOptions={departmentOptions}
+            teamOptions={teamOptions}
+            periodOptions={periodOptions}
+            submitting={submitting}
+            onChange={(field, value) => updateForm("okr", field, value)}
+            onSubmit={handleSaveRecord}
+            onCancel={resetEditor}
+            editing={Boolean(editorRecordId)}
+            mode={editorMode}
+          />
+        </div>
       ) : null}
 
       {message ? (
@@ -1404,12 +1418,23 @@ export default function MetricsPage() {
                 <SurfaceCard title="Por equipo / departamento" subtitle="Agrupacion operativa usando departmentCode o teamId cuando existen.">
                   <div className="grid gap-4 xl:grid-cols-2">
                     {groupedByArea.map((group) => (
-                      <GroupSummaryCard key={group.key} title={group.label} stats={group} onSelect={() => setSelectedGroupKey(group.key)} />
+                      <GroupSummaryCard
+                        key={group.key}
+                        title={group.label}
+                        stats={group}
+                        onSelect={() => {
+                          setSelectedGroupKey(group.key);
+                          window.requestAnimationFrame(() => {
+                            groupDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                          });
+                        }}
+                      />
                     ))}
                   </div>
                 </SurfaceCard>
 
                 {selectedGroup ? (
+                  <div ref={groupDetailRef}>
                   <SurfaceCard title={`Detalle de ${selectedGroup.label}`} subtitle="Lista resumida de KPIs y OKRs dentro del grupo seleccionado.">
                     <div className="space-y-3">
                       {selectedGroup.items.map((item) => (
@@ -1427,6 +1452,7 @@ export default function MetricsPage() {
                       ))}
                     </div>
                   </SurfaceCard>
+                  </div>
                 ) : null}
               </div>
             ) : (
@@ -1468,7 +1494,16 @@ export default function MetricsPage() {
                           </div>
                         </div>
                         <div className="mt-4">
-                          <button type="button" onClick={() => setSelectedEmployeeKey(group.key)} className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedEmployeeKey(group.key);
+                              window.requestAnimationFrame(() => {
+                                employeeDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                              });
+                            }}
+                            className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
+                          >
                             Ver detalle
                           </button>
                         </div>
@@ -1478,6 +1513,7 @@ export default function MetricsPage() {
                 </SurfaceCard>
 
                 {selectedEmployee ? (
+                  <div ref={employeeDetailRef}>
                   <SurfaceCard title={`Detalle de ${selectedEmployee.label}`} subtitle="KPIs y OKRs visibles para la persona seleccionada.">
                     <div className="space-y-3">
                       {selectedEmployee.items.map((item) => (
@@ -1495,6 +1531,7 @@ export default function MetricsPage() {
                       ))}
                     </div>
                   </SurfaceCard>
+                  </div>
                 ) : null}
               </div>
             ) : (

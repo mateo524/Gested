@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -44,6 +44,7 @@ export default function OnboardingChecklist() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [pendingStep, setPendingStep] = useState("");
   const [isExpanded, setIsExpanded] = useState(false);
+  const sectionRef = useRef(null);
 
   const canManageOnboarding = canManageOnboardingUser(user);
 
@@ -98,7 +99,7 @@ export default function OnboardingChecklist() {
   if (!canManageOnboarding) return null;
   if (loading) {
     return (
-      <section className="pf-surface pf-surface-pad">
+      <section ref={sectionRef} className="pf-surface pf-surface-pad">
         <LoadingState
           compact
           title="Cargando onboarding institucional"
@@ -136,7 +137,16 @@ export default function OnboardingChecklist() {
             </p>
           </div>
           <div className="flex gap-2">
-            <button type="button" onClick={() => setIsExpanded(true)} className="rounded-xl border border-white/15 bg-[#142028] px-3 py-2 text-sm text-white">
+            <button
+              type="button"
+              onClick={() => {
+                setIsExpanded(true);
+                window.requestAnimationFrame(() => {
+                  sectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+                });
+              }}
+              className="rounded-xl border border-white/15 bg-[#142028] px-3 py-2 text-sm text-white"
+            >
               Ver checklist
             </button>
           </div>
@@ -146,7 +156,7 @@ export default function OnboardingChecklist() {
   }
 
   return (
-    <section className="pf-surface pf-surface-pad">
+    <section ref={sectionRef} className="pf-surface pf-surface-pad">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Onboarding institucional</p>

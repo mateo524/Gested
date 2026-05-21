@@ -1,15 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import AppLogo from "./brand/AppLogo";
+import useClickOutside from "../hooks/useClickOutside";
 
 function NotificationBell({ announcementSummary, onMarkRead }) {
   const [open, setOpen] = useState(false);
   const unreadCount = announcementSummary?.unreadCount || 0;
+  const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setOpen(false), open);
 
   return (
-    <div className="relative">
+    <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -52,6 +55,48 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
               </div>
             )}
           </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function LanguageMenu({ language, setLanguage, t }) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setOpen(false), open);
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((value) => !value)}
+        className="rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm text-white transition hover:bg-[#172c39]"
+        aria-label={t("common.language", "Idioma")}
+      >
+        {language === "en" ? "EN" : "ES"}
+      </button>
+      {open ? (
+        <div className="absolute right-0 z-30 mt-3 w-40 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+          {[
+            { key: "es", label: t("common.spanish", "Español") },
+            { key: "en", label: t("common.english", "English") },
+          ].map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              onClick={() => {
+                setLanguage(option.key);
+                setOpen(false);
+              }}
+              className={`flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm transition ${
+                language === option.key ? "bg-[#122f55] text-white" : "text-[#c7d5dc] hover:bg-white/5 hover:text-white"
+              }`}
+            >
+              <span>{option.label}</span>
+              {language === option.key ? <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" /> : null}
+            </button>
+          ))}
         </div>
       ) : null}
     </div>
@@ -165,7 +210,49 @@ function buildConfigSubmenu(visibleViews) {
   ].filter((item) => item.viewKey);
 }
 
-export default function AppShell({ view, setView, children }) {
+function translateNavLabel(key, fallback, t) {
+  const map = {
+    dashboard: "nav.home",
+    empleados: "nav.people",
+    evaluaciones: "nav.evaluations",
+    ciclos: "nav.cycles",
+    metricas: "nav.metrics",
+    competencias: "nav.skills",
+    planes: "nav.development",
+    "reporte-ejecutivo": "nav.report",
+    "bases-descargas": "nav.dataCenter",
+    "carga-masiva": "nav.import",
+    usuarios: "nav.users",
+    roles: "nav.settings",
+    settings: "nav.settings",
+    organizaciones: "nav.organizations",
+    "archivo-central": "nav.platform",
+    inicio: "nav.home",
+    personas: "nav.people",
+    objetivos: "nav.metricsShort",
+    desarrollo: "nav.development",
+    reportes: "nav.report",
+    datos: "nav.import",
+    configuracion: "nav.settings",
+    plataforma: "nav.platform",
+    importacion: "nav.import",
+    "reportes-globales": "nav.report",
+  };
+  return t(map[key] || "", fallback);
+}
+
+export default function AppShell({
+  view,
+  setView,
+  searchQuery,
+  setSearchQuery,
+  theme,
+  setTheme,
+  language,
+  setLanguage,
+  t,
+  children,
+}) {
   const {
     user,
     logout,
@@ -427,7 +514,7 @@ export default function AppShell({ view, setView, children }) {
                     }`}
                   >
                     <AppIcon name={tab.key} active={isActive} />
-                    {!sidebarCollapsed ? <span>{tab.label}</span> : null}
+                    {!sidebarCollapsed ? <span>{translateNavLabel(tab.key, tab.label, t)}</span> : null}
                   </button>
                 );
               })}
@@ -448,7 +535,7 @@ export default function AppShell({ view, setView, children }) {
                           isActive ? "bg-[#122f55] text-white" : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
                         }`}
                       >
-                        <span>{item.label}</span>
+                        <span>{translateNavLabel(item.viewKey, item.label, t)}</span>
                         {isActive ? <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" /> : null}
                       </button>
                     );
@@ -498,8 +585,8 @@ export default function AppShell({ view, setView, children }) {
                   </select>
                 ) : (
                   <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
-                    <p className="text-xs text-[#7f99a8]">Organización activa</p>
-                    <p className="text-sm font-medium text-white">{user?.companyName || "Organización"}</p>
+                    <p className="text-xs text-[#7f99a8]">{t("topbar.organization", "Organización activa")}</p>
+                    <p className="text-sm font-medium text-white">{user?.companyName || t("common.organization", "Organización")}</p>
                   </div>
                 )}
 
@@ -509,26 +596,36 @@ export default function AppShell({ view, setView, children }) {
                     <path d="M21 21l-4.35-4.35" />
                   </svg>
                   <input
-                    className="w-full cursor-not-allowed bg-transparent text-sm text-[#9fb6c4] outline-none placeholder:text-[#7f99a8]"
-                    placeholder="Buscar personas, roles, permisos, reportes..."
-                    disabled
-                    aria-label="Buscador global"
+                    className="w-full bg-transparent text-sm text-[#e8eef1] outline-none placeholder:text-[#7f99a8]"
+                    placeholder={t("topbar.searchPlaceholder", "Buscar en la pantalla actual...")}
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    aria-label={t("topbar.searchPlaceholder", "Buscar en la pantalla actual...")}
                   />
-                  <span className="rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8]">Pronto</span>
+                  <span className="rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8]">
+                    {t("topbar.searchHint", "Filtra listas visibles")}
+                  </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2">
                 <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
+                <LanguageMenu language={language} setLanguage={setLanguage} t={t} />
                 <button
                   type="button"
-                  disabled
-                  aria-disabled="true"
-                  className="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#9fb6c4] opacity-75"
-                  title="Modo oscuro activo (indicador visual)"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#9fb6c4] transition hover:bg-[#172c39] hover:text-white"
+                  title={theme === "dark" ? t("topbar.light", "Cambiar a modo claro") : t("topbar.dark", "Cambiar a modo oscuro")}
                 >
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                    <path d="M21 12.8A9 9 0 0 1 11.2 3 7 7 0 1 0 21 12.8z" />
+                    {theme === "dark" ? (
+                      <path d="M21 12.8A9 9 0 0 1 11.2 3 7 7 0 1 0 21 12.8z" />
+                    ) : (
+                      <>
+                        <circle cx="12" cy="12" r="4" />
+                        <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" />
+                      </>
+                    )}
                   </svg>
                 </button>
                 <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 md:flex">
@@ -542,12 +639,20 @@ export default function AppShell({ view, setView, children }) {
                 </div>
                 <button
                   onClick={logout}
-                  className="rounded-2xl border border-white/15 bg-[#152833] px-4 py-3 text-sm text-white"
+                  className="rounded-2xl border border-white/15 bg-[#152833] px-4 py-3 text-sm text-white transition hover:bg-[#1a3240]"
                 >
-                  Salir
+                  {t("topbar.logout", "Salir")}
                 </button>
               </div>
             </div>
+
+            {searchQuery?.trim() ? (
+              <div className="px-4 pb-3 md:px-6">
+                <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3 text-sm text-[#a8bdc8]">
+                  {t("common.searchApplies", "La búsqueda se aplica a las listas visibles de esta pantalla.")}
+                </div>
+              </div>
+            ) : null}
 
             {secondaryTabs.length ? (
               <div className="border-t border-white/10 px-4 pb-4 pt-3 md:px-6">
@@ -563,7 +668,7 @@ export default function AppShell({ view, setView, children }) {
                           : "border border-white/10 bg-[#12222d] text-[#a8bdc8] hover:text-white"
                       }`}
                     >
-                      {item.shortLabel || item.label}
+                      {translateNavLabel(item.key, item.shortLabel || item.label, t)}
                     </button>
                   ))}
                 </div>

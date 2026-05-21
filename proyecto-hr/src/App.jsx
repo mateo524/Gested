@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
+import { resolveUiText } from "./lib/uiCopy";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
@@ -51,6 +52,9 @@ function ViewLoader() {
 function AppContent() {
   const { isAuthenticated, hasPermission, user } = useAuth();
   const [view, setView] = useState("dashboard");
+  const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
+  const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
+  const [language, setLanguage] = useState(() => localStorage.getItem("performia_language") || "es");
 
   const availableViews = useMemo(
     () =>
@@ -113,6 +117,42 @@ function AppContent() {
   }, [view, availableViews]);
 
   useEffect(() => {
+    localStorage.setItem("performia_search_query", searchQuery);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    localStorage.setItem("performia_theme", theme);
+    document.documentElement.classList.remove("theme-dark", "theme-light");
+    document.body.classList.remove("theme-dark", "theme-light");
+    document.documentElement.classList.add(`theme-${theme}`);
+    document.body.classList.add(`theme-${theme}`);
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem("performia_language", language);
+  }, [language]);
+
+  const t = useMemo(
+    () => (key, fallback = "") => resolveUiText(language, key, fallback),
+    [language]
+  );
+
+  const viewContextValue = useMemo(
+    () => ({
+      view,
+      setView,
+      searchQuery,
+      setSearchQuery,
+      theme,
+      setTheme,
+      language,
+      setLanguage,
+      t,
+    }),
+    [language, searchQuery, setView, theme, t, view]
+  );
+
+  useEffect(() => {
     if (!isAuthenticated || !user) return;
 
     const preloaders = [loadDashboardPage];
@@ -161,8 +201,18 @@ function AppContent() {
   }
 
   return (
-    <AppShell view={view} setView={setView}>
-      <ViewProvider value={{ view, setView }}>
+    <ViewProvider value={viewContextValue}>
+      <AppShell
+        view={view}
+        setView={setView}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        theme={theme}
+        setTheme={setTheme}
+        language={language}
+        setLanguage={setLanguage}
+        t={t}
+      >
         <Suspense fallback={<ViewLoader />}>
           {view === "dashboard" && <DashboardPage />}
           {view === "novedades" && <AnnouncementsPage />}
@@ -181,8 +231,8 @@ function AppContent() {
           {view === "roles" && <RolesPage />}
           {view === "settings" && <SettingsPage />}
         </Suspense>
-      </ViewProvider>
-    </AppShell>
+      </AppShell>
+    </ViewProvider>
   );
 }
 

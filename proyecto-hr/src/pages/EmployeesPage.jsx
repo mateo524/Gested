@@ -23,7 +23,7 @@ function formatDate(value) {
 
 export default function EmployeesPage() {
   const { token } = useAuth();
-  const { setView } = useView();
+  const { setView, searchQuery } = useView();
   const [employees, setEmployees] = useState([]);
   const [schools, setSchools] = useState([]);
   const [filters, setFilters] = useState({ q: "", schoolId: "" });
@@ -39,6 +39,15 @@ export default function EmployeesPage() {
     () => ({ ...filters, q: deferredSearch }),
     [filters, deferredSearch]
   );
+  const filteredEmployees = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return employees;
+    return employees.filter((employee) =>
+      [employee.nombre, employee.apellido, employee.email, employee.cargo, employee.area]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [employees, searchQuery]);
 
   const employeesById = useMemo(
     () => new Map(employees.map((employee) => [employee._id, employee])),
@@ -300,8 +309,8 @@ export default function EmployeesPage() {
                 }
               />
             ) : null}
-            {!isLoading && employees.length ? (
-              employees.map((employee) => {
+            {!isLoading && filteredEmployees.length ? (
+              filteredEmployees.map((employee) => {
                 const manager = employeesById.get(employee.managerId);
                 return (
                   <article key={employee._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
@@ -326,17 +335,17 @@ export default function EmployeesPage() {
                 );
               })
             ) : null}
-            {!isLoading && messageType !== "error" && !employees.length ? (
+            {!isLoading && messageType !== "error" && !filteredEmployees.length ? (
               <EmptyState
                 compact
                 title="No hay empleados cargados todavía"
                 description={
-                  filters.q || filters.schoolId
+                  filters.q || filters.schoolId || searchQuery
                     ? "No encontramos personas para los filtros actuales."
                     : "Carga tu plantilla oficial o crea el primer empleado para empezar."
                 }
-                actionLabel={!filters.q && !filters.schoolId ? "Ir a carga masiva" : undefined}
-                onAction={!filters.q && !filters.schoolId ? () => setView("carga-masiva") : undefined}
+                actionLabel={!filters.q && !filters.schoolId && !searchQuery ? "Ir a carga masiva" : undefined}
+                onAction={!filters.q && !filters.schoolId && !searchQuery ? () => setView("carga-masiva") : undefined}
               />
             ) : null}
           </div>

@@ -1,5 +1,6 @@
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
@@ -13,6 +14,7 @@ const emptyForm = {
 
 export default function UsersPage() {
   const { token } = useAuth();
+  const { searchQuery } = useView();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -28,14 +30,14 @@ export default function UsersPage() {
   const deferredQuery = useDeferredValue(query);
 
   const filteredUsers = useMemo(() => {
-    const term = deferredQuery.trim().toLowerCase();
-    if (!term) return users;
+    const terms = [deferredQuery, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
+    if (!terms.length) return users;
     return users.filter((user) =>
       [user.nombre, user.email, user.roleId?.nombre]
         .filter(Boolean)
-        .some((field) => String(field).toLowerCase().includes(term))
+        .some((field) => terms.some((term) => String(field).toLowerCase().includes(term)))
     );
-  }, [users, deferredQuery]);
+  }, [users, deferredQuery, searchQuery]);
 
   const allVisibleSelected =
     filteredUsers.length > 0 && filteredUsers.every((user) => selectedIds.includes(user._id));
@@ -348,7 +350,7 @@ export default function UsersPage() {
                 compact
                 title="No hay usuarios para mostrar"
                 description={
-                  query
+                  query || searchQuery
                     ? "Prueba con otra busqueda o limpia el filtro actual."
                     : "Crea el primer acceso para empezar a asignar roles."
                 }
