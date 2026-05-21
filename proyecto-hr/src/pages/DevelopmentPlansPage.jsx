@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -18,6 +18,7 @@ export default function DevelopmentPlansPage() {
   const { token, user } = useAuth();
   const { searchQuery } = useView();
   const [plans, setPlans] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -27,6 +28,9 @@ export default function DevelopmentPlansPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBase, setIsLoadingBase] = useState(false);
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState([]);
+  const planFormRef = useRef(null);
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const baseCacheKey = `pf_plans_base_${roleScope}`;
   const plansCacheKey = `pf_plans_list_${roleScope}_${filters.employeeId || "all"}_${filters.estado || "all"}`;
@@ -43,6 +47,22 @@ export default function DevelopmentPlansPage() {
       .filter(Boolean)
       .some((field) => String(field).toLowerCase().includes(term));
   });
+  const visibleSuggestions = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    return suggestions.filter((suggestion) => {
+      if (dismissedSuggestionIds.includes(suggestion.id)) return false;
+      if (!term) return true;
+      return [
+        suggestion.employeeName,
+        suggestion.title,
+        suggestion.reason,
+        suggestion.suggestedAction,
+        ...(suggestion.evidence || []).map((item) => `${item.label} ${item.value}`),
+      ]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+  }, [dismissedSuggestionIds, searchQuery, suggestions]);
 
   const loadPlans = useCallback(async (signal) => {
     const params = new URLSearchParams();
@@ -81,6 +101,20 @@ export default function DevelopmentPlansPage() {
     }
   }, [baseCacheKey, token]);
 
+  const loadSuggestions = useCallback(async (signal) => {
+    setIsLoadingSuggestions(true);
+    try {
+      const data = await apiFetch("/development-plans/suggestions", {
+        token,
+        signal,
+        timeoutMs: 20000,
+      });
+      setSuggestions(data.suggestions || []);
+    } finally {
+      setIsLoadingSuggestions(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     const cachedBase = sessionStorage.getItem(baseCacheKey);
     if (cachedBase) {
@@ -102,6 +136,17 @@ export default function DevelopmentPlansPage() {
     });
     return () => controller.abort();
   }, [baseCacheKey, loadBaseData]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    loadSuggestions(controller.signal).catch((error) => {
+      if (!controller.signal.aborted) {
+        setMessageType("error");
+        setMessage(error.message);
+      }
+    });
+    return () => controller.abort();
+  }, [loadSuggestions]);
 
   useEffect(() => {
     const cachedPlans = sessionStorage.getItem(plansCacheKey);
@@ -148,13 +193,49 @@ export default function DevelopmentPlansPage() {
       setForm(emptyForm);
       setMessageType("success");
       setMessage("Plan de desarrollo creado.");
-      await loadPlans();
+      await Promise.all([loadPlans(), loadSuggestions()]);
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  function handleSuggestionCreate(suggestion) {
+    const employee = employees.find((item) => String(item._id) === String(suggestion.employeeId));
+    if (!employee) {
+      setMessageType("warning");
+      setMessage("No encontramos a la persona dentro de tu alcance actual para crear el plan.");
+      return;
+    }
+
+    setForm({
+      employeeId: String(suggestion.employeeId),
+      evaluationId: "",
+      fortalezas: "",
+      aspectoDesarrollar: suggestion.recommendedPlanTitle || suggestion.title,
+      medicion: suggestion.recommendedPlanDescription || suggestion.suggestedAction || "",
+      fechaSeguimiento: "",
+      estado: "PENDIENTE",
+    });
+    setMessageType("info");
+    setMessage("Revisá la sugerencia y confirma manualmente antes de crear el plan.");
+    requestAnimationFrame(() => {
+      planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function handleDismissSuggestion(suggestionId) {
+    setDismissedSuggestionIds((current) =>
+      current.includes(suggestionId) ? current : [...current, suggestionId]
+    );
+  }
+
+  function severityBadge(severity) {
+    if (severity === "high") return "Alta";
+    if (severity === "medium") return "Media";
+    return "Baja";
   }
 
   return (
@@ -212,12 +293,126 @@ export default function DevelopmentPlansPage() {
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <section className="space-y-6">
+          <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Sugerencias de desarrollo</p>
+                <h4 className="mt-2 text-xl font-semibold text-white">Que accion conviene revisar ahora</h4>
+                <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
+                  Estas sugerencias se generan a partir de evaluaciones, KPIs, OKRs y planes existentes. Revisalas antes de crear un plan.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() =>
+                  loadSuggestions().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+                className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2 text-sm font-medium text-white"
+              >
+                {isLoadingSuggestions ? "Actualizando..." : "Actualizar sugerencias"}
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4">
+              {isLoadingSuggestions ? (
+                <LoadingState
+                  compact
+                  title="Buscando oportunidades de seguimiento"
+                  description="Estamos cruzando evaluaciones, KPI, OKR y planes vigentes."
+                />
+              ) : visibleSuggestions.length ? (
+                visibleSuggestions.map((suggestion) => (
+                  <article key={suggestion.id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="text-lg font-semibold text-white">{suggestion.employeeName}</p>
+                        <p className="mt-1 text-sm text-[#c5d5de]">{suggestion.title}</p>
+                        <p className="mt-1 text-sm text-[#9fb6c4]">
+                          {suggestion.departmentCode ? `Area ${suggestion.departmentCode} · ` : ""}
+                          Fuente {suggestion.sourceType.toUpperCase()}
+                        </p>
+                      </div>
+                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                        suggestion.severity === "high"
+                          ? "bg-rose-500/15 text-rose-200"
+                          : suggestion.severity === "medium"
+                            ? "bg-amber-500/15 text-amber-200"
+                            : "bg-[#1e293b] text-[#b8c9d4]"
+                      }`}>
+                        Prioridad {severityBadge(suggestion.severity)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Motivo</p>
+                        <p className="mt-2 text-sm leading-relaxed text-[#d6e1e7]">{suggestion.reason}</p>
+                        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Accion sugerida</p>
+                        <p className="mt-2 text-sm leading-relaxed text-[#9fb6c4]">{suggestion.suggestedAction}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Evidencia</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(suggestion.evidence || []).map((item) => (
+                            <span key={`${suggestion.id}-${item.label}`} className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#c5d5de]">
+                              <strong className="text-white">{item.label}:</strong> {item.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleSuggestionCreate(suggestion)}
+                        disabled={!suggestion.canCreatePlan}
+                        className="rounded-2xl bg-[#1e3a8a] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        Crear plan
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDismissSuggestion(suggestion.id)}
+                        className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-medium text-[#c5d5de]"
+                      >
+                        Descartar
+                      </button>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <EmptyState
+                  compact
+                  title="No hay sugerencias por ahora"
+                  description="Cuando existan KPIs, OKRs, evaluaciones o planes vencidos, apareceran aca."
+                />
+              )}
+            </div>
+          </section>
+
+        <section ref={planFormRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h4 className="text-xl font-semibold text-white">Nuevo plan de desarrollo</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Objetivo</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Seguimiento</span>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setForm(emptyForm);
+                planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+              className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
+            >
+              Crear plan manual
+            </button>
           </div>
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Relación base</p>
@@ -258,6 +453,7 @@ export default function DevelopmentPlansPage() {
               {isSubmitting ? "Guardando..." : "Crear plan"}
             </button>
           </form>
+        </section>
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
