@@ -30,6 +30,28 @@ const AnnouncementSchema = new mongoose.Schema(
       ref: "Company",
       required: true,
     },
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      default: null,
+    },
+    title: { type: String, trim: true },
+    body: { type: String, trim: true },
+    type: {
+      type: String,
+      enum: ["info", "warning", "success", "update"],
+      default: "info",
+    },
+    audienceRoleKeys: { type: [String], default: [] },
+    audienceScopes: { type: [String], default: [] },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    expiresAt: { type: Date, default: null },
+    isActive: { type: Boolean, default: true },
+    pinned: { type: Boolean, default: false },
     authorUserId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -49,5 +71,8 @@ const AnnouncementSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+AnnouncementSchema.index({ companyId: 1, schoolId: 1, isActive: 1, createdAt: -1 });
+AnnouncementSchema.index({ companyId: 1, pinned: -1, createdAt: -1 });
 
 export default mongoose.model("Announcement", AnnouncementSchema);

@@ -66,7 +66,7 @@ function AppContent() {
         hasPermission("manage_users") ? "usuarios" : null,
         hasPermission("manage_roles") || hasPermission("view_audit") ? "roles" : null,
         hasPermission("manage_settings") || user?.isSuperAdmin ? "settings" : null,
-        user?.isSuperAdmin ? "novedades" : null,
+        user ? "novedades" : null,
         hasPermission("manage_employees") ? "empleados" : null,
         hasPermission("manage_competencies") ? "competencias" : null,
         hasPermission("manage_metrics") ? "metricas" : null,

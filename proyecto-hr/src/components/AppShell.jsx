@@ -5,11 +5,41 @@ import { isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelper
 import AppLogo from "./brand/AppLogo";
 import useClickOutside from "../hooks/useClickOutside";
 
-function NotificationBell({ announcementSummary, onMarkRead }) {
+function formatAnnouncementTime(value) {
+  if (!value) return "";
+  return new Date(value).toLocaleString("es-AR", {
+    dateStyle: "short",
+    timeStyle: "short",
+  });
+}
+
+function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onViewAll, t }) {
   const [open, setOpen] = useState(false);
+  const [busyId, setBusyId] = useState("");
+  const [markingAll, setMarkingAll] = useState(false);
   const unreadCount = announcementSummary?.unreadCount || 0;
   const containerRef = useRef(null);
   useClickOutside(containerRef, () => setOpen(false), open);
+
+  async function handleMarkRead(item) {
+    if (item.isRead || busyId) return;
+    try {
+      setBusyId(item._id);
+      await onMarkRead?.(item);
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function handleMarkAllRead() {
+    if (!unreadCount || markingAll) return;
+    try {
+      setMarkingAll(true);
+      await onMarkAllRead?.();
+    } finally {
+      setMarkingAll(false);
+    }
+  }
 
   return (
     <div ref={containerRef} className="relative">
@@ -17,7 +47,7 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
         type="button"
         onClick={() => setOpen((value) => !value)}
         className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
-        aria-label="Novedades"
+        aria-label={t("topbar.news", "Novedades")}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
           <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5" />
@@ -31,27 +61,94 @@ function NotificationBell({ announcementSummary, onMarkRead }) {
       </button>
 
       {open ? (
-        <div className="absolute right-0 z-30 mt-3 w-80 rounded-3xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+        <div className="absolute right-0 z-30 mt-3 w-[24rem] rounded-3xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
           <div className="flex items-center justify-between gap-3 px-2 pb-2">
-            <p className="text-sm font-semibold text-white">Notificaciones</p>
-            <span className="text-xs text-[#89a3b1]">{unreadCount ? `${unreadCount} nuevas` : "Al d?a"}</span>
+            <div>
+              <p className="text-sm font-semibold text-white">{t("topbar.news", "Novedades")}</p>
+              <span className="text-xs text-[#89a3b1]">
+                {unreadCount ? `${unreadCount} nuevas` : t("topbar.upToDate", "Al d?a")}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={!unreadCount || markingAll}
+                onClick={handleMarkAllRead}
+                className="rounded-2xl border border-white/10 px-3 py-1.5 text-xs text-[#c7d5dc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {markingAll ? "Marcando..." : "Marcar todas"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onViewAll?.();
+                  setOpen(false);
+                }}
+                className="rounded-2xl bg-[#1e3a8a] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#2a4db8]"
+              >
+                Ver todas
+              </button>
+            </div>
           </div>
           <div className="space-y-2">
             {announcementSummary?.latest?.length ? (
               announcementSummary.latest.map((item) => (
-                <button
+                <div
                   key={item._id}
-                  type="button"
-                  onClick={() => onMarkRead(item)}
-                  className="w-full rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-left transition hover:bg-[#152833]"
+                  className={`rounded-2xl border px-3 py-3 text-left ${
+                    item.isRead
+                      ? "border-white/10 bg-[#0f1d26]"
+                      : "border-[#4f7cff]/30 bg-[#12243b]"
+                  }`}
                 >
-                  <p className="text-sm font-medium text-white">{item.titulo}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">{item.cuerpo}</p>
-                </button>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium text-white">{item.title || item.titulo}</p>
+                        {!item.isRead ? (
+                          <span className="rounded-full bg-[#2563eb] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                            Nueva
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">
+                        {item.body || item.cuerpo}
+                      </p>
+                    </div>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                        item.type === "warning"
+                          ? "bg-amber-500/15 text-amber-200"
+                          : item.type === "success"
+                            ? "bg-emerald-500/15 text-emerald-200"
+                            : item.type === "update"
+                              ? "bg-violet-500/15 text-violet-200"
+                              : "bg-white/10 text-[#c7d5dc]"
+                      }`}
+                    >
+                      {item.type || "info"}
+                    </span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-[#7f99a8]">{formatAnnouncementTime(item.createdAt)}</span>
+                    {!item.isRead ? (
+                      <button
+                        type="button"
+                        disabled={busyId === item._id}
+                        onClick={() => handleMarkRead(item)}
+                        className="rounded-2xl border border-[#4f7cff]/30 px-3 py-1.5 text-xs font-medium text-[#d8e4ff] transition hover:bg-[#173150] disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {busyId === item._id ? "Marcando..." : "Marcar como vista"}
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-[#7f99a8]">Vista</span>
+                    )}
+                  </div>
+                </div>
               ))
             ) : (
               <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-4 text-sm text-[#8ea5b3]">
-                No hay notificaciones recientes.
+                No hay novedades nuevas.
               </div>
             )}
           </div>
@@ -237,6 +334,7 @@ function translateNavLabel(key, fallback, t) {
     plataforma: "nav.platform",
     importacion: "nav.import",
     "reportes-globales": "nav.report",
+    novedades: "nav.news",
   };
   return t(map[key] || "", fallback);
 }
@@ -276,6 +374,13 @@ export default function AppShell({
   const allViews = useMemo(
     () => [
       { key: "dashboard", label: "Inicio", shortLabel: "Inicio", show: true, section: isSuperAdmin ? "plataforma" : "inicio" },
+      {
+        key: "novedades",
+        label: "Novedades",
+        shortLabel: "Novedades",
+        show: true,
+        section: "inicio",
+      },
       {
         key: "empleados",
         label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas",
@@ -460,8 +565,14 @@ export default function AppShell({
       : "Gestión del desempeño institucional";
 
   async function handleMarkRead(item) {
-    if (!token || item.isRead || isSuperAdmin) return;
+    if (!token || item.isRead) return;
     await apiFetch(`/announcements/${item._id}/read`, { method: "POST", token });
+    await refreshAnnouncementSummary();
+  }
+
+  async function handleMarkAllRead() {
+    if (!token) return;
+    await apiFetch("/announcements/read-all", { method: "POST", token });
     await refreshAnnouncementSummary();
   }
 
@@ -609,7 +720,13 @@ export default function AppShell({
               </div>
 
               <div className="flex items-center gap-2">
-                <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} />
+                <NotificationBell
+                  announcementSummary={announcementSummary}
+                  onMarkRead={handleMarkRead}
+                  onMarkAllRead={handleMarkAllRead}
+                  onViewAll={() => setView("novedades")}
+                  t={t}
+                />
                 <LanguageMenu language={language} setLanguage={setLanguage} t={t} />
                 <button
                   type="button"
