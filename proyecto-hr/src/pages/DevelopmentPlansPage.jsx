@@ -14,6 +14,17 @@ const emptyForm = {
   estado: "PENDIENTE",
 };
 
+const suggestionFilters = [
+  { key: "all", label: "Todas" },
+  { key: "high", label: "Alta prioridad" },
+  { key: "medium", label: "Media" },
+  { key: "low", label: "Baja" },
+  { key: "kpi", label: "KPI" },
+  { key: "okr", label: "OKR" },
+  { key: "evaluation", label: "Evaluación" },
+  { key: "plan", label: "Plan vencido" },
+];
+
 export default function DevelopmentPlansPage() {
   const { token, user } = useAuth();
   const { searchQuery } = useView();
@@ -30,6 +41,8 @@ export default function DevelopmentPlansPage() {
   const [isLoadingPlans, setIsLoadingPlans] = useState(false);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState([]);
+  const [suggestionFilter, setSuggestionFilter] = useState("all");
+  const [prefilledFromSuggestion, setPrefilledFromSuggestion] = useState(false);
   const planFormRef = useRef(null);
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const baseCacheKey = `pf_plans_base_${roleScope}`;
@@ -51,6 +64,14 @@ export default function DevelopmentPlansPage() {
     const term = String(searchQuery || "").trim().toLowerCase();
     return suggestions.filter((suggestion) => {
       if (dismissedSuggestionIds.includes(suggestion.id)) return false;
+      if (suggestionFilter !== "all") {
+        if (["high", "medium", "low"].includes(suggestionFilter) && suggestion.severity !== suggestionFilter) {
+          return false;
+        }
+        if (["kpi", "okr", "evaluation", "plan"].includes(suggestionFilter) && suggestion.sourceType !== suggestionFilter) {
+          return false;
+        }
+      }
       if (!term) return true;
       return [
         suggestion.employeeName,
@@ -62,7 +83,7 @@ export default function DevelopmentPlansPage() {
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(term));
     });
-  }, [dismissedSuggestionIds, searchQuery, suggestions]);
+  }, [dismissedSuggestionIds, searchQuery, suggestionFilter, suggestions]);
 
   const loadPlans = useCallback(async (signal) => {
     const params = new URLSearchParams();
@@ -191,6 +212,7 @@ export default function DevelopmentPlansPage() {
         }),
       });
       setForm(emptyForm);
+      setPrefilledFromSuggestion(false);
       setMessageType("success");
       setMessage("Plan de desarrollo creado.");
       await Promise.all([loadPlans(), loadSuggestions()]);
@@ -219,8 +241,9 @@ export default function DevelopmentPlansPage() {
       fechaSeguimiento: "",
       estado: "PENDIENTE",
     });
+    setPrefilledFromSuggestion(true);
     setMessageType("info");
-    setMessage("Revisá la sugerencia y confirma manualmente antes de crear el plan.");
+    setMessage("Revisá y ajustá el plan antes de guardarlo.");
     requestAnimationFrame(() => {
       planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
@@ -236,6 +259,15 @@ export default function DevelopmentPlansPage() {
     if (severity === "high") return "Alta";
     if (severity === "medium") return "Media";
     return "Baja";
+  }
+
+  function suggestionFilterCount(filterKey) {
+    return suggestions.filter((suggestion) => {
+      if (dismissedSuggestionIds.includes(suggestion.id)) return false;
+      if (filterKey === "all") return true;
+      if (["high", "medium", "low"].includes(filterKey)) return suggestion.severity === filterKey;
+      return suggestion.sourceType === filterKey;
+    }).length;
   }
 
   return (
@@ -318,6 +350,26 @@ export default function DevelopmentPlansPage() {
             </div>
 
             <div className="mt-6 space-y-4">
+              <div className="flex flex-wrap gap-2">
+                {suggestionFilters.map((item) => {
+                  const active = suggestionFilter === item.key;
+                  return (
+                    <button
+                      key={item.key}
+                      type="button"
+                      onClick={() => setSuggestionFilter(item.key)}
+                      className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
+                        active
+                          ? "bg-[#1e3a8a] text-white"
+                          : "border border-white/15 bg-[#122530] text-[#c5d5de]"
+                      }`}
+                    >
+                      {item.label} ({suggestionFilterCount(item.key)})
+                    </button>
+                  );
+                })}
+              </div>
+
               {isLoadingSuggestions ? (
                 <LoadingState
                   compact
@@ -331,17 +383,27 @@ export default function DevelopmentPlansPage() {
                       <div>
                         <p className="text-lg font-semibold text-white">{suggestion.employeeName}</p>
                         <p className="mt-1 text-sm text-[#c5d5de]">{suggestion.title}</p>
-                        <p className="mt-1 text-sm text-[#9fb6c4]">
-                          {suggestion.departmentCode ? `Area ${suggestion.departmentCode} · ` : ""}
-                          Fuente {suggestion.sourceType.toUpperCase()}
-                        </p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {suggestion.departmentCode ? (
+                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
+                              Área {suggestion.departmentCode}
+                            </span>
+                          ) : null}
+                          <span className="rounded-full border border-sky-400/25 bg-sky-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-sky-100">
+                            {suggestion.sourceType === "evaluation"
+                              ? "Evaluación"
+                              : suggestion.sourceType === "plan"
+                                ? "Plan vencido"
+                                : suggestion.sourceType.toUpperCase()}
+                          </span>
+                        </div>
                       </div>
-                      <span className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                      <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                         suggestion.severity === "high"
-                          ? "bg-rose-500/15 text-rose-200"
+                          ? "border-rose-400/30 bg-rose-500/15 text-rose-100"
                           : suggestion.severity === "medium"
-                            ? "bg-amber-500/15 text-amber-200"
-                            : "bg-[#1e293b] text-[#b8c9d4]"
+                            ? "border-amber-400/30 bg-amber-500/15 text-amber-100"
+                            : "border-slate-400/20 bg-[#1e293b] text-[#d2dbe2]"
                       }`}>
                         Prioridad {severityBadge(suggestion.severity)}
                       </span>
@@ -352,15 +414,17 @@ export default function DevelopmentPlansPage() {
                         <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Motivo</p>
                         <p className="mt-2 text-sm leading-relaxed text-[#d6e1e7]">{suggestion.reason}</p>
                         <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Accion sugerida</p>
-                        <p className="mt-2 text-sm leading-relaxed text-[#9fb6c4]">{suggestion.suggestedAction}</p>
+                        <div className="mt-2 rounded-2xl border border-[#1e3a8a]/35 bg-[#132847] px-4 py-3 text-sm font-medium text-[#dbe7ff]">
+                          {suggestion.suggestedAction}
+                        </div>
                       </div>
                       <div>
                         <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Evidencia</p>
-                        <div className="mt-2 flex flex-wrap gap-2">
+                        <div className="mt-2 grid gap-2">
                           {(suggestion.evidence || []).map((item) => (
-                            <span key={`${suggestion.id}-${item.label}`} className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#c5d5de]">
+                            <div key={`${suggestion.id}-${item.label}`} className="rounded-2xl border border-white/10 bg-[#122530] px-3 py-2 text-xs text-[#c5d5de]">
                               <strong className="text-white">{item.label}:</strong> {item.value}
-                            </span>
+                            </div>
                           ))}
                         </div>
                       </div>
@@ -407,6 +471,7 @@ export default function DevelopmentPlansPage() {
               type="button"
               onClick={() => {
                 setForm(emptyForm);
+                setPrefilledFromSuggestion(false);
                 planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
@@ -414,9 +479,14 @@ export default function DevelopmentPlansPage() {
               Crear plan manual
             </button>
           </div>
+          {prefilledFromSuggestion ? (
+            <div className="mt-4 rounded-2xl border border-[#1e3a8a]/35 bg-[#132847] px-4 py-3 text-sm text-[#dce7ff]">
+              Revisá y ajustá el plan antes de guardarlo.
+            </div>
+          ) : null}
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Relación base</p>
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
+            <select className={`w-full rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.employeeId ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
               <option value="">Selecciona empleado</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
@@ -436,7 +506,7 @@ export default function DevelopmentPlansPage() {
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definicion del plan</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Fortalezas (separadas por coma)" value={form.fortalezas} onChange={(event) => setForm({ ...form, fortalezas: event.target.value })} />
-            <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
+            <textarea className={`min-h-24 w-full rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.aspectoDesarrollar ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
             <textarea className="min-h-20 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cómo se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Seguimiento</p>

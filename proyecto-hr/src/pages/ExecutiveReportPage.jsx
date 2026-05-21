@@ -249,15 +249,28 @@ export default function ExecutiveReportPage() {
   }, []);
 
   const actionList = useMemo(() => {
+    const severityOrder = { high: 0, medium: 1, low: 2 };
     const items = [...(overview?.actions || []), ...(detail?.actions || [])];
     const term = String(searchQuery || "").trim().toLowerCase();
-    if (!term) return items;
-    return items.filter((action) =>
+    const filtered = items.filter((action) =>
       [action?.title, action?.description, action?.key]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
     );
+    return filtered.sort((a, b) => {
+      const weight = (severityOrder[a?.severity] ?? 9) - (severityOrder[b?.severity] ?? 9);
+      if (weight !== 0) return weight;
+      return Number(b?.count || 0) - Number(a?.count || 0);
+    });
   }, [detail?.actions, overview?.actions, searchQuery]);
+
+  const actionPrioritySummary = useMemo(() => {
+    return {
+      high: actionList.filter((item) => item.severity === "high").length,
+      medium: actionList.filter((item) => item.severity === "medium").length,
+      low: actionList.filter((item) => item.severity === "low").length,
+    };
+  }, [actionList]);
 
   const executiveNarrative = useMemo(() => {
     const pending = Number(overview?.summary?.evaluationsPending || 0);
@@ -898,6 +911,18 @@ export default function ExecutiveReportPage() {
           {activeTab === "acciones" ? (
             actionList.length ? (
               <SurfaceCard title="Acciones recomendadas" subtitle="Explicables, priorizadas y sin prediccion sensible.">
+                <div className="mb-4 grid gap-3 md:grid-cols-3">
+                  <StatCard label="Prioridad alta" value={actionPrioritySummary.high} tone="danger" />
+                  <StatCard label="Prioridad media" value={actionPrioritySummary.medium} tone="warning" />
+                  <StatCard label="Prioridad baja" value={actionPrioritySummary.low} />
+                </div>
+                <div className="mb-5 rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Primera accion sugerida</p>
+                  <p className="mt-2 text-base font-semibold text-white">{actionList[0]?.title}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#9fb6c4]">
+                    {actionList[0]?.description || "No hay una accion prioritaria destacada ahora."}
+                  </p>
+                </div>
                 <div className="space-y-3">
                   {actionList.map((action, index) => {
                     const destination = mapActionDestination(action);
