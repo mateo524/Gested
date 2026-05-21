@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -59,13 +59,32 @@ function buildPrintableReport(data) {
   `;
 }
 
+function SurfaceCard({ title, subtitle, children, actions }) {
+  return (
+    <section className="pf-card p-5 md:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h3 className="text-lg font-semibold text-white">{title}</h3>
+          {subtitle ? <p className="mt-1 text-sm text-[#93acbb]">{subtitle}</p> : null}
+        </div>
+        {actions}
+      </div>
+      <div className="mt-5">{children}</div>
+    </section>
+  );
+}
+
 export default function EvaluationsPage() {
   const { token, user } = useAuth();
   const { searchQuery } = useView();
+  const detailRef = useRef(null);
   const [employees, setEmployees] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [metrics, setMetrics] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
+  const [selectedEvaluation, setSelectedEvaluation] = useState(null);
+  const [selectedScores, setSelectedScores] = useState([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [scores, setScores] = useState([]);
   const [message, setMessage] = useState("");
@@ -91,9 +110,7 @@ export default function EvaluationsPage() {
         .some((field) => String(field).toLowerCase().includes(term))
     );
   }, [evaluations, searchQuery]);
-  const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
-  const baseCacheKey = `pf_eval_base_${roleScope}`;
-  const evaluationsCacheKey = `pf_eval_list_${roleScope}`;
+
   const loadBaseData = useCallback(async (signal) => {
     setIsLoadingBase(true);
     try {
@@ -105,14 +122,10 @@ export default function EvaluationsPage() {
       setEmployees(employeesData);
       setCycles(cyclesData);
       setMetrics(metricsData);
-      sessionStorage.setItem(
-        baseCacheKey,
-        JSON.stringify({ employees: employeesData, cycles: cyclesData, metrics: metricsData })
-      );
     } finally {
       setIsLoadingBase(false);
     }
-  }, [baseCacheKey, token]);
+  }, [token]);
 
   const loadEvaluations = useCallback(async (signal) => {
     setIsLoadingEvaluations(true);
@@ -123,34 +136,12 @@ export default function EvaluationsPage() {
         timeoutMs: 20000,
       });
       setEvaluations(evaluationsData);
-      sessionStorage.setItem(evaluationsCacheKey, JSON.stringify(evaluationsData));
     } finally {
       setIsLoadingEvaluations(false);
     }
-  }, [evaluationsCacheKey, token]);
+  }, [token]);
 
   useEffect(() => {
-    const cachedBase = sessionStorage.getItem(baseCacheKey);
-    if (cachedBase) {
-      try {
-        const parsed = JSON.parse(cachedBase);
-        setEmployees(parsed.employees || []);
-        setCycles(parsed.cycles || []);
-        setMetrics(parsed.metrics || []);
-      } catch {
-        sessionStorage.removeItem(baseCacheKey);
-      }
-    }
-
-    const cachedEvaluations = sessionStorage.getItem(evaluationsCacheKey);
-    if (cachedEvaluations) {
-      try {
-        setEvaluations(JSON.parse(cachedEvaluations) || []);
-      } catch {
-        sessionStorage.removeItem(evaluationsCacheKey);
-      }
-    }
-
     const controller = new AbortController();
     loadBaseData(controller.signal).catch((error) => {
       if (!controller.signal.aborted) {
@@ -165,7 +156,7 @@ export default function EvaluationsPage() {
       }
     });
     return () => controller.abort();
-  }, [baseCacheKey, evaluationsCacheKey, loadBaseData, loadEvaluations]);
+  }, [loadBaseData, loadEvaluations]);
 
   useEffect(() => {
     setScores(metrics.map((metric) => defaultScore(metric._id)));
@@ -177,11 +168,28 @@ export default function EvaluationsPage() {
     );
   }
 
+  async function loadEvaluationDetail(evaluationId) {
+    try {
+      setLoadingDetail(true);
+      const data = await apiFetch(`/evaluations/${evaluationId}`, { token });
+      setSelectedEvaluation(data.evaluation);
+      setSelectedScores(data.scores || []);
+      window.requestAnimationFrame(() => {
+        detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setLoadingDetail(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.employeeId || !form.cycleId) {
       setMessageType("warning");
-      setMessage("Selecciona empleado y periodo para guardar la evaluación.");
+      setMessage("Seleccioná empleado y período para guardar la evaluación.");
       return;
     }
     try {
@@ -219,7 +227,7 @@ export default function EvaluationsPage() {
       const popup = window.open("", "_blank", "width=900,height=800");
       if (!popup) {
         setMessageType("warning");
-        setMessage("Tu navegador bloqueo la ventana del reporte.");
+        setMessage("Tu navegador bloqueó la ventana del reporte.");
         return;
       }
       popup.document.open();
@@ -234,65 +242,38 @@ export default function EvaluationsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+    <div className="space-y-5">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Evaluaciones</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Crea, revisa y sigue evaluaciones por persona y por ciclo con una vista clara del estado actual.
+          Una evaluación mide desempeño durante un ciclo. El contexto define a quién se evalúa, con qué criterios y en qué período.
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">
-            Ciclos, personas y puntajes en una sola vista
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              loadEvaluations().catch((error) => {
-                setMessageType("error");
-                setMessage(error.message);
-              })
-            }
-            className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
-          >
-            Actualizar lista
-          </button>
-        </div>
       </section>
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-          <div>
-            <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Que son las evaluaciones</p>
-            <h4 className="mt-2 text-xl font-semibold text-white">Medir desempeno para dar feedback y orientar desarrollo</h4>
-            <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
-              Las evaluaciones permiten medir el desempeno de una persona o equipo durante un ciclo. Sirven para generar feedback,
-              detectar brechas y alimentar planes de desarrollo.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-5 xl:grid-cols-1">
-            {["Ciclo", "Evaluacion", "Feedback", "Plan de desarrollo", "Reporte"].map((step, index) => (
-              <div key={step} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-                <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Paso {index + 1}</p>
-                <p className="mt-2 text-sm font-semibold text-white">{step}</p>
-              </div>
-            ))}
-          </div>
+      <SurfaceCard title="Cómo se construye una evaluación" subtitle="Tomamos como referencia el flujo real de desempeño del formulario 2024.">
+        <div className="grid gap-3 md:grid-cols-6">
+          {["Ciclo", "Metas / competencias", "Autoevaluación", "Evaluación superior", "Evidencias", "Resumen"].map((step, index) => (
+            <article key={step} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Paso {index + 1}</p>
+              <p className="mt-2 text-sm font-semibold text-white">{step}</p>
+            </article>
+          ))}
         </div>
-      </section>
+      </SurfaceCard>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado y periodo</span>
+            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Evaluado y ciclo</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Tipo y estado</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Puntajes</span>
           </div>
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Seleccion base</p>
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Datos del evaluado</p>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
-              <option value="">Selecciona empleado</option>
+              <option value="">Seleccioná empleado</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
                   {employee.apellido}, {employee.nombre}
@@ -300,7 +281,7 @@ export default function EvaluationsPage() {
               ))}
             </select>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.cycleId} onChange={(event) => setForm({ ...form, cycleId: event.target.value })}>
-              <option value="">Selecciona periodo</option>
+              <option value="">Seleccioná ciclo o período</option>
               {cycles.map((cycle) => (
                 <option key={cycle._id} value={cycle._id}>
                   {cycle.periodo} {cycle.anio} - {cycle.etapa}
@@ -308,15 +289,12 @@ export default function EvaluationsPage() {
               ))}
             </select>
 
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Cómo se evaluará</p>
-            <p className="text-sm text-[#9fb6c4]">
-              El contexto define a quién se evalúa, con qué criterios y en qué período.
-            </p>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Cómo se evaluará</p>
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
                 <option value="AUTOEVALUACION">Autoevaluación</option>
-                <option value="JEFATURA">Jefatura</option>
-                <option value="FINAL">Final</option>
+                <option value="JEFATURA">Evaluación de jefatura</option>
+                <option value="FINAL">Cierre / final</option>
               </select>
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(event) => setForm({ ...form, estado: event.target.value })}>
                 <option value="BORRADOR">Borrador</option>
@@ -328,7 +306,7 @@ export default function EvaluationsPage() {
             <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Comentarios generales" value={form.comentariosGenerales} onChange={(event) => setForm({ ...form, comentariosGenerales: event.target.value })} />
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-[#c5d5de]">3. Puntajes por indicador</p>
+              <p className="text-sm font-semibold text-[#c5d5de]">Metas y competencias evaluadas</p>
               {scores.map((score) => (
                 <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
                   <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
@@ -337,7 +315,7 @@ export default function EvaluationsPage() {
                       <option key={nivel} value={nivel}>{nivel}</option>
                     ))}
                   </select>
-                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Comentario breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
+                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Comentario o evidencia breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
                 </div>
               ))}
             </div>
@@ -348,32 +326,26 @@ export default function EvaluationsPage() {
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <section id="evaluations-list-section" className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
-              <p className="mt-1 text-sm text-[#9fb6c4]">
-                Revisa el avance por persona, con la b?squeda global aplicada sobre la lista visible.
-              </p>
+              <p className="mt-1 text-sm text-[#9fb6c4]">Revisá la lista visible y abrí el detalle cuando quieras leer datos, mediciones y comentarios.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Registros</p>
               <p className="mt-1 text-lg font-semibold text-white">{visibleEvaluations.length}</p>
             </div>
           </div>
-          <div className="mt-6 space-y-4">
+          <div className="mt-5 space-y-4">
             {isLoadingBase || isLoadingEvaluations ? (
-              <LoadingState
-                compact
-                title="Actualizando evaluaciones"
-                description="Estamos trayendo ciclos, personas y resultados recientes."
-              />
+              <LoadingState compact title="Actualizando evaluaciones" description="Estamos trayendo ciclos, personas y resultados recientes." />
             ) : null}
             {!isLoadingBase && !isLoadingEvaluations && messageType === "error" && !evaluations.length ? (
               <ErrorState
                 compact
                 title="No pudimos cargar las evaluaciones"
-                description="Reintenta para recuperar la lista del ciclo actual."
+                description="Reintentá para recuperar la lista del ciclo actual."
                 actionLabel="Reintentar"
                 onAction={() =>
                   loadEvaluations().catch((error) => {
@@ -383,19 +355,24 @@ export default function EvaluationsPage() {
                 }
               />
             ) : null}
-            {!isLoadingBase && !isLoadingEvaluations && evaluations.length ? (
-              evaluations.map((evaluation) => (
-                <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+            {!isLoadingBase && !isLoadingEvaluations && visibleEvaluations.length ? (
+              visibleEvaluations.map((evaluation) => (
+                <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
                     <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{evaluation.tipo}</span>
                     <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{evaluation.estado}</span>
                   </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} - Resultado final: {evaluation.resultadoFinal}</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} · Resultado final: {evaluation.resultadoFinal}</p>
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
-                  <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="mt-3 rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
-                    Ver reporte individual
-                  </button>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => loadEvaluationDetail(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
+                      Ver detalle
+                    </button>
+                    <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
+                      Ver reporte individual
+                    </button>
+                  </div>
                 </article>
               ))
             ) : (
@@ -406,13 +383,97 @@ export default function EvaluationsPage() {
                   description={
                     user?.roleCode === "EMPLEADO"
                       ? "Cuando te asignen un ciclo o una autoevaluación, la vas a ver acá."
-                      : "Crea la primera evaluación para empezar a seguir resultados por persona."
+                      : "Creá la primera evaluación para empezar a seguir resultados por persona."
                   }
                 />
               ) : null
             )}
           </div>
         </section>
+      </div>
+
+      <div ref={detailRef}>
+        <SurfaceCard
+          title={selectedEvaluation ? "Detalle de evaluación" : "Detalle de evaluación"}
+          subtitle={selectedEvaluation ? "Acercamos la lectura al formulario real: datos del evaluado, mediciones, resumen y comentarios." : "Seleccioná una evaluación para ver datos del evaluado, mediciones, evidencias y resumen evaluativo."}
+          actions={selectedEvaluation ? <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">{selectedEvaluation.estado}</span> : null}
+        >
+          {loadingDetail ? (
+            <LoadingState compact title="Cargando detalle" description="Estamos trayendo mediciones, comentarios y resultado final." />
+          ) : !selectedEvaluation ? (
+            <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá “Ver detalle” en la lista para abrir una vista más útil del desempeño." />
+          ) : (
+            <div className="space-y-5">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Evaluado</p>
+                  <p className="mt-2 text-base font-semibold text-white">
+                    {selectedEvaluation.employeeId?.apellido}, {selectedEvaluation.employeeId?.nombre}
+                  </p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Cargo</p>
+                  <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.employeeId?.cargo || "-"}</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Área</p>
+                  <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.employeeId?.area || "-"}</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo</p>
+                  <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.cycleId?.periodo} {selectedEvaluation.cycleId?.anio}</p>
+                </article>
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+                <div className="space-y-4">
+                  <SurfaceCard title="Metas y competencias evaluadas" subtitle="Acá concentramos las mediciones visibles del formulario actual.">
+                    <div className="space-y-3">
+                      {selectedScores.length ? selectedScores.map((score) => (
+                        <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-white">{score.metricId?.nombre || "Indicador"}</p>
+                              <p className="mt-1 text-sm text-[#9fb6c4]">{score.comentario || "Sin comentario asociado."}</p>
+                            </div>
+                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
+                              Nivel {score.nivel}
+                            </span>
+                          </div>
+                        </article>
+                      )) : (
+                        <EmptyState compact title="No hay mediciones cargadas" description="Esta evaluación todavía no tiene metas o competencias detalladas." />
+                      )}
+                    </div>
+                  </SurfaceCard>
+                </div>
+
+                <div className="space-y-4">
+                  <SurfaceCard title="Resumen evaluativo" subtitle="Mostramos lo disponible hoy sin inventar promedios que no existan.">
+                    <div className="grid gap-3">
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Resultado final</p>
+                        <p className="mt-2 text-2xl font-semibold text-white">{selectedEvaluation.resultadoFinal ?? "-"}</p>
+                      </article>
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Comentarios de la evaluación</p>
+                        <p className="mt-2 text-sm text-[#9fb6c4]">{selectedEvaluation.comentariosGenerales || "Sin comentarios generales."}</p>
+                      </article>
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Evidencias</p>
+                        <p className="mt-2 text-sm text-[#9fb6c4]">
+                          {Array.isArray(selectedEvaluation.evidenciaUrls) && selectedEvaluation.evidenciaUrls.length
+                            ? `${selectedEvaluation.evidenciaUrls.length} evidencias registradas`
+                            : "Sin evidencias adjuntas visibles."}
+                        </p>
+                      </article>
+                    </div>
+                  </SurfaceCard>
+                </div>
+              </div>
+            </div>
+          )}
+        </SurfaceCard>
       </div>
 
       {message ? (
@@ -433,6 +494,3 @@ export default function EvaluationsPage() {
     </div>
   );
 }
-
-
-

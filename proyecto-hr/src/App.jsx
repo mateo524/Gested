@@ -54,7 +54,7 @@ function AppContent() {
   const [view, setView] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
-  const [language, setLanguage] = useState(() => localStorage.getItem("performia_language") || "es");
+  const [language, setLanguage] = useState("es");
 
   const availableViews = useMemo(
     () =>
@@ -129,7 +129,10 @@ function AppContent() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem("performia_language", language);
+    localStorage.setItem("performia_language", "es");
+    if (language !== "es") {
+      setLanguage("es");
+    }
   }, [language]);
 
   const t = useMemo(

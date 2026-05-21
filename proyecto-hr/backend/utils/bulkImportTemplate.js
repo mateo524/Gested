@@ -94,7 +94,7 @@ function addInstructionSheet(workbook) {
     {
       section: "Orden recomendado",
       detail:
-        "1) Organizacion, 2) Departamentos, 3) Empleados, 4) Usuarios_y_Roles, 5) Managers, 6) KPIs, 7) OKRs. La hoja Catalogos sirve como referencia valida.",
+        "1) Organizacion, 2) Departamentos, 3) Empleados, 4) Usuarios_y_Roles, 5) Managers, 6) KPIs, 7) OKRs, 8) Evaluaciones, 9) Mediciones_Desempeno, 10) Planes_Desarrollo. La hoja Catalogos sirve como referencia valida.",
     },
     {
       section: "Formato",
@@ -110,6 +110,11 @@ function addInstructionSheet(workbook) {
       section: "Usuarios",
       detail:
         "La hoja Usuarios_y_Roles no crea credenciales. Solo declara el vinculo entre persona, email laboral, rol funcional y alcance deseado para validacion posterior.",
+    },
+    {
+      section: "Evaluaciones y desarrollo",
+      detail:
+        "Si ya tienes historial previo, puedes preparar Evaluaciones, Mediciones_Desempeno y Planes_Desarrollo. En esta etapa la plantilla y el analisis ya contemplan esas solapas.",
     },
   ];
 
@@ -323,6 +328,86 @@ function addOkrsSheet(workbook) {
   });
 }
 
+function addEvaluationsSheet(workbook) {
+  const sheet = workbook.addWorksheet("Evaluaciones");
+  applySheetStyle(sheet, [
+    { header: "evaluation_code", key: "evaluationCode", width: 22 },
+    { header: "employee_email", key: "employeeEmail", width: 30 },
+    { header: "manager_email", key: "managerEmail", width: 30 },
+    { header: "cycle_name", key: "cycleName", width: 26 },
+    { header: "period", key: "period", width: 18 },
+    { header: "status", key: "status", width: 14 },
+    { header: "overall_score", key: "overallScore", width: 16 },
+    { header: "manager_comments", key: "managerComments", width: 38 },
+    { header: "employee_comments", key: "employeeComments", width: 38 },
+  ]);
+  sheet.addRow({
+    evaluationCode: "EVAL-2026-001",
+    employeeEmail: "tomas.rossi@demo.performia.local",
+    managerEmail: "lucia.mendez@demo.performia.local",
+    cycleName: "Ciclo Anual 2026",
+    period: "2026",
+    status: "active",
+    overallScore: 4,
+    managerComments: "Buen cierre del periodo con foco en seguimiento pedagógico.",
+    employeeComments: "Me gustaría seguir fortaleciendo comunicación y planificación.",
+  });
+}
+
+function addPerformanceMeasurementsSheet(workbook) {
+  const sheet = workbook.addWorksheet("Mediciones_Desempeno");
+  applySheetStyle(sheet, [
+    { header: "evaluation_code", key: "evaluationCode", width: 22 },
+    { header: "measurement_type", key: "measurementType", width: 22 },
+    { header: "measurement_name", key: "measurementName", width: 34 },
+    { header: "description", key: "description", width: 38 },
+    { header: "descriptors", key: "descriptors", width: 40 },
+    { header: "manager_score", key: "managerScore", width: 16 },
+    { header: "self_score", key: "selfScore", width: 14 },
+    { header: "evidence", key: "evidence", width: 34 },
+    { header: "comments", key: "comments", width: 34 },
+    { header: "weight", key: "weight", width: 12 },
+  ]);
+  sheet.addRow({
+    evaluationCode: "EVAL-2026-001",
+    measurementType: "competencia_transversal",
+    measurementName: "Trabajo en equipo",
+    description: "Capacidad de colaborar en objetivos comunes.",
+    descriptors: "Promueve metas en equipo; involucra a otros; cuida recursos.",
+    managerScore: 4,
+    selfScore: 4,
+    evidence: "Proyecto interdisciplinario 2026",
+    comments: "Buen nivel de articulación con colegas.",
+    weight: 1,
+  });
+}
+
+function addDevelopmentPlansSheet(workbook) {
+  const sheet = workbook.addWorksheet("Planes_Desarrollo");
+  applySheetStyle(sheet, [
+    { header: "plan_code", key: "planCode", width: 22 },
+    { header: "employee_email", key: "employeeEmail", width: 30 },
+    { header: "source_evaluation_code", key: "sourceEvaluationCode", width: 24 },
+    { header: "title", key: "title", width: 30 },
+    { header: "description", key: "description", width: 38 },
+    { header: "responsible_email", key: "responsibleEmail", width: 30 },
+    { header: "due_date", key: "dueDate", width: 16 },
+    { header: "status", key: "status", width: 14 },
+    { header: "follow_up_notes", key: "followUpNotes", width: 38 },
+  ]);
+  sheet.addRow({
+    planCode: "PLAN-2026-001",
+    employeeEmail: "tomas.rossi@demo.performia.local",
+    sourceEvaluationCode: "EVAL-2026-001",
+    title: "Plan de seguimiento pedagógico",
+    description: "Ajustar planificación y retroalimentación del período.",
+    responsibleEmail: "lucia.mendez@demo.performia.local",
+    dueDate: "2026-08-15",
+    status: "active",
+    followUpNotes: "Revisión quincenal con jefatura.",
+  });
+}
+
 function addCatalogsSheet(workbook) {
   const sheet = workbook.addWorksheet("Catálogos");
   applySheetStyle(sheet, [
@@ -380,6 +465,9 @@ export async function buildBulkImportTemplateBuffer() {
   addManagersSheet(workbook);
   addKpisSheet(workbook);
   addOkrsSheet(workbook);
+  addEvaluationsSheet(workbook);
+  addPerformanceMeasurementsSheet(workbook);
+  addDevelopmentPlansSheet(workbook);
   addCatalogsSheet(workbook);
 
   return workbook.xlsx.writeBuffer();

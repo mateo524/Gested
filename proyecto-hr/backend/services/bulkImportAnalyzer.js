@@ -16,6 +16,7 @@ export const BULK_IMPORT_PERSISTENCE_WARNINGS = [
   "La hoja Organización es informativa: la organización real la determina el backend autenticado.",
   "Los Departamentos se validan y se usan para mapear area en Empleados, pero hoy no existe un modelo Department persistente.",
   "KPIs y OKRs se validan por plantilla y se persisten como registros reales del tenant. Aun no reemplazan un modulo avanzado de objetivos.",
+  "Evaluaciones, Mediciones_Desempeno y Planes_Desarrollo ya pueden analizarse en la vista previa. Su confirmacion completa todavia se mantiene acotada a los dominios ya persistidos en este bloque.",
 ];
 
 export const BULK_IMPORT_ROLE_KEY_MAP = {
@@ -38,6 +39,12 @@ const REQUIRED_SHEETS = [
   "KPIs",
   "OKRs",
   "Catálogos",
+];
+
+const OPTIONAL_SHEETS = [
+  "Evaluaciones",
+  "Mediciones_Desempeno",
+  "Planes_Desarrollo",
 ];
 
 const SHEET_COLUMN_CONFIG = {
@@ -79,6 +86,15 @@ const SHEET_COLUMN_CONFIG = {
   },
   "Catálogos": {
     required: ["catalog", "value", "description"],
+  },
+  Evaluaciones: {
+    required: ["evaluation_code", "employee_email", "period", "status"],
+  },
+  Mediciones_Desempeno: {
+    required: ["evaluation_code", "measurement_type", "measurement_name"],
+  },
+  Planes_Desarrollo: {
+    required: ["plan_code", "employee_email", "title", "status"],
   },
 };
 
@@ -576,12 +592,79 @@ function validateOkrsRows(rows, issues, summaryBySheet, context) {
   });
 }
 
+
+function validateEvaluationsRows(rows, issues, summaryBySheet, context) {
+  summaryBySheet.Evaluaciones.totalRows = rows.length;
+  rows.forEach((row) => {
+    validateNoTenantColumns(row, "Evaluaciones", issues);
+    const employeeEmail = normalizeEmail(row.employee_email);
+    if (!normalizeText(row.evaluation_code)) {
+      issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "evaluation_code", message: "evaluation_code es obligatorio" }));
+    }
+    if (!employeeEmail) {
+      issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "employee_email", message: "employee_email es obligatorio" }));
+    } else if (!context.employees.some((item) => normalizeEmail(item.work_email) === employeeEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === employeeEmail)) {
+      issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "employee_email", message: `employee_email no existe: ${employeeEmail}` }));
+    }
+    if (!normalizeText(row.period)) {
+      issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "period", message: "period es obligatorio" }));
+    }
+    if (normalizeText(row.overall_score) && Number.isNaN(Number(row.overall_score))) {
+      issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "overall_score", message: "overall_score debe ser numerico" }));
+    }
+  });
+}
+
+function validatePerformanceMeasurementsRows(rows, issues, summaryBySheet) {
+  summaryBySheet.Mediciones_Desempeno.totalRows = rows.length;
+  rows.forEach((row) => {
+    validateNoTenantColumns(row, "Mediciones_Desempeno", issues);
+    if (!normalizeText(row.evaluation_code)) {
+      issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "evaluation_code", message: "evaluation_code es obligatorio" }));
+    }
+    if (!normalizeText(row.measurement_type)) {
+      issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "measurement_type", message: "measurement_type es obligatorio" }));
+    }
+    if (!normalizeText(row.measurement_name)) {
+      issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "measurement_name", message: "measurement_name es obligatorio" }));
+    }
+    if (normalizeText(row.manager_score) && Number.isNaN(Number(row.manager_score))) {
+      issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "manager_score", message: "manager_score debe ser numerico" }));
+    }
+    if (normalizeText(row.self_score) && Number.isNaN(Number(row.self_score))) {
+      issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "self_score", message: "self_score debe ser numerico" }));
+    }
+  });
+}
+
+function validateDevelopmentPlansRows(rows, issues, summaryBySheet, context) {
+  summaryBySheet.Planes_Desarrollo.totalRows = rows.length;
+  rows.forEach((row) => {
+    validateNoTenantColumns(row, "Planes_Desarrollo", issues);
+    const employeeEmail = normalizeEmail(row.employee_email);
+    if (!normalizeText(row.plan_code)) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "plan_code", message: "plan_code es obligatorio" }));
+    }
+    if (!employeeEmail) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "employee_email", message: "employee_email es obligatorio" }));
+    } else if (!context.employees.some((item) => normalizeEmail(item.work_email) === employeeEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === employeeEmail)) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "employee_email", message: `employee_email no existe: ${employeeEmail}` }));
+    }
+    if (!normalizeText(row.title)) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "title", message: "title es obligatorio" }));
+    }
+    if (normalizeText(row.due_date) && !parseDateValue(row.due_date)) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "due_date", message: "due_date no tiene una fecha valida" }));
+    }
+  });
+}
 export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId }) {
   const workbook = await loadWorkbookSafely(buffer);
 
   const missingSheets = REQUIRED_SHEETS.filter((name) => !workbook.getWorksheet(name));
   const issues = [];
-  const summaryBySheet = Object.fromEntries(REQUIRED_SHEETS.map((sheet) => [sheet, emptyCounts()]));
+  const allSheets = [...REQUIRED_SHEETS, ...OPTIONAL_SHEETS];
+  const summaryBySheet = Object.fromEntries(allSheets.map((sheet) => [sheet, emptyCounts()]));
 
   if (missingSheets.length) {
     missingSheets.forEach((sheetName) => {
@@ -610,14 +693,19 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
     managers: [],
     kpis: [],
     okrs: [],
+    evaluations: [],
+    performanceMeasurements: [],
+    developmentPlans: [],
   };
 
-  REQUIRED_SHEETS.forEach((sheetName) => {
+  [...REQUIRED_SHEETS, ...OPTIONAL_SHEETS].forEach((sheetName) => {
     const { headers, rows } = readSheetRows(workbook, sheetName);
     rawSheets[sheetName] = { headers, rows };
 
     const config = SHEET_COLUMN_CONFIG[sheetName];
-    if (config) {
+    const sheetExists = Boolean(workbook.getWorksheet(sheetName));
+    const shouldValidateColumns = config && (sheetExists || REQUIRED_SHEETS.includes(sheetName));
+    if (shouldValidateColumns) {
       config.required.forEach((header) => {
         if (!headers.includes(header)) {
           issues.push(
@@ -639,6 +727,9 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
   const managers = rawSheets.Managers?.rows || [];
   const kpis = rawSheets.KPIs?.rows || [];
   const okrs = rawSheets.OKRs?.rows || [];
+  const evaluationsRows = rawSheets.Evaluaciones?.rows || [];
+  const measurementsRows = rawSheets.Mediciones_Desempeno?.rows || [];
+  const developmentRows = rawSheets.Planes_Desarrollo?.rows || [];
 
   validateCatalogSheet(rawSheets["Catálogos"]?.rows || [], issues, summaryBySheet);
   validateOrganizationRows(rawSheets["Organización"]?.rows || [], issues, summaryBySheet);
@@ -663,6 +754,15 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
     employees,
     existingEmployees: collections.employees,
   });
+  validateEvaluationsRows(evaluationsRows, issues, summaryBySheet, {
+    employees,
+    existingEmployees: collections.employees,
+  });
+  validatePerformanceMeasurementsRows(measurementsRows, issues, summaryBySheet);
+  validateDevelopmentPlansRows(developmentRows, issues, summaryBySheet, {
+    employees,
+    existingEmployees: collections.employees,
+  });
 
   Object.keys(summaryBySheet).forEach((sheetName) => {
     pushSheetIssues(summaryBySheet, issues, sheetName);
@@ -675,6 +775,9 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
   summaryBySheet.Managers.validRows = countValidRows(managers, issues, "Managers");
   summaryBySheet.KPIs.validRows = countValidRows(kpis, issues, "KPIs");
   summaryBySheet.OKRs.validRows = countValidRows(okrs, issues, "OKRs");
+  summaryBySheet.Evaluaciones.validRows = countValidRows(evaluationsRows, issues, "Evaluaciones");
+  summaryBySheet.Mediciones_Desempeno.validRows = countValidRows(measurementsRows, issues, "Mediciones_Desempeno");
+  summaryBySheet.Planes_Desarrollo.validRows = countValidRows(developmentRows, issues, "Planes_Desarrollo");
   summaryBySheet["Catálogos"].validRows = countValidRows(rawSheets["Catálogos"]?.rows || [], issues, "Catálogos");
 
   preview.organization = sanitizePreviewRows(rawSheets["Organización"]?.rows || []);
@@ -684,6 +787,9 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
   preview.managers = sanitizePreviewRows(managers);
   preview.kpis = sanitizePreviewRows(kpis);
   preview.okrs = sanitizePreviewRows(okrs);
+  preview.evaluations = sanitizePreviewRows(evaluationsRows);
+  preview.performanceMeasurements = sanitizePreviewRows(measurementsRows);
+  preview.developmentPlans = sanitizePreviewRows(developmentRows);
 
   const warnings = issues.filter((item) => item.severity === "warning");
   const errors = issues.filter((item) => item.severity === "error");

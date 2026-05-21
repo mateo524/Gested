@@ -1,19 +1,19 @@
-﻿import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 
 const emptyForm = {
-  schoolId: "",
   nombre: "",
-  descripción: "",
+  descripcion: "",
   tipo: "DOCENTE",
   componente: "C",
 };
 
 export default function CompetenciesPage() {
   const { token } = useAuth();
-  const [schools, setSchools] = useState([]);
+  const { searchQuery } = useView();
   const [competencies, setCompetencies] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [filters, setFilters] = useState({ q: "", tipo: "", componente: "" });
@@ -22,31 +22,24 @@ export default function CompetenciesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
-  const selectedSchool = schools.find((school) => school._id === form.schoolId) || null;
 
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       const params = new URLSearchParams();
-      if (filters.q.trim()) params.set("q", filters.q.trim());
+      const localQuery = filters.q.trim() || String(searchQuery || "").trim();
+      if (localQuery) params.set("q", localQuery);
       if (filters.tipo) params.set("tipo", filters.tipo);
       if (filters.componente) params.set("componente", filters.componente);
 
-      const [schoolsData, competenciesData] = await Promise.all([
-        apiFetch("/schools", { token }),
-        apiFetch(`/competencies${params.toString() ? `?${params.toString()}` : ""}`, { token }),
-      ]);
-      setSchools(schoolsData);
+      const competenciesData = await apiFetch(`/competencies${params.toString() ? `?${params.toString()}` : ""}`, { token });
       setCompetencies(competenciesData);
       setMessage("");
       setMessageType("info");
-      if (!form.schoolId && schoolsData[0]?._id) {
-        setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
-      }
     } finally {
       setIsLoading(false);
     }
-  }, [filters.componente, filters.q, filters.tipo, form.schoolId, token]);
+  }, [filters.componente, filters.q, filters.tipo, searchQuery, token]);
 
   useEffect(() => {
     loadData().catch((error) => {
@@ -57,9 +50,9 @@ export default function CompetenciesPage() {
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.schoolId || !form.nombre) {
+    if (!form.nombre.trim()) {
       setMessageType("warning");
-      setMessage("Completa colegio y nombre de competencia para guardar.");
+      setMessage("Completá el nombre de la competencia para guardarla.");
       return;
     }
     try {
@@ -73,7 +66,7 @@ export default function CompetenciesPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
-      setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
+      setForm(emptyForm);
       setEditingId("");
       setMessageType("success");
       setMessage(isEditing ? "Competencia actualizada." : "Competencia creada.");
@@ -89,9 +82,8 @@ export default function CompetenciesPage() {
   function handleEdit(competency) {
     setEditingId(competency._id);
     setForm({
-      schoolId: competency.schoolId || "",
       nombre: competency.nombre || "",
-      descripción: competency.descripción || "",
+      descripcion: competency.descripcion || competency.descripción || "",
       tipo: competency.tipo || "DOCENTE",
       componente: competency.componente || "C",
     });
@@ -101,9 +93,9 @@ export default function CompetenciesPage() {
 
   function cancelEdit() {
     setEditingId("");
-    setForm((current) => ({ ...emptyForm, schoolId: current.schoolId }));
+    setForm(emptyForm);
     setMessageType("info");
-    setMessage("Edicion cancelada.");
+    setMessage("Edición cancelada.");
   }
 
   async function handleDelete(competency) {
@@ -124,38 +116,53 @@ export default function CompetenciesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
+    <div className="space-y-5">
+      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Modelo de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Competencias</h3>
+        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
+          Definí competencias transversales, docentes o personalizadas. La organización se toma automáticamente desde tu tenant activo.
+        </p>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar competencia" : "Nueva competencia"}</h4>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Definicion</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Tipo y componente</span>
-          </div>
-          <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
-              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin colegio asignado"}</p>
-            </div>
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Descripcion de la competencia</p>
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre (ej: Trabajo en equipo)" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} />
-            <textarea className="min-h-28 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Descripcion" value={form.descripción} onChange={(e) => setForm({ ...form, descripción: e.target.value })} />
+          <p className="mt-2 text-sm text-[#9fb6c4]">
+            Cargá nombre, definición y clasificación. No hace falta elegir institución.
+          </p>
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <input
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              placeholder="Nombre (ej: Trabajo en equipo)"
+              value={form.nombre}
+              onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+            />
+            <textarea
+              className="min-h-28 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              placeholder="Definición, descriptores o criterios visibles para esta competencia"
+              value={form.descripcion}
+              onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
+            />
             <div className="grid gap-4 md:grid-cols-2">
-              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value })}>
+              <select
+                className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                value={form.tipo}
+                onChange={(e) => setForm({ ...form, tipo: e.target.value })}
+              >
                 <option value="TRANSVERSAL">Transversal</option>
-                <option value="DOCENTE">Docente</option>
+                <option value="DOCENTE">Docente / específica</option>
                 <option value="LIDERAZGO">Liderazgo</option>
                 <option value="PERSONALIZADA">Personalizada</option>
               </select>
-              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.componente} onChange={(e) => setForm({ ...form, componente: e.target.value })}>
+              <select
+                className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                value={form.componente}
+                onChange={(e) => setForm({ ...form, componente: e.target.value })}
+              >
                 <option value="C">C - Conceptual</option>
                 <option value="A">A - Actitudinal</option>
-                <option value="H">H - Procedimental</option>
+                <option value="H">H - Habilidad</option>
               </select>
             </div>
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
@@ -169,36 +176,45 @@ export default function CompetenciesPage() {
           </form>
         </section>
 
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <div className="grid gap-4 md:grid-cols-3">
-            <input className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Buscar" value={filters.q} onChange={(e) => setFilters({ ...filters, q: e.target.value })} />
-            <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.tipo} onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}>
+            <input
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              placeholder="Buscar competencia"
+              value={filters.q}
+              onChange={(e) => setFilters({ ...filters, q: e.target.value })}
+            />
+            <select
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={filters.tipo}
+              onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}
+            >
               <option value="">Todos los tipos</option>
               <option value="TRANSVERSAL">Transversal</option>
               <option value="DOCENTE">Docente</option>
               <option value="LIDERAZGO">Liderazgo</option>
               <option value="PERSONALIZADA">Personalizada</option>
             </select>
-            <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.componente} onChange={(e) => setFilters({ ...filters, componente: e.target.value })}>
+            <select
+              className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={filters.componente}
+              onChange={(e) => setFilters({ ...filters, componente: e.target.value })}
+            >
               <option value="">Todos los componentes</option>
               <option value="C">C</option>
               <option value="A">A</option>
               <option value="H">H</option>
             </select>
           </div>
-          <div className="mt-6 space-y-4">
+          <div className="mt-5 space-y-4">
             {isLoading ? (
-              <LoadingState
-                compact
-                title="Cargando competencias"
-                description="Estamos actualizando el modelo de desempeno."
-              />
+              <LoadingState compact title="Cargando competencias" description="Estamos actualizando el modelo de desempeño." />
             ) : null}
             {!isLoading && messageType === "error" && !competencies.length ? (
               <ErrorState
                 compact
                 title="No pudimos cargar las competencias"
-                description="Reintenta para recuperar el modelo institucional."
+                description="Reintentá para recuperar el modelo institucional."
                 actionLabel="Reintentar"
                 onAction={() =>
                   loadData().catch((error) => {
@@ -209,13 +225,13 @@ export default function CompetenciesPage() {
               />
             ) : null}
             {!isLoading && competencies.length ? competencies.map((competency) => (
-              <article key={competency._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+              <article key={competency._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-lg font-semibold text-white">{competency.nombre}</p>
                   <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{competency.tipo}</span>
                   <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{competency.componente}</span>
                 </div>
-                <p className="mt-3 text-sm text-[#9fb6c4]">{competency.descripción || "Sin descripción"}</p>
+                <p className="mt-3 text-sm text-[#9fb6c4]">{competency.descripcion || competency.descripción || "Sin definición cargada."}</p>
                 <div className="mt-3 flex gap-2">
                   <button type="button" onClick={() => handleEdit(competency)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
                     Editar
@@ -227,11 +243,7 @@ export default function CompetenciesPage() {
               </article>
             )) : null}
             {!isLoading && messageType !== "error" && !competencies.length ? (
-              <EmptyState
-                compact
-                title="Todavia no hay competencias cargadas"
-                description="Crea la primera competencia para ordenar indicadores y evaluaciones."
-              />
+              <EmptyState compact title="Todavía no hay competencias cargadas" description="Creá la primera competencia para ordenar evaluaciones, mediciones y desarrollo." />
             ) : null}
           </div>
         </section>
@@ -255,5 +267,3 @@ export default function CompetenciesPage() {
     </div>
   );
 }
-
-

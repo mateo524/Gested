@@ -28,6 +28,14 @@ export default function UsersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const deferredQuery = useDeferredValue(query);
+  const availableRoles = useMemo(
+    () =>
+      roles.filter((role) => {
+        const roleCode = String(role.code || role.nombre || "").toUpperCase();
+        return roleCode !== "SUPER_ADMIN";
+      }),
+    [roles]
+  );
 
   const filteredUsers = useMemo(() => {
     const terms = [deferredQuery, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
@@ -246,7 +254,7 @@ export default function UsersPage() {
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" type="password" placeholder={editingId ? "Nueva password (opcional)" : "Password inicial (opcional)"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
             <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.roleId ? "border-rose-400/70" : "border-white/15"}`} value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
               <option value="">Selecciona un rol</option>
-              {roles.map((role) => (
+              {availableRoles.map((role) => (
                 <option key={role._id} value={role._id}>
                   {role.nombre}
                 </option>
