@@ -1,207 +1,103 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
-import { EmptyState, ErrorState, LoadingState, PermissionState } from "../components/AppStates";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingState,
+  PermissionState,
+} from "../components/AppStates";
 
-const PAGE_TABS = [
+const TABS = [
   { key: "resumen", label: "Resumen" },
-  { key: "kpis", label: "Metas" },
-  { key: "okrs", label: "Competencias" },
-  { key: "equipos", label: "KPIs / OKRs" },
-  { key: "empleados", label: "Autoevaluaciones" },
-  { key: "evidencias", label: "Evidencias" },
+  { key: "individual", label: "Evaluación individual" },
+  { key: "auto", label: "Autoevaluación" },
+  { key: "manager", label: "Evaluación del jefe" },
+  { key: "summary", label: "Resumen evaluativo" },
+  { key: "visual", label: "Visualización" },
 ];
 
 const STATUS_OPTIONS = [
-  { value: "active", label: "Activo" },
-  { value: "on_track", label: "En curso" },
-  { value: "at_risk", label: "En riesgo" },
-  { value: "completed", label: "Cumplido" },
-  { value: "draft", label: "Borrador" },
-  { value: "paused", label: "Pausado" },
+  { value: "BORRADOR", label: "Borrador" },
+  { value: "ENVIADA", label: "Enviada" },
+  { value: "REVISADA", label: "Revisada" },
+  { value: "CERRADA", label: "Cerrada" },
 ];
 
-const KPI_FORM = {
-  kpiCode: "",
-  name: "",
-  employeeId: "",
-  departmentCode: "",
-  teamId: "",
-  cycleId: "",
-  targetValue: "",
-  currentValue: "",
-  unit: "",
-  period: "",
-  weight: "",
-  status: "active",
+const EVALUATION_TYPES = {
+  AUTOEVALUACION: "Autoevaluación",
+  JEFATURA: "Evaluación del jefe",
+  FINAL: "Cierre final",
 };
 
-const OKR_FORM = {
-  okrCode: "",
-  objective: "",
-  keyResult: "",
+const emptyEditor = {
+  id: "",
   employeeId: "",
-  departmentCode: "",
-  teamId: "",
   cycleId: "",
-  targetValue: "",
-  currentValue: "",
-  period: "",
-  weight: "",
-  status: "active",
+  tipo: "AUTOEVALUACION",
+  estado: "BORRADOR",
+  comentariosGenerales: "",
+  acuerdoEmpleado: "PENDIENTE",
+  scores: [],
 };
-
-function formatDate(value) {
-  if (!value) return "-";
-  return new Date(value).toLocaleDateString("es-AR", { dateStyle: "medium" });
-}
-
-function formatPercent(value) {
-  if (!Number.isFinite(value)) return "-";
-  return `${Math.round(value)}%`;
-}
-
-function formatNumber(value) {
-  if (value === null || value === undefined || value === "") return "-";
-  const number = Number(value);
-  if (!Number.isFinite(number)) return String(value);
-  return new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 }).format(number);
-}
-
-function toNullableNumber(value) {
-  if (value === "" || value === null || value === undefined) return null;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
 
 function normalizeText(value) {
   return String(value || "").trim();
 }
 
-function calculateProgress(currentValue, targetValue) {
-  const current = Number(currentValue);
-  const target = Number(targetValue);
-  if (!Number.isFinite(current) || !Number.isFinite(target) || target <= 0) return null;
-  return Math.max(0, Math.min(100, (current / target) * 100));
+function formatDate(value) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleDateString("es-AR", { dateStyle: "medium" });
 }
 
-function getVisualStatus(record) {
-  const rawStatus = normalizeText(record.status).toLowerCase();
-  const progress = calculateProgress(record.currentValue, record.targetValue);
-
-  if (rawStatus === "completed" || rawStatus === "cumplido") {
-    return { key: "completed", label: "Cumplido", tone: "success" };
-  }
-  if (rawStatus === "at_risk" || rawStatus === "en_riesgo") {
-    return { key: "risk", label: "En riesgo", tone: "danger" };
-  }
-  if (rawStatus === "draft" || rawStatus === "borrador") {
-    return { key: "draft", label: "Borrador", tone: "muted" };
-  }
-  if (progress === null) {
-    return { key: "no_data", label: "Sin datos", tone: "muted" };
-  }
-  if (Number(record.currentValue) >= Number(record.targetValue)) {
-    return { key: "completed", label: "Cumplido", tone: "success" };
-  }
-  if (progress < 70) {
-    return { key: "risk", label: "En riesgo", tone: "danger" };
-  }
-  if (progress < 100) {
-    return { key: "in_progress", label: "En curso", tone: "warning" };
-  }
-  return { key: "completed", label: "Cumplido", tone: "success" };
+function formatScore(value) {
+  if (value === null || value === undefined || value === "") return "-";
+  const number = Number(value);
+  return Number.isFinite(number) ? number.toFixed(1) : String(value);
 }
 
-function getToneClass(tone) {
-  if (tone === "success") return "border-emerald-300/30 bg-emerald-500/10 text-emerald-100";
-  if (tone === "danger") return "border-rose-300/30 bg-rose-500/10 text-rose-100";
-  if (tone === "warning") return "border-amber-300/30 bg-amber-500/10 text-amber-100";
-  return "border-white/10 bg-[#122530] text-[#d5e2e9]";
+function average(values) {
+  const valid = values.map(Number).filter((value) => Number.isFinite(value));
+  if (!valid.length) return null;
+  return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
-function getRecordEmployeeName(record) {
-  return record.employee?.fullName || record.employeeName || "Sin responsable asignado";
+function clampLevel(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return 3;
+  return Math.max(1, Math.min(5, Math.round(number)));
 }
 
-function getRecordDepartment(record) {
-  return record.departmentCode || record.employee?.area || "Sin departamento";
+function buildCycleLabel(cycle) {
+  return [cycle?.anio, cycle?.periodo, cycle?.etapa].filter(Boolean).join(" · ");
 }
 
-function getRecordCode(record, kind) {
-  return kind === "kpi" ? record.kpiCode || "Sin codigo" : record.okrCode || "Sin codigo";
+function buildEmployeeLabel(employee) {
+  return [employee?.apellido, employee?.nombre].filter(Boolean).join(", ");
 }
 
-function getRecordTitle(record, kind) {
-  return kind === "kpi" ? record.name || "KPI sin nombre" : record.objective || record.objectiveTitle || "OKR sin objetivo";
-}
-
-function getRecordSubtitle(record, kind) {
-  if (kind === "kpi") return getRecordEmployeeName(record);
-  return record.keyResult || record.keyResultTitle || "Sin key result";
-}
-
-function buildRecordPayload(kind, form) {
-  const payload = {
-    employeeId: form.employeeId || undefined,
-    departmentCode: normalizeText(form.departmentCode) || undefined,
-    teamId: normalizeText(form.teamId) || undefined,
-    cycleId: form.cycleId || undefined,
-    targetValue: Number(form.targetValue),
-    currentValue: toNullableNumber(form.currentValue),
-    period: normalizeText(form.period),
-    weight: toNullableNumber(form.weight),
-    status: form.status || "active",
-  };
-
-  if (kind === "kpi") {
-    return {
-      ...payload,
-      kpiCode: normalizeText(form.kpiCode) || undefined,
-      name: normalizeText(form.name),
-      unit: normalizeText(form.unit) || undefined,
-    };
-  }
-
-  return {
-    ...payload,
-    okrCode: normalizeText(form.okrCode) || undefined,
-    objective: normalizeText(form.objective),
-    keyResult: normalizeText(form.keyResult),
-  };
-}
-
-function validateRecordForm(kind, form) {
-  const errors = {};
-
-  if (kind === "kpi") {
-    if (!normalizeText(form.name)) errors.name = "El nombre del KPI es obligatorio.";
-  } else {
-    if (!normalizeText(form.objective)) errors.objective = "El objetivo es obligatorio.";
-    if (!normalizeText(form.keyResult)) errors.keyResult = "El key result es obligatorio.";
-  }
-
-  if (form.targetValue === "" || Number.isNaN(Number(form.targetValue))) {
-    errors.targetValue = "La meta es obligatoria.";
-  }
-
-  if (form.currentValue !== "" && Number.isNaN(Number(form.currentValue))) {
-    errors.currentValue = "El valor actual debe ser numerico.";
-  }
-
-  if (!normalizeText(form.period)) {
-    errors.period = "El periodo es obligatorio o sugerido para guardar.";
-  }
-
-  if (form.weight !== "") {
-    const weight = Number(form.weight);
-    if (Number.isNaN(weight) || weight < 0 || weight > 100) {
-      errors.weight = "El peso debe estar entre 0 y 100.";
-    }
-  }
-
-  return errors;
+function mapDetailScores(rawScores = []) {
+  return rawScores.map((score) => ({
+    id: score._id,
+    metricId: score.metricId?._id || score.metricId,
+    nivel: clampLevel(score.nivel),
+    comentario: score.comentario || "",
+    evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [],
+    metric: score.metricId || null,
+  }));
 }
 
 function SurfaceCard({ title, subtitle, actions, children }) {
@@ -220,8 +116,17 @@ function SurfaceCard({ title, subtitle, actions, children }) {
 }
 
 function SummaryCard({ label, value, hint, tone = "default" }) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-300/20 bg-emerald-500/10"
+      : tone === "warning"
+        ? "border-amber-300/20 bg-amber-500/10"
+        : tone === "danger"
+          ? "border-rose-300/20 bg-rose-500/10"
+          : "border-white/10 bg-[#0f1f28]";
+
   return (
-    <article className={`rounded-3xl border p-4 ${getToneClass(tone)}`}>
+    <article className={`rounded-3xl border p-4 ${toneClass}`}>
       <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
       {hint ? <p className="mt-2 text-sm text-[#9ab0bc]">{hint}</p> : null}
@@ -229,373 +134,264 @@ function SummaryCard({ label, value, hint, tone = "default" }) {
   );
 }
 
-function StatusBadge({ status }) {
-  return <span className={`pf-badge ${getToneClass(status.tone)}`}>{status.label}</span>;
+function StatusPill({ label, tone = "default" }) {
+  const toneClass =
+    tone === "success"
+      ? "border-emerald-300/20 bg-emerald-500/10 text-emerald-100"
+      : tone === "warning"
+        ? "border-amber-300/20 bg-amber-500/10 text-amber-100"
+        : tone === "danger"
+          ? "border-rose-300/20 bg-rose-500/10 text-rose-100"
+          : "border-white/10 bg-[#122530] text-[#d5e2e9]";
+
+  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${toneClass}`}>{label}</span>;
 }
 
-function ProgressBar({ progress }) {
-  const width = Number.isFinite(progress) ? Math.max(0, Math.min(100, progress)) : 0;
-  const tone =
-    !Number.isFinite(progress) ? "bg-slate-500/40" : width >= 100 ? "bg-emerald-500" : width >= 70 ? "bg-amber-400" : "bg-rose-400";
+function ScoreButtons({ value, disabled, onChange }) {
   return (
-    <div className="w-full">
-      <div className="h-2.5 overflow-hidden rounded-full bg-white/10">
-        <div className={`h-full rounded-full ${tone}`} style={{ width: `${width}%` }} />
-      </div>
-      <p className="mt-2 text-xs text-[#8fa9b7]">{Number.isFinite(progress) ? `${Math.round(width)}% de avance` : "Sin avance medible"}</p>
+    <div className="flex flex-wrap gap-2">
+      {[1, 2, 3, 4, 5].map((level) => (
+        <button
+          key={level}
+          type="button"
+          disabled={disabled}
+          onClick={() => onChange(level)}
+          className={`flex h-9 w-9 items-center justify-center rounded-2xl border text-sm font-semibold transition ${
+            value === level
+              ? "border-[#4f7cff] bg-[#1e3a8a] text-white shadow-[0_8px_20px_rgba(30,58,138,0.28)]"
+              : "border-white/10 bg-[#122530] text-[#d4e1e8] hover:bg-[#17313f]"
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          {level}
+        </button>
+      ))}
     </div>
   );
 }
 
-function RecordCard({ kind, record, canManage, onEdit, onProgress, onDelete }) {
-  const progress = calculateProgress(record.currentValue, record.targetValue);
-  const visualStatus = getVisualStatus(record);
-
-  return (
-    <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="max-w-3xl">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className="text-lg font-semibold text-white">{getRecordTitle(record, kind)}</p>
-            <StatusBadge status={visualStatus} />
-          </div>
-          <p className="mt-2 text-sm text-[#9fb6c4]">{getRecordSubtitle(record, kind)}</p>
-          <p className="mt-1 text-xs text-[#7f99a8]">
-            {getRecordCode(record, kind)} · {getRecordDepartment(record)} · {record.period || "Sin periodo"}
-          </p>
-        </div>
-        <div className="text-right text-xs text-[#8fa9b7]">
-          <p>Actualizado {formatDate(record.updatedAt)}</p>
-          {record.cycle?.label ? <p className="mt-1">{record.cycle.label}</p> : null}
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Meta</p>
-            <p className="mt-2 text-base font-semibold text-white">
-              {formatNumber(record.targetValue)} {kind === "kpi" ? record.unit || "" : ""}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Actual</p>
-            <p className="mt-2 text-base font-semibold text-white">
-              {formatNumber(record.currentValue)} {kind === "kpi" ? record.unit || "" : ""}
-            </p>
-          </div>
-        </div>
-
-        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-          <ProgressBar progress={progress} />
-        </div>
-      </div>
-
-      {canManage ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          <button type="button" onClick={() => onProgress(record)} className="rounded-2xl border border-emerald-300/30 px-4 py-2 text-sm text-emerald-100">
-            Actualizar avance
-          </button>
-          <button type="button" onClick={() => onEdit(record)} className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white">
-            Editar
-          </button>
-          <button type="button" onClick={() => onDelete(record)} className="rounded-2xl border border-rose-300/30 px-4 py-2 text-sm text-rose-200">
-            Eliminar
-          </button>
-        </div>
-      ) : null}
-    </article>
-  );
-}
-
-function GroupSummaryCard({ title, stats, onSelect }) {
+function MetricDescriptorCard({
+  groupTitle,
+  groupDefinition,
+  descriptors,
+  canEdit,
+  onLevelChange,
+  onCommentChange,
+  highlightedMetricIds,
+}) {
   return (
     <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="text-lg font-semibold text-white">{title}</p>
-          <p className="mt-2 text-sm text-[#9fb6c4]">
-            {stats.kpis} KPIs · {stats.okrs} OKRs
-          </p>
+          <p className="text-base font-semibold text-white">{groupTitle}</p>
+          {groupDefinition ? <p className="mt-1 text-sm text-[#9fb6c4]">{groupDefinition}</p> : null}
         </div>
-        <StatusBadge status={stats.mainStatus} />
+        <StatusPill label={`${descriptors.length} descriptores`} />
       </div>
-      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Total</p>
-          <p className="mt-2 text-base font-semibold text-white">{stats.total}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">En riesgo</p>
-          <p className="mt-2 text-base font-semibold text-white">{stats.atRisk}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Cumplidos</p>
-          <p className="mt-2 text-base font-semibold text-white">{stats.completed}</p>
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Promedio</p>
-          <p className="mt-2 text-base font-semibold text-white">{formatPercent(stats.averageProgress)}</p>
-        </div>
+
+      <div className="mt-4 space-y-3">
+        {descriptors.map((descriptor) => {
+          const isHighlighted = highlightedMetricIds.has(String(descriptor.metricId));
+          return (
+            <div
+              key={descriptor.metricId}
+              className={`rounded-2xl border px-4 py-4 ${
+                isHighlighted
+                  ? "border-emerald-300/30 bg-emerald-500/10"
+                  : "border-white/10 bg-[#122530]"
+              }`}
+            >
+              <div className="grid gap-4 xl:grid-cols-[1.2fr_0.5fr_0.9fr]">
+                <div>
+                  <p className="text-sm font-semibold text-white">{descriptor.name}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">{descriptor.description || "Sin descriptor ampliado."}</p>
+                </div>
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Escala 1–5</p>
+                  <ScoreButtons
+                    value={descriptor.nivel}
+                    disabled={!canEdit}
+                    onChange={(level) => onLevelChange(descriptor.metricId, level)}
+                  />
+                </div>
+                <div>
+                  <p className="mb-2 text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Evidencia / comentario</p>
+                  <textarea
+                    className="min-h-20 w-full rounded-2xl border border-white/10 bg-[#0c171d] px-3 py-3 text-sm text-white outline-none placeholder:text-[#7f99a8]"
+                    placeholder="Opcional: evidencia, observación o ejemplo concreto"
+                    value={descriptor.comentario}
+                    disabled={!canEdit}
+                    onChange={(event) => onCommentChange(descriptor.metricId, event.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {onSelect ? (
-        <div className="mt-4">
-          <button type="button" onClick={onSelect} className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white">
-            Ver detalle
-          </button>
-        </div>
-      ) : null}
     </article>
   );
 }
 
-function RecordForm({
-  kind,
+function EvaluationHeader({ employee, cycle, status, tipo, score, selfOnly }) {
+  return (
+    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+      <div className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
+        <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Evaluado</p>
+        <h3 className="mt-2 text-2xl font-semibold text-white">{buildEmployeeLabel(employee) || "Sin empleado seleccionado"}</h3>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <StatusPill label={employee?.cargo || "Sin cargo"} />
+          <StatusPill label={employee?.area || "Sin área"} />
+          <StatusPill label={cycle ? buildCycleLabel(cycle) : "Sin ciclo"} />
+        </div>
+        <p className="mt-4 text-sm text-[#9fb6c4]">
+          {selfOnly
+            ? "Ves tu autoevaluación visible dentro del alcance permitido."
+            : "Comparamos autoevaluación y evaluación del jefe para construir un resumen claro."}
+        </p>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
+        <SummaryCard label="Estado" value={status || "-"} hint={tipo ? EVALUATION_TYPES[tipo] || tipo : "Sin evaluación"} />
+        <SummaryCard label="Resultado" value={formatScore(score)} hint="Promedio visible hoy" tone="success" />
+        <SummaryCard label="Autoevaluación" value={tipo === "AUTOEVALUACION" ? "Disponible" : "Comparada"} hint="Lectura por rol y ciclo" />
+      </div>
+    </div>
+  );
+}
+
+function EvaluationEditor({
+  title,
   form,
-  errors,
-  employees,
-  cycles,
-  departmentOptions,
-  teamOptions,
-  periodOptions,
-  submitting,
-  onChange,
+  groups,
+  saving,
+  canDelete,
+  onFieldChange,
+  onScoreChange,
+  onCommentChange,
   onSubmit,
   onCancel,
-  editing,
-  mode = "full",
+  onDelete,
+  highlight,
 }) {
-  const isKpi = kind === "kpi";
-  const isProgressMode = mode === "progress";
+  const highlightedMetricIds = useMemo(
+    () => new Set(highlight ? form.scores.map((score) => String(score.metricId)) : []),
+    [form.scores, highlight]
+  );
 
   return (
     <SurfaceCard
-      title={
-        editing
-          ? isProgressMode
-            ? `Actualizar avance ${isKpi ? "del KPI" : "del OKR"}`
-            : `Editar ${isKpi ? "KPI" : "OKR"}`
-          : `Nuevo ${isKpi ? "KPI" : "OKR"}`
-      }
-      subtitle={
-        isProgressMode
-          ? "Actualiza el valor actual para reflejar avance, porcentaje y estado sin tocar la logica del modulo."
-          : isKpi
-            ? "Registra un KPI real del tenant con periodo, responsable y seguimiento."
-            : "Registra un OKR con objetivo, key result y avance real."
-      }
+      title={title}
+      subtitle="Revisá y ajustá la evaluación antes de guardarla. La escala es 1–5 y cada descriptor admite evidencia o comentario breve."
       actions={
-        <button type="button" onClick={onCancel} className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white">
-          Cerrar
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {canDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded-2xl border border-rose-300/30 px-4 py-2 text-sm text-rose-200"
+            >
+              Eliminar
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
+          >
+            Cerrar
+          </button>
+        </div>
       }
     >
-      <form className="space-y-4" onSubmit={onSubmit}>
-        {isProgressMode ? (
-          <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            Ejemplo: si la meta es 100 y el valor actual es 65, el avance visible sera 65%.
-          </div>
-        ) : null}
-        <div className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">{isKpi ? "Codigo KPI" : "Codigo OKR"}</label>
-            <input
-              className="pf-input"
-              value={isKpi ? form.kpiCode : form.okrCode}
-              onChange={(event) => onChange(isKpi ? "kpiCode" : "okrCode", event.target.value)}
-              placeholder={isKpi ? "Ej: SAT-ALUMNOS" : "Ej: OKR-EVAL-01"}
-            />
-          </div>
+      <form className="space-y-5" onSubmit={onSubmit}>
+        <div className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          Revisá y ajustá el plan de evaluación antes de guardarlo. Esta pantalla prioriza metas, competencias, autoevaluación y evidencias.
+        </div>
 
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Periodo</label>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-emerald-300/20 bg-[#122530] px-4 py-3">
+            <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Empleado</label>
             <input
-              list={`periods-${kind}`}
-              className={`pf-input ${errors.period ? "border-rose-400/70" : ""}`}
-              value={form.period}
-              onChange={(event) => onChange("period", event.target.value)}
-              placeholder="Ej: 2026-Q2 o Ciclo Anual 2026"
+              className="w-full bg-transparent text-sm text-white outline-none"
+              value={buildEmployeeLabel(form.employee) || "-"}
+              readOnly
             />
-            <datalist id={`periods-${kind}`}>
-              {periodOptions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-            {errors.period ? <p className="mt-1 text-xs text-rose-300">{errors.period}</p> : null}
           </div>
+          <div className="rounded-2xl border border-emerald-300/20 bg-[#122530] px-4 py-3">
+            <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo / período</label>
+            <input
+              className="w-full bg-transparent text-sm text-white outline-none"
+              value={buildCycleLabel(form.cycle) || "-"}
+              readOnly
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Estado</label>
+            <select
+              className="pf-select"
+              value={form.estado}
+              onChange={(event) => onFieldChange("estado", event.target.value)}
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Acuerdo</label>
+            <select
+              className="pf-select"
+              value={form.acuerdoEmpleado}
+              onChange={(event) => onFieldChange("acuerdoEmpleado", event.target.value)}
+            >
+              <option value="PENDIENTE">Pendiente</option>
+              <option value="ACUERDO">De acuerdo</option>
+              <option value="DESACUERDO">En desacuerdo</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          {groups.map((group) => (
+            <MetricDescriptorCard
+              key={group.id}
+              groupTitle={group.title}
+              groupDefinition={group.description}
+              descriptors={group.descriptors.map((descriptor) => {
+                const score = form.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
+                return {
+                  ...descriptor,
+                  nivel: score?.nivel ?? 3,
+                  comentario: score?.comentario ?? "",
+                };
+              })}
+              canEdit
+              highlightedMetricIds={highlightedMetricIds}
+              onLevelChange={onScoreChange}
+              onCommentChange={onCommentChange}
+            />
+          ))}
         </div>
 
         <div>
-          <label className="mb-1 block text-xs text-[#9fb6c4]">{isKpi ? "Nombre" : "Objetivo"}</label>
-          <input
-            className={`pf-input ${isKpi ? (errors.name ? "border-rose-400/70" : "") : errors.objective ? "border-rose-400/70" : ""}`}
-            value={isKpi ? form.name : form.objective}
-            onChange={(event) => onChange(isKpi ? "name" : "objective", event.target.value)}
-            placeholder={isKpi ? "Ej: Satisfaccion del estudiante" : "Ej: Mejorar la participacion en evaluaciones"}
+          <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Observaciones</label>
+          <textarea
+            className="min-h-24 w-full rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-white outline-none placeholder:text-[#7f99a8]"
+            placeholder="Observación general, contexto o siguiente paso."
+            value={form.comentariosGenerales}
+            onChange={(event) => onFieldChange("comentariosGenerales", event.target.value)}
           />
-          {isKpi && errors.name ? <p className="mt-1 text-xs text-rose-300">{errors.name}</p> : null}
-          {!isKpi && errors.objective ? <p className="mt-1 text-xs text-rose-300">{errors.objective}</p> : null}
         </div>
 
-        {!isKpi ? (
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Key result</label>
-            <input
-              className={`pf-input ${errors.keyResult ? "border-rose-400/70" : ""}`}
-              value={form.keyResult}
-              onChange={(event) => onChange("keyResult", event.target.value)}
-              placeholder="Ej: Alcanzar 90% de participacion"
-            />
-            {errors.keyResult ? <p className="mt-1 text-xs text-rose-300">{errors.keyResult}</p> : null}
-          </div>
-        ) : null}
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Empleado</label>
-            <select className="pf-select" value={form.employeeId} onChange={(event) => onChange("employeeId", event.target.value)}>
-              <option value="">Sin empleado puntual</option>
-              {employees.map((employee) => (
-                <option key={employee._id} value={employee._id}>
-                  {employee.label}
-                </option>
-              ))}
-            </select>
-            {errors.employeeId ? <p className="mt-1 text-xs text-rose-300">{errors.employeeId}</p> : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Departamento</label>
-            <input
-              list={`departments-${kind}`}
-              className="pf-input"
-              value={form.departmentCode}
-              onChange={(event) => onChange("departmentCode", event.target.value)}
-              placeholder="Ej: Academica"
-            />
-            <datalist id={`departments-${kind}`}>
-              {departmentOptions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Equipo</label>
-            <input
-              list={`teams-${kind}`}
-              className="pf-input"
-              value={form.teamId}
-              onChange={(event) => onChange("teamId", event.target.value)}
-              placeholder="Ej: TEAM-ACAD"
-            />
-            <datalist id={`teams-${kind}`}>
-              {teamOptions.map((item) => (
-                <option key={item} value={item} />
-              ))}
-            </datalist>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Ciclo</label>
-            <select className="pf-select" value={form.cycleId} onChange={(event) => onChange("cycleId", event.target.value)}>
-              <option value="">Sin ciclo asociado</option>
-              {cycles.map((cycle) => (
-                <option key={cycle._id} value={cycle._id}>
-                  {[cycle.anio, cycle.periodo, cycle.etapa].filter(Boolean).join(" - ")}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Meta</label>
-            <input
-              type="number"
-              className={`pf-input ${errors.targetValue ? "border-rose-400/70" : ""}`}
-              value={form.targetValue}
-              onChange={(event) => onChange("targetValue", event.target.value)}
-              placeholder="Ej: 90"
-            />
-            {errors.targetValue ? <p className="mt-1 text-xs text-rose-300">{errors.targetValue}</p> : null}
-          </div>
-
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Actual</label>
-            <input
-              type="number"
-              className={`pf-input ${errors.currentValue ? "border-rose-400/70" : ""}`}
-              value={form.currentValue}
-              onChange={(event) => onChange("currentValue", event.target.value)}
-              placeholder="Ej: 72"
-            />
-            {errors.currentValue ? <p className="mt-1 text-xs text-rose-300">{errors.currentValue}</p> : null}
-          </div>
-
-          {isKpi ? (
-            <div>
-              <label className="mb-1 block text-xs text-[#9fb6c4]">Unidad</label>
-              <input
-                className="pf-input"
-                value={form.unit}
-                onChange={(event) => onChange("unit", event.target.value)}
-                placeholder="Ej: %"
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="mb-1 block text-xs text-[#9fb6c4]">Peso</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                className={`pf-input ${errors.weight ? "border-rose-400/70" : ""}`}
-                value={form.weight}
-                onChange={(event) => onChange("weight", event.target.value)}
-                placeholder="Ej: 25"
-              />
-              {errors.weight ? <p className="mt-1 text-xs text-rose-300">{errors.weight}</p> : null}
-              <p className="mt-1 text-xs text-[#7f99a8]">Peso indica cuánto impacta este indicador dentro del conjunto total.</p>
-            </div>
-          )}
-
-          {isKpi ? (
-            <div>
-              <label className="mb-1 block text-xs text-[#9fb6c4]">Peso</label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                className={`pf-input ${errors.weight ? "border-rose-400/70" : ""}`}
-                value={form.weight}
-                onChange={(event) => onChange("weight", event.target.value)}
-                placeholder="Ej: 25"
-              />
-              {errors.weight ? <p className="mt-1 text-xs text-rose-300">{errors.weight}</p> : null}
-              <p className="mt-1 text-xs text-[#7f99a8]">Peso indica cuánto impacta este indicador dentro del conjunto total.</p>
-            </div>
-          ) : null}
-
-          <div>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">Estado</label>
-            <select className="pf-select" value={form.status} onChange={(event) => onChange("status", event.target.value)}>
-              {STATUS_OPTIONS.map((item) => (
-                <option key={item.value} value={item.value}>
-                  {item.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          <button type="submit" disabled={submitting} className="pf-button-primary">
-            {submitting ? "Guardando..." : editing ? "Guardar cambios" : `Crear ${isKpi ? "KPI" : "OKR"}`}
-          </button>
-          <button type="button" onClick={onCancel} className="pf-button-secondary">
-            Cancelar
+        <div className="flex flex-wrap gap-3">
+          <button
+            type="submit"
+            disabled={saving}
+            className="rounded-2xl bg-[#1e3a8a] px-5 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+          >
+            {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>
       </form>
@@ -603,652 +399,569 @@ function RecordForm({
   );
 }
 
-export default function MetricsPage() {
-  const { token, hasPermission } = useAuth();
-  const { setView, searchQuery } = useView();
-  const editorRef = useRef(null);
-  const groupDetailRef = useRef(null);
-  const employeeDetailRef = useRef(null);
+function buildGroups(metrics, competencyMap) {
+  const groups = new Map();
+  metrics.forEach((metric, index) => {
+    const competencyId = metric.competencyId?._id || metric.competencyId || `group-${index}`;
+    const competency = competencyMap.get(String(competencyId));
+    const key = String(competencyId);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        id: key,
+        title: competency?.nombre || competency?.name || metric.nombre || `Competencia ${groups.size + 1}`,
+        description: competency?.descripcion || metric.descripcion || "",
+        descriptors: [],
+      });
+    }
+    groups.get(key).descriptors.push({
+      metricId: metric._id,
+      name: metric.nombre || "Descriptor",
+      description: metric.descripcion || "",
+      levels: Array.isArray(metric.levels) ? metric.levels : [],
+    });
+  });
+  return [...groups.values()];
+}
 
+function inferStrengths(scores, metricMap) {
+  return scores
+    .filter((score) => Number(score.nivel) >= 4)
+    .slice()
+    .sort((a, b) => Number(b.nivel) - Number(a.nivel))
+    .slice(0, 3)
+    .map((score) => metricMap.get(String(score.metricId))?.nombre || "Descriptor");
+}
+
+function inferImprovements(scores, metricMap) {
+  return scores
+    .filter((score) => Number(score.nivel) <= 3)
+    .slice()
+    .sort((a, b) => Number(a.nivel) - Number(b.nivel))
+    .slice(0, 3)
+    .map((score) => metricMap.get(String(score.metricId))?.nombre || "Descriptor");
+}
+
+function hasMeaningfulText(value) {
+  return Boolean(normalizeText(value));
+}
+
+export default function MetricsPage() {
+  const { token, user, hasPermission } = useAuth();
+  const { setView, searchQuery } = useView();
+
+  const editorRef = useRef(null);
+  const detailRef = useRef(null);
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("resumen");
-  const [activeEditor, setActiveEditor] = useState(null);
-  const [editorRecordId, setEditorRecordId] = useState("");
-  const [editorMode, setEditorMode] = useState("full");
-  const [baseMetrics, setBaseMetrics] = useState([]);
-  const [kpiRecords, setKpiRecords] = useState([]);
-  const [okrRecords, setOkrRecords] = useState([]);
+  const [metrics, setMetrics] = useState([]);
+  const [competencies, setCompetencies] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
-  const [query, setQuery] = useState("");
-  const [departmentFilter, setDepartmentFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [periodFilter, setPeriodFilter] = useState("");
-  const [selectedGroupKey, setSelectedGroupKey] = useState("");
-  const [selectedEmployeeKey, setSelectedEmployeeKey] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState("info");
-  const [error, setError] = useState("");
-  const [permissionDenied, setPermissionDenied] = useState(false);
-  const [kpiForm, setKpiForm] = useState(KPI_FORM);
-  const [okrForm, setOkrForm] = useState(OKR_FORM);
-  const [kpiErrors, setKpiErrors] = useState({});
-  const [okrErrors, setOkrErrors] = useState({});
+  const [kpis, setKpis] = useState([]);
+  const [okrs, setOkrs] = useState([]);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedCycleId, setSelectedCycleId] = useState("");
+  const [autoDetail, setAutoDetail] = useState(null);
+  const [managerDetail, setManagerDetail] = useState(null);
+  const [detailError, setDetailError] = useState("");
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [editor, setEditor] = useState({ open: false, mode: "create", type: "AUTOEVALUACION" });
+  const [editorForm, setEditorForm] = useState(emptyEditor);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState({ type: "", text: "" });
 
-  const canManage = hasPermission("manage_metrics");
-  const canRead =
-    canManage ||
-    hasPermission("view_reports") ||
-    hasPermission("download_reports") ||
-    hasPermission("download_team_reports") ||
-    hasPermission("download_self_report") ||
-    hasPermission("read_only_access") ||
-    hasPermission("view_audit");
-
-  const employeeOptions = useMemo(() => {
-    const byId = new Map();
-
-    employees.forEach((item) => {
-      byId.set(item._id, {
-        _id: item._id,
-        label: [item.apellido, item.nombre].filter(Boolean).join(", ") || item.nombre || item.email || item._id,
-      });
-    });
-
-    [...kpiRecords, ...okrRecords].forEach((item) => {
-      if (item.employee?._id && !byId.has(item.employee._id)) {
-        byId.set(item.employee._id, {
-          _id: item.employee._id,
-          label: item.employee.fullName || item.employee.email || item.employee._id,
-        });
-      }
-    });
-
-    return [...byId.values()].sort((left, right) => left.label.localeCompare(right.label));
-  }, [employees, kpiRecords, okrRecords]);
-
-  const allowedEmployeeIds = useMemo(() => new Set(employeeOptions.map((item) => item._id)), [employeeOptions]);
-
-  const departmentOptions = useMemo(() => {
-    const values = new Set();
-    [...kpiRecords, ...okrRecords].forEach((item) => {
-      if (item.departmentCode) values.add(item.departmentCode);
-      if (item.employee?.area) values.add(item.employee.area);
-    });
-    employees.forEach((item) => {
-      if (item.area) values.add(item.area);
-    });
-    return [...values].sort();
-  }, [employees, kpiRecords, okrRecords]);
-
-  const teamOptions = useMemo(() => {
-    const values = new Set();
-    [...kpiRecords, ...okrRecords].forEach((item) => {
-      if (item.teamId) values.add(item.teamId);
-    });
-    return [...values].sort();
-  }, [kpiRecords, okrRecords]);
-
-  const periodOptions = useMemo(() => {
-    const values = new Set();
-    [...kpiRecords, ...okrRecords].forEach((item) => {
-      if (item.period) values.add(item.period);
-    });
-    return [...values].sort();
-  }, [kpiRecords, okrRecords]);
-
-  const evaluationSnapshots = useMemo(() => {
-    return evaluations.map((evaluation) => ({
-      id: evaluation._id,
-      employeeName:
-        [evaluation.employeeId?.apellido, evaluation.employeeId?.nombre].filter(Boolean).join(", ") ||
-        evaluation.employeeId?.nombre ||
-        "Sin evaluado",
-      cycleLabel: [evaluation.cycleId?.periodo, evaluation.cycleId?.anio].filter(Boolean).join(" ") || "Sin ciclo",
-      tipo: evaluation.tipo || "Evaluación",
-      estado: evaluation.estado || "BORRADOR",
-      comentarios: evaluation.comentariosGenerales || "",
-      resultadoFinal: evaluation.resultadoFinal,
-      evidencia: Array.isArray(evaluation.evidenciaUrls) ? evaluation.evidenciaUrls.length : 0,
-    }));
-  }, [evaluations]);
-
-  const filteredKpis = useMemo(() => {
-    const terms = [query, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
-    return kpiRecords.filter((item) => {
-      const visualStatus = getVisualStatus(item);
-      const matchesQuery =
-        !terms.length ||
-        [item.name, item.kpiCode, item.employee?.fullName, item.departmentCode, item.period]
-          .filter(Boolean)
-          .some((field) => terms.some((term) => String(field).toLowerCase().includes(term)));
-      const matchesDepartment = !departmentFilter || getRecordDepartment(item) === departmentFilter;
-      const matchesStatus = !statusFilter || visualStatus.key === statusFilter;
-      const matchesPeriod = !periodFilter || item.period === periodFilter;
-      return matchesQuery && matchesDepartment && matchesStatus && matchesPeriod;
-    });
-  }, [departmentFilter, kpiRecords, periodFilter, query, searchQuery, statusFilter]);
-
-  const filteredOkrs = useMemo(() => {
-    const terms = [query, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
-    return okrRecords.filter((item) => {
-      const visualStatus = getVisualStatus(item);
-      const matchesQuery =
-        !terms.length ||
-        [item.objective, item.objectiveTitle, item.keyResult, item.keyResultTitle, item.okrCode, item.employee?.fullName, item.departmentCode, item.period]
-          .filter(Boolean)
-          .some((field) => terms.some((term) => String(field).toLowerCase().includes(term)));
-      const matchesDepartment = !departmentFilter || getRecordDepartment(item) === departmentFilter;
-      const matchesStatus = !statusFilter || visualStatus.key === statusFilter;
-      const matchesPeriod = !periodFilter || (item.period || item.quarter) === periodFilter;
-      return matchesQuery && matchesDepartment && matchesStatus && matchesPeriod;
-    });
-  }, [departmentFilter, okrRecords, periodFilter, query, searchQuery, statusFilter]);
-
-  const filteredOperationalRecords = useMemo(
-    () => [
-      ...filteredKpis.map((item) => ({ ...item, kind: "kpi" })),
-      ...filteredOkrs.map((item) => ({ ...item, kind: "okr" })),
-    ],
-    [filteredKpis, filteredOkrs]
+  const canReadMetrics = Boolean(
+    hasPermission("manage_metrics") ||
+      hasPermission("manage_evaluations") ||
+      hasPermission("evaluate_team") ||
+      hasPermission("self_evaluate") ||
+      hasPermission("view_reports")
   );
-
-  const summary = useMemo(() => {
-    const records = [...kpiRecords, ...okrRecords];
-    const total = records.length;
-    const active = records.filter((item) => item.active !== false).length;
-    const completed = records.filter((item) => getVisualStatus(item).key === "completed").length;
-    const atRisk = records.filter((item) => getVisualStatus(item).key === "risk").length;
-    const noProgress = records.filter((item) => !Number(item.currentValue)).length;
-    const progresses = records.map((item) => calculateProgress(item.currentValue, item.targetValue)).filter(Number.isFinite);
-    const averageProgress = progresses.length ? progresses.reduce((acc, value) => acc + value, 0) / progresses.length : null;
-
-    return {
-      total,
-      activeKpis: kpiRecords.filter((item) => item.active !== false).length,
-      activeOkrs: okrRecords.filter((item) => item.active !== false).length,
-      atRisk,
-      completed,
-      noProgress,
-      averageProgress,
-      active,
-    };
-  }, [kpiRecords, okrRecords]);
-
-  const groupedByArea = useMemo(() => {
-    const groups = new Map();
-
-    filteredOperationalRecords.forEach((item) => {
-      const key = item.departmentCode || item.teamId || "sin-asignacion";
-      const label = item.departmentCode || (item.teamId ? `Equipo ${item.teamId}` : "Sin asignacion");
-      const visualStatus = getVisualStatus(item);
-      const progress = calculateProgress(item.currentValue, item.targetValue);
-
-      if (!groups.has(key)) {
-        groups.set(key, {
-          key,
-          label,
-          items: [],
-          total: 0,
-          kpis: 0,
-          okrs: 0,
-          atRisk: 0,
-          completed: 0,
-          progresses: [],
-        });
-      }
-
-      const target = groups.get(key);
-      target.items.push(item);
-      target.total += 1;
-      target.kpis += item.kind === "kpi" ? 1 : 0;
-      target.okrs += item.kind === "okr" ? 1 : 0;
-      target.atRisk += visualStatus.key === "risk" ? 1 : 0;
-      target.completed += visualStatus.key === "completed" ? 1 : 0;
-      if (Number.isFinite(progress)) target.progresses.push(progress);
-    });
-
-    return [...groups.values()]
-      .map((group) => ({
-        ...group,
-        averageProgress: group.progresses.length
-          ? group.progresses.reduce((acc, value) => acc + value, 0) / group.progresses.length
-          : null,
-        mainStatus:
-          group.completed === group.total && group.total > 0
-            ? { key: "completed", label: "Cumplido", tone: "success" }
-            : group.atRisk > 0
-              ? { key: "risk", label: "En riesgo", tone: "danger" }
-              : { key: "in_progress", label: "En curso", tone: "warning" },
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
-  }, [filteredOperationalRecords]);
-
-  const groupedByEmployee = useMemo(() => {
-    const groups = new Map();
-
-    filteredOperationalRecords.forEach((item) => {
-      const employeeId = item.employee?._id || item.employeeId || `sin-empleado-${item._id}`;
-      const employeeLabel = item.employee?.fullName || "Sin empleado asignado";
-      const departmentLabel = getRecordDepartment(item);
-      const progress = calculateProgress(item.currentValue, item.targetValue);
-      const visualStatus = getVisualStatus(item);
-
-      if (!groups.has(employeeId)) {
-        groups.set(employeeId, {
-          key: employeeId,
-          label: employeeLabel,
-          department: departmentLabel,
-          items: [],
-          kpis: 0,
-          okrs: 0,
-          pending: 0,
-          progresses: [],
-        });
-      }
-
-      const target = groups.get(employeeId);
-      target.items.push(item);
-      target.kpis += item.kind === "kpi" ? 1 : 0;
-      target.okrs += item.kind === "okr" ? 1 : 0;
-      target.pending += visualStatus.key === "completed" ? 0 : 1;
-      if (Number.isFinite(progress)) target.progresses.push(progress);
-    });
-
-    return [...groups.values()]
-      .map((group) => ({
-        ...group,
-        averageProgress: group.progresses.length
-          ? group.progresses.reduce((acc, value) => acc + value, 0) / group.progresses.length
-          : null,
-      }))
-      .sort((left, right) => left.label.localeCompare(right.label));
-  }, [filteredOperationalRecords]);
-
-  const selectedGroup = useMemo(
-    () => groupedByArea.find((item) => item.key === selectedGroupKey) || null,
-    [groupedByArea, selectedGroupKey]
+  const canCreateAuto = Boolean(hasPermission("manage_evaluations") || hasPermission("self_evaluate"));
+  const canCreateManager = Boolean(hasPermission("manage_evaluations") || hasPermission("evaluate_team"));
+  const canSeeManagerSection = !(
+    user?.roleKey === "EMPLOYEE" ||
+    user?.roleCode === "EMPLEADO"
   );
-
-  const selectedEmployee = useMemo(
-    () => groupedByEmployee.find((item) => item.key === selectedEmployeeKey) || null,
-    [groupedByEmployee, selectedEmployeeKey]
-  );
-
-  const resetEditor = useCallback(() => {
-    setActiveEditor(null);
-    setEditorRecordId("");
-    setEditorMode("full");
-    setKpiForm(KPI_FORM);
-    setOkrForm(OKR_FORM);
-    setKpiErrors({});
-    setOkrErrors({});
-  }, []);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
-      setPermissionDenied(false);
-
-      const [metricsResult, kpiResult, okrResult, employeesResult, cyclesResult, evaluationsResult] = await Promise.allSettled([
+      const results = await Promise.allSettled([
         apiFetch("/metrics", { token }),
-        apiFetch("/metrics/kpi-records", { token }),
-        apiFetch("/metrics/okr-records", { token }),
+        apiFetch("/competencies", { token }),
         apiFetch("/employees", { token }),
         apiFetch("/evaluation-cycles", { token }),
         apiFetch("/evaluations", { token }),
+        apiFetch("/metrics/kpi-records", { token }),
+        apiFetch("/metrics/okr-records", { token }),
       ]);
 
-      if (kpiResult.status === "rejected" || okrResult.status === "rejected") {
-        const combinedMessage = [
-          kpiResult.status === "rejected" ? kpiResult.reason?.message : "",
-          okrResult.status === "rejected" ? okrResult.reason?.message : "",
-        ]
-          .filter(Boolean)
-          .join(" ");
+      const [metricsResult, competenciesResult, employeesResult, cyclesResult, evaluationsResult, kpisResult, okrsResult] = results;
 
-        if (/permiso|acceso|autoriz/i.test(combinedMessage)) {
-          setPermissionDenied(true);
-          setError("");
-        } else {
-          setError(combinedMessage || "No pudimos cargar los objetivos e indicadores.");
-        }
+      if (metricsResult.status === "fulfilled") setMetrics(metricsResult.value || []);
+      if (competenciesResult.status === "fulfilled") setCompetencies(competenciesResult.value || []);
+      if (employeesResult.status === "fulfilled") setEmployees(employeesResult.value || []);
+      if (cyclesResult.status === "fulfilled") setCycles(cyclesResult.value || []);
+      if (evaluationsResult.status === "fulfilled") setEvaluations(evaluationsResult.value || []);
+      if (kpisResult.status === "fulfilled") setKpis(kpisResult.value || []);
+      if (okrsResult.status === "fulfilled") setOkrs(okrsResult.value || []);
+
+      const fatal =
+        [evaluationsResult, kpisResult, okrsResult].every((result) => result.status === "rejected") &&
+        metricsResult.status === "rejected";
+
+      if (fatal) {
+        throw new Error(evaluationsResult.reason?.message || metricsResult.reason?.message || "No pudimos cargar la evaluación de desempeño.");
       }
-
-      setBaseMetrics(metricsResult.status === "fulfilled" ? metricsResult.value : []);
-      setKpiRecords(kpiResult.status === "fulfilled" ? kpiResult.value : []);
-      setOkrRecords(okrResult.status === "fulfilled" ? okrResult.value : []);
-      setEmployees(employeesResult.status === "fulfilled" ? employeesResult.value : []);
-      setCycles(cyclesResult.status === "fulfilled" ? cyclesResult.value : []);
-      setEvaluations(evaluationsResult.status === "fulfilled" ? evaluationsResult.value : []);
+    } catch (nextError) {
+      setError(nextError.message);
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    if (!canRead) {
-      setPermissionDenied(true);
-      setLoading(false);
-      return;
-    }
+    if (!canReadMetrics) return;
+    loadData();
+  }, [canReadMetrics, loadData]);
 
-    loadData().catch((nextError) => {
-      const message = nextError?.message || "No pudimos cargar los objetivos e indicadores.";
-      if (/permiso|acceso|autoriz/i.test(message)) {
-        setPermissionDenied(true);
-      } else {
-        setError(message);
+  const competencyMap = useMemo(
+    () => new Map(competencies.map((item) => [String(item._id), item])),
+    [competencies]
+  );
+  const metricMap = useMemo(
+    () => new Map(metrics.map((item) => [String(item._id), item])),
+    [metrics]
+  );
+  const groups = useMemo(() => buildGroups(metrics, competencyMap), [competencyMap, metrics]);
+
+  const visibleEmployees = useMemo(() => {
+    const term = normalizeText(searchQuery).toLowerCase();
+    const base = employees.length
+      ? employees
+      : [...new Map(
+          evaluations
+            .filter((evaluation) => evaluation.employeeId?._id)
+            .map((evaluation) => [String(evaluation.employeeId._id), evaluation.employeeId])
+        ).values()];
+    if (!term) return base;
+    return base.filter((employee) =>
+      [employee.nombre, employee.apellido, employee.area, employee.cargo]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [employees, evaluations, searchQuery]);
+
+  useEffect(() => {
+    if (!selectedEmployeeId && visibleEmployees.length) {
+      setSelectedEmployeeId(String(visibleEmployees[0]._id));
+    }
+  }, [selectedEmployeeId, visibleEmployees]);
+
+  const employeeEvaluations = useMemo(() => {
+    return evaluations.filter((evaluation) => {
+      if (!selectedEmployeeId) return false;
+      if (String(evaluation.employeeId?._id || evaluation.employeeId) !== String(selectedEmployeeId)) return false;
+      if (selectedCycleId && String(evaluation.cycleId?._id || evaluation.cycleId) !== String(selectedCycleId)) return false;
+      if (!canSeeManagerSection && evaluation.tipo !== "AUTOEVALUACION") return false;
+      return true;
+    });
+  }, [canSeeManagerSection, evaluations, selectedCycleId, selectedEmployeeId]);
+
+  const selectedEmployee = useMemo(
+    () => visibleEmployees.find((employee) => String(employee._id) === String(selectedEmployeeId)) || null,
+    [selectedEmployeeId, visibleEmployees]
+  );
+
+  const cycleOptionsForEmployee = useMemo(() => {
+    const ids = new Set(
+      evaluations
+        .filter((evaluation) => String(evaluation.employeeId?._id || evaluation.employeeId) === String(selectedEmployeeId))
+        .map((evaluation) => String(evaluation.cycleId?._id || evaluation.cycleId))
+    );
+    const scoped = cycles.filter((cycle) => ids.has(String(cycle._id)));
+    return scoped.length ? scoped : cycles;
+  }, [cycles, evaluations, selectedEmployeeId]);
+
+  useEffect(() => {
+    if (selectedCycleId) return;
+    if (cycleOptionsForEmployee.length) {
+      setSelectedCycleId(String(cycleOptionsForEmployee[0]._id));
+    }
+  }, [cycleOptionsForEmployee, selectedCycleId]);
+
+  const autoEvaluation = useMemo(
+    () =>
+      employeeEvaluations.find((evaluation) => evaluation.tipo === "AUTOEVALUACION") || null,
+    [employeeEvaluations]
+  );
+
+  const managerEvaluation = useMemo(
+    () =>
+      employeeEvaluations.find((evaluation) => evaluation.tipo === "JEFATURA") ||
+      employeeEvaluations.find((evaluation) => evaluation.tipo === "FINAL") ||
+      null,
+    [employeeEvaluations]
+  );
+
+  const loadEvaluationDetail = useCallback(
+    async (evaluation, setter) => {
+      if (!evaluation?._id) {
+        setter(null);
+        return;
       }
-      setLoading(false);
-    });
-  }, [canRead, loadData]);
+      const data = await apiFetch(`/evaluations/${evaluation._id}`, { token });
+      setter({
+        ...data.evaluation,
+        scores: mapDetailScores(data.scores),
+      });
+    },
+    [token]
+  );
 
-  function openCreateEditor(kind) {
-    setActiveEditor(kind);
-    setEditorRecordId("");
-    setEditorMode("full");
-    setKpiForm(KPI_FORM);
-    setOkrForm(OKR_FORM);
-    setKpiErrors({});
-    setOkrErrors({});
-    setMessage("");
+  useEffect(() => {
+    let cancelled = false;
+    if (!selectedEmployeeId) return undefined;
+
+    async function run() {
+      try {
+        setDetailLoading(true);
+        setDetailError("");
+        const tasks = [loadEvaluationDetail(autoEvaluation, setAutoDetail)];
+        if (canSeeManagerSection) {
+          tasks.push(loadEvaluationDetail(managerEvaluation, setManagerDetail));
+        } else {
+          setManagerDetail(null);
+        }
+        await Promise.all(tasks);
+        if (!cancelled) {
+          window.requestAnimationFrame(() => {
+            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          });
+        }
+      } catch (nextError) {
+        if (!cancelled) {
+          setDetailError(nextError.message);
+          setAutoDetail(null);
+          setManagerDetail(null);
+        }
+      } finally {
+        if (!cancelled) setDetailLoading(false);
+      }
+    }
+
+    run();
+    return () => {
+      cancelled = true;
+    };
+  }, [autoEvaluation, canSeeManagerSection, loadEvaluationDetail, managerEvaluation, selectedEmployeeId, selectedCycleId]);
+
+  const operationalSummary = useMemo(() => {
+    const totalEvaluations = evaluations.length;
+    const autoCount = evaluations.filter((evaluation) => evaluation.tipo === "AUTOEVALUACION").length;
+    const managerCount = evaluations.filter((evaluation) => evaluation.tipo === "JEFATURA").length;
+    const overallAverage = average(evaluations.map((evaluation) => evaluation.resultadoFinal));
+    const pending = evaluations.filter((evaluation) => evaluation.estado !== "CERRADA").length;
+    return {
+      totalEvaluations,
+      autoCount,
+      managerCount,
+      overallAverage,
+      pending,
+      activeKpis: kpis.length,
+      activeOkrs: okrs.length,
+    };
+  }, [evaluations, kpis.length, okrs.length]);
+
+  const currentAutoAverage = useMemo(() => average(autoDetail?.scores?.map((item) => item.nivel) || []), [autoDetail]);
+  const currentManagerAverage = useMemo(() => average(managerDetail?.scores?.map((item) => item.nivel) || []), [managerDetail]);
+
+  const comparisonRows = useMemo(() => {
+    return groups
+      .map((group) => {
+        const autoScores = group.descriptors
+          .map((descriptor) => autoDetail?.scores?.find((item) => String(item.metricId) === String(descriptor.metricId))?.nivel)
+          .filter((value) => value !== undefined);
+        const managerScores = group.descriptors
+          .map((descriptor) => managerDetail?.scores?.find((item) => String(item.metricId) === String(descriptor.metricId))?.nivel)
+          .filter((value) => value !== undefined);
+        return {
+          name: group.title,
+          auto: average(autoScores) ?? 0,
+          jefe: average(managerScores) ?? 0,
+        };
+      })
+      .filter((row) => row.auto || row.jefe);
+  }, [autoDetail, groups, managerDetail]);
+
+  const distributionRows = useMemo(() => {
+    const buckets = [1, 2, 3, 4, 5].map((level) => ({ level: `Nivel ${level}`, auto: 0, jefe: 0 }));
+    (autoDetail?.scores || []).forEach((score) => {
+      const bucket = buckets.find((item) => item.level === `Nivel ${score.nivel}`);
+      if (bucket) bucket.auto += 1;
+    });
+    (managerDetail?.scores || []).forEach((score) => {
+      const bucket = buckets.find((item) => item.level === `Nivel ${score.nivel}`);
+      if (bucket) bucket.jefe += 1;
+    });
+    return buckets;
+  }, [autoDetail, managerDetail]);
+
+  const selectedEmployeeOperational = useMemo(() => {
+    const employeeId = String(selectedEmployeeId || "");
+    return {
+      kpis: kpis.filter((item) => String(item.employeeId || "") === employeeId),
+      okrs: okrs.filter((item) => String(item.employeeId || "") === employeeId),
+    };
+  }, [kpis, okrs, selectedEmployeeId]);
+
+  const evaluationEvidence = useMemo(() => {
+    const merged = [...(autoDetail?.scores || []), ...(managerDetail?.scores || [])]
+      .filter((score) => hasMeaningfulText(score.comentario))
+      .map((score) => ({
+        metric: metricMap.get(String(score.metricId))?.nombre || "Descriptor",
+        comment: score.comentario,
+      }));
+    return merged.slice(0, 8);
+  }, [autoDetail, managerDetail, metricMap]);
+
+  const strengths = useMemo(
+    () => inferStrengths(managerDetail?.scores || autoDetail?.scores || [], metricMap),
+    [autoDetail, managerDetail, metricMap]
+  );
+  const improvements = useMemo(
+    () => inferImprovements(managerDetail?.scores || autoDetail?.scores || [], metricMap),
+    [autoDetail, managerDetail, metricMap]
+  );
+
+  function buildEditorForm(type, detail) {
+    const cycle = cycles.find((item) => String(item._id) === String(selectedCycleId)) || null;
+    return {
+      id: detail?._id || "",
+      employeeId: selectedEmployee?._id || "",
+      cycleId: cycle?._id || "",
+      tipo: type,
+      estado: detail?.estado || "BORRADOR",
+      comentariosGenerales: detail?.comentariosGenerales || "",
+      acuerdoEmpleado: detail?.acuerdoEmpleado || "PENDIENTE",
+      employee: selectedEmployee,
+      cycle,
+      scores:
+        detail?.scores?.map((score) => ({
+          metricId: score.metricId,
+          nivel: clampLevel(score.nivel),
+          comentario: score.comentario || "",
+        })) ||
+        metrics.map((metric) => ({
+          metricId: metric._id,
+          nivel: 3,
+          comentario: "",
+        })),
+    };
+  }
+
+  function openEditor(type, detail = null) {
+    setEditor({
+      open: true,
+      mode: detail ? "edit" : "create",
+      type,
+    });
+    setEditorForm(buildEditorForm(type, detail));
     window.requestAnimationFrame(() => {
       editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   }
 
-  function openEditEditor(kind, record, mode = "full") {
-    setActiveEditor(kind);
-    setEditorRecordId(record._id);
-    setEditorMode(mode);
-    setMessage("");
-
-    if (kind === "kpi") {
-      setKpiForm({
-        kpiCode: record.kpiCode || "",
-        name: record.name || "",
-        employeeId: record.employeeId || record.employee?._id || "",
-        departmentCode: record.departmentCode || "",
-        teamId: record.teamId || "",
-        cycleId: record.cycleId || record.cycle?._id || "",
-        targetValue: record.targetValue ?? "",
-        currentValue: record.currentValue ?? "",
-        unit: record.unit || "",
-        period: record.period || "",
-        weight: record.weight ?? "",
-        status: record.status || "active",
-      });
-      setKpiErrors({});
-    } else {
-      setOkrForm({
-        okrCode: record.okrCode || "",
-        objective: record.objective || record.objectiveTitle || "",
-        keyResult: record.keyResult || record.keyResultTitle || "",
-        employeeId: record.employeeId || record.employee?._id || "",
-        departmentCode: record.departmentCode || "",
-        teamId: record.teamId || "",
-        cycleId: record.cycleId || record.cycle?._id || "",
-        targetValue: record.targetValue ?? "",
-        currentValue: record.currentValue ?? "",
-        period: record.period || record.quarter || "",
-        weight: record.weight ?? "",
-        status: record.status || "active",
-      });
-      setOkrErrors({});
-    }
-
-    window.requestAnimationFrame(() => {
-      editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+  function closeEditor() {
+    setEditor({ open: false, mode: "create", type: "AUTOEVALUACION" });
+    setEditorForm(emptyEditor);
   }
 
-  function updateForm(kind, field, value) {
-    if (kind === "kpi") {
-      setKpiForm((current) => ({ ...current, [field]: value }));
-      if (kpiErrors[field]) setKpiErrors((current) => ({ ...current, [field]: "" }));
-      return;
-    }
-    setOkrForm((current) => ({ ...current, [field]: value }));
-    if (okrErrors[field]) setOkrErrors((current) => ({ ...current, [field]: "" }));
+  function updateEditorScore(metricId, nextLevel) {
+    setEditorForm((current) => ({
+      ...current,
+      scores: current.scores.map((score) =>
+        String(score.metricId) === String(metricId)
+          ? { ...score, nivel: clampLevel(nextLevel) }
+          : score
+      ),
+    }));
   }
 
-  function openProgressEditor(kind, record) {
-    openEditEditor(kind, record, "progress");
+  function updateEditorComment(metricId, comment) {
+    setEditorForm((current) => ({
+      ...current,
+      scores: current.scores.map((score) =>
+        String(score.metricId) === String(metricId)
+          ? { ...score, comentario: comment }
+          : score
+      ),
+    }));
   }
 
-  async function handleSaveRecord(event) {
+  async function refreshEvaluationsAfterSave() {
+    const nextEvaluations = await apiFetch("/evaluations", { token });
+    setEvaluations(nextEvaluations);
+  }
+
+  async function handleSaveEditor(event) {
     event.preventDefault();
-    if (!activeEditor) return;
-
-    const form = activeEditor === "kpi" ? kpiForm : okrForm;
-    const errors = validateRecordForm(activeEditor, form);
-    if (form.employeeId && !allowedEmployeeIds.has(form.employeeId)) {
-      errors.employeeId = "Selecciona un responsable dentro de tu alcance visible.";
-    }
-    if (Object.keys(errors).length) {
-      if (activeEditor === "kpi") setKpiErrors(errors);
-      else setOkrErrors(errors);
-      setMessageType("warning");
-      setMessage("Revisa los campos obligatorios antes de guardar.");
+    if (!editorForm.employeeId || !editorForm.cycleId) {
+      setMessage({ type: "warning", text: "Seleccioná empleado y ciclo antes de guardar la evaluación." });
       return;
     }
 
     try {
-      setSubmitting(true);
-      setMessage("");
-      const payload = buildRecordPayload(activeEditor, form);
-      const endpoint = activeEditor === "kpi" ? "/metrics/kpi-records" : "/metrics/okr-records";
-      const method = editorRecordId ? "PUT" : "POST";
-      const path = editorRecordId ? `${endpoint}/${editorRecordId}` : endpoint;
-      const response = await apiFetch(path, {
-        method,
-        token,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      setSaving(true);
+      const payload = {
+        employeeId: editorForm.employeeId,
+        cycleId: editorForm.cycleId,
+        tipo: editorForm.tipo,
+        estado: editorForm.estado,
+        comentariosGenerales: editorForm.comentariosGenerales,
+        acuerdoEmpleado: editorForm.acuerdoEmpleado,
+        scores: editorForm.scores.map((score) => ({
+          metricId: score.metricId,
+          nivel: score.nivel,
+          comentario: score.comentario,
+        })),
+      };
 
-      setMessageType("success");
-      setMessage(response?.mensaje || `${activeEditor.toUpperCase()} guardado.`);
-      resetEditor();
-      await loadData();
-    } catch (nextError) {
-      if (/permiso|acceso|autoriz/i.test(nextError.message)) {
-        setPermissionDenied(true);
+      if (editor.mode === "edit" && editorForm.id) {
+        await apiFetch(`/evaluations/${editorForm.id}`, {
+          method: "PUT",
+          token,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiFetch("/evaluations", {
+          method: "POST",
+          token,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
       }
-      setMessageType("error");
-      setMessage(nextError.message);
+
+      await refreshEvaluationsAfterSave();
+      setMessage({ type: "success", text: "Evaluación guardada." });
+      closeEditor();
+    } catch (nextError) {
+      setMessage({ type: "error", text: nextError.message });
     } finally {
-      setSubmitting(false);
+      setSaving(false);
     }
   }
 
-  async function handleDeleteRecord(kind, record) {
-    const label = kind === "kpi" ? record.name : record.objective || record.objectiveTitle;
-    const confirmed = window.confirm(`¿Eliminar "${label}"?`);
-    if (!confirmed) return;
-
+  async function handleDeleteEvaluation(id) {
+    const ok = window.confirm("Vas a eliminar esta evaluación. Esta acción no se puede deshacer.");
+    if (!ok) return;
     try {
-      const endpoint = kind === "kpi" ? "/metrics/kpi-records" : "/metrics/okr-records";
-      const response = await apiFetch(`${endpoint}/${record._id}`, {
-        method: "DELETE",
-        token,
-      });
-      setMessageType("success");
-      setMessage(response?.mensaje || `${kind.toUpperCase()} eliminado.`);
-      if (editorRecordId === record._id) resetEditor();
-      await loadData();
+      await apiFetch(`/evaluations/${id}`, { method: "DELETE", token });
+      await refreshEvaluationsAfterSave();
+      setMessage({ type: "success", text: "Evaluación eliminada." });
+      closeEditor();
     } catch (nextError) {
-      if (/permiso|acceso|autoriz/i.test(nextError.message)) {
-        setPermissionDenied(true);
-      }
-      setMessageType("error");
-      setMessage(nextError.message);
+      setMessage({ type: "error", text: nextError.message });
     }
   }
 
-  if (permissionDenied || !canRead) {
+  if (!canReadMetrics) {
     return (
-      <div className="space-y-5">
-        <section className="pf-surface pf-surface-pad">
-          <p className="pf-section-title">Desempeño / Mediciones</p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Mediciones de desempeño</h1>
-          <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-            Combiná metas, competencias, autoevaluaciones, evidencias y resultados medibles dentro del ciclo activo.
-          </p>
-        </section>
-        <PermissionState
-          title="No tienes acceso a esta vista"
-          description="Tu rol actual no puede gestionar o consultar objetivos e indicadores dentro de este alcance."
-          actionLabel="Volver al inicio"
-          onAction={() => setView("dashboard")}
-        />
-      </div>
+      <PermissionState
+        title="No tienes acceso a esta evaluación de desempeño"
+        description="Tu rol actual no tiene permisos para ver esta sección."
+      />
     );
   }
 
-  const emptyOperational = !kpiRecords.length && !okrRecords.length;
+  if (loading) {
+    return (
+      <LoadingState
+        title="Cargando evaluación de desempeño"
+        description="Estamos preparando personas, ciclos, evaluaciones y mediciones visibles para tu alcance."
+      />
+    );
+  }
+
+  if (error) {
+    return (
+      <ErrorState
+        title="No pudimos cargar la evaluación de desempeño"
+        description={error}
+        actionLabel="Reintentar"
+        onAction={loadData}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
       <section className="pf-surface pf-surface-pad">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-4xl">
-            <p className="pf-section-title">Desempeño / Mediciones</p>
+            <p className="pf-section-title">Desempeño</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Mediciones de desempeño</h1>
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
               Las mediciones de desempeño combinan metas, competencias, autoevaluaciones y evidencias para construir el resumen evaluativo.
             </p>
           </div>
-
           <div className="flex flex-wrap gap-2">
-            {canManage ? (
-              <>
-                <button type="button" onClick={() => openCreateEditor("kpi")} className="pf-button-primary">
-                  Nuevo KPI
-                </button>
-                <button type="button" onClick={() => openCreateEditor("okr")} className="pf-button-secondary">
-                  Nuevo OKR
-                </button>
-              </>
+            {canCreateAuto ? (
+              <button
+                type="button"
+                onClick={() => openEditor("AUTOEVALUACION", autoDetail)}
+                className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
+              >
+                {autoDetail ? "Editar autoevaluación" : "Crear autoevaluación"}
+              </button>
             ) : null}
-            <button type="button" onClick={() => setView("carga-masiva")} className="pf-button-secondary">
-              Importar desde plantilla
-            </button>
-            <button type="button" onClick={loadData} className="pf-button-secondary">
-              Actualizar
-            </button>
+            {canSeeManagerSection && canCreateManager ? (
+              <button
+                type="button"
+                onClick={() => openEditor("JEFATURA", managerDetail)}
+                className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white"
+              >
+                {managerDetail ? "Editar evaluación del jefe" : "Crear evaluación del jefe"}
+              </button>
+            ) : null}
           </div>
         </div>
       </section>
 
-      {activeEditor === "kpi" ? (
-        <div ref={editorRef}>
-          <RecordForm
-            kind="kpi"
-            form={kpiForm}
-            errors={kpiErrors}
-            employees={employeeOptions}
-            cycles={cycles}
-            departmentOptions={departmentOptions}
-            teamOptions={teamOptions}
-            periodOptions={periodOptions}
-            submitting={submitting}
-            onChange={(field, value) => updateForm("kpi", field, value)}
-            onSubmit={handleSaveRecord}
-            onCancel={resetEditor}
-            editing={Boolean(editorRecordId)}
-            mode={editorMode}
-          />
-        </div>
-      ) : null}
-
-      {activeEditor === "okr" ? (
-        <div ref={editorRef}>
-          <RecordForm
-            kind="okr"
-            form={okrForm}
-            errors={okrErrors}
-            employees={employeeOptions}
-            cycles={cycles}
-            departmentOptions={departmentOptions}
-            teamOptions={teamOptions}
-            periodOptions={periodOptions}
-            submitting={submitting}
-            onChange={(field, value) => updateForm("okr", field, value)}
-            onSubmit={handleSaveRecord}
-            onCancel={resetEditor}
-            editing={Boolean(editorRecordId)}
-            mode={editorMode}
-          />
-        </div>
-      ) : null}
-
-      {message ? (
-        <p
+      {message.text ? (
+        <div
           className={
-            messageType === "error"
+            message.type === "error"
               ? "pf-alert-error"
-              : messageType === "success"
+              : message.type === "success"
                 ? "pf-alert-success"
-                : messageType === "warning"
-                  ? "pf-alert-warning"
-                  : "pf-alert-info"
+                : "pf-alert-warning"
           }
         >
-          {message}
-        </p>
+          {message.text}
+        </div>
       ) : null}
 
-      <SurfaceCard title="Filtros activos" subtitle="Usa la misma vista para explorar estado, responsable y alcance operativo.">
-        <div className="grid gap-4 xl:grid-cols-[1.5fr_1fr_1fr_1fr]">
-          <input
-            className="pf-input"
-            placeholder="Buscar por nombre, codigo, responsable o periodo"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-
-          <select className="pf-select" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
-            <option value="">Todos los equipos / departamentos</option>
-            {departmentOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-
-          <select className="pf-select" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="">Todos los estados visuales</option>
-            <option value="completed">Cumplidos</option>
-            <option value="risk">En riesgo</option>
-            <option value="in_progress">En curso</option>
-            <option value="no_data">Sin datos</option>
-          </select>
-
-          <select className="pf-select" value={periodFilter} onChange={(event) => setPeriodFilter(event.target.value)}>
-            <option value="">Todos los periodos</option>
-            {periodOptions.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </div>
-      </SurfaceCard>
-
-      <SurfaceCard title="Vista" subtitle="Usá una estructura más cercana al formulario de evaluación real: metas, competencias, autoevaluaciones, evidencias y resultados.">
+      <SurfaceCard
+        title="Vista"
+        subtitle="Menos ruido, más claridad: primero desempeño por persona y después objetivos complementarios."
+      >
         <div className="flex flex-wrap gap-2">
-          {PAGE_TABS.map((tab) => (
+          {TABS.filter((tab) => canSeeManagerSection || tab.key !== "manager").map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
               className={`rounded-2xl px-4 py-2.5 text-sm transition ${
-                activeTab === tab.key ? "bg-[#1e3a8a] text-white" : "border border-white/10 bg-[#122530] text-[#afc3ce]"
+                activeTab === tab.key
+                  ? "bg-[#1e3a8a] text-white"
+                  : "border border-white/10 bg-[#122530] text-[#afc3ce]"
               }`}
             >
               {tab.label}
@@ -1257,344 +970,452 @@ export default function MetricsPage() {
         </div>
       </SurfaceCard>
 
-      {loading ? (
-        <LoadingState
-          title="Cargando objetivos e indicadores"
-          description="Estamos trayendo indicadores base, KPIs y OKRs persistidos para este alcance."
+      <div ref={detailRef}>
+        <EvaluationHeader
+          employee={selectedEmployee}
+          cycle={cycleOptionsForEmployee.find((item) => String(item._id) === String(selectedCycleId)) || null}
+          status={managerDetail?.estado || autoDetail?.estado || "-"}
+          tipo={managerDetail?.tipo || autoDetail?.tipo || ""}
+          score={currentManagerAverage ?? currentAutoAverage}
+          selfOnly={!canSeeManagerSection}
         />
-      ) : error && !baseMetrics.length && emptyOperational ? (
-        <ErrorState
-          title="No pudimos cargar la vista"
-          description={error}
-          actionLabel="Reintentar"
-          onAction={loadData}
-        />
-      ) : (
-        <>
-          {activeTab === "resumen" ? (
-            <div className="space-y-5">
-              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                <SummaryCard label="KPIs activos" value={summary.activeKpis} hint="Registros KPI visibles" />
-                <SummaryCard label="OKRs activos" value={summary.activeOkrs} hint="Registros OKR visibles" />
-                <SummaryCard label="En riesgo" value={summary.atRisk} hint="Items debajo del umbral visual" tone="danger" />
-                <SummaryCard label="Cumplidos" value={summary.completed} hint="Objetivos ya alcanzados" tone="success" />
-                <SummaryCard label="Sin avance" value={summary.noProgress} hint="Sin valor actual o en cero" tone="warning" />
-                <SummaryCard label="Promedio de avance" value={formatPercent(summary.averageProgress)} hint="Promedio general del alcance" />
-              </section>
+      </div>
 
-              <SurfaceCard
-                title="Cómo leer estas mediciones"
-                subtitle="Tomamos como referencia el flujo real de evaluación: datos del evaluado, metas, competencias, autoevaluación, evidencia y cierre."
-              >
-                <div className="grid gap-3 md:grid-cols-3">
-                  <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                    <p className="text-sm font-semibold text-white">1. Registrá lo que se mide</p>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">Usá metas, KPIs u OKRs para lo cuantitativo y competencias para lo cualitativo.</p>
-                  </article>
-                  <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                    <p className="text-sm font-semibold text-white">2. Actualizá avance y evidencia</p>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">Cargá valor actual, autoevaluación o evidencia para que el seguimiento tenga contexto real.</p>
-                  </article>
-                  <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                    <p className="text-sm font-semibold text-white">3. Cerrá con resumen evaluativo</p>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">Ejemplo: si la meta es 100 y el valor actual es 65, el avance visible será 65%.</p>
-                  </article>
-                </div>
-              </SurfaceCard>
+      {activeTab === "resumen" ? (
+        <div className="space-y-5">
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <SummaryCard label="Evaluaciones visibles" value={operationalSummary.totalEvaluations} hint="Dentro de tu alcance" />
+            <SummaryCard label="Autoevaluaciones" value={operationalSummary.autoCount} hint="Registradas" />
+            <SummaryCard label="Evaluación jefe" value={operationalSummary.managerCount} hint="Registradas" />
+            <SummaryCard
+              label="Promedio general"
+              value={formatScore(operationalSummary.overallAverage)}
+              hint="Resultado visible hoy"
+              tone="success"
+            />
+            <SummaryCard label="Pendientes" value={operationalSummary.pending} hint="Sin cierre todavía" tone="warning" />
+            <SummaryCard label="KPIs / OKRs" value={operationalSummary.activeKpis + operationalSummary.activeOkrs} hint="Contexto complementario" />
+          </section>
 
-              {emptyOperational ? (
-                <EmptyState
-                  title="No hay KPIs/OKRs cargados todavia"
-                  description="Podés crearlos manualmente o importarlos desde la plantilla oficial."
-                  actionLabel="Ir a Importación"
-                  onAction={() => setView("carga-masiva")}
-                />
-              ) : null}
-
-              <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-                <SurfaceCard
-                  title="Indicadores base"
-                  subtitle="Base comun para evaluaciones y lectura operativa del ciclo."
-                  actions={
-                    <button type="button" onClick={() => setView("competencias")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
-                      Ver competencias
-                    </button>
-                  }
-                >
-                  {baseMetrics.length ? (
-                    <div className="space-y-3">
-                      {baseMetrics.slice(0, 5).map((metric) => (
-                        <article key={metric._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-white">{metric.nombre}</p>
-                              <p className="mt-1 text-sm text-[#9fb6c4]">{metric.descripcion || "Sin descripcion operativa."}</p>
-                            </div>
-                              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
-                              Competencia base
-                            </span>
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  ) : (
-                    <EmptyState
-                      compact
-                      title="No hay indicadores base cargados"
-                      description="Cuando existan indicadores base, esta seccion mostrara la referencia comun del tenant."
-                    />
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            <SurfaceCard
+              title="Siguiente lectura sugerida"
+              subtitle="Qué conviene mirar primero para entender el desempeño de esta persona."
+            >
+              <div className="grid gap-3 md:grid-cols-3">
+                <SummaryCard label="Autoevaluación" value={formatScore(currentAutoAverage)} hint="Promedio actual" />
+                <SummaryCard label="Jefatura" value={formatScore(currentManagerAverage)} hint="Promedio actual" />
+                <SummaryCard
+                  label="Brecha"
+                  value={formatScore(
+                    currentAutoAverage !== null && currentManagerAverage !== null
+                      ? Math.abs(currentManagerAverage - currentAutoAverage)
+                      : null
                   )}
-                </SurfaceCard>
-
-                <SurfaceCard title="Lectura ejecutiva" subtitle="Resumen rapido para direccion, RR. HH. y managers.">
-                  <div className="space-y-3">
-                    <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                      <p className="text-sm font-semibold text-white">Carga operativa</p>
-                      <p className="mt-2 text-sm text-[#9fb6c4]">
-                        {summary.total
-                          ? `Hay ${summary.total} registros operativos visibles entre KPIs y OKRs dentro del alcance actual.`
-                          : "Todavia no hay registros operativos persistidos para este alcance."}
-                      </p>
-                    </article>
-                    <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                      <p className="text-sm font-semibold text-white">Cobertura por equipos</p>
-                      <p className="mt-2 text-sm text-[#9fb6c4]">
-                        {groupedByArea.length
-                          ? `${groupedByArea.length} equipos o departamentos tienen al menos un KPI u OKR visible.`
-                          : "No hay equipos o departamentos con objetivos persistidos todavia."}
-                      </p>
-                    </article>
-                    <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                      <p className="text-sm font-semibold text-white">Seguimiento por persona</p>
-                      <p className="mt-2 text-sm text-[#9fb6c4]">
-                        {groupedByEmployee.length
-                          ? `${groupedByEmployee.length} personas muestran objetivos o indicadores con avance visible.`
-                          : "No hay personas con objetivos persistidos en este momento."}
-                      </p>
-                    </article>
-                  </div>
-                </SurfaceCard>
+                  hint="Diferencia entre ambas miradas"
+                  tone="warning"
+                />
               </div>
+              <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4]">
+                {currentManagerAverage !== null
+                  ? "Compará primero la autoevaluación con la evaluación del jefe. Después usá KPIs y OKRs como evidencia adicional."
+                  : "Todavía no hay evaluación del jefe visible. Empezá por la autoevaluación y por los objetivos complementarios que ya existan."}
+              </div>
+            </SurfaceCard>
+
+            <SurfaceCard
+              title="Objetivos complementarios"
+              subtitle="KPIs y OKRs se preservan como contexto operativo, sin ocupar la vista principal."
+            >
+              <div className="grid gap-3 md:grid-cols-2">
+                <SummaryCard label="KPIs asignados" value={selectedEmployeeOperational.kpis.length} hint="Visibles para esta persona" />
+                <SummaryCard label="OKRs asignados" value={selectedEmployeeOperational.okrs.length} hint="Visibles para esta persona" />
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                {selectedEmployeeOperational.kpis.slice(0, 2).map((item) => (
+                  <StatusPill key={item._id} label={item.name || "KPI"} />
+                ))}
+                {selectedEmployeeOperational.okrs.slice(0, 2).map((item) => (
+                  <StatusPill key={item._id} label={item.objective || "OKR"} />
+                ))}
+                {!selectedEmployeeOperational.kpis.length && !selectedEmployeeOperational.okrs.length ? (
+                  <p className="text-sm text-[#9fb6c4]">No hay KPIs/OKRs asignados para esta persona.</p>
+                ) : null}
+              </div>
+            </SurfaceCard>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "individual" ? (
+        <div className="space-y-5">
+          <SurfaceCard
+            title="Evaluación individual"
+            subtitle="Seleccioná una persona y un período. Desde acá podés leer desempeño, abrir autoevaluación o completar la evaluación del jefe."
+          >
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Empleado</label>
+                <select
+                  className="pf-select"
+                  value={selectedEmployeeId}
+                  onChange={(event) => setSelectedEmployeeId(event.target.value)}
+                >
+                  <option value="">Seleccioná una persona</option>
+                  {visibleEmployees.map((employee) => (
+                    <option key={employee._id} value={employee._id}>
+                      {buildEmployeeLabel(employee)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo / período</label>
+                <select
+                  className="pf-select"
+                  value={selectedCycleId}
+                  onChange={(event) => setSelectedCycleId(event.target.value)}
+                >
+                  <option value="">Todos</option>
+                  {cycleOptionsForEmployee.map((cycle) => (
+                    <option key={cycle._id} value={cycle._id}>
+                      {buildCycleLabel(cycle)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <SummaryCard label="Autoevaluación" value={autoDetail ? autoDetail.estado : "Sin carga"} hint={autoDetail ? formatDate(autoDetail.updatedAt) : "No registrada"} />
+              <SummaryCard label="Jefatura" value={managerDetail ? managerDetail.estado : "Sin carga"} hint={managerDetail ? formatDate(managerDetail.updatedAt) : "No registrada"} />
             </div>
-          ) : null}
+          </SurfaceCard>
 
-          {activeTab === "kpis" ? (
-            filteredKpis.length ? (
-              <SurfaceCard title="Metas y resultados medibles" subtitle="Esta vista se parece al bloque de metas del formulario real: nombre de lo que se mide, meta, actual y estado.">
-                <div className="space-y-4">
-                  {filteredKpis.map((item) => (
-                    <RecordCard
-                      key={item._id}
-                      kind="kpi"
-                      record={item}
-                      canManage={canManage}
-                      onEdit={(record) => openEditEditor("kpi", record)}
-                      onProgress={(record) => openProgressEditor("kpi", record)}
-                      onDelete={(record) => handleDeleteRecord("kpi", record)}
-                    />
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyState
-                title="No hay metas para mostrar"
-                description="Ajustá los filtros o creá la primera meta medible desde esta pantalla."
-                actionLabel={canManage ? "Nuevo KPI" : undefined}
-                onAction={canManage ? () => openCreateEditor("kpi") : undefined}
-              />
-            )
-          ) : null}
-
-          {activeTab === "okrs" ? (
-            filteredOkrs.length ? (
-              <SurfaceCard title="Competencias y resultados clave" subtitle="Usamos esta vista para mostrar objetivos cualitativos o resultados clave asociados al período.">
-                <div className="space-y-4">
-                  {filteredOkrs.map((item) => (
-                    <RecordCard
-                      key={item._id}
-                      kind="okr"
-                      record={item}
-                      canManage={canManage}
-                      onEdit={(record) => openEditEditor("okr", record)}
-                      onProgress={(record) => openProgressEditor("okr", record)}
-                      onDelete={(record) => handleDeleteRecord("okr", record)}
-                    />
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyState
-                title="No hay competencias o resultados clave para mostrar"
-                description="Ajustá los filtros o cargá la primera medición cualitativa desde esta pantalla."
-                actionLabel={canManage ? "Nuevo OKR" : undefined}
-                onAction={canManage ? () => openCreateEditor("okr") : undefined}
-              />
-            )
-          ) : null}
-
-          {activeTab === "equipos" ? (
-            groupedByArea.length ? (
-              <div className="space-y-5">
-                <SurfaceCard title="KPIs / OKRs por equipo o departamento" subtitle="Agrupación operativa usando departmentCode o teamId cuando existen.">
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {groupedByArea.map((group) => (
-                      <GroupSummaryCard
-                        key={group.key}
-                        title={group.label}
-                        stats={group}
-                        onSelect={() => {
-                          setSelectedGroupKey(group.key);
-                          window.requestAnimationFrame(() => {
-                            groupDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                          });
-                        }}
-                      />
-                    ))}
-                  </div>
-                </SurfaceCard>
-
-                {selectedGroup ? (
-                  <div ref={groupDetailRef}>
-                  <SurfaceCard title={`Detalle de ${selectedGroup.label}`} subtitle="Lista resumida de KPIs y OKRs dentro del grupo seleccionado.">
-                    <div className="space-y-3">
-                      {selectedGroup.items.map((item) => (
-                        <article key={`${selectedGroup.key}-${item.kind}-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-white">{getRecordTitle(item, item.kind)}</p>
-                              <p className="mt-1 text-sm text-[#9fb6c4]">
-                                {item.kind === "kpi" ? "KPI" : "OKR"} · {getRecordEmployeeName(item)} · {item.period || "Sin periodo"}
-                              </p>
-                            </div>
-                            <StatusBadge status={getVisualStatus(item)} />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </SurfaceCard>
-                  </div>
-                ) : null}
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            <SurfaceCard title="Qué incluye esta evaluación" subtitle="Tomamos el esquema del formulario real para que la lectura sea natural.">
+              <div className="grid gap-3 md:grid-cols-3">
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                  <p className="text-sm font-semibold text-white">Metas y competencias</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">Cada descriptor se puntúa de 1 a 5.</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                  <p className="text-sm font-semibold text-white">Evidencias</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">Cada descriptor puede llevar comentario o evidencia breve.</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                  <p className="text-sm font-semibold text-white">Resumen final</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">El cierre se arma con autoevaluación, jefatura y observaciones finales.</p>
+                </article>
               </div>
-            ) : (
-              <EmptyState
-                title="No hay KPIs u OKRs agrupados"
-                description="Cuando existan equipos o departamentos con registros visibles, esta vista los resumirá por alcance."
-              />
-            )
-          ) : null}
+            </SurfaceCard>
 
-          {activeTab === "empleados" ? (
-            groupedByEmployee.length ? (
-              <div className="space-y-5">
-                <SurfaceCard title="Autoevaluaciones y seguimiento individual" subtitle="Acá ves por persona el avance visible, pendientes y contexto del seguimiento actual.">
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    {groupedByEmployee.map((group) => (
-                      <article key={group.key} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div>
-                            <p className="text-lg font-semibold text-white">{group.label}</p>
-                            <p className="mt-1 text-sm text-[#9fb6c4]">{group.department}</p>
-                          </div>
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
-                            Pendientes {group.pending}
-                          </span>
-                        </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
-                            <p className="mt-2 text-base font-semibold text-white">{group.kpis}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
-                            <p className="mt-2 text-base font-semibold text-white">{group.okrs}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Promedio</p>
-                            <p className="mt-2 text-base font-semibold text-white">{formatPercent(group.averageProgress)}</p>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedEmployeeKey(group.key);
-                              window.requestAnimationFrame(() => {
-                                employeeDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-                              });
-                            }}
-                            className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
-                          >
-                            Ver detalle
-                          </button>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </SurfaceCard>
-
-                {selectedEmployee ? (
-                  <div ref={employeeDetailRef}>
-                  <SurfaceCard title={`Detalle de ${selectedEmployee.label}`} subtitle="Metas, KPIs y OKRs visibles para la persona seleccionada.">
-                    <div className="space-y-3">
-                      {selectedEmployee.items.map((item) => (
-                        <article key={`${selectedEmployee.key}-${item.kind}-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-white">{getRecordTitle(item, item.kind)}</p>
-                              <p className="mt-1 text-sm text-[#9fb6c4]">
-                                {item.kind === "kpi" ? "KPI" : "OKR"} · {getRecordDepartment(item)} · {item.period || "Sin periodo"}
-                              </p>
-                            </div>
-                            <StatusBadge status={getVisualStatus(item)} />
-                          </div>
-                        </article>
-                      ))}
-                    </div>
-                  </SurfaceCard>
-                  </div>
-                ) : null}
-              </div>
-            ) : (
-              <EmptyState
-                title="No hay seguimiento individual visible"
-                description="Cuando haya metas, KPIs u OKRs asociados a personas, esta vista mostrará su distribución y avance."
-              />
-            )
-          ) : null}
-
-          {activeTab === "evidencias" ? (
-            evaluationSnapshots.filter((item) => item.evidencia || item.comentarios).length ? (
-              <SurfaceCard title="Evidencias y comentarios" subtitle="Mostramos evidencia declarada y comentarios visibles como apoyo del resumen evaluativo.">
+            <SurfaceCard title="Vista rápida" subtitle="Lectura corta para saber dónde entrar primero.">
+              {detailError ? (
+                <ErrorState compact title="No pudimos cargar el detalle" description={detailError} />
+              ) : detailLoading ? (
+                <LoadingState compact title="Cargando detalle individual" description="Estamos trayendo puntajes y comentarios visibles." />
+              ) : (
                 <div className="space-y-3">
-                  {evaluationSnapshots
-                    .filter((item) => item.evidencia || item.comentarios)
-                    .map((item) => (
-                      <article key={`evidence-${item.id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <p className="font-semibold text-white">{item.employeeName}</p>
-                            <p className="mt-1 text-sm text-[#9fb6c4]">
-                              {item.cycleLabel} · {item.tipo}
-                            </p>
-                          </div>
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
-                            {item.evidencia ? `${item.evidencia} evidencias` : "Sin adjuntos"}
-                          </span>
-                        </div>
-                        <p className="mt-3 text-sm text-[#9fb6c4]">{item.comentarios || "Sin comentario descriptivo."}</p>
-                      </article>
-                    ))}
+                  <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                    <p className="text-sm font-semibold text-white">Autoevaluación</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">
+                      {autoDetail
+                        ? `${autoDetail.scores.length} descriptores cargados. Promedio ${formatScore(currentAutoAverage)}.`
+                        : "Todavía no hay autoevaluación visible para esta persona."}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                    <p className="text-sm font-semibold text-white">Evaluación del jefe</p>
+                    <p className="mt-2 text-sm text-[#9fb6c4]">
+                      {canSeeManagerSection
+                        ? managerDetail
+                          ? `${managerDetail.scores.length} descriptores cargados. Promedio ${formatScore(currentManagerAverage)}.`
+                          : "Todavía no hay evaluación del jefe visible para esta persona."
+                        : "No mostramos esta sección para tu rol actual."}
+                    </p>
+                  </div>
                 </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyState
-                title="No hay evidencias visibles"
-                description="Cuando las evaluaciones incluyan comentarios o evidencias, se mostrarán acá."
+              )}
+            </SurfaceCard>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "auto" ? (
+        autoDetail ? (
+          <div className="space-y-5">
+            <SurfaceCard
+              title="Autoevaluación"
+              subtitle="Vista de competencias y descriptores completados por la persona evaluada."
+              actions={
+                canCreateAuto ? (
+                  <button
+                    type="button"
+                    onClick={() => openEditor("AUTOEVALUACION", autoDetail)}
+                    className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
+                  >
+                    Editar
+                  </button>
+                ) : null
+              }
+            >
+              <div className="space-y-4">
+                {groups.length ? (
+                  groups.map((group) => (
+                    <MetricDescriptorCard
+                      key={group.id}
+                      groupTitle={group.title}
+                      groupDefinition={group.description}
+                      descriptors={group.descriptors.map((descriptor) => {
+                        const score = autoDetail.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
+                        return {
+                          ...descriptor,
+                          nivel: score?.nivel ?? 3,
+                          comentario: score?.comentario ?? "",
+                        };
+                      })}
+                      canEdit={false}
+                      highlightedMetricIds={new Set()}
+                      onLevelChange={() => {}}
+                      onCommentChange={() => {}}
+                    />
+                  ))
+                ) : (
+                  <EmptyState compact title="No hay descriptores cargados" description="Cuando existan competencias activas para evaluar, aparecerán acá." />
+                )}
+              </div>
+            </SurfaceCard>
+          </div>
+        ) : (
+          <EmptyState
+            title="Todavía no hay autoevaluación visible"
+            description="Cuando exista una autoevaluación para esta persona, la vas a ver acá con escala 1–5 y evidencias."
+            actionLabel={canCreateAuto ? "Crear autoevaluación" : undefined}
+            onAction={canCreateAuto ? () => openEditor("AUTOEVALUACION", null) : undefined}
+          />
+        )
+      ) : null}
+
+      {activeTab === "manager" && canSeeManagerSection ? (
+        managerDetail ? (
+          <div className="space-y-5">
+            <SurfaceCard
+              title="Evaluación del jefe"
+              subtitle="Misma estructura que la autoevaluación para facilitar comparación justa y legible."
+              actions={
+                canCreateManager ? (
+                  <button
+                    type="button"
+                    onClick={() => openEditor("JEFATURA", managerDetail)}
+                    className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
+                  >
+                    Editar
+                  </button>
+                ) : null
+              }
+            >
+              <div className="space-y-4">
+                {groups.length ? (
+                  groups.map((group) => (
+                    <MetricDescriptorCard
+                      key={group.id}
+                      groupTitle={group.title}
+                      groupDefinition={group.description}
+                      descriptors={group.descriptors.map((descriptor) => {
+                        const score = managerDetail.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
+                        return {
+                          ...descriptor,
+                          nivel: score?.nivel ?? 3,
+                          comentario: score?.comentario ?? "",
+                        };
+                      })}
+                      canEdit={false}
+                      highlightedMetricIds={new Set()}
+                      onLevelChange={() => {}}
+                      onCommentChange={() => {}}
+                    />
+                  ))
+                ) : (
+                  <EmptyState compact title="No hay descriptores cargados" description="Cuando existan competencias activas para evaluar, aparecerán acá." />
+                )}
+              </div>
+            </SurfaceCard>
+          </div>
+        ) : (
+          <EmptyState
+            title="Todavía no hay evaluación del jefe visible"
+            description="Cuando exista una evaluación de jefatura, la vas a ver acá con su escala y observaciones."
+            actionLabel={canCreateManager ? "Crear evaluación del jefe" : undefined}
+            onAction={canCreateManager ? () => openEditor("JEFATURA", null) : undefined}
+          />
+        )
+      ) : null}
+
+      {activeTab === "summary" ? (
+        <div className="space-y-5">
+          <SurfaceCard title="Resumen evaluativo" subtitle="Síntesis final, fortalezas, aspectos a mejorar, observaciones y evidencias visibles.">
+            <div className="grid gap-4 md:grid-cols-3">
+              <SummaryCard label="Promedio autoevaluación" value={formatScore(currentAutoAverage)} hint="Promedio actual" />
+              <SummaryCard label="Promedio jefe" value={formatScore(currentManagerAverage)} hint="Promedio actual" />
+              <SummaryCard
+                label="Resultado final"
+                value={formatScore(managerDetail?.resultadoFinal ?? autoDetail?.resultadoFinal)}
+                hint="Resultado visible hoy"
+                tone="success"
               />
-            )
-          ) : null}
-        </>
-      )}
+            </div>
+          </SurfaceCard>
+
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            <SurfaceCard title="Fortalezas" subtitle="Tomamos los descriptores mejor puntuados para facilitar la lectura del cierre.">
+              {strengths.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {strengths.map((item) => (
+                    <StatusPill key={item} label={item} tone="success" />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState compact title="Sin fortalezas destacadas todavía" description="Cuando haya puntajes cargados, se resumirán acá." />
+              )}
+            </SurfaceCard>
+
+            <SurfaceCard title="Aspectos a mejorar" subtitle="Mostramos primero los descriptores que requieren seguimiento.">
+              {improvements.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {improvements.map((item) => (
+                    <StatusPill key={item} label={item} tone="warning" />
+                  ))}
+                </div>
+              ) : (
+                <EmptyState compact title="Sin aspectos críticos visibles" description="Cuando existan descriptores en seguimiento, se resumirán acá." />
+              )}
+            </SurfaceCard>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+            <SurfaceCard title="Observación final" subtitle="Comentario general del cierre disponible para esta evaluación.">
+              <p className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4]">
+                {managerDetail?.comentariosGenerales ||
+                  autoDetail?.comentariosGenerales ||
+                  "Todavía no hay observaciones finales cargadas."}
+              </p>
+            </SurfaceCard>
+
+            <SurfaceCard title="Evidencias" subtitle="Mostramos evidencia o comentario descriptor por descriptor cuando ya existe.">
+              {evaluationEvidence.length ? (
+                <div className="space-y-3">
+                  {evaluationEvidence.map((item, index) => (
+                    <article key={`${item.metric}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                      <p className="text-sm font-semibold text-white">{item.metric}</p>
+                      <p className="mt-2 text-sm text-[#9fb6c4]">{item.comment}</p>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState compact title="Todavía no hay evidencias visibles" description="Cuando existan comentarios o evidencia por descriptor, aparecerán acá." />
+              )}
+            </SurfaceCard>
+          </div>
+        </div>
+      ) : null}
+
+      {activeTab === "visual" ? (
+        <div className="space-y-5">
+          <SurfaceCard title="Comparación por habilidad" subtitle="Barras simples para leer rápido autoevaluación versus evaluación del jefe.">
+            {comparisonRows.length ? (
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={comparisonRows}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#284152" />
+                    <XAxis dataKey="name" stroke="#9fb6c4" tickLine={false} axisLine={false} />
+                    <YAxis domain={[0, 5]} stroke="#9fb6c4" tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="auto" name="Autoevaluación" fill="#60a5fa" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="jefe" name="Jefatura" fill="#34d399" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <EmptyState compact title="Sin datos suficientes para comparar" description="Cuando haya autoevaluación y evaluación del jefe, aparecerá esta comparación." />
+            )}
+          </SurfaceCard>
+
+          <SurfaceCard title="Distribución de niveles" subtitle="Lectura simple de cuántos descriptores quedaron en cada nivel 1–5.">
+            {distributionRows.some((item) => item.auto || item.jefe) ? (
+              <div className="h-[320px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={distributionRows}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#284152" />
+                    <XAxis dataKey="level" stroke="#9fb6c4" tickLine={false} axisLine={false} />
+                    <YAxis stroke="#9fb6c4" tickLine={false} axisLine={false} />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="auto" name="Autoevaluación" fill="#818cf8" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="jefe" name="Jefatura" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <EmptyState compact title="Sin niveles visibles" description="Cuando existan descriptores puntuados, aparecerá esta distribución." />
+            )}
+          </SurfaceCard>
+        </div>
+      ) : null}
+
+      {editor.open ? (
+        <div ref={editorRef}>
+          <EvaluationEditor
+            title={
+              editor.mode === "edit"
+                ? editor.type === "AUTOEVALUACION"
+                  ? "Editar autoevaluación"
+                  : "Editar evaluación del jefe"
+                : editor.type === "AUTOEVALUACION"
+                  ? "Nueva autoevaluación"
+                  : "Nueva evaluación del jefe"
+            }
+            form={editorForm}
+            groups={groups}
+            saving={saving}
+            canDelete={editor.mode === "edit" && Boolean(editorForm.id)}
+            onFieldChange={(field, value) => setEditorForm((current) => ({ ...current, [field]: value }))}
+            onScoreChange={updateEditorScore}
+            onCommentChange={updateEditorComment}
+            onSubmit={handleSaveEditor}
+            onCancel={closeEditor}
+            onDelete={() => handleDeleteEvaluation(editorForm.id)}
+            highlight
+          />
+        </div>
+      ) : null}
+
+      <SurfaceCard
+        title="Compatibilidad con KPIs / OKRs"
+        subtitle="Los objetivos existentes siguen funcionando, pero ahora quedan como apoyo del proceso de evaluación y no como vista principal."
+        actions={
+          <button
+            type="button"
+            onClick={() => setView("evaluaciones")}
+            className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
+          >
+            Ir a Evaluaciones
+          </button>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+            <p className="text-sm font-semibold text-white">Qué mide Evaluaciones</p>
+            <p className="mt-2 text-sm text-[#9fb6c4]">
+              Desempeño por competencias, autoevaluación, evaluación superior, evidencias y resumen final.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+            <p className="text-sm font-semibold text-white">Qué conservan KPIs / OKRs</p>
+            <p className="mt-2 text-sm text-[#9fb6c4]">
+              Objetivos medibles y contexto operativo. Se preservan, pero ya no dominan la experiencia principal.
+            </p>
+          </div>
+        </div>
+      </SurfaceCard>
     </div>
   );
 }
