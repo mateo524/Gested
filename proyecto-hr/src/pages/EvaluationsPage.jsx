@@ -76,7 +76,7 @@ function SurfaceCard({ title, subtitle, children, actions }) {
 
 export default function EvaluationsPage() {
   const { token, user } = useAuth();
-  const { searchQuery } = useView();
+  const { searchQuery, setSearchQuery } = useView();
   const detailRef = useRef(null);
   const [employees, setEmployees] = useState([]);
   const [cycles, setCycles] = useState([]);
@@ -202,6 +202,9 @@ export default function EvaluationsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...form, scores }),
       });
+      if (searchQuery) {
+        setSearchQuery("");
+      }
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
       setMessageType("success");
@@ -338,6 +341,18 @@ export default function EvaluationsPage() {
             </div>
           </div>
           <div className="mt-5 space-y-4">
+            {searchQuery ? (
+              <div className="pf-alert-info flex flex-wrap items-center justify-between gap-3">
+                <span>Hay una búsqueda activa. Limpiála para ver todas las evaluaciones.</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white"
+                >
+                  Limpiar búsqueda
+                </button>
+              </div>
+            ) : null}
             {isLoadingBase || isLoadingEvaluations ? (
               <LoadingState compact title="Actualizando evaluaciones" description="Estamos trayendo ciclos, personas y resultados recientes." />
             ) : null}

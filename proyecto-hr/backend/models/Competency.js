@@ -27,6 +27,22 @@ const CompetencySchema = new mongoose.Schema(
       required: true,
     },
     activa: { type: Boolean, default: true },
+    audienceType: {
+      type: String,
+      enum: ["all", "department", "employees", "singleEmployee"],
+      default: "all",
+    },
+    audienceDepartmentCodes: { type: [String], default: [] },
+    audienceEmployeeIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Employee",
+        },
+      ],
+      default: [],
+    },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }
 );

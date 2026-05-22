@@ -171,6 +171,7 @@ export default function ExecutiveReportPage() {
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [error, setError] = useState("");
   const detailRef = useRef(null);
+  const pendingDetailScrollRef = useRef(false);
 
   const canViewExecutive =
     user?.isSuperAdmin ||
@@ -228,9 +229,16 @@ export default function ExecutiveReportPage() {
           timeoutMs: 30000,
         });
         setDetail(data);
+        if (pendingDetailScrollRef.current) {
+          pendingDetailScrollRef.current = false;
+          window.requestAnimationFrame(() => {
+            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+          });
+        }
       } catch (nextError) {
         setDetail(null);
         setError(nextError.message);
+        pendingDetailScrollRef.current = false;
       } finally {
         setLoadingDetail(false);
       }
@@ -268,9 +276,7 @@ export default function ExecutiveReportPage() {
     setActiveTab("individual");
     setDraftFilters((current) => ({ ...current, employeeId }));
     setFilters((current) => ({ ...current, employeeId }));
-    window.requestAnimationFrame(() => {
-      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
+    pendingDetailScrollRef.current = true;
   }, []);
 
   function applyFilters() {

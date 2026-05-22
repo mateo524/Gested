@@ -149,3 +149,52 @@ test("no se puede marcar como leida una novedad de otro tenant", () => {
 
   assert.equal(canRead, false);
 });
+
+test("novedad para departamento solo la ve ese departamento", () => {
+  const announcement = buildAnnouncement({
+    audienceType: "department",
+    audienceDepartmentCodes: ["SECUNDARIA"],
+  });
+
+  assert.equal(
+    canAccessAnnouncement(
+      announcement,
+      { userId: objectId(81), roleKey: "EMPLOYEE", departmentCode: "SECUNDARIA" },
+      { companyId: "org-a", schoolId: "school-a", roleScope: "SELF", departmentCode: "SECUNDARIA" }
+    ),
+    true
+  );
+  assert.equal(
+    canAccessAnnouncement(
+      announcement,
+      { userId: objectId(82), roleKey: "EMPLOYEE", departmentCode: "PRIMARIA" },
+      { companyId: "org-a", schoolId: "school-a", roleScope: "SELF", departmentCode: "PRIMARIA" }
+    ),
+    false
+  );
+});
+
+test("novedad para empleados específicos solo la ven esos empleados", () => {
+  const employeeId = objectId(91);
+  const announcement = buildAnnouncement({
+    audienceType: "employees",
+    audienceEmployeeIds: [employeeId],
+  });
+
+  assert.equal(
+    canAccessAnnouncement(
+      announcement,
+      { userId: objectId(92), roleKey: "EMPLOYEE", employeeId },
+      { companyId: "org-a", schoolId: "school-a", roleScope: "SELF", employeeId }
+    ),
+    true
+  );
+  assert.equal(
+    canAccessAnnouncement(
+      announcement,
+      { userId: objectId(93), roleKey: "EMPLOYEE", employeeId: objectId(94) },
+      { companyId: "org-a", schoolId: "school-a", roleScope: "SELF", employeeId: objectId(94) }
+    ),
+    false
+  );
+});

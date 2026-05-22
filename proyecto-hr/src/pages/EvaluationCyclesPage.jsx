@@ -7,7 +7,6 @@ const emptyForm = {
   anio: new Date().getFullYear(),
   periodo: "",
   etapa: "INICIO",
-  estado: "BORRADOR",
   fechaInicio: "",
   fechaFin: "",
 };
@@ -20,7 +19,7 @@ function formatStage(value) {
 
 export default function EvaluationCyclesPage() {
   const { token } = useAuth();
-  const { searchQuery } = useView();
+  const { searchQuery, setSearchQuery } = useView();
   const [cycles, setCycles] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
@@ -82,13 +81,19 @@ export default function EvaluationCyclesPage() {
         method: isEditing ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, estado: "BORRADOR" }),
       });
       setForm({ ...emptyForm, anio: new Date().getFullYear() });
       setEditingId("");
       setFieldErrors({});
+      const hadSearch = Boolean(String(searchQuery || "").trim());
+      if (hadSearch) setSearchQuery("");
       setMessageType("success");
-      setMessage(isEditing ? "Ciclo actualizado." : "Ciclo creado.");
+      setMessage(
+        `${isEditing ? "Ciclo actualizado." : "Ciclo creado."}${
+          hadSearch ? " Limpiamos la búsqueda activa para mostrarlo en la lista." : ""
+        }`
+      );
       await loadData();
       window.requestAnimationFrame(() => {
         listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -107,7 +112,6 @@ export default function EvaluationCyclesPage() {
       anio: Number(cycle.anio || new Date().getFullYear()),
       periodo: cycle.periodo || "",
       etapa: cycle.etapa || "INICIO",
-      estado: cycle.estado || "BORRADOR",
       fechaInicio: cycle.fechaInicio ? new Date(cycle.fechaInicio).toISOString().slice(0, 10) : "",
       fechaFin: cycle.fechaFin ? new Date(cycle.fechaFin).toISOString().slice(0, 10) : "",
     });
@@ -145,7 +149,7 @@ export default function EvaluationCyclesPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 overflow-x-hidden">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Ciclos</h3>
@@ -154,11 +158,11 @@ export default function EvaluationCyclesPage() {
         </p>
       </section>
 
-      <div className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
+      <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
         <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
-            Completá período, estado, etapa y rango de fechas. No hace falta elegir institución.
+            Completá período, etapa y rango de fechas. No hace falta elegir institución.
           </p>
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
@@ -167,7 +171,7 @@ export default function EvaluationCyclesPage() {
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Año</label>
                 <input
                   type="number"
-                  className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                  className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
                   value={form.anio}
                   onChange={(e) => setForm({ ...form, anio: Number(e.target.value) })}
                 />
@@ -175,7 +179,9 @@ export default function EvaluationCyclesPage() {
               <div>
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Período</label>
                 <input
-                  className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"}`}
+                  className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${
+                    fieldErrors.periodo ? "border-rose-400/70" : "border-white/15"
+                  }`}
                   placeholder="Ej: Anual 2026 o Segundo semestre"
                   value={form.periodo}
                   onChange={(e) => setForm({ ...form, periodo: e.target.value })}
@@ -184,31 +190,17 @@ export default function EvaluationCyclesPage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-xs text-[#9fb6c4]">Etapa</label>
-                <select
-                  className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
-                  value={form.etapa}
-                  onChange={(e) => setForm({ ...form, etapa: e.target.value })}
-                >
-                  <option value="INICIO">Inicio</option>
-                  <option value="REVISION_INTERMEDIA">Seguimiento</option>
-                  <option value="EVALUACION_FINAL">Evaluación final</option>
-                </select>
-              </div>
-              <div>
-                <label className="mb-1 block text-xs text-[#9fb6c4]">Estado</label>
-                <select
-                  className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
-                  value={form.estado}
-                  onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                >
-                  <option value="BORRADOR">Borrador</option>
-                  <option value="ABIERTO">Activo</option>
-                  <option value="CERRADO">Cerrado</option>
-                </select>
-              </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Etapa</label>
+              <select
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                value={form.etapa}
+                onChange={(e) => setForm({ ...form, etapa: e.target.value })}
+              >
+                <option value="INICIO">Inicio</option>
+                <option value="REVISION_INTERMEDIA">Seguimiento</option>
+                <option value="EVALUACION_FINAL">Evaluación final</option>
+              </select>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -216,7 +208,9 @@ export default function EvaluationCyclesPage() {
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de inicio</label>
                 <input
                   type="date"
-                  className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.fechaInicio ? "border-rose-400/70" : "border-white/15"}`}
+                  className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${
+                    fieldErrors.fechaInicio ? "border-rose-400/70" : "border-white/15"
+                  }`}
                   value={form.fechaInicio}
                   onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })}
                 />
@@ -225,7 +219,9 @@ export default function EvaluationCyclesPage() {
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de cierre</label>
                 <input
                   type="date"
-                  className={`rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.fechaFin ? "border-rose-400/70" : "border-white/15"}`}
+                  className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${
+                    fieldErrors.fechaFin ? "border-rose-400/70" : "border-white/15"
+                  }`}
                   value={form.fechaFin}
                   onChange={(e) => setForm({ ...form, fechaFin: e.target.value })}
                 />
@@ -255,7 +251,9 @@ export default function EvaluationCyclesPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h4 className="text-xl font-semibold text-white">Ciclos cargados</h4>
-              <p className="mt-1 text-sm text-[#9fb6c4]">Priorizamos período, etapa, estado y fechas para que la lectura sea simple.</p>
+              <p className="mt-1 text-sm text-[#9fb6c4]">
+                Priorizamos período, etapa, estado y fechas para que la lectura sea simple.
+              </p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Registros</p>
@@ -264,6 +262,18 @@ export default function EvaluationCyclesPage() {
           </div>
 
           <div className="mt-5 space-y-4">
+            {searchQuery ? (
+              <div className="pf-alert-info flex flex-wrap items-center justify-between gap-3">
+                <span>Hay una búsqueda activa. Limpiála para ver todos los ciclos cargados.</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white"
+                >
+                  Limpiar búsqueda
+                </button>
+              </div>
+            ) : null}
             {isLoading ? <p className="pf-alert-info">Cargando ciclos...</p> : null}
             {!isLoading && visibleCycles.length
               ? visibleCycles.map((cycle) => (
@@ -272,8 +282,12 @@ export default function EvaluationCyclesPage() {
                       <p className="text-lg font-semibold text-white">
                         {cycle.periodo} {cycle.anio}
                       </p>
-                      <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{formatStage(cycle.etapa)}</span>
-                      <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{cycle.estado}</span>
+                      <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
+                        {formatStage(cycle.etapa)}
+                      </span>
+                      <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">
+                        {cycle.estado}
+                      </span>
                     </div>
                     <p className="mt-2 text-sm text-[#9fb6c4]">
                       {cycle.fechaInicio ? new Date(cycle.fechaInicio).toLocaleDateString("es-AR") : "-"} al{" "}

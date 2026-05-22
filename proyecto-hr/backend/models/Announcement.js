@@ -44,6 +44,21 @@ const AnnouncementSchema = new mongoose.Schema(
     },
     audienceRoleKeys: { type: [String], default: [] },
     audienceScopes: { type: [String], default: [] },
+    audienceType: {
+      type: String,
+      enum: ["all", "department", "employees", "singleEmployee"],
+      default: "all",
+    },
+    audienceDepartmentCodes: { type: [String], default: [] },
+    audienceEmployeeIds: {
+      type: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Employee",
+        },
+      ],
+      default: [],
+    },
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

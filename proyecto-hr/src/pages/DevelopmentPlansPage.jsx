@@ -84,6 +84,7 @@ export default function DevelopmentPlansPage() {
         .some((value) => String(value).toLowerCase().includes(term));
     });
   }, [dismissedSuggestionIds, searchQuery, suggestionFilter, suggestions]);
+  const hasSuggestions = suggestions.some((suggestion) => !dismissedSuggestionIds.includes(suggestion.id));
 
   const loadPlans = useCallback(async (signal) => {
     const params = new URLSearchParams();
@@ -452,8 +453,12 @@ export default function DevelopmentPlansPage() {
               ) : (
                 <EmptyState
                   compact
-                  title="No hay sugerencias por ahora"
-                  description="Cuando existan KPIs, OKRs, evaluaciones o planes vencidos, apareceran aca."
+                  title={hasSuggestions ? "No hay sugerencias para este filtro" : "No hay sugerencias por ahora"}
+                  description={
+                    hasSuggestions
+                      ? "Cambiá el filtro o limpiá la búsqueda para ver otras sugerencias disponibles."
+                      : "No hay sugerencias por ahora. Aparecerán cuando existan evaluaciones, KPIs/OKRs o planes con señales para revisar."
+                  }
                 />
               )}
             </div>

@@ -1,8 +1,9 @@
 import express from "express";
 import Announcement from "../models/Announcement.js";
 import Company from "../models/Company.js";
+import Employee from "../models/Employee.js";
 import { auth } from "../middleware/auth.js";
-import { attachTenantScope } from "../middleware/tenantScope.js";
+import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { logAudit } from "../utils/audit.js";
 import { getPresetByLegacyRoleCode } from "../utils/rolePresets.js";
 
@@ -167,6 +168,22 @@ export function canAccessAnnouncement(announcement, user = {}, scope = {}) {
     }
   }
 
+  const audienceType = String(announcement?.audienceType || "all");
+  const departmentAudience = normalizeStringArray(announcement?.audienceDepartmentCodes);
+  const employeeAudience = Array.isArray(announcement?.audienceEmployeeIds)
+    ? announcement.audienceEmployeeIds.map((item) => String(item?._id || item))
+    : [];
+  const currentDepartment = normalizeText(user?.departmentCode || user?.employee?.area || scope?.departmentCode);
+  const currentEmployeeId = String(scope?.employeeId || user?.employeeId || user?.employee?._id || "");
+
+  if (audienceType === "department" && departmentAudience.length) {
+    return departmentAudience.includes(currentDepartment);
+  }
+
+  if ((audienceType === "employees" || audienceType === "singleEmployee") && employeeAudience.length) {
+    return currentEmployeeId ? employeeAudience.includes(currentEmployeeId) : false;
+  }
+
   return true;
 }
 
@@ -229,6 +246,29 @@ async function loadVisibleAnnouncementsForRequest(req, { includeInactive = false
   });
 }
 
+async function resolveAudienceEmployeeIds(req, employeeIds = []) {
+  const normalizedIds = Array.isArray(employeeIds)
+    ? employeeIds.map((item) => String(item || "").trim()).filter(Boolean)
+    : [];
+
+  if (!normalizedIds.length) return [];
+
+  const employees = await Employee.find(
+    buildScopedFilter(req, {
+      _id: { $in: normalizedIds },
+      activo: true,
+    })
+  )
+    .select("_id")
+    .lean();
+
+  if (employees.length !== normalizedIds.length) {
+    throw createHttpError(403, "Solo puedes seleccionar empleados dentro de tu alcance.");
+  }
+
+  return employees.map((item) => item._id);
+}
+
 router.get("/summary", auth, attachTenantScope, async (req, res, next) => {
   try {
     const announcements = await loadVisibleAnnouncementsForRequest(req);
@@ -285,6 +325,9 @@ router.post("/", auth, attachTenantScope, async (req, res, next) => {
     const type = normalizeAnnouncementType(req.body.type || req.body.prioridad, "info");
     const audienceRoleKeys = normalizeAudienceRoleKeys(req.body.audienceRoleKeys);
     const audienceScopes = normalizeAudienceScopes(req.body.audienceScopes);
+    const audienceType = normalizeText(req.body.audienceType || "all") || "all";
+    const audienceDepartmentCodes = normalizeStringArray(req.body.audienceDepartmentCodes);
+    const audienceEmployeeIds = await resolveAudienceEmployeeIds(req, req.body.audienceEmployeeIds);
 
     if (!title || !body) {
       return res.status(400).json({ mensaje: "Debes completar titulo y contenido" });
@@ -298,6 +341,9 @@ router.post("/", auth, attachTenantScope, async (req, res, next) => {
       type,
       audienceRoleKeys,
       audienceScopes,
+      audienceType,
+      audienceDepartmentCodes,
+      audienceEmployeeIds,
       createdBy: req.user.userId,
       expiresAt: req.body.expiresAt ? new Date(req.body.expiresAt) : null,
       isActive: toBoolean(req.body.isActive, true),
@@ -344,6 +390,10 @@ router.put("/:id", auth, attachTenantScope, async (req, res, next) => {
     const title = normalizeText(req.body.title || req.body.titulo || announcement.title || announcement.titulo);
     const body = normalizeText(req.body.body || req.body.cuerpo || announcement.body || announcement.cuerpo);
     const type = normalizeAnnouncementType(req.body.type || req.body.prioridad || announcement.type || announcement.prioridad, announcement.type || "info");
+    const audienceEmployeeIds = await resolveAudienceEmployeeIds(
+      req,
+      req.body.audienceEmployeeIds ?? announcement.audienceEmployeeIds
+    );
 
     if (!title || !body) {
       return res.status(400).json({ mensaje: "Debes completar titulo y contenido" });
@@ -354,6 +404,11 @@ router.put("/:id", auth, attachTenantScope, async (req, res, next) => {
     announcement.type = type;
     announcement.audienceRoleKeys = normalizeAudienceRoleKeys(req.body.audienceRoleKeys ?? announcement.audienceRoleKeys);
     announcement.audienceScopes = normalizeAudienceScopes(req.body.audienceScopes ?? announcement.audienceScopes);
+    announcement.audienceType = normalizeText(req.body.audienceType || announcement.audienceType || "all") || "all";
+    announcement.audienceDepartmentCodes = normalizeStringArray(
+      req.body.audienceDepartmentCodes ?? announcement.audienceDepartmentCodes
+    );
+    announcement.audienceEmployeeIds = audienceEmployeeIds;
     announcement.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
     announcement.isActive = toBoolean(req.body.isActive, announcement.isActive !== false);
     announcement.pinned = toBoolean(req.body.pinned, announcement.pinned === true);

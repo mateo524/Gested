@@ -14,7 +14,7 @@ const emptyForm = {
 
 export default function UsersPage() {
   const { token } = useAuth();
-  const { searchQuery } = useView();
+  const { searchQuery, setSearchQuery } = useView();
   const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -128,10 +128,17 @@ export default function UsersPage() {
       });
 
       await loadData();
+      const hadSearch = Boolean(String(searchQuery || "").trim() || String(query || "").trim());
+      if (searchQuery) setSearchQuery("");
+      if (query) setQuery("");
       const wasEditing = Boolean(editingId);
       resetForm();
       setMessageType("success");
-      setMessage(wasEditing ? "Usuario actualizado." : "Usuario creado.");
+      setMessage(
+        `${wasEditing ? "Usuario actualizado." : "Usuario creado."}${
+          hadSearch ? " Limpiamos la búsqueda activa para mostrarlo en la lista." : ""
+        }`
+      );
       setFieldErrors({});
 
       if (!wasEditing && data?.temporaryPassword) {
@@ -225,6 +232,9 @@ export default function UsersPage() {
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Gestiona credenciales de acceso. Los permisos, scopes y gobierno del rol se administran desde Roles y accesos.
         </p>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#c5d5de]">
+          En organizaciones grandes, el alcance define dónde puede operar el usuario: toda la organización, un área, un equipo o solo su información.
+        </div>
         <div className="mt-4 flex flex-wrap gap-2">
           <span className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
             Para administración
@@ -312,6 +322,18 @@ export default function UsersPage() {
           ) : null}
 
           <div className="mt-5 space-y-3">
+            {searchQuery ? (
+              <div className="pf-alert-info flex flex-wrap items-center justify-between gap-3">
+                <span>Hay una búsqueda activa. Limpiála para ver todos los usuarios.</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white"
+                >
+                  Limpiar búsqueda
+                </button>
+              </div>
+            ) : null}
             {isLoading ? (
               <LoadingState
                 compact
