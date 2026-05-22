@@ -279,4 +279,43 @@ router.put(
   }
 );
 
+router.delete(
+  "/:id",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EVALUATIONS,
+    PERMISSIONS.EVALUATE_TEAM,
+    PERMISSIONS.SELF_EVALUATE
+  ),
+  async (req, res) => {
+    let filter;
+    try {
+      filter = await buildEvaluationFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
+    filter._id = req.params.id;
+
+    const evaluation = await Evaluation.findOne(filter);
+    if (!evaluation) {
+      return res.status(404).json({ mensaje: "Evaluacion no encontrada" });
+    }
+
+    await EvaluationScore.deleteMany({ evaluationId: evaluation._id });
+    await Evaluation.deleteOne({ _id: evaluation._id });
+
+    await logAudit({
+      companyId: evaluation.companyId,
+      schoolId: evaluation.schoolId,
+      userId: req.user.userId,
+      accion: "delete",
+      modulo: "evaluations",
+      detalle: `Se elimino la evaluacion ${evaluation._id}`,
+    });
+
+    res.json({ mensaje: "Evaluacion eliminada" });
+  }
+);
+
 export default router;
