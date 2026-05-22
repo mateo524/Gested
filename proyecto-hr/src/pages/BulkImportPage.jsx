@@ -12,8 +12,8 @@ const sheetLabels = {
   kpis: "KPIs",
   okrs: "OKRs",
   evaluations: "Evaluaciones",
-  performanceMeasurements: "Mediciones_Desempeno",
-  developmentPlans: "Planes_Desarrollo",
+  performanceMeasurements: "Mediciones de desempeño",
+  developmentPlans: "Planes de desarrollo",
 };
 
 const templateSheets = [
@@ -26,8 +26,8 @@ const templateSheets = [
   { key: "kpis", label: "KPIs", detail: "Indicadores operativos cuando existan." },
   { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del periodo." },
   { key: "evaluations", label: "Evaluaciones", detail: "Cabecera de evaluaciones existentes por empleado y ciclo." },
-  { key: "performanceMeasurements", label: "Mediciones_Desempeno", detail: "Metas, competencias, autoevaluaciones y evidencias por evaluación." },
-  { key: "developmentPlans", label: "Planes_Desarrollo", detail: "Planes de desarrollo previos o activos para importar o validar." },
+  { key: "performanceMeasurements", label: "Mediciones de desempeño", detail: "Metas, competencias, autoevaluaciones y evidencias por evaluación." },
+  { key: "developmentPlans", label: "Planes de desarrollo", detail: "Planes de desarrollo previos o activos para importar o validar." },
   { key: "catalogs", label: "Catálogos", detail: "Valores válidos de roles, scopes y estados." },
 ];
 
@@ -103,7 +103,7 @@ function statusMeta(status) {
   if (status === "warning") {
     return { label: "Advertencia", className: "border-amber-300/30 bg-amber-500/10 text-amber-200", tone: "amber" };
   }
-  return { label: "Valido", className: "border-emerald-300/30 bg-emerald-500/10 text-emerald-200", tone: "emerald" };
+  return { label: "Válido", className: "border-emerald-300/30 bg-emerald-500/10 text-emerald-200", tone: "emerald" };
 }
 
 function getServerMessage(error) {
@@ -424,7 +424,7 @@ export default function BulkImportPage() {
 
   const previewCountLabel = useMemo(() => {
     const rows = previewRowsByTab[selectedTab] || [];
-    if (!rows.length) return "No encontramos datos para mostrar todav?a.";
+    if (!rows.length) return "No encontramos datos para mostrar todavía.";
     if (rows.length > 8) return `Mostrando 8 de ${rows.length} registros en la vista previa.`;
     return `${rows.length} registros visibles en esta vista previa.`;
   }, [previewRowsByTab, selectedTab]);
@@ -583,7 +583,7 @@ export default function BulkImportPage() {
         timeoutMs: 120000,
       });
       setResult(data);
-      setFeedback(data.ok ? "success" : "error", data.ok ? "Importaci?n completada." : "La importaci?n no pudo completarse.");
+      setFeedback(data.ok ? "success" : "error", data.ok ? "Importación completada." : "La importación no pudo completarse.");
       window.requestAnimationFrame(() => {
         resultRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -683,7 +683,7 @@ export default function BulkImportPage() {
 
       {renderMessage()}
 
-      <SurfaceCard title="Flujo de importacion" subtitle="La carga se hace en 7 pasos para evitar inserciones incompletas y errores de tenant.">
+      <SurfaceCard title="Flujo de importación" subtitle="La carga se hace en 7 pasos para evitar inserciones incompletas y errores de tenant.">
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
           {stepDefinitions.map((step) => (
             <StepCard key={step.key} step={step} status={stepStatuses[step.key]} />
@@ -771,7 +771,7 @@ export default function BulkImportPage() {
             <StatCard
               label="Estado"
               value={isAnalyzing ? "Validando" : file ? "Listo" : "Pendiente"}
-              hint={isAnalyzing ? "Revisando estructura y filas" : file ? "Preparado para analyze" : "Todavia no se cargo un archivo"}
+              hint={isAnalyzing ? "Revisando estructura y filas" : file ? "Preparado para analizar" : "Todavía no se cargó un archivo"}
               tone={isAnalyzing ? "warning" : file ? "success" : "default"}
             />
             <div className="flex items-end">
@@ -789,9 +789,9 @@ export default function BulkImportPage() {
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <SurfaceCard title="Validaci?n" subtitle="Resumen general del an?lisis y estado por solapa.">
+        <SurfaceCard title="Validación" subtitle="Resumen general del análisis y estado por solapa.">
           {!summary ? (
-            <EmptyState text="No encontramos datos para mostrar todav?a. Sube y valida una plantilla para ver el resumen." />
+            <EmptyState text="No encontramos datos para mostrar todavía. Sube y valida una plantilla para ver el resumen." />
           ) : (
             <div className="space-y-5">
               <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -818,7 +818,7 @@ export default function BulkImportPage() {
           )}
         </SurfaceCard>
 
-        <SurfaceCard title="Confirmacion" subtitle="Esta accion creara o actualizara registros en la organizacion activa.">
+        <SurfaceCard title="Confirmación" subtitle="Esta acción creará o actualizará registros en la organización activa.">
           {!summary ? (
             <EmptyState text="Primero valida el archivo para habilitar la confirmacion." />
           ) : (
@@ -839,14 +839,14 @@ export default function BulkImportPage() {
 
               {(confirmSummary.evaluationsToReview || confirmSummary.measurementsToReview || confirmSummary.developmentPlansToReview) ? (
                 <div className="pf-alert-info">
-                  Evaluaciones, Mediciones_Desempeno y Planes_Desarrollo ya pueden validarse y verse en la vista previa. Su confirmación completa todavía queda fuera de esta importación guiada.
+                  Evaluaciones, Mediciones de desempeño y Planes de desarrollo ya pueden validarse y verse en la vista previa. Su confirmación completa todavía queda fuera de esta importación guiada.
                 </div>
               ) : null}
 
               {blockingErrors ? (
                 <div className="pf-alert-error">Hay errores que deben corregirse antes de importar.</div>
               ) : (
-                <div className="pf-alert-info">La vista previa esta lista para confirmar en la organizacion activa.</div>
+                <div className="pf-alert-info">La vista previa está lista para confirmar en la organización activa.</div>
               )}
 
               <div className="flex flex-wrap gap-3">
@@ -856,7 +856,7 @@ export default function BulkImportPage() {
                   disabled={!canManageImport || isReadOnly || isConfirming || !analyzeResponse?.previewToken || blockingErrors > 0}
                   className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
                 >
-                  {isConfirming ? "Confirmando importaci?n..." : "Confirmar importaci?n"}
+                  {isConfirming ? "Confirmando importación..." : "Confirmar importación"}
                 </button>
                 <button type="button" onClick={clearFlow} className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white">
                   Limpiar flujo
@@ -926,13 +926,13 @@ export default function BulkImportPage() {
       </div>
 
       <div ref={resultRef}>
-      <SurfaceCard title="Resultado" subtitle="Resumen final despues de confirmar la importacion.">
+      <SurfaceCard title="Resultado" subtitle="Resumen final después de confirmar la importación.">
         {!result ? (
-          <EmptyState text="Todavia no hay una importacion confirmada en esta sesion." />
+          <EmptyState text="Todavía no hay una importación confirmada en esta sesión." />
         ) : (
           <div className="space-y-4">
             <div className={result.ok ? "pf-alert-success" : "pf-alert-error"}>
-              {result.ok ? "Importaci?n completada." : "La importaci?n no pudo completarse."}
+              {result.ok ? "Importación completada." : "La importación no pudo completarse."}
             </div>
             <JobResultCards result={result.result || {}} />
             <div className="flex flex-wrap gap-3">
@@ -997,7 +997,7 @@ export default function BulkImportPage() {
                 {!jobs.length ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-6 text-sm text-[#8FA9B7]">
-                      No encontramos datos para mostrar todav?a.
+                      No encontramos datos para mostrar todavía.
                     </td>
                   </tr>
                 ) : null}
