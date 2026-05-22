@@ -11,6 +11,9 @@ const EMPTY_FORM = {
   pinned: false,
   isActive: true,
   expiresAt: "",
+  audienceType: "all",
+  audienceDepartmentCodes: [],
+  audienceEmployeeIds: [],
 };
 
 function formatDate(value) {
@@ -24,15 +27,7 @@ function formatDate(value) {
 function matchesQuery(item, query) {
   const normalized = String(query || "").trim().toLowerCase();
   if (!normalized) return true;
-  const haystack = [
-    item.title,
-    item.body,
-    item.type,
-    item.createdByName,
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+  const haystack = [item.title, item.body, item.type, item.createdByName].filter(Boolean).join(" ").toLowerCase();
   return haystack.includes(normalized);
 }
 
@@ -43,12 +38,29 @@ function typePillClass(type) {
   return "bg-white/10 text-[#d8e3e9] border-white/10";
 }
 
+function audienceLabel(item, employees) {
+  const audienceType = item.audienceType || "all";
+  if (audienceType === "department") {
+    return item.audienceDepartmentCodes?.length ? `Área ${item.audienceDepartmentCodes.join(", ")}` : "Área / departamento";
+  }
+  if (audienceType === "employees") {
+    return `${item.audienceEmployeeIds?.length || 0} empleados`;
+  }
+  if (audienceType === "singleEmployee") {
+    const employee = employees.find((entry) => String(entry._id) === String(item.audienceEmployeeIds?.[0]?._id || item.audienceEmployeeIds?.[0] || ""));
+    return employee ? `${employee.apellido}, ${employee.nombre}` : "Empleado específico";
+  }
+  return "Toda la organización";
+}
+
 function AnnouncementCard({
   item,
   canManage,
+  employees,
   onMarkRead,
   onEdit,
   onDeactivate,
+  onFocus,
   busyId,
   actionBusy,
 }) {
@@ -56,6 +68,7 @@ function AnnouncementCard({
 
   return (
     <article
+      id={`announcement-${item._id}`}
       className={`rounded-[1.75rem] border p-5 ${
         unread ? "border-[#4f7cff]/25 bg-[#12243b]" : "border-white/10 bg-[#0f1f28]"
       }`}
@@ -80,6 +93,7 @@ function AnnouncementCard({
               {item.type}
             </span>
             <span>{formatDate(item.createdAt)}</span>
+            <span>{audienceLabel(item, employees)}</span>
             {item.expiresAt ? <span>Vence {formatDate(item.expiresAt)}</span> : null}
           </div>
         </div>
@@ -89,7 +103,13 @@ function AnnouncementCard({
         </div>
       </div>
 
-      <p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-[#d4e1e8]">{item.body}</p>
+      <button
+        type="button"
+        onClick={() => onFocus(item)}
+        className="mt-4 w-full text-left text-sm leading-relaxed text-[#d4e1e8]"
+      >
+        {item.body}
+      </button>
 
       <div className="mt-5 flex flex-wrap gap-3">
         {!item.isRead ? (
@@ -131,6 +151,7 @@ export default function AnnouncementsPage() {
   const { token, user, hasPermission, refreshAnnouncementSummary } = useAuth();
   const { searchQuery, t } = useView();
   const [announcements, setAnnouncements] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -148,6 +169,20 @@ export default function AnnouncementsPage() {
     hasPermission?.("manage_users") ||
     hasPermission?.("manage_settings");
 
+  const departmentOptions = useMemo(() => {
+    return [...new Set(employees.map((item) => String(item.area || "").trim()).filter(Boolean))].sort();
+  }, [employees]);
+
+  const visibleEmployees = useMemo(() => {
+    const term = String(searchQuery || "").trim().toLowerCase();
+    if (!term) return employees;
+    return employees.filter((employee) =>
+      [employee.nombre, employee.apellido, employee.area, employee.cargo]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(term))
+    );
+  }, [employees, searchQuery]);
+
   const loadAnnouncements = useCallback(async () => {
     if (!token) return;
     setIsLoading(true);
@@ -156,20 +191,47 @@ export default function AnnouncementsPage() {
       const data = await apiFetch("/announcements", { token });
       setAnnouncements(data.announcements || []);
     } catch (loadError) {
-      setError(loadError.message || "No pudimos cargar novedades. Intenta nuevamente.");
+      setError(loadError.message || "No pudimos cargar novedades. Intentá nuevamente.");
     } finally {
       setIsLoading(false);
     }
   }, [token]);
 
+  const loadEmployees = useCallback(async () => {
+    if (!token || !canManage) return;
+    try {
+      const data = await apiFetch("/employees", { token });
+      setEmployees(data || []);
+    } catch {
+      setEmployees([]);
+    }
+  }, [canManage, token]);
+
   useEffect(() => {
     loadAnnouncements();
-  }, [loadAnnouncements]);
+    loadEmployees();
+  }, [loadAnnouncements, loadEmployees]);
 
   useEffect(() => {
     if (!formOpen || !formRef.current) return;
     formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [formOpen, editingId]);
+
+  useEffect(() => {
+    function handleFocus(event) {
+      const announcementId = event.detail?.announcementId;
+      if (!announcementId) return;
+      requestAnimationFrame(() => {
+        document.getElementById(`announcement-${announcementId}`)?.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      });
+    }
+
+    window.addEventListener("performia:announcement-focus", handleFocus);
+    return () => window.removeEventListener("performia:announcement-focus", handleFocus);
+  }, []);
 
   const filteredAnnouncements = useMemo(() => {
     return announcements.filter((item) => {
@@ -178,10 +240,7 @@ export default function AnnouncementsPage() {
     });
   }, [announcements, filter, searchQuery]);
 
-  const unreadCount = useMemo(
-    () => announcements.filter((item) => !item.isRead).length,
-    [announcements]
-  );
+  const unreadCount = useMemo(() => announcements.filter((item) => !item.isRead).length, [announcements]);
 
   function resetForm() {
     setForm(EMPTY_FORM);
@@ -208,18 +267,34 @@ export default function AnnouncementsPage() {
       pinned: item.pinned === true,
       isActive: item.isActive !== false,
       expiresAt: item.expiresAt ? new Date(item.expiresAt).toISOString().slice(0, 16) : "",
+      audienceType: item.audienceType || "all",
+      audienceDepartmentCodes: item.audienceDepartmentCodes || [],
+      audienceEmployeeIds: (item.audienceEmployeeIds || []).map((entry) => String(entry?._id || entry)),
     });
     setFormOpen(true);
+  }
+
+  function payloadFromForm() {
+    return {
+      title: form.title.trim(),
+      body: form.body.trim(),
+      type: form.type,
+      pinned: form.pinned,
+      isActive: form.isActive,
+      expiresAt: form.expiresAt || null,
+      audienceType: form.audienceType,
+      audienceDepartmentCodes: form.audienceDepartmentCodes,
+      audienceEmployeeIds: form.audienceEmployeeIds,
+    };
   }
 
   async function handleSubmit(event) {
     event.preventDefault();
     if (!canManage || isSaving) return;
 
-    const title = form.title.trim();
-    const body = form.body.trim();
-    if (!title || !body) {
-      setError("Completa titulo y contenido para guardar la novedad.");
+    const payload = payloadFromForm();
+    if (!payload.title || !payload.body) {
+      setError("Completa título y contenido para guardar la novedad.");
       return;
     }
 
@@ -231,14 +306,7 @@ export default function AnnouncementsPage() {
         method: editingId ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          body,
-          type: form.type,
-          pinned: form.pinned,
-          isActive: form.isActive,
-          expiresAt: form.expiresAt || null,
-        }),
+        body: JSON.stringify(payload),
       });
 
       setNotice(editingId ? "Novedad actualizada." : "Novedad publicada.");
@@ -261,13 +329,8 @@ export default function AnnouncementsPage() {
         method: "POST",
         token,
       });
-      setAnnouncements((current) =>
-        current.map((entry) =>
-          entry._id === item._id ? { ...entry, isRead: true, unread: false } : entry
-        )
-      );
+      await Promise.all([loadAnnouncements(), refreshAnnouncementSummary()]);
       setNotice("Novedad marcada como vista.");
-      await refreshAnnouncementSummary();
     } catch (markError) {
       setError(markError.message || "No pudimos marcar la novedad como vista.");
     } finally {
@@ -284,11 +347,8 @@ export default function AnnouncementsPage() {
         method: "POST",
         token,
       });
-      setAnnouncements((current) =>
-        current.map((entry) => ({ ...entry, isRead: true, unread: false }))
-      );
+      await Promise.all([loadAnnouncements(), refreshAnnouncementSummary()]);
       setNotice(result?.mensaje || "Novedades marcadas como vistas.");
-      await refreshAnnouncementSummary();
     } catch (markError) {
       setError(markError.message || "No pudimos marcar todas las novedades como vistas.");
     } finally {
@@ -315,15 +375,24 @@ export default function AnnouncementsPage() {
     }
   }
 
+  function focusAnnouncement(item) {
+    requestAnimationFrame(() => {
+      document.getElementById(`announcement-${item._id}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 overflow-x-hidden">
       <section className="rounded-[2rem] border border-white/10 bg-[#142028] p-8 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
-            <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Comunicacion interna</p>
+            <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Comunicación interna</p>
             <h1 className="mt-3 text-3xl font-bold text-white">Novedades</h1>
             <p className="mt-3 text-[#9fb6c4]">
-              Publica avisos relevantes para tu organizacion y sigue que novedades ya fueron vistas por cada usuario.
+              Publicá avisos relevantes para tu organización y seguí qué novedades ya fueron vistas por cada usuario.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -383,12 +452,8 @@ export default function AnnouncementsPage() {
         <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 shadow-sm">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-xl font-semibold text-white">
-                {editingId ? "Editar novedad" : "Nueva novedad"}
-              </h2>
-              <p className="mt-1 text-[#9fb6c4]">
-                La publicacion se comparte dentro de la organizacion activa del usuario.
-              </p>
+              <h2 className="text-xl font-semibold text-white">{editingId ? "Editar novedad" : "Nueva novedad"}</h2>
+              <p className="mt-1 text-[#9fb6c4]">La publicación se comparte dentro de la organización activa del usuario.</p>
             </div>
             <button
               type="button"
@@ -402,7 +467,7 @@ export default function AnnouncementsPage() {
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <input
               className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
-              placeholder="Titulo"
+              placeholder="Título"
               value={form.title}
               onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))}
             />
@@ -430,6 +495,27 @@ export default function AnnouncementsPage() {
               </label>
 
               <label className="space-y-2">
+                <span className="text-sm text-[#9fb6c4]">Destinatario</span>
+                <select
+                  className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                  value={form.audienceType}
+                  onChange={(event) =>
+                    setForm((current) => ({
+                      ...current,
+                      audienceType: event.target.value,
+                      audienceDepartmentCodes: [],
+                      audienceEmployeeIds: [],
+                    }))
+                  }
+                >
+                  <option value="all">Todos</option>
+                  <option value="department">Área / Departamento</option>
+                  <option value="employees">Grupo de empleados</option>
+                  <option value="singleEmployee">Empleado específico</option>
+                </select>
+              </label>
+
+              <label className="space-y-2">
                 <span className="text-sm text-[#9fb6c4]">Vencimiento</span>
                 <input
                   type="datetime-local"
@@ -447,16 +533,72 @@ export default function AnnouncementsPage() {
                 />
                 Fijar arriba
               </label>
-
-              <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#d4e1e8]">
-                <input
-                  type="checkbox"
-                  checked={form.isActive}
-                  onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
-                />
-                Activa
-              </label>
             </div>
+
+            {form.audienceType === "department" ? (
+              <select
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                value={form.audienceDepartmentCodes[0] || ""}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    audienceDepartmentCodes: event.target.value ? [event.target.value] : [],
+                  }))
+                }
+              >
+                <option value="">Seleccioná un área</option>
+                {departmentOptions.map((department) => (
+                  <option key={department} value={department}>
+                    {department}
+                  </option>
+                ))}
+              </select>
+            ) : null}
+
+            {form.audienceType === "employees" || form.audienceType === "singleEmployee" ? (
+              <div className="max-h-52 space-y-2 overflow-y-auto rounded-2xl border border-white/10 bg-[#0f1f28] p-3">
+                {visibleEmployees.length ? (
+                  visibleEmployees.map((employee) => {
+                    const checked = form.audienceEmployeeIds.includes(String(employee._id));
+                    return (
+                      <label key={employee._id} className="flex items-start gap-3 rounded-2xl border border-white/5 px-3 py-3 text-sm text-[#d6e2e8]">
+                        <input
+                          type={form.audienceType === "singleEmployee" ? "radio" : "checkbox"}
+                          checked={checked}
+                          name="announcement-audience-employee"
+                          onChange={() =>
+                            setForm((current) => ({
+                              ...current,
+                              audienceEmployeeIds:
+                                form.audienceType === "singleEmployee"
+                                  ? [String(employee._id)]
+                                  : checked
+                                    ? current.audienceEmployeeIds.filter((item) => item !== String(employee._id))
+                                    : [...current.audienceEmployeeIds, String(employee._id)],
+                            }))
+                          }
+                        />
+                        <span>
+                          {employee.apellido}, {employee.nombre}
+                          {employee.area ? ` · ${employee.area}` : ""}
+                        </span>
+                      </label>
+                    );
+                  })
+                ) : (
+                  <p className="text-sm text-[#9fb6c4]">No encontramos empleados visibles dentro de tu alcance.</p>
+                )}
+              </div>
+            ) : null}
+
+            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#d4e1e8]">
+              <input
+                type="checkbox"
+                checked={form.isActive}
+                onChange={(event) => setForm((current) => ({ ...current, isActive: event.target.checked }))}
+              />
+              Activa
+            </label>
 
             <div className="flex flex-wrap gap-3">
               <button
@@ -493,11 +635,11 @@ export default function AnnouncementsPage() {
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 shadow-sm">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="text-xl font-semibold text-white">Ultimas novedades</h2>
+            <h2 className="text-xl font-semibold text-white">Últimas novedades</h2>
             <p className="mt-1 text-[#9fb6c4]">
               {searchQuery?.trim()
                 ? `Filtrando por "${searchQuery.trim()}".`
-                : "Revisa avisos recientes, mensajes fijados y novedades pendientes de lectura."}
+                : "Revisá avisos recientes, mensajes fijados y novedades pendientes de lectura."}
             </p>
           </div>
           <button
@@ -521,9 +663,11 @@ export default function AnnouncementsPage() {
                 key={item._id}
                 item={item}
                 canManage={canManage}
+                employees={employees}
                 onMarkRead={handleMarkRead}
                 onEdit={startEdit}
                 onDeactivate={handleDeactivate}
+                onFocus={focusAnnouncement}
                 busyId={busyId}
                 actionBusy={actionBusy}
               />
@@ -531,14 +675,14 @@ export default function AnnouncementsPage() {
           ) : (
             <div className="rounded-[1.75rem] border border-white/10 bg-[#0f1f28] px-5 py-10 text-center">
               <p className="text-lg font-semibold text-white">
-                {filter === "unread" ? "No hay novedades nuevas." : "Todavia no hay novedades cargadas."}
+                {filter === "unread" ? "No hay novedades nuevas." : "Todavía no hay novedades cargadas."}
               </p>
               <p className="mt-2 text-sm text-[#8ea5b3]">
                 {searchQuery?.trim()
-                  ? "Prueba con otra busqueda o limpia el filtro actual."
+                  ? "Probá con otra búsqueda o limpiá el filtro actual."
                   : canManage
-                    ? "Puedes publicar una novedad para compartir informacion relevante con toda la organizacion."
-                    : "Cuando haya novedades visibles para tu cuenta, apareceran aqui."}
+                    ? "Podés publicar una novedad para compartir información relevante con la organización."
+                    : "Cuando haya novedades visibles para tu cuenta, aparecerán acá."}
               </p>
             </div>
           )}

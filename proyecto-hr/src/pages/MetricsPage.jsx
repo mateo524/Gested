@@ -447,7 +447,7 @@ function hasMeaningfulText(value) {
 
 export default function MetricsPage() {
   const { token, user, hasPermission } = useAuth();
-  const { setView, searchQuery } = useView();
+  const { setView } = useView();
 
   const editorRef = useRef(null);
   const detailRef = useRef(null);
@@ -541,21 +541,14 @@ export default function MetricsPage() {
   const groups = useMemo(() => buildGroups(metrics, competencyMap), [competencyMap, metrics]);
 
   const visibleEmployees = useMemo(() => {
-    const term = normalizeText(searchQuery).toLowerCase();
-    const base = employees.length
+    return employees.length
       ? employees
       : [...new Map(
           evaluations
             .filter((evaluation) => evaluation.employeeId?._id)
             .map((evaluation) => [String(evaluation.employeeId._id), evaluation.employeeId])
         ).values()];
-    if (!term) return base;
-    return base.filter((employee) =>
-      [employee.nombre, employee.apellido, employee.area, employee.cargo]
-        .filter(Boolean)
-        .some((field) => String(field).toLowerCase().includes(term))
-    );
-  }, [employees, evaluations, searchQuery]);
+  }, [employees, evaluations]);
 
   useEffect(() => {
     if (!selectedEmployeeId && visibleEmployees.length) {
@@ -639,11 +632,6 @@ export default function MetricsPage() {
           setManagerDetail(null);
         }
         await Promise.all(tasks);
-        if (!cancelled) {
-          window.requestAnimationFrame(() => {
-            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          });
-        }
       } catch (nextError) {
         if (!cancelled) {
           setDetailError(nextError.message);
@@ -1059,6 +1047,7 @@ export default function MetricsPage() {
                 <select
                   className="pf-select"
                   value={selectedEmployeeId}
+                  disabled={!visibleEmployees.length}
                   onChange={(event) => setSelectedEmployeeId(event.target.value)}
                 >
                   <option value="">Seleccioná una persona</option>
@@ -1068,6 +1057,9 @@ export default function MetricsPage() {
                     </option>
                   ))}
                 </select>
+                {!visibleEmployees.length ? (
+                  <p className="mt-2 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
+                ) : null}
               </div>
               <div>
                 <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo / período</label>

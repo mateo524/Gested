@@ -1,6 +1,7 @@
 import express from "express";
 import Competency from "../models/Competency.js";
 import Metric from "../models/Metric.js";
+import Employee from "../models/Employee.js";
 import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
@@ -54,6 +55,17 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_C
     return res.status(400).json({ mensaje: "El colegio seleccionado no pertenece a tu organizacion" });
   }
 
+  const scopedEmployeeIds = Array.isArray(req.body.audienceEmployeeIds) && req.body.audienceEmployeeIds.length
+    ? await Employee.find(
+        buildScopedFilter(req, {
+          _id: { $in: req.body.audienceEmployeeIds },
+          activo: true,
+        })
+      )
+        .select("_id")
+        .lean()
+    : [];
+
   const competency = await Competency.create({
     companyId,
     schoolId,
@@ -62,6 +74,12 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_C
     tipo: req.body.tipo,
     componente: req.body.componente,
     activa: req.body.activa !== false,
+    audienceType: req.body.audienceType || "all",
+    audienceDepartmentCodes: Array.isArray(req.body.audienceDepartmentCodes)
+      ? req.body.audienceDepartmentCodes.map((item) => String(item || "").trim()).filter(Boolean)
+      : [],
+    audienceEmployeeIds: scopedEmployeeIds.map((item) => item._id),
+    metadata: req.body.metadata && typeof req.body.metadata === "object" ? req.body.metadata : {},
   });
 
   await logAudit({
@@ -89,6 +107,31 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
       competency[field] = req.body[field];
     }
   });
+
+  if ("audienceType" in req.body) {
+    competency.audienceType = req.body.audienceType || "all";
+  }
+  if ("audienceDepartmentCodes" in req.body) {
+    competency.audienceDepartmentCodes = Array.isArray(req.body.audienceDepartmentCodes)
+      ? req.body.audienceDepartmentCodes.map((item) => String(item || "").trim()).filter(Boolean)
+      : [];
+  }
+  if ("audienceEmployeeIds" in req.body) {
+    const scopedEmployees = Array.isArray(req.body.audienceEmployeeIds) && req.body.audienceEmployeeIds.length
+      ? await Employee.find(
+          buildScopedFilter(req, {
+            _id: { $in: req.body.audienceEmployeeIds },
+            activo: true,
+          })
+        )
+          .select("_id")
+          .lean()
+      : [];
+    competency.audienceEmployeeIds = scopedEmployees.map((item) => item._id);
+  }
+  if ("metadata" in req.body && req.body.metadata && typeof req.body.metadata === "object") {
+    competency.metadata = req.body.metadata;
+  }
 
   await competency.save();
 

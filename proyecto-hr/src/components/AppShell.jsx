@@ -13,7 +13,7 @@ function formatAnnouncementTime(value) {
   });
 }
 
-function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onViewAll, t }) {
+function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onViewAll, onOpenAnnouncement, t }) {
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
@@ -95,7 +95,20 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
               announcementSummary.latest.map((item) => (
                 <div
                   key={item._id}
-                  className={`rounded-2xl border px-3 py-3 text-left ${
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => {
+                    onOpenAnnouncement?.(item);
+                    setOpen(false);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      onOpenAnnouncement?.(item);
+                      setOpen(false);
+                    }
+                  }}
+                  className={`block w-full rounded-2xl border px-3 py-3 text-left ${
                     item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#4f7cff]/30 bg-[#12243b]"
                   }`}
                 >
@@ -131,7 +144,10 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                       <button
                         type="button"
                         disabled={busyId === item._id}
-                        onClick={() => handleMarkRead(item)}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleMarkRead(item);
+                        }}
                         className="rounded-2xl border border-[#4f7cff]/30 px-3 py-1.5 text-xs font-medium text-[#d8e4ff] transition hover:bg-[#173150] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {busyId === item._id ? "Marcando..." : "Marcar como vista"}
@@ -451,7 +467,19 @@ export default function AppShell({
 
   function handleSearchSelect(item) {
     setView(item.viewKey);
+    setSearchQuery("");
     setSearchOpen(false);
+  }
+
+  function handleOpenAnnouncement(item) {
+    setView("novedades");
+    window.setTimeout(() => {
+      window.dispatchEvent(
+        new CustomEvent("performia:announcement-focus", {
+          detail: { announcementId: item._id },
+        })
+      );
+    }, 80);
   }
 
   return (
@@ -551,28 +579,25 @@ export default function AppShell({
               </div>
 
               <div ref={searchRef} className="relative mx-auto w-full max-w-2xl">
-                <div className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
+                <div className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-4 py-2.5">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-[#7f99a8]">
                     <path d="M11 19a8 8 0 1 1 5.3-14l4.2 4.2" />
                     <path d="M21 21l-4.35-4.35" />
                   </svg>
                   <input
                     className="w-full bg-transparent text-sm text-[#e8eef1] outline-none placeholder:text-[#7f99a8]"
-                    placeholder="Buscar módulos, secciones o acciones"
+                    placeholder="Buscar en Performia"
                     value={searchQuery}
                     onFocus={() => setSearchOpen(true)}
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                       setSearchOpen(true);
                     }}
-                    aria-label="Buscar módulos, secciones o acciones"
+                    aria-label="Buscar en Performia"
                   />
-                  <span className="hidden rounded-xl border border-white/10 px-2 py-1 text-xs text-[#7f99a8] lg:inline-flex">
-                    Busca y navega
-                  </span>
                 </div>
-                {searchOpen ? (
-                  <div className="absolute inset-x-0 z-30 mt-3 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+                {searchOpen && searchQuery.trim() ? (
+                  <div className="absolute inset-x-0 z-30 mt-2 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_32px_rgba(2,8,23,0.35)]">
                     {searchResults.length ? (
                       searchResults.map((item) => (
                         <SearchResultItem key={item.viewKey} item={item} onSelect={handleSearchSelect} />
@@ -592,6 +617,7 @@ export default function AppShell({
                   onMarkRead={handleMarkRead}
                   onMarkAllRead={handleMarkAllRead}
                   onViewAll={() => setView("novedades")}
+                  onOpenAnnouncement={handleOpenAnnouncement}
                   t={t}
                 />
                 <LanguageMenu language={language} setLanguage={setLanguage} t={t} />
