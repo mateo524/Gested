@@ -4,14 +4,9 @@ import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
 
-const tabs = [
-  { key: "resumen", label: "Resumen" },
-  { key: "personas", label: "Personas" },
-  { key: "kpis", label: "KPIs" },
-  { key: "okrs", label: "OKRs" },
-  { key: "evaluaciones", label: "Evaluaciones" },
-  { key: "desarrollo", label: "Desarrollo" },
-  { key: "acciones", label: "Acciones" },
+const PRIMARY_TABS = [
+  { key: "general", label: "Reporte general" },
+  { key: "individual", label: "Reporte individual" },
 ];
 
 const severityTone = {
@@ -22,7 +17,15 @@ const severityTone = {
 
 function formatDate(value) {
   if (!value) return "-";
-  return new Date(value).toLocaleDateString("es-AR", { dateStyle: "medium" });
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "-";
+  return parsed.toLocaleDateString("es-AR", { dateStyle: "medium" });
+}
+
+function average(values = []) {
+  const valid = values.map(Number).filter((value) => Number.isFinite(value) && value > 0);
+  if (!valid.length) return null;
+  return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
 function SurfaceCard({ title, subtitle, actions, children }) {
@@ -59,21 +62,10 @@ function StatCard({ label, value, hint, tone = "default" }) {
 }
 
 function EmptyPanel({ text }) {
-  return <div className="rounded-2xl border border-dashed border-white/10 bg-[#122530] px-5 py-6 text-sm text-[#9fb6c4]">{text}</div>;
-}
-
-function InsightBox({ title, text, tone = "default" }) {
-  const toneClass =
-    tone === "warning"
-      ? "border-amber-300/20 bg-amber-500/10"
-      : tone === "danger"
-        ? "border-rose-300/20 bg-rose-500/10"
-        : "border-white/10 bg-[#0f1f28]";
   return (
-    <article className={`rounded-3xl border p-4 ${toneClass}`}>
-      <p className="text-sm font-semibold text-white">{title}</p>
-      <p className="mt-2 text-sm leading-relaxed text-[#a8bdc8]">{text}</p>
-    </article>
+    <div className="rounded-2xl border border-dashed border-white/10 bg-[#122530] px-5 py-6 text-sm text-[#9fb6c4]">
+      {text}
+    </div>
   );
 }
 
@@ -120,14 +112,57 @@ function mapActionDestination(action) {
   if (text.includes("manager") || text.includes("persona") || text.includes("emplead")) return "empleados";
   if (text.includes("plan") || text.includes("desarrollo")) return "planes";
   if (text.includes("ciclo")) return "ciclos";
-  if (text.includes("reporte")) return "reporte-ejecutivo";
   return "";
+}
+
+function buildGeneralActionSummary(actions = []) {
+  return {
+    high: actions.filter((item) => item.severity === "high").length,
+    medium: actions.filter((item) => item.severity === "medium").length,
+    low: actions.filter((item) => item.severity === "low").length,
+  };
+}
+
+function buildEvaluationTypeChart(evaluations = []) {
+  const auto = evaluations.filter((item) => item.tipo === "AUTOEVALUACION").map((item) => item.resultadoFinal);
+  const manager = evaluations.filter((item) => item.tipo === "JEFATURA").map((item) => item.resultadoFinal);
+  const final = evaluations.filter((item) => item.tipo === "FINAL").map((item) => item.resultadoFinal);
+  return [
+    { label: "Autoevaluación", value: Number((average(auto) || 0).toFixed(1)), tone: "bg-sky-400" },
+    { label: "Superior", value: Number((average(manager) || 0).toFixed(1)), tone: "bg-emerald-400" },
+    { label: "Cierre final", value: Number((average(final) || 0).toFixed(1)), tone: "bg-violet-400" },
+  ];
+}
+
+function buildStatusChart(items = [], statusKey = "status") {
+  const buckets = new Map();
+  items.forEach((item) => {
+    const key = String(item?.[statusKey] || "Sin estado").trim() || "Sin estado";
+    buckets.set(key, (buckets.get(key) || 0) + 1);
+  });
+  return [...buckets.entries()].map(([label, value], index) => ({
+    label,
+    value,
+    tone: ["bg-sky-400", "bg-amber-400", "bg-rose-400", "bg-emerald-400", "bg-violet-400"][index % 5],
+  }));
+}
+
+function buildMetricSignalRows(metricSignals = []) {
+  return metricSignals
+    .slice()
+    .sort((left, right) => Number(right.averageScore || 0) - Number(left.averageScore || 0))
+    .slice(0, 8)
+    .map((item) => ({
+      label: item.competencyName || item.metricName || "Competencia",
+      value: Number(item.averageScore || 0),
+      tone: "bg-sky-400",
+    }));
 }
 
 export default function ExecutiveReportPage() {
   const { token, user } = useAuth();
   const { setView, searchQuery } = useView();
-  const [activeTab, setActiveTab] = useState("resumen");
+  const [activeTab, setActiveTab] = useState("general");
   const [filters, setFilters] = useState({ cycleId: "", department: "", employeeId: "" });
   const [draftFilters, setDraftFilters] = useState({ cycleId: "", department: "", employeeId: "" });
   const [overview, setOverview] = useState(null);
@@ -156,10 +191,7 @@ export default function ExecutiveReportPage() {
       if (filters.department) params.set("department", filters.department);
       if (filters.employeeId) params.set("employeeId", filters.employeeId);
       const query = params.toString() ? `?${params.toString()}` : "";
-      const data = await apiFetch(`/reports/executive/overview${query}`, {
-        token,
-        timeoutMs: 30000,
-      });
+      const data = await apiFetch(`/reports/executive/overview${query}`, { token, timeoutMs: 30000 });
       setOverview(data);
 
       const normalizedFilters = {
@@ -167,14 +199,7 @@ export default function ExecutiveReportPage() {
         department: data?.filters?.selectedDepartment || filters.department || "",
         employeeId: data?.filters?.selectedEmployeeId || filters.employeeId || "",
       };
-
-      setFilters((current) =>
-        current.cycleId === normalizedFilters.cycleId &&
-        current.department === normalizedFilters.department &&
-        current.employeeId === normalizedFilters.employeeId
-          ? current
-          : normalizedFilters
-      );
+      setFilters(normalizedFilters);
       setDraftFilters(normalizedFilters);
 
       if (!normalizedFilters.employeeId) {
@@ -224,8 +249,8 @@ export default function ExecutiveReportPage() {
   }, [loadEmployeeDetail, overview?.filters?.selectedEmployeeId]);
 
   const employees = useMemo(() => {
-    const term = String(searchQuery || "").trim().toLowerCase();
     const items = overview?.catalogs?.employees || [];
+    const term = String(searchQuery || "").trim().toLowerCase();
     if (!term) return items;
     return items.filter((employee) =>
       [employee.fullName, employee.cargo, employee.area]
@@ -233,14 +258,14 @@ export default function ExecutiveReportPage() {
         .some((field) => String(field).toLowerCase().includes(term))
     );
   }, [overview?.catalogs?.employees, searchQuery]);
+
   const cycles = overview?.catalogs?.cycles || [];
   const departments = overview?.catalogs?.departments || [];
-  const selectedEmployeeId = overview?.filters?.selectedEmployeeId || filters.employeeId;
-  const selectedEmployeeIndex = employees.findIndex((item) => item._id === selectedEmployeeId);
+  const selectedEmployeeId = overview?.filters?.selectedEmployeeId || filters.employeeId || "";
   const selectedEmployee = detail?.employee || overview?.selectedEmployee || null;
 
   const focusEmployeeDetail = useCallback((employeeId) => {
-    setActiveTab("resumen");
+    setActiveTab("individual");
     setDraftFilters((current) => ({ ...current, employeeId }));
     setFilters((current) => ({ ...current, employeeId }));
     window.requestAnimationFrame(() => {
@@ -248,56 +273,20 @@ export default function ExecutiveReportPage() {
     });
   }, []);
 
-  const actionList = useMemo(() => {
+  function applyFilters() {
+    setFilters({ ...draftFilters });
+  }
+
+  const overviewActions = useMemo(() => {
     const severityOrder = { high: 0, medium: 1, low: 2 };
-    const items = [...(overview?.actions || []), ...(detail?.actions || [])];
-    const term = String(searchQuery || "").trim().toLowerCase();
-    const filtered = items.filter((action) =>
-      [action?.title, action?.description, action?.key]
-        .filter(Boolean)
-        .some((field) => String(field).toLowerCase().includes(term))
-    );
-    return filtered.sort((a, b) => {
+    return [...(overview?.actions || [])].sort((a, b) => {
       const weight = (severityOrder[a?.severity] ?? 9) - (severityOrder[b?.severity] ?? 9);
       if (weight !== 0) return weight;
       return Number(b?.count || 0) - Number(a?.count || 0);
     });
-  }, [detail?.actions, overview?.actions, searchQuery]);
+  }, [overview?.actions]);
 
-  const actionPrioritySummary = useMemo(() => {
-    return {
-      high: actionList.filter((item) => item.severity === "high").length,
-      medium: actionList.filter((item) => item.severity === "medium").length,
-      low: actionList.filter((item) => item.severity === "low").length,
-    };
-  }, [actionList]);
-
-  const executiveNarrative = useMemo(() => {
-    const pending = Number(overview?.summary?.evaluationsPending || 0);
-    const overduePlans = Number(overview?.summary?.overduePlans || 0);
-    const withoutManager = Number(overview?.summary?.employeesWithoutManager || 0);
-    const cyclesOpen = Number(overview?.summary?.cyclesOpen || 0);
-
-    return {
-      what:
-        pending > 0
-          ? `Hay ${pending} evaluaciones pendientes dentro del alcance actual.`
-          : cyclesOpen > 0
-            ? `Hay ${cyclesOpen} ciclos abiertos visibles en este momento.`
-            : "El reporte no muestra pendientes operativos fuertes en este momento.",
-      why:
-        overduePlans > 0
-          ? `${overduePlans} planes de desarrollo quedaron vencidos y pueden frenar el seguimiento.`
-          : withoutManager > 0
-            ? `${withoutManager} personas siguen sin manager asignado y eso impacta el seguimiento del ciclo.`
-            : "Conviene igual revisar el avance del ciclo y la cobertura de evaluaciones.",
-      now:
-        actionList[0]?.description ||
-        "Revisa evaluaciones, managers y planes para cerrar el ciclo con mejor trazabilidad.",
-    };
-  }, [actionList, overview]);
-
-  const tabGuidance = overview?.tabGuidance || {};
+  const actionPrioritySummary = useMemo(() => buildGeneralActionSummary(overviewActions), [overviewActions]);
 
   const evaluationChart = useMemo(
     () => [
@@ -349,18 +338,30 @@ export default function ExecutiveReportPage() {
     [overview]
   );
 
-  function moveEmployee(offset) {
-    if (!employees.length || selectedEmployeeIndex < 0) return;
-    const nextIndex = selectedEmployeeIndex + offset;
-    if (nextIndex < 0 || nextIndex >= employees.length) return;
-    const nextId = employees[nextIndex]._id;
-    setDraftFilters((current) => ({ ...current, employeeId: nextId }));
-    setFilters((current) => ({ ...current, employeeId: nextId }));
-  }
+  const individualEvaluationChart = useMemo(
+    () => buildEvaluationTypeChart(detail?.evaluations || []),
+    [detail?.evaluations]
+  );
 
-  function applyFilters() {
-    setFilters({ ...draftFilters });
-  }
+  const individualMetricSignalChart = useMemo(
+    () => buildMetricSignalRows(detail?.metricSignals || []),
+    [detail?.metricSignals]
+  );
+
+  const individualKpiChart = useMemo(
+    () => buildStatusChart(detail?.kpis?.items || []),
+    [detail?.kpis?.items]
+  );
+
+  const individualOkrChart = useMemo(
+    () => buildStatusChart(detail?.okrs?.items || []),
+    [detail?.okrs?.items]
+  );
+
+  const individualPlanChart = useMemo(
+    () => buildStatusChart(detail?.developmentPlans || [], "estado"),
+    [detail?.developmentPlans]
+  );
 
   if (!canViewExecutive || isEmployee) {
     return (
@@ -384,48 +385,38 @@ export default function ExecutiveReportPage() {
             <p className="pf-section-title">Reportes &gt; Reporte ejecutivo</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Reporte ejecutivo</h1>
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Analizá desempeño, objetivos, evaluaciones y desarrollo en una vista interactiva para tomar mejores decisiones.
+              Leé el estado general de la organización y, cuando haga falta, bajá al detalle individual de cada persona.
             </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
-                Vista recomendada para dirección y RR. HH.
-              </span>
-              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
-                Cierre principal del recorrido institucional
-              </span>
-            </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadOverview}
+            disabled={loadingOverview}
+            className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
+          >
+            {loadingOverview ? "Actualizando..." : "Actualizar"}
+          </button>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {PRIMARY_TABS.map((tab) => (
             <button
+              key={tab.key}
               type="button"
-              onClick={loadOverview}
-              disabled={loadingOverview}
-              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                activeTab === tab.key
+                  ? "bg-[#1e3a8a] text-white shadow-[0_12px_30px_rgba(30,58,138,0.22)]"
+                  : "border border-white/10 bg-[#122530] text-[#c5d5de]"
+              }`}
             >
-              {loadingOverview ? "Actualizando..." : "Actualizar"}
+              {tab.label}
             </button>
-            <button
-              type="button"
-              disabled
-              className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm font-medium text-[#718693] opacity-70"
-              title="Placeholder visual"
-            >
-              Guardar vista
-            </button>
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="cursor-not-allowed rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm font-semibold text-[#718693] opacity-75"
-              title="Guia disponible proximamente"
-            >
-              Ver guia
-            </button>
-          </div>
+          ))}
         </div>
       </section>
 
-      <SurfaceCard title="Filtros" subtitle="Cambia ciclo, área o empleado sin salir de la pantalla.">
+      <SurfaceCard title="Filtros del reporte" subtitle="Cambiá ciclo, área o persona sin salir de la pantalla.">
         <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
           <label className="block">
             <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo</span>
@@ -444,7 +435,7 @@ export default function ExecutiveReportPage() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm text-[#c5d5de]">Area / departamento</span>
+            <span className="mb-2 block text-sm text-[#c5d5de]">Área / departamento</span>
             <select
               className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
               value={draftFilters.department}
@@ -456,7 +447,7 @@ export default function ExecutiveReportPage() {
                 }))
               }
             >
-              <option value="">Todas las areas visibles</option>
+              <option value="">Todas las áreas visibles</option>
               {departments.map((item) => (
                 <option key={item.code} value={item.code}>
                   {item.label} ({item.count})
@@ -466,16 +457,16 @@ export default function ExecutiveReportPage() {
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-sm text-[#c5d5de]">Empleado</span>
+            <span className="mb-2 block text-sm text-[#c5d5de]">Persona</span>
             <select
               className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
               value={draftFilters.employeeId}
               onChange={(event) => setDraftFilters((current) => ({ ...current, employeeId: event.target.value }))}
             >
-              <option value="">Seleccion automatica</option>
+              <option value="">Selección automática</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
-                  {employee.fullName} {employee.area ? `- ${employee.area}` : ""}
+                  {employee.fullName} {employee.area ? `· ${employee.area}` : ""}
                 </option>
               ))}
             </select>
@@ -485,493 +476,407 @@ export default function ExecutiveReportPage() {
             <button
               type="button"
               onClick={applyFilters}
-              className="w-full rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white xl:w-auto"
+              className="w-full rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white"
             >
               Aplicar filtros
             </button>
           </div>
         </div>
-
-        {!cycles.length || !employees.length ? (
-          <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#8fa9b7]">
-            Algunos filtros tienen datos parciales o todavia no muestran registros suficientes.
-          </div>
-        ) : null}
       </SurfaceCard>
 
-      {error ? (
-        <div className="rounded-2xl border border-rose-300/30 bg-rose-500/10 px-5 py-4 text-sm text-rose-100">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <p>Hubo un problema cargando el reporte. Intenta nuevamente.</p>
-            <button
-              type="button"
-              onClick={() => {
-                loadOverview();
-                if (selectedEmployeeId) loadEmployeeDetail(selectedEmployeeId);
-              }}
-              className="rounded-2xl border border-rose-200/30 px-4 py-2 text-sm font-semibold text-rose-50"
-            >
-              Reintentar
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-rose-100/80">{error}</p>
-        </div>
-      ) : null}
+      {error ? <div className="pf-alert-error">{error}</div> : null}
 
       {loadingOverview ? (
-        <EmptyPanel text="Cargando reporte ejecutivo..." />
+        <EmptyPanel text="Estamos preparando el reporte ejecutivo con el alcance visible para este perfil." />
       ) : !overview ? (
-        <EmptyPanel text="No pudimos cargar el reporte ejecutivo para este alcance." />
-      ) : (
-        <>
-          <SurfaceCard title="Navegacion del reporte" subtitle="Explora tabs y cambia de persona sin perder el contexto actual.">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div className="flex flex-wrap gap-2">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.key}
-                    type="button"
-                    onClick={() => setActiveTab(tab.key)}
-                    className={`rounded-2xl px-4 py-2.5 text-sm transition ${
-                      activeTab === tab.key
-                        ? "bg-[#1e3a8a] text-white"
-                        : "border border-white/10 bg-[#122530] text-[#AFC3CE]"
-                    }`}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+        <EmptyPanel text="No pudimos cargar el reporte en este momento." />
+      ) : activeTab === "general" ? (
+        <div className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <StatCard label="Personas visibles" value={overview.summary?.employeesTotal || 0} hint="Dentro del alcance actual" />
+            <StatCard label="Desempeño promedio" value={overview.summary?.averageScore || 0} hint="Resultado visible" tone="success" />
+            <StatCard label="Evaluaciones pendientes" value={overview.summary?.evaluationsPending || 0} hint="Requieren seguimiento" tone="warning" />
+            <StatCard label="KPIs visibles" value={overview.kpis?.total || 0} hint="Indicadores agregados" />
+            <StatCard label="Planes abiertos" value={overview.development?.active || 0} hint={`${overview.development?.overdue || 0} vencidos`} />
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+            <SurfaceCard title="Panorama general" subtitle="Lectura rápida del estado actual del desempeño y el seguimiento.">
+              <div className="grid gap-3 md:grid-cols-3">
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo activo</p>
+                  <p className="mt-2 text-base font-semibold text-white">{overview.selectedCycle?.label || "Todos los ciclos visibles"}</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">Estado {overview.selectedCycle?.estado || "Sin filtro"}</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Cobertura de evaluación</p>
+                  <p className="mt-2 text-base font-semibold text-white">{overview.summary?.evaluationsTotal || 0} registros</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{overview.summary?.completedEvaluations || 0} cerradas o revisadas</p>
+                </article>
+                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Desarrollo</p>
+                  <p className="mt-2 text-base font-semibold text-white">{overview.development?.active || 0} planes activos</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{overview.development?.overdue || 0} con seguimiento vencido</p>
+                </article>
               </div>
+            </SurfaceCard>
 
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => moveEmployee(-1)}
-                  disabled={selectedEmployeeIndex <= 0}
-                  className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-white disabled:opacity-40"
-                >
-                  Anterior
-                </button>
-                <button
-                  type="button"
-                  onClick={() => moveEmployee(1)}
-                  disabled={selectedEmployeeIndex < 0 || selectedEmployeeIndex >= employees.length - 1}
-                  className="rounded-2xl border border-white/10 px-3 py-2 text-sm text-white disabled:opacity-40"
-                >
-                  Siguiente
-                </button>
+            <SurfaceCard title="Acciones recomendadas" subtitle="Prioridades generales según los datos visibles hoy.">
+              <div className="grid gap-3 md:grid-cols-3">
+                <StatCard label="Alta" value={actionPrioritySummary.high} tone="danger" />
+                <StatCard label="Media" value={actionPrioritySummary.medium} tone="warning" />
+                <StatCard label="Baja" value={actionPrioritySummary.low} />
               </div>
-            </div>
-            <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#9fb6c4]">
-              {tabGuidance[activeTab] || "Vista rapida del estado general y del seguimiento disponible."}
-            </div>
-          </SurfaceCard>
-
-          {activeTab === "resumen" ? (
-            <div className="space-y-5">
-              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-                <StatCard label="Desempeño promedio" value={overview.summary?.averageScore || 0} hint="Resultado visible en el alcance" />
-                <StatCard label="Participacion en evaluaciones" value={overview.summary?.evaluationsTotal || 0} hint="Total registradas" tone="success" />
-                <StatCard label="Evaluaciones pendientes" value={overview.summary?.evaluationsPending || 0} hint="Requieren seguimiento" tone="warning" />
-                <StatCard label="Planes activos" value={overview.summary?.openPlans || 0} hint={`${overview.summary?.overduePlans || 0} vencidos`} />
-                <StatCard label="Acciones pendientes" value={actionList.length || 0} hint="Recomendaciones visibles" tone="warning" />
-                <StatCard label="Ciclo actual" value={overview.selectedCycle?.label || "Sin filtro"} hint={`${overview.summary?.cyclesOpen || 0} abiertos`} />
-              </section>
-
-              <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <SurfaceCard title="Vista actual" subtitle="Resumen de filtros y persona seleccionada.">
-                  <div className="grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Ciclo</p>
-                      <p className="mt-2 text-base font-semibold text-white">{overview.selectedCycle?.label || "Todos los ciclos visibles"}</p>
-                      <p className="mt-1 text-sm text-[#8FA9B7]">
-                        {overview.selectedCycle?.estado || "Sin filtro"} · cierre {formatDate(overview.selectedCycle?.fechaFin)}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Persona seleccionada</p>
-                      <p className="mt-2 text-base font-semibold text-white">{selectedEmployee?.fullName || "Sin persona seleccionada"}</p>
-                      <p className="mt-1 text-sm text-[#8FA9B7]">
-                        {selectedEmployee?.cargo || "-"} {selectedEmployee?.area ? `· ${selectedEmployee.area}` : ""}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">KPIs</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        {detail?.kpis?.available ? detail.kpis.items?.length || 0 : "Sin dominio persistido"}
-                      </p>
-                      <p className="mt-1 text-sm text-[#8FA9B7]">
-                        {detail?.kpis?.available ? "Registros visibles" : "Todavía no hay KPIs/OKRs persistidos para este período."}
-                      </p>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">OKRs</p>
-                      <p className="mt-2 text-base font-semibold text-white">
-                        {detail?.okrs?.available ? detail.okrs.items?.length || 0 : "Sin dominio persistido"}
-                      </p>
-                      <p className="mt-1 text-sm text-[#8FA9B7]">
-                        {detail?.okrs?.available ? "Registros visibles" : "Todavía no hay KPIs/OKRs persistidos para este período."}
-                      </p>
-                    </div>
-                  </div>
-                </SurfaceCard>
-
-                <SurfaceCard title="Insights ejecutivos" subtitle="Que esta pasando, por que importa y que conviene hacer ahora.">
-                  <div className="space-y-3">
-                    <InsightBox title="Que esta pasando" text={executiveNarrative.what} />
-                    <InsightBox title="Por que importa" text={executiveNarrative.why} tone="warning" />
-                    <InsightBox title="Que hacer ahora" text={executiveNarrative.now} tone="danger" />
-                  </div>
-                </SurfaceCard>
-              </section>
-
-              <section className="grid gap-4 xl:grid-cols-2">
-                <MiniBarChart title="Avance de evaluaciones" items={evaluationChart} />
-                <MiniBarChart title="KPIs por estado" items={kpiChart} emptyText={overview?.kpis?.message || "No hay KPIs visibles."} />
-                <MiniBarChart title="OKRs por estado" items={okrChart} emptyText={overview?.okrs?.message || "No hay OKRs visibles."} />
-                <MiniBarChart title="Planes de desarrollo" items={developmentChart} />
-              </section>
-
-              <SurfaceCard title="Distribucion por departamento" subtitle="Cantidad de personas, objetivos y planes pendientes dentro del alcance actual.">
-                {overview?.departments?.length ? (
-                  <div className="grid gap-3 xl:grid-cols-2">
-                    {overview.departments.map((item) => (
-                      <article key={item.code} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="font-semibold text-white">{item.label}</p>
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
-                            {item.count} personas
-                          </span>
-                        </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
-                            <p className="mt-2 text-base font-semibold text-white">{item.kpis || 0}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
-                            <p className="mt-2 text-base font-semibold text-white">{item.okrs || 0}</p>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Planes pendientes</p>
-                            <p className="mt-2 text-base font-semibold text-white">{item.pendingPlans || 0}</p>
-                          </div>
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                ) : (
-                  <EmptyPanel text="No hay departamentos con datos suficientes para resumir." />
-                )}
-              </SurfaceCard>
-
-              {selectedEmployee ? (
-                <div ref={detailRef}>
-                  <SurfaceCard
-                    title="Detalle de la persona seleccionada"
-                    subtitle={`${selectedEmployee.fullName} · ${selectedEmployee.cargo || "Sin cargo"}${selectedEmployee.area ? ` · ${selectedEmployee.area}` : ""}`}
-                    actions={
-                      <div className="flex gap-2">
-                        <button type="button" onClick={() => setView("evaluaciones")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
-                          Ir a Evaluaciones
-                        </button>
-                        <button type="button" onClick={() => setView("planes")} className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white">
-                          Ir a Desarrollo
-                        </button>
-                      </div>
-                    }
-                  >
-                    {loadingDetail ? (
-                      <EmptyPanel text="Cargando detalle del empleado..." />
-                    ) : detail ? (
-                      <div className="space-y-4">
-                        <div className="grid gap-3 md:grid-cols-4">
-                          <StatCard label="Evaluaciones" value={detail.summary?.evaluationCount || 0} />
-                          <StatCard label="Pendientes" value={detail.summary?.pendingEvaluations || 0} tone="warning" />
-                          <StatCard label="Planes abiertos" value={detail.summary?.openPlans || 0} />
-                          <StatCard label="Promedio" value={detail.summary?.averageScore || 0} tone="success" />
-                        </div>
-                        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Departamento / equipo</p>
-                            <p className="mt-2 text-sm font-semibold text-white">
-                              {selectedEmployee.area || detail.employee?.area || "Sin dato visible"}
-                            </p>
-                          </article>
-                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">KPIs asignados</p>
-                            <p className="mt-2 text-sm font-semibold text-white">{detail.kpis?.items?.length || 0}</p>
-                          </article>
-                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">OKRs asignados</p>
-                            <p className="mt-2 text-sm font-semibold text-white">{detail.okrs?.items?.length || 0}</p>
-                          </article>
-                          <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                            <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Acciones pendientes</p>
-                            <p className="mt-2 text-sm font-semibold text-white">{detail.actions?.length || 0}</p>
-                          </article>
-                        </div>
-                      </div>
-                    ) : (
-                      <EmptyPanel text="No hay detalle adicional para esta persona." />
-                    )}
-                  </SurfaceCard>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-
-          {activeTab === "personas" ? (
-            employees.length ? (
-                <SurfaceCard title="Personas visibles" subtitle="Cambia de persona sin salir del reporte.">
-                  <div className="grid gap-3 xl:grid-cols-2">
-                  {employees.map((employee) => (
-                    <article
-                      key={employee._id}
-                      className={`rounded-3xl border p-4 transition ${
-                        employee._id === selectedEmployeeId ? "border-[#3B82F6] bg-[#10233A]" : "border-white/10 bg-[#0f1f28]"
-                      }`}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-white">{employee.fullName}</p>
-                          <p className="mt-1 text-sm text-[#8FA9B7]">
-                            {employee.cargo || "Sin cargo"} {employee.area ? `· ${employee.area}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                            Eval: {employee.evaluationCount}
-                          </span>
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                            Planes: {employee.planCount}
-                          </span>
-                          {!employee.hasManager ? (
-                            <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-3 py-1 text-amber-100">
-                              Sin manager
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
-                      <div className="mt-4 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => focusEmployeeDetail(employee._id)}
-                          className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
-                        >
-                          Ver detalle
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyPanel text="No hay personas visibles para los filtros seleccionados." />
-            )
-          ) : null}
-
-          {activeTab === "kpis" ? (
-            loadingDetail ? (
-              <EmptyPanel text="Cargando KPIs..." />
-            ) : detail?.kpis?.available && detail?.kpis?.items?.length ? (
-              <SurfaceCard title="KPIs visibles" subtitle="Indicadores operativos persistidos para la persona y el alcance actual.">
-                <div className="space-y-3">
-                  {detail.kpis.items.map((item) => (
-                    <article key={item._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-white">{item.name}</p>
-                          <p className="mt-1 text-sm text-[#8FA9B7]">
-                            {item.code || "Sin codigo"} {item.departmentCode ? `· ${item.departmentCode}` : ""}
-                          </p>
-                          <p className="mt-3 text-sm text-[#c8d8df]">
-                            Objetivo {item.targetValue ?? "-"} {item.unit || ""}
-                            {item.frequency ? ` · ${item.frequency}` : ""}
-                          </p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {item.status ? (
-                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{item.status}</span>
-                          ) : null}
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                            Actualizado {formatDate(item.updatedAt)}
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyPanel text={detail?.kpis?.message || overview.kpis?.message || "No hay KPIs persistidos para este período."} />
-            )
-          ) : null}
-
-          {activeTab === "okrs" ? (
-            loadingDetail ? (
-              <EmptyPanel text="Cargando OKRs..." />
-            ) : detail?.okrs?.available && detail?.okrs?.items?.length ? (
-              <SurfaceCard title="OKRs visibles" subtitle="Objetivos y resultados clave disponibles para este alcance.">
-                <div className="space-y-3">
-                  {detail.okrs.items.map((item) => (
-                    <article key={item._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-white">{item.objectiveTitle}</p>
-                          <p className="mt-1 text-sm text-[#8FA9B7]">
-                            {item.keyResultTitle}
-                            {item.quarter ? ` · ${item.quarter}` : ""}
-                            {item.departmentCode ? ` · ${item.departmentCode}` : ""}
-                          </p>
-                          <p className="mt-3 text-sm text-[#c8d8df]">Meta {item.targetValue ?? "-"}</p>
-                        </div>
-                        <div className="flex flex-wrap gap-2 text-xs">
-                          {item.status ? (
-                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{item.status}</span>
-                          ) : null}
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                            Actualizado {formatDate(item.updatedAt)}
-                          </span>
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyPanel text={detail?.okrs?.message || overview.okrs?.message || "No hay OKRs persistidos para este período."} />
-            )
-          ) : null}
-
-          {activeTab === "evaluaciones" ? (
-            loadingDetail ? (
-              <EmptyPanel text="Cargando evaluaciones..." />
-            ) : detail?.evaluations?.length ? (
-              <SurfaceCard title="Evaluaciones" subtitle="Estado actual del ciclo y resultados visibles para la persona seleccionada.">
-                <div className="space-y-3">
-                  {detail.evaluations.map((evaluation) => (
-                    <article key={evaluation._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-white">{evaluation.tipo}</p>
-                          <p className="mt-1 text-sm text-[#8FA9B7]">
-                            {evaluation.cycle?.label || "Sin ciclo"} · {formatDate(evaluation.createdAt)}
-                          </p>
-                        </div>
-                        <div className="flex gap-2 text-xs">
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{evaluation.estado}</span>
-                          <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                            Resultado {evaluation.resultadoFinal || 0}
-                          </span>
-                        </div>
-                      </div>
-                      {evaluation.comentariosGenerales ? (
-                        <p className="mt-3 text-sm text-[#c8d8df]">{evaluation.comentariosGenerales}</p>
-                      ) : null}
-                    </article>
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyPanel text="No hay evaluaciones para la persona seleccionada en este alcance." />
-            )
-          ) : null}
-
-          {activeTab === "desarrollo" ? (
-            loadingDetail ? (
-              <EmptyPanel text="Cargando planes de desarrollo..." />
-            ) : detail?.developmentPlans?.length ? (
-              <SurfaceCard title="Desarrollo" subtitle="Planes activos, vencidos y proximos visibles para este alcance.">
-                <div className="space-y-3">
-                  {detail.developmentPlans.map((plan) => (
-                    <article key={plan._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <p className="font-semibold text-white">{plan.aspectoDesarrollar}</p>
-                          <p className="mt-1 text-sm text-[#8FA9B7]">
-                            Seguimiento {formatDate(plan.fechaSeguimiento)} · creado {formatDate(plan.createdAt)}
-                          </p>
-                        </div>
-                        <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">{plan.estado}</span>
-                      </div>
-                      {plan.fortalezas?.length ? (
-                        <p className="mt-3 text-sm text-[#c8d8df]">Fortalezas: {plan.fortalezas.join(", ")}</p>
-                      ) : null}
-                      {plan.medicion ? <p className="mt-2 text-sm text-[#c8d8df]">Medicion: {plan.medicion}</p> : null}
-                    </article>
-                  ))}
-                </div>
-              </SurfaceCard>
-            ) : (
-              <EmptyPanel text="No hay planes de desarrollo para la persona seleccionada." />
-            )
-          ) : null}
-
-          {activeTab === "acciones" ? (
-            actionList.length ? (
-              <SurfaceCard title="Acciones recomendadas" subtitle="Explicables, priorizadas y sin prediccion sensible.">
-                <div className="mb-4 grid gap-3 md:grid-cols-3">
-                  <StatCard label="Prioridad alta" value={actionPrioritySummary.high} tone="danger" />
-                  <StatCard label="Prioridad media" value={actionPrioritySummary.medium} tone="warning" />
-                  <StatCard label="Prioridad baja" value={actionPrioritySummary.low} />
-                </div>
-                <div className="mb-5 rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-                  <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Primera accion sugerida</p>
-                  <p className="mt-2 text-base font-semibold text-white">{actionList[0]?.title}</p>
-                  <p className="mt-2 text-sm leading-relaxed text-[#9fb6c4]">
-                    {actionList[0]?.description || "No hay una accion prioritaria destacada ahora."}
-                  </p>
-                </div>
-                <div className="space-y-3">
-                  {actionList.map((action, index) => {
+              <div className="mt-4 space-y-3">
+                {overviewActions.length ? (
+                  overviewActions.slice(0, 4).map((action, index) => {
                     const destination = mapActionDestination(action);
                     return (
-                      <article
-                        key={`${action.key || action.title}-${index}`}
-                        className={`rounded-3xl border p-4 ${severityTone[action.severity] || severityTone.low}`}
-                      >
+                      <article key={`${action.key || action.title}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                         <div className="flex flex-wrap items-start justify-between gap-3">
                           <div className="max-w-3xl">
                             <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold">{action.title}</p>
+                              <p className="font-semibold text-white">{action.title}</p>
                               <ActionBadge severity={action.severity} />
                             </div>
-                            <p className="mt-2 text-sm opacity-90">{action.description}</p>
+                            <p className="mt-2 text-sm text-[#9fb6c4]">{action.description}</p>
                           </div>
                           {"count" in action ? (
-                            <span className="rounded-full border border-current/20 px-3 py-1 text-xs">{action.count}</span>
+                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
+                              {action.count}
+                            </span>
                           ) : null}
                         </div>
-                        <div className="mt-4">
-                          {destination ? (
-                            <button
-                              type="button"
-                              onClick={() => setView(destination)}
-                              className="rounded-2xl border border-current/20 px-3 py-2 text-sm font-medium"
-                            >
-                              Ir al modulo
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              disabled
-                              className="rounded-2xl border border-current/20 px-3 py-2 text-sm font-medium opacity-70"
-                            >
-                              Sin destino directo
-                            </button>
-                          )}
-                        </div>
+                        {destination ? (
+                          <button
+                            type="button"
+                            onClick={() => setView(destination)}
+                            className="mt-4 rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
+                          >
+                            Ir al módulo
+                          </button>
+                        ) : null}
                       </article>
                     );
-                  })}
-                </div>
-              </SurfaceCard>
+                  })
+                ) : (
+                  <EmptyPanel text="No hay acciones generales para destacar con los filtros actuales." />
+                )}
+              </div>
+            </SurfaceCard>
+          </div>
+
+          <div className="grid gap-5 xl:grid-cols-2">
+            <MiniBarChart title="Estado de evaluaciones" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
+            <MiniBarChart title="Planes de desarrollo" items={developmentChart} emptyText="No hay planes visibles." />
+            <MiniBarChart title="KPIs agregados" items={kpiChart} emptyText={overview?.kpis?.message || "No hay KPIs visibles."} />
+            <MiniBarChart title="OKRs agregados" items={okrChart} emptyText={overview?.okrs?.message || "No hay OKRs visibles."} />
+          </div>
+
+          <SurfaceCard title="Distribución por departamento / equipo" subtitle="Cómo se reparte el seguimiento entre áreas visibles.">
+            {overview?.departments?.length ? (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {overview.departments.map((item) => (
+                  <article key={item.code} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="font-semibold text-white">{item.label}</p>
+                      <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
+                        {item.count} personas
+                      </span>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
+                        <p className="mt-2 text-base font-semibold text-white">{item.kpis || 0}</p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
+                        <p className="mt-2 text-base font-semibold text-white">{item.okrs || 0}</p>
+                      </div>
+                      <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Planes pendientes</p>
+                        <p className="mt-2 text-base font-semibold text-white">{item.pendingPlans || 0}</p>
+                      </div>
+                    </div>
+                  </article>
+                ))}
+              </div>
             ) : (
-              <EmptyPanel text="No hay acciones recomendadas para los filtros seleccionados." />
-            )
-          ) : null}
-        </>
+              <EmptyPanel text="No hay departamentos con datos suficientes para resumir." />
+            )}
+          </SurfaceCard>
+
+          <SurfaceCard title="Personas visibles" subtitle="Desde acá podés saltar directo al reporte individual de cada persona.">
+            {employees.length ? (
+              <div className="grid gap-3 xl:grid-cols-2">
+                {employees.map((employee) => (
+                  <article key={employee._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-white">{employee.fullName}</p>
+                        <p className="mt-1 text-sm text-[#8FA9B7]">
+                          {employee.cargo || "Sin cargo"} {employee.area ? `· ${employee.area}` : ""}
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2 text-xs">
+                        <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                          Eval: {employee.evaluationCount}
+                        </span>
+                        <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                          Planes: {employee.planCount}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-4 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => focusEmployeeDetail(employee._id)}
+                        className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
+                      >
+                        Ver detalle
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <EmptyPanel text="No hay personas visibles para los filtros seleccionados." />
+            )}
+          </SurfaceCard>
+        </div>
+      ) : (
+        <div className="space-y-5">
+          <SurfaceCard title="Reporte individual" subtitle="Elegí una persona para ver su desempeño, sus evaluaciones, objetivos y desarrollo en un solo lugar.">
+            <div className="grid gap-4 xl:grid-cols-[1.2fr_auto]">
+              <label className="block">
+                <span className="mb-2 block text-sm text-[#c5d5de]">Persona</span>
+                <select
+                  className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
+                  value={draftFilters.employeeId}
+                  onChange={(event) => {
+                    const nextId = event.target.value;
+                    setDraftFilters((current) => ({ ...current, employeeId: nextId }));
+                    setFilters((current) => ({ ...current, employeeId: nextId }));
+                  }}
+                >
+                  <option value="">Elegí una persona</option>
+                  {employees.map((employee) => (
+                    <option key={employee._id} value={employee._id}>
+                      {employee.fullName} {employee.area ? `· ${employee.area}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={() => selectedEmployeeId && focusEmployeeDetail(selectedEmployeeId)}
+                  disabled={!selectedEmployeeId}
+                  className="w-full rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Ver detalle
+                </button>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          {!selectedEmployeeId ? (
+            <EmptyPanel text="Elegí una persona para ver su reporte individual." />
+          ) : (
+            <div ref={detailRef} className="space-y-5">
+              <SurfaceCard
+                title="Detalle individual"
+                subtitle={
+                  selectedEmployee
+                    ? `${selectedEmployee.fullName} · ${selectedEmployee.cargo || "Sin cargo"}${selectedEmployee.area ? ` · ${selectedEmployee.area}` : ""}`
+                    : "Cargando detalle individual"
+                }
+                actions={
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setView("evaluaciones")}
+                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
+                    >
+                      Ir a Evaluaciones
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setView("planes")}
+                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
+                    >
+                      Ir a Desarrollo
+                    </button>
+                  </div>
+                }
+              >
+                {loadingDetail ? (
+                  <EmptyPanel text="Cargando el detalle de la persona seleccionada..." />
+                ) : !detail ? (
+                  <EmptyPanel text="No hay detalle disponible para esta persona en el alcance actual." />
+                ) : (
+                  <div className="space-y-5">
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <StatCard label="Evaluaciones" value={detail.summary?.evaluationCount || 0} />
+                      <StatCard label="Pendientes" value={detail.summary?.pendingEvaluations || 0} tone="warning" />
+                      <StatCard label="Promedio" value={detail.summary?.averageScore || 0} tone="success" />
+                      <StatCard label="Planes abiertos" value={detail.summary?.openPlans || 0} hint={`${detail.summary?.overduePlans || 0} vencidos`} />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Nombre</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{detail.employee?.fullName || selectedEmployee?.fullName || "Sin dato visible"}</p>
+                      </article>
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Cargo / rol</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{detail.employee?.cargo || selectedEmployee?.cargo || "Sin dato visible"}</p>
+                      </article>
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Departamento / equipo</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{detail.employee?.area || selectedEmployee?.area || "Sin dato visible"}</p>
+                      </article>
+                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Ciclo / período</p>
+                        <p className="mt-2 text-sm font-semibold text-white">{overview?.selectedCycle?.label || "Sin ciclo visible"}</p>
+                      </article>
+                    </div>
+
+                    <div className="grid gap-5 xl:grid-cols-2">
+                      <MiniBarChart
+                        title="Desempeño por competencia"
+                        items={individualMetricSignalChart}
+                        emptyText="Todavía no hay competencias con puntaje visible para esta persona."
+                      />
+                      <MiniBarChart
+                        title="Autoevaluación vs superior"
+                        items={individualEvaluationChart}
+                        emptyText="Todavía no hay evaluaciones suficientes para comparar."
+                      />
+                      <MiniBarChart
+                        title="KPIs / OKRs por estado"
+                        items={[...individualKpiChart.slice(0, 3), ...individualOkrChart.slice(0, 2)]}
+                        emptyText="No hay KPIs u OKRs visibles para esta persona."
+                      />
+                      <MiniBarChart
+                        title="Planes de desarrollo"
+                        items={individualPlanChart}
+                        emptyText="No hay planes de desarrollo visibles para esta persona."
+                      />
+                    </div>
+
+                    <div className="grid gap-5 xl:grid-cols-2">
+                      <SurfaceCard title="Evaluaciones" subtitle="Autoevaluación, evaluación superior y cierre final cuando existan.">
+                        {detail.evaluations?.length ? (
+                          <div className="space-y-3">
+                            {detail.evaluations.map((evaluation) => (
+                              <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-semibold text-white">{evaluation.tipo}</p>
+                                    <p className="mt-1 text-sm text-[#8FA9B7]">
+                                      {evaluation.cycle?.label || "Sin ciclo"} · {formatDate(evaluation.createdAt)}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2 text-xs">
+                                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{evaluation.estado}</span>
+                                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
+                                      Resultado {evaluation.resultadoFinal || 0}
+                                    </span>
+                                  </div>
+                                </div>
+                                {evaluation.comentariosGenerales ? (
+                                  <p className="mt-3 text-sm text-[#c8d8df]">{evaluation.comentariosGenerales}</p>
+                                ) : null}
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <EmptyPanel text="No hay evaluaciones visibles para esta persona." />
+                        )}
+                      </SurfaceCard>
+
+                      <SurfaceCard title="KPIs y OKRs asignados" subtitle="Objetivos e indicadores visibles dentro del alcance actual.">
+                        {detail.kpis?.items?.length || detail.okrs?.items?.length ? (
+                          <div className="space-y-3">
+                            {detail.kpis?.items?.map((item) => (
+                              <article key={`kpi-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                <p className="font-semibold text-white">{item.name}</p>
+                                <p className="mt-1 text-sm text-[#8FA9B7]">
+                                  KPI {item.code || "sin código"} · {item.status || "Sin estado"}
+                                </p>
+                                <p className="mt-2 text-sm text-[#c8d8df]">
+                                  Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"} {item.unit || ""}
+                                </p>
+                              </article>
+                            ))}
+                            {detail.okrs?.items?.map((item) => (
+                              <article key={`okr-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                <p className="font-semibold text-white">{item.objectiveTitle}</p>
+                                <p className="mt-1 text-sm text-[#8FA9B7]">{item.keyResultTitle || "Sin resultado clave visible"}</p>
+                                <p className="mt-2 text-sm text-[#c8d8df]">
+                                  Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"}
+                                </p>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <EmptyPanel text="No hay KPIs u OKRs visibles para esta persona." />
+                        )}
+                      </SurfaceCard>
+                    </div>
+
+                    <div className="grid gap-5 xl:grid-cols-2">
+                      <SurfaceCard title="Desarrollo" subtitle="Planes activos, vencidos o completados para esta persona.">
+                        {detail.developmentPlans?.length ? (
+                          <div className="space-y-3">
+                            {detail.developmentPlans.map((plan) => (
+                              <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-semibold text-white">{plan.aspectoDesarrollar}</p>
+                                    <p className="mt-1 text-sm text-[#8FA9B7]">
+                                      Seguimiento {formatDate(plan.fechaSeguimiento)} · creado {formatDate(plan.createdAt)}
+                                    </p>
+                                  </div>
+                                  <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">{plan.estado}</span>
+                                </div>
+                                {plan.fortalezas?.length ? (
+                                  <p className="mt-3 text-sm text-[#c8d8df]">Fortalezas: {plan.fortalezas.join(", ")}</p>
+                                ) : null}
+                                {plan.medicion ? <p className="mt-2 text-sm text-[#c8d8df]">Medición: {plan.medicion}</p> : null}
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <EmptyPanel text="No hay planes de desarrollo visibles para esta persona." />
+                        )}
+                      </SurfaceCard>
+
+                      <SurfaceCard title="Acciones pendientes" subtitle="Qué conviene atender ahora según lo visible en el reporte individual.">
+                        {detail.actions?.length ? (
+                          <div className="space-y-3">
+                            {detail.actions.map((action, index) => (
+                              <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-semibold">{action.title}</p>
+                                  <ActionBadge severity={action.severity} />
+                                </div>
+                                <p className="mt-2 text-sm opacity-90">{action.description}</p>
+                              </article>
+                            ))}
+                          </div>
+                        ) : (
+                          <EmptyPanel text="No hay acciones pendientes para esta persona con los datos visibles hoy." />
+                        )}
+                      </SurfaceCard>
+                    </div>
+                  </div>
+                )}
+              </SurfaceCard>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
