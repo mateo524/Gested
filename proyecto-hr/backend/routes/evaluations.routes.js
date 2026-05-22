@@ -53,6 +53,23 @@ export async function buildEvaluationFilter(req) {
   return filter;
 }
 
+function getEvaluationEmployeeId(evaluation) {
+  return String(evaluation?.employeeId?._id || evaluation?.employeeId || "");
+}
+
+export function canEmployeeViewEvaluation(req, evaluation) {
+  if (!isEmployeeScope(req?.scope)) return true;
+  if (!evaluation) return false;
+  if (getEvaluationEmployeeId(evaluation) !== String(req.scope.employeeId || "")) return false;
+  if (evaluation.tipo === "AUTOEVALUACION") return true;
+  return evaluation.estado === "CERRADA" || evaluation.estado === "PUBLICADA";
+}
+
+export function filterEvaluationsForScope(req, evaluations = []) {
+  if (!isEmployeeScope(req?.scope)) return evaluations;
+  return evaluations.filter((evaluation) => canEmployeeViewEvaluation(req, evaluation));
+}
+
 function calculateResult(scores) {
   if (!scores.length) return 0;
   const total = scores.reduce((sum, item) => sum + Number(item.nivel || 0), 0);
@@ -113,7 +130,7 @@ router.get(
       .populate("cycleId", "anio periodo etapa estado")
       .lean();
 
-    res.json(evaluations);
+    res.json(filterEvaluationsForScope(req, evaluations));
   }
 );
 
@@ -141,7 +158,7 @@ router.get(
       .populate("cycleId", "anio periodo etapa estado")
       .lean();
 
-    if (!evaluation) {
+    if (!evaluation || !canEmployeeViewEvaluation(req, evaluation)) {
       return res.status(404).json({ mensaje: "Evaluacion no encontrada" });
     }
 

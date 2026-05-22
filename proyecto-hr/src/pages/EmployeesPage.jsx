@@ -53,10 +53,6 @@ export default function EmployeesPage() {
     () => new Map(employees.map((employee) => [employee._id, employee])),
     [employees]
   );
-  const selectedSchool = useMemo(
-    () => schools.find((school) => school._id === form.schoolId) || null,
-    [schools, form.schoolId]
-  );
 
   function buildEmployeeQuery(nextFilters) {
     const params = new URLSearchParams();
@@ -93,14 +89,14 @@ export default function EmployeesPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = {};
-    if (!form.schoolId) nextErrors.schoolId = "No hay institución asignada.";
+    if (!form.schoolId) nextErrors.schoolId = "No encontramos una organización activa para guardar este perfil.";
     if (!form.nombre?.trim()) nextErrors.nombre = "Nombre obligatorio.";
     if (!form.apellido?.trim()) nextErrors.apellido = "Apellido obligatorio.";
     if (!form.cargo?.trim()) nextErrors.cargo = "Cargo obligatorio.";
     setFieldErrors(nextErrors);
     if (Object.keys(nextErrors).length) {
       setMessageType("warning");
-      setMessage("Completa institución, nombre, apellido y cargo para guardar.");
+      setMessage("Completa nombre, apellido y cargo para guardar.");
       return;
     }
     try {
@@ -186,10 +182,6 @@ export default function EmployeesPage() {
           <p className="mt-2 text-sm text-[#9fb6c4]">Completa los datos mínimos y guarda. Luego puedes editar cuando quieras.</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <div className="rounded-xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-              <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Institución asignada</p>
-              <p className="mt-1 text-sm text-white">{selectedSchool?.nombre || "Sin institución asignada"}</p>
-            </div>
             {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
 
             <div className="grid gap-4 md:grid-cols-2">

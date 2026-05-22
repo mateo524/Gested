@@ -1,7 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import Employee from "../../models/Employee.js";
-import { buildEvaluationFilter } from "../../routes/evaluations.routes.js";
+import {
+  buildEvaluationFilter,
+  canEmployeeViewEvaluation,
+  filterEvaluationsForScope,
+} from "../../routes/evaluations.routes.js";
 import { buildPlansFilter } from "../../routes/developmentPlans.routes.js";
 import { requirePermission } from "../../middleware/rbac.js";
 
@@ -97,6 +101,78 @@ test("EMPLEADO queda limitado a su propio employeeId en evaluations aunque mande
   const filter = await buildEvaluationFilter(req);
   assert.equal(filter.employeeId, "emp-self-1");
   assert.equal(filter.companyId, "orgA");
+});
+
+test("EMPLEADO no recibe evaluacion de jefatura abierta dentro de su lista visible", async () => {
+  const req = reqBase({
+    scope: {
+      roleCode: "EMPLEADO",
+      employeeId: "emp-self-1",
+    },
+  });
+
+  const visible = filterEvaluationsForScope(req, [
+    { _id: "auto-1", employeeId: "emp-self-1", tipo: "AUTOEVALUACION", estado: "ENVIADA" },
+    { _id: "boss-open-1", employeeId: "emp-self-1", tipo: "JEFATURA", estado: "REVISADA" },
+  ]);
+
+  assert.deepEqual(
+    visible.map((item) => item._id),
+    ["auto-1"]
+  );
+});
+
+test("EMPLEADO si puede ver su autoevaluacion propia", async () => {
+  const req = reqBase({
+    scope: {
+      roleCode: "EMPLEADO",
+      employeeId: "emp-self-1",
+    },
+  });
+
+  assert.equal(
+    canEmployeeViewEvaluation(req, {
+      employeeId: "emp-self-1",
+      tipo: "AUTOEVALUACION",
+      estado: "BORRADOR",
+    }),
+    true
+  );
+});
+
+test("MANAGER si puede ver evaluacion de jefatura dentro de su alcance", async () => {
+  const req = reqBase({
+    scope: {
+      roleCode: "JEFE",
+      employeeId: "jefe-1",
+    },
+  });
+
+  assert.equal(
+    canEmployeeViewEvaluation(req, {
+      employeeId: "emp-team-1",
+      tipo: "JEFATURA",
+      estado: "REVISADA",
+    }),
+    true
+  );
+});
+
+test("ORG_ADMIN mantiene tenant del scope en evaluations y no ve otra organizacion", async () => {
+  const req = reqBase({
+    scope: {
+      roleCode: "ADMIN_COLEGIO",
+      companyId: "org-own",
+      schoolId: "school-own",
+      employeeId: null,
+    },
+    query: { employeeId: "emp-a1" },
+  });
+
+  const filter = await buildEvaluationFilter(req);
+  assert.equal(filter.companyId, "org-own");
+  assert.equal(filter.schoolId, "school-own");
+  assert.equal(filter.employeeId, "emp-a1");
 });
 
 test("LECTOR/AUDITOR no puede escribir endpoint critico protegido por permiso de escritura", async () => {
