@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import Employee from "../../models/Employee.js";
 import {
+  buildEffectiveRoleFromPreset,
   buildEmployeeScopedFilter,
   buildAssignmentSyncPlanForLegacyRole,
   can,
@@ -297,4 +298,25 @@ test("otros legacyRoleCode siguen resolviendo como antes", () => {
   assert.equal(getPresetByLegacyRoleCode("RRHH")?.roleKey, "HR");
   assert.equal(getPresetByLegacyRoleCode("JEFE")?.roleKey, "MANAGER");
   assert.equal(getPresetByLegacyRoleCode("EMPLEADO")?.roleKey, "EMPLOYEE");
+});
+
+test("roleLabel visible no cambia permisos ni alcance real del preset", () => {
+  const effectiveRole = buildEffectiveRoleFromPreset({
+    user: { _id: "user-1", companyId: "org-a", employeeId: "emp-1" },
+    preset: getRolePreset("EMPLOYEE"),
+    assignment: {
+      scope: "SELF",
+      roleLabel: "Docente",
+      departmentCode: "",
+      teamId: "",
+      employeeId: "emp-1",
+    },
+    permissions: [],
+  });
+
+  assert.equal(effectiveRole?.roleKey, "EMPLOYEE");
+  assert.equal(effectiveRole?.roleLabel, "Docente");
+  assert.equal(effectiveRole?.roleScope, "SELF");
+  assert.equal(effectiveRole?.permisos.includes("manage_users"), false);
+  assert.equal(effectiveRole?.permisos.includes("view_self_profile"), true);
 });

@@ -64,7 +64,7 @@ export function buildEffectiveRoleFromPreset({
   const effectivePermissions = Array.from(new Set(basePermissions));
   return {
     roleKey: preset.roleKey,
-    roleLabel: preset.label,
+    roleLabel: assignment?.roleLabel || preset.label,
     roleDescription: preset.description,
     roleCode: preset.legacyRoleCode,
     roleScope: scope,
@@ -325,6 +325,7 @@ export function validateRoleAssignmentInput(payload = {}) {
   return {
     roleKey,
     scope,
+    roleLabel: String(payload.roleLabel || "").trim(),
     departmentCode: normalizeDepartmentCode(payload.departmentCode),
     teamId: String(payload.teamId || "").trim(),
     active: payload.active !== false,
@@ -387,6 +388,7 @@ export async function syncPrimaryRoleAssignmentForUser({
   employeeId = null,
   roleKey,
   scope,
+  roleLabel = "",
   departmentCode = "",
   teamId = "",
   active = true,
@@ -410,6 +412,7 @@ export async function syncPrimaryRoleAssignmentForUser({
         employeeId: employeeId || user.employeeId || null,
         roleKey,
         scope,
+        roleLabel: String(roleLabel || "").trim(),
         departmentCode,
         teamId,
         active,
