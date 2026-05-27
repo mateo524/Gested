@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { isAdminOrgUser } from "../lib/roleHelpers";
+import CollapsibleList from "../components/CollapsibleList";
 
 const EMPTY_FORM = {
   title: "",
@@ -658,7 +659,11 @@ export default function AnnouncementsPage() {
               Cargando novedades...
             </div>
           ) : filteredAnnouncements.length ? (
-            filteredAnnouncements.map((item) => (
+            <CollapsibleList
+              items={filteredAnnouncements}
+              initialCount={3}
+              className="space-y-4"
+              renderItem={(item) => (
               <AnnouncementCard
                 key={item._id}
                 item={item}
@@ -671,7 +676,8 @@ export default function AnnouncementsPage() {
                 busyId={busyId}
                 actionBusy={actionBusy}
               />
-            ))
+              )}
+            />
           ) : (
             <div className="rounded-[1.75rem] border border-white/10 bg-[#0f1f28] px-5 py-10 text-center">
               <p className="text-lg font-semibold text-white">

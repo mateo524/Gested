@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import CollapsibleList from "../components/CollapsibleList";
 
 const emptyForm = {
   nombre: "",
@@ -412,7 +413,11 @@ export default function CompetenciesPage() {
               />
             ) : null}
             {!isLoading && competencies.length
-              ? competencies.map((competency) => (
+              ? <CollapsibleList
+                  items={competencies}
+                  initialCount={3}
+                  className="space-y-4"
+                  renderItem={(competency) => (
                   <article key={competency._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-semibold text-white">{competency.nombre}</p>
@@ -439,7 +444,8 @@ export default function CompetenciesPage() {
                       </button>
                     </div>
                   </article>
-                ))
+                  )}
+                />
               : null}
             {!isLoading && messageType !== "error" && !competencies.length ? (
               <EmptyState compact title="Todavía no hay competencias cargadas" description="Creá la primera competencia para ordenar evaluaciones, mediciones y desarrollo." />
