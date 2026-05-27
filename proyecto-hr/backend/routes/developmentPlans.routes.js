@@ -426,4 +426,38 @@ router.put(
   }
 );
 
+router.delete(
+  "/:id",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_DEVELOPMENT_PLANS, PERMISSIONS.EVALUATE_TEAM),
+  async (req, res) => {
+    const plan = await DevelopmentPlan.findOne(buildScopedFilter(req, { _id: req.params.id }));
+    if (!plan) {
+      return res.status(404).json({ mensaje: "Plan no encontrado" });
+    }
+
+    if (isManagerScope(req.scope)) {
+      const teamIds = await getScopedEmployeeIds(req.scope);
+      const allowed = teamIds.some((id) => String(id) === String(plan.employeeId));
+      if (!allowed) {
+        return res.status(403).json({ mensaje: "Solo puedes eliminar planes de tu equipo" });
+      }
+    }
+
+    await DevelopmentPlan.deleteOne({ _id: plan._id });
+
+    await logAudit({
+      companyId: plan.companyId,
+      schoolId: plan.schoolId,
+      userId: req.user.userId,
+      accion: "delete",
+      modulo: "development-plans",
+      detalle: `Se elimino el plan ${plan._id}`,
+    });
+
+    res.json({ mensaje: "Plan eliminado" });
+  }
+);
+
 export default router;

@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
   employeeId: "",
@@ -26,7 +27,7 @@ const suggestionFilters = [
 ];
 
 export default function DevelopmentPlansPage() {
-  const { token, user } = useAuth();
+  const { token, user, hasPermission } = useAuth();
   const { searchQuery } = useView();
   const [plans, setPlans] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -43,6 +44,9 @@ export default function DevelopmentPlansPage() {
   const [dismissedSuggestionIds, setDismissedSuggestionIds] = useState([]);
   const [suggestionFilter, setSuggestionFilter] = useState("all");
   const [prefilledFromSuggestion, setPrefilledFromSuggestion] = useState(false);
+  const [editingPlanId, setEditingPlanId] = useState("");
+  const [confirmState, setConfirmState] = useState({ open: false, plan: null });
+  const [isDeleting, setIsDeleting] = useState(false);
   const planFormRef = useRef(null);
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const baseCacheKey = `pf_plans_base_${roleScope}`;
@@ -85,6 +89,9 @@ export default function DevelopmentPlansPage() {
     });
   }, [dismissedSuggestionIds, searchQuery, suggestionFilter, suggestions]);
   const hasSuggestions = suggestions.some((suggestion) => !dismissedSuggestionIds.includes(suggestion.id));
+  const canManagePlans = Boolean(
+    hasPermission("manage_development_plans") || hasPermission("evaluate_team")
+  );
 
   const loadPlans = useCallback(async (signal) => {
     const params = new URLSearchParams();
@@ -201,8 +208,8 @@ export default function DevelopmentPlansPage() {
       setIsSubmitting(true);
       setMessage("");
       setMessageType("info");
-      await apiFetch("/development-plans", {
-        method: "POST",
+      await apiFetch(editingPlanId ? `/development-plans/${editingPlanId}` : "/development-plans", {
+        method: editingPlanId ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -214,8 +221,9 @@ export default function DevelopmentPlansPage() {
       });
       setForm(emptyForm);
       setPrefilledFromSuggestion(false);
+      setEditingPlanId("");
       setMessageType("success");
-      setMessage("Plan de desarrollo creado.");
+      setMessage(editingPlanId ? "Plan de desarrollo actualizado." : "Plan de desarrollo creado.");
       await Promise.all([loadPlans(), loadSuggestions()]);
     } catch (error) {
       setMessageType("error");
@@ -248,6 +256,53 @@ export default function DevelopmentPlansPage() {
     requestAnimationFrame(() => {
       planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }
+
+  function handleEditPlan(plan) {
+    setEditingPlanId(plan._id);
+    setPrefilledFromSuggestion(false);
+    setForm({
+      employeeId: String(plan.employeeId?._id || plan.employeeId || ""),
+      evaluationId: String(plan.evaluationId?._id || plan.evaluationId || ""),
+      fortalezas: Array.isArray(plan.fortalezas) ? plan.fortalezas.join(", ") : "",
+      aspectoDesarrollar: plan.aspectoDesarrollar || "",
+      medicion: plan.medicion || "",
+      fechaSeguimiento: plan.fechaSeguimiento
+        ? new Date(plan.fechaSeguimiento).toISOString().slice(0, 10)
+        : "",
+      estado: plan.estado || "PENDIENTE",
+    });
+    setMessageType("info");
+    setMessage("Revisá y ajustá el plan antes de guardarlo.");
+    requestAnimationFrame(() => {
+      planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  async function confirmDeletePlan() {
+    const plan = confirmState.plan;
+    if (!plan) return;
+    try {
+      setIsDeleting(true);
+      await apiFetch(`/development-plans/${plan._id}`, {
+        method: "DELETE",
+        token,
+      });
+      setConfirmState({ open: false, plan: null });
+      if (editingPlanId === plan._id) {
+        setEditingPlanId("");
+        setForm(emptyForm);
+        setPrefilledFromSuggestion(false);
+      }
+      setMessageType("success");
+      setMessage("Plan de desarrollo eliminado.");
+      await Promise.all([loadPlans(), loadSuggestions()]);
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   function handleDismissSuggestion(suggestionId) {
@@ -465,7 +520,7 @@ export default function DevelopmentPlansPage() {
           </section>
 
         <section ref={planFormRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <h4 className="text-xl font-semibold text-white">Nuevo plan de desarrollo</h4>
+          <h4 className="text-xl font-semibold text-white">{editingPlanId ? "Editar plan de desarrollo" : "Nuevo plan de desarrollo"}</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Empleado</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Objetivo</span>
@@ -477,11 +532,12 @@ export default function DevelopmentPlansPage() {
               onClick={() => {
                 setForm(emptyForm);
                 setPrefilledFromSuggestion(false);
+                setEditingPlanId("");
                 planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
               }}
               className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
             >
-              Crear plan manual
+              {editingPlanId ? "Crear plan manual" : "Limpiar formulario"}
             </button>
           </div>
           {prefilledFromSuggestion ? (
@@ -525,7 +581,7 @@ export default function DevelopmentPlansPage() {
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
-              {isSubmitting ? "Guardando..." : "Crear plan"}
+              {isSubmitting ? "Guardando..." : editingPlanId ? "Guardar cambios" : "Crear plan"}
             </button>
           </form>
         </section>
@@ -590,6 +646,24 @@ export default function DevelopmentPlansPage() {
                   <p className="mt-1 text-sm text-[#9fb6c4]">Responsable: {plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
                   <p className="mt-1 text-sm text-[#9fb6c4]">Accion / metrica: {plan.medicion || "-"}</p>
                   <p className="mt-1 text-sm text-[#9fb6c4]">Proximo paso: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
+                  {canManagePlans ? (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleEditPlan(plan)}
+                        className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-medium text-white"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmState({ open: true, plan })}
+                        className="rounded-2xl border border-rose-300/30 px-4 py-2 text-sm font-medium text-rose-100"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  ) : null}
                 </article>
               ))
             ) : (
@@ -626,6 +700,22 @@ export default function DevelopmentPlansPage() {
           {message}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title="Eliminar plan de desarrollo"
+        message={
+          confirmState.plan
+            ? `Vas a eliminar el plan sobre "${confirmState.plan.aspectoDesarrollar}". Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isDeleting}
+        onCancel={() => setConfirmState({ open: false, plan: null })}
+        onConfirm={confirmDeletePlan}
+      />
     </div>
   );
 }
