@@ -154,7 +154,7 @@ export default function EvaluationCyclesPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Ciclos</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Definí el ciclo, el período y las fechas clave. La organización se toma automáticamente desde tu tenant activo.
+          Definí el ciclo, el período y las fechas clave para ordenar evaluaciones y seguimiento.
         </p>
       </section>
 
@@ -162,7 +162,7 @@ export default function EvaluationCyclesPage() {
         <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
-            Completá período, etapa y rango de fechas. No hace falta elegir institución.
+            Completá período, etapa y rango de fechas.
           </p>
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
