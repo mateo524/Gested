@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -248,7 +248,7 @@ export default function EvaluationsPage() {
     <div className="space-y-5">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeño</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Evaluaciones</h3>
+        <h3 className="mt-3 text-3xl font-bold text-white">Gesti?n de evaluaciones</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Una evaluación mide desempeño durante un ciclo. El contexto define a quién se evalúa, con qué criterios y en qué período.
         </p>
@@ -309,7 +309,7 @@ export default function EvaluationsPage() {
             <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Comentarios generales" value={form.comentariosGenerales} onChange={(event) => setForm({ ...form, comentariosGenerales: event.target.value })} />
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-[#c5d5de]">Metas y competencias evaluadas</p>
+              <p className="text-sm font-semibold text-[#c5d5de]">Contenido evaluativo asociado</p>
               {scores.map((score) => (
                 <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
                   <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
@@ -332,7 +332,7 @@ export default function EvaluationsPage() {
         <section id="evaluations-list-section" className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h4 className="text-xl font-semibold text-white">Evaluaciones registradas</h4>
+              <h4 className="text-xl font-semibold text-white">Evaluaciones asignadas</h4>
               <p className="mt-1 text-sm text-[#9fb6c4]">Revisá la lista visible y abrí el detalle cuando quieras leer datos, mediciones y comentarios.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
@@ -382,7 +382,7 @@ export default function EvaluationsPage() {
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => loadEvaluationDetail(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
-                      Ver detalle
+                      Ver proceso
                     </button>
                     <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
                       Ver reporte individual
@@ -416,7 +416,7 @@ export default function EvaluationsPage() {
           {loadingDetail ? (
             <LoadingState compact title="Cargando detalle" description="Estamos trayendo mediciones, comentarios y resultado final." />
           ) : !selectedEvaluation ? (
-            <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá “Ver detalle” en la lista para abrir una vista más útil del desempeño." />
+            <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá “Ver proceso” en la lista para abrir una vista más útil del desempeño." />
           ) : (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -442,7 +442,7 @@ export default function EvaluationsPage() {
 
               <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
                 <div className="space-y-4">
-                  <SurfaceCard title="Metas y competencias evaluadas" subtitle="Acá concentramos las mediciones visibles del formulario actual.">
+                  <SurfaceCard title="Contenido evaluativo asociado" subtitle="Acá concentramos las mediciones visibles del formulario actual.">
                     <div className="space-y-3">
                       {selectedScores.length ? selectedScores.map((score) => (
                         <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
@@ -509,3 +509,4 @@ export default function EvaluationsPage() {
     </div>
   );
 }
+

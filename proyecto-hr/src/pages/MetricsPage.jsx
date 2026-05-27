@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -1403,7 +1403,7 @@ export default function MetricsPage() {
           <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
             <p className="text-sm font-semibold text-white">Qué conservan KPIs / OKRs</p>
             <p className="mt-2 text-sm text-[#9fb6c4]">
-              Objetivos medibles y contexto operativo. Se preservan, pero ya no dominan la experiencia principal.
+              Completa y revisa el contenido evaluativo: autoevaluaci?n, evaluaci?n del evaluador, descriptores, evidencias y resumen final.
             </p>
           </div>
         </div>
@@ -1411,3 +1411,4 @@ export default function MetricsPage() {
     </div>
   );
 }
+
