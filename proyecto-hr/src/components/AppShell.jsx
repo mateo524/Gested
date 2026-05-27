@@ -225,6 +225,15 @@ function SearchResultItem({ item, onSelect }) {
   );
 }
 
+function getUserDisplayName(user) {
+  return [user?.nombre, user?.apellido].filter(Boolean).join(" ").trim() || user?.nombre || "Usuario";
+}
+
+function getUserInitials(user) {
+  const parts = getUserDisplayName(user).split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "U";
+}
+
 function AppIcon({ name, active }) {
   const className = `h-5 w-5 ${active ? "text-white" : "text-[#8ea5b3]"}`;
   switch (name) {
@@ -418,6 +427,8 @@ export default function AppShell({
   );
 
   const organizationLabel = user?.companyName || "Organización activa";
+  const displayName = getUserDisplayName(user);
+  const userInitials = getUserInitials(user);
   const contextualSubtitle = isSuperAdmin
     ? "Gestión global multi-organización"
     : `Operación en ${organizationLabel}`;
@@ -534,18 +545,46 @@ export default function AppShell({
 
           <div className="border-t border-white/10 px-3 py-4">
             {!sidebarCollapsed ? (
-              <div className="rounded-3xl border border-white/10 bg-[#101d25] p-4">
-                <p className="text-sm font-semibold text-white">{user?.nombre || "Usuario"}</p>
-                <p className="mt-1 text-xs uppercase tracking-[0.14em] text-[#7ea3ff]">
+              <button
+                type="button"
+                onClick={() => setView("perfil")}
+                className="w-full rounded-3xl border border-white/10 bg-[#101d25] p-4 text-left transition hover:bg-[#13232d]"
+              >
+                <div className="flex items-center gap-3">
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={displayName} className="h-12 w-12 rounded-2xl object-cover" />
+                  ) : (
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e3a8a] text-sm font-semibold text-white">
+                      {userInitials}
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+                    <p className="mt-1 truncate text-xs text-[#7ea3ff]">
+                      {user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[#7ea3ff]">
                   {user?.roleKey || user?.roleCode || "ROL"}
                 </p>
                 <p className="mt-2 text-xs text-[#7c97a6]">{organizationLabel}</p>
-              </div>
+                <p className="mt-3 text-xs font-medium text-[#c7d5dc]">Mi perfil</p>
+              </button>
             ) : (
               <div className="flex justify-center">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#101d25] text-sm font-semibold text-white">
-                  {(user?.nombre || "U").slice(0, 1)}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setView("perfil")}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#101d25] text-sm font-semibold text-white"
+                  aria-label="Abrir mi perfil"
+                >
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={displayName} className="h-11 w-11 rounded-2xl object-cover" />
+                  ) : (
+                    userInitials.slice(0, 1)
+                  )}
+                </button>
               </div>
             )}
           </div>
@@ -638,15 +677,23 @@ export default function AppShell({
                     )}
                   </svg>
                 </button>
-                <div className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 md:flex">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1e3a8a] text-sm font-semibold text-white">
-                    {(user?.nombre || "U").slice(0, 1).toUpperCase()}
-                  </div>
+                <button
+                  type="button"
+                  onClick={() => setView("perfil")}
+                  className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-left transition hover:bg-[#172c39] md:flex"
+                >
+                  {user?.avatarUrl ? (
+                    <img src={user.avatarUrl} alt={displayName} className="h-10 w-10 rounded-2xl object-cover" />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1e3a8a] text-sm font-semibold text-white">
+                      {userInitials}
+                    </div>
+                  )}
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{user?.nombre || "Usuario actual"}</p>
+                    <p className="truncate text-sm font-semibold text-white">{displayName}</p>
                     <p className="truncate text-xs text-[#7ea3ff]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
                   </div>
-                </div>
+                </button>
                 <button
                   onClick={logout}
                   className="rounded-2xl border border-white/15 bg-[#152833] px-4 py-3 text-sm text-white transition hover:bg-[#1a3240]"

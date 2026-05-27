@@ -47,16 +47,39 @@ function clearAttempts(key) {
   loginLocks.delete(key);
 }
 
-async function buildSafeUser(user) {
-  const role = user.roleId ? await Role.findById(user.roleId).lean() : null;
-  const company = await Company.findById(user.companyId).lean();
-  const effectiveRole = await resolveEffectiveRole({
-    ...user.toObject(),
-    roleCode: role?.code || null,
-    roleScope: role?.scope || "company",
-    permisos: role?.permisos || [],
-  });
+function createRouteError(status, message) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
 
+function trimText(value) {
+  return String(value || "").trim();
+}
+
+function validateAvatarUrl(value) {
+  const nextValue = trimText(value);
+  if (!nextValue) return "";
+  try {
+    const parsed = new URL(nextValue);
+    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+      throw new Error("invalid_protocol");
+    }
+    return parsed.toString();
+  } catch {
+    throw createRouteError(400, "El avatar debe ser una URL valida.");
+  }
+}
+
+export function sanitizeSelfProfilePayload(body = {}) {
+  return {
+    nombre: trimText(body.nombre),
+    apellido: trimText(body.apellido),
+    avatarUrl: validateAvatarUrl(body.avatarUrl),
+  };
+}
+
+export function buildSafeUserPayload({ user, role, company, effectiveRole }) {
   return {
     _id: user._id,
     companyId: user.companyId,
@@ -64,7 +87,9 @@ async function buildSafeUser(user) {
     roleId: user.roleId,
     employeeId: user.employeeId || null,
     nombre: user.nombre,
+    apellido: user.apellido || "",
     email: user.email,
+    avatarUrl: user.avatarUrl || "",
     activo: user.activo,
     isSuperAdmin: !!user.isSuperAdmin,
     mustChangePassword: !!user.mustChangePassword,
@@ -79,6 +104,55 @@ async function buildSafeUser(user) {
     companyName: company?.nombre || "Sin empresa",
     permisos: effectiveRole?.permisos || role?.permisos || [],
   };
+}
+
+export function validatePasswordChangePayload(body = {}) {
+  const currentPassword = trimText(body.currentPassword);
+  const newPassword = trimText(body.newPassword);
+  const confirmPassword =
+    body.confirmPassword === undefined ? undefined : trimText(body.confirmPassword);
+
+  if (!currentPassword || !newPassword) {
+    throw createRouteError(400, "Debes indicar password actual y nueva");
+  }
+
+  if (newPassword.length < 6) {
+    throw createRouteError(400, "La nueva password debe tener al menos 6 caracteres");
+  }
+
+  if (confirmPassword !== undefined && confirmPassword !== newPassword) {
+    throw createRouteError(400, "La confirmacion de la nueva password no coincide");
+  }
+
+  return { currentPassword, newPassword };
+}
+
+export async function updateOwnPassword({ user, currentPassword, newPassword }) {
+  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
+  if (!ok) {
+    throw createRouteError(401, "La password actual no coincide");
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  user.mustChangePassword = false;
+  if (typeof user.save === "function") {
+    await user.save();
+  }
+
+  return user;
+}
+
+async function buildSafeUser(user) {
+  const role = user.roleId ? await Role.findById(user.roleId).lean() : null;
+  const company = await Company.findById(user.companyId).lean();
+  const effectiveRole = await resolveEffectiveRole({
+    ...user.toObject(),
+    roleCode: role?.code || null,
+    roleScope: role?.scope || "company",
+    permisos: role?.permisos || [],
+  });
+
+  return buildSafeUserPayload({ user, role, company, effectiveRole });
 }
 
 function buildToken(user, safeUser) {
@@ -209,50 +283,86 @@ router.get("/me", auth, async (req, res) => {
   }
 });
 
-router.post("/change-password", auth, async (req, res) => {
-  const currentPassword = req.body.currentPassword?.trim();
-  const newPassword = req.body.newPassword?.trim();
+router.put("/me/profile", auth, async (req, res) => {
+  try {
+    const user = await User.findOne({
+      _id: req.user.userId,
+      companyId: req.user.companyId,
+      activo: true,
+    });
 
-  if (!currentPassword || !newPassword) {
-    return res.status(400).json({ mensaje: "Debes indicar password actual y nueva" });
+    if (!user) {
+      return res.status(404).json({ mensaje: "Usuario no encontrado" });
+    }
+
+    const payload = sanitizeSelfProfilePayload(req.body || {});
+    if (!payload.nombre) {
+      return res.status(400).json({ mensaje: "El nombre es obligatorio." });
+    }
+
+    user.nombre = payload.nombre;
+    user.apellido = payload.apellido;
+    user.avatarUrl = payload.avatarUrl;
+    await user.save();
+
+    await logAudit({
+      companyId: user.companyId,
+      userId: user._id,
+      accion: "actualizacion",
+      modulo: "perfil",
+      detalle: "El usuario actualizo sus datos basicos",
+    });
+
+    const safeUser = await buildSafeUser(user);
+    const token = buildToken(user, safeUser);
+
+    res.json({
+      mensaje: "Perfil actualizado",
+      token,
+      user: safeUser,
+    });
+  } catch (error) {
+    res.status(error.status || 500).json({ mensaje: error.message || "No pudimos actualizar el perfil." });
   }
-
-  if (newPassword.length < 6) {
-    return res.status(400).json({ mensaje: "La nueva password debe tener al menos 6 caracteres" });
-  }
-
-  const user = await User.findById(req.user.userId);
-
-  if (!user || !user.activo) {
-    return res.status(404).json({ mensaje: "Usuario no encontrado" });
-  }
-
-  const ok = await bcrypt.compare(currentPassword, user.passwordHash);
-  if (!ok) {
-    return res.status(401).json({ mensaje: "La password actual no coincide" });
-  }
-
-  user.passwordHash = await bcrypt.hash(newPassword, 10);
-  user.mustChangePassword = false;
-  await user.save();
-
-  await logAudit({
-    companyId: user.companyId,
-    userId: user._id,
-    accion: "actualizacion",
-    modulo: "seguridad",
-    detalle: "El usuario actualizo su password de acceso",
-  });
-
-  const safeUser = await buildSafeUser(user);
-  const token = buildToken(user, safeUser);
-
-  res.json({
-    mensaje: "Password actualizada",
-    token,
-    user: safeUser,
-  });
 });
+
+async function handleChangeOwnPassword(req, res) {
+  let currentPassword = "";
+  let newPassword = "";
+  try {
+    ({ currentPassword, newPassword } = validatePasswordChangePayload(req.body || {}));
+
+    const user = await User.findById(req.user.userId);
+
+    if (!user || !user.activo) {
+      return res.status(404).json({ mensaje: "Usuario no encontrado" });
+    }
+
+    await updateOwnPassword({ user, currentPassword, newPassword });
+
+    await logAudit({
+      companyId: user.companyId,
+      userId: user._id,
+      accion: "actualizacion",
+      modulo: "seguridad",
+      detalle: "El usuario actualizo su password de acceso",
+    });
+
+    const safeUser = await buildSafeUser(user);
+    const token = buildToken(user, safeUser);
+
+    return res.json({
+      mensaje: "Password actualizada",
+      token,
+      user: safeUser,
+    });
+  } catch (error) {
+    return res.status(error.status || 500).json({ mensaje: error.message || "No pudimos actualizar la password." });
+  }
+}
+
+router.put("/me/password", auth, handleChangeOwnPassword);
+router.post("/change-password", auth, handleChangeOwnPassword);
 
 router.post("/forgot-password", async (req, res) => {
   const email = req.body.email?.trim().toLowerCase();

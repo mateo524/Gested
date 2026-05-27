@@ -23,6 +23,7 @@ const loadBulkImportPage = () => import("./pages/BulkImportPage");
 const loadExecutiveReportPage = () => import("./pages/ExecutiveReportPage");
 const loadStorageCenterPage = () => import("./pages/StorageCenterPage");
 const loadSettingsPage = () => import("./pages/SettingsPage");
+const loadProfilePage = () => import("./pages/ProfilePage");
 
 const DashboardPage = lazy(loadDashboardPage);
 const OrganizationsPage = lazy(loadOrganizationsPage);
@@ -40,6 +41,7 @@ const BulkImportPage = lazy(loadBulkImportPage);
 const ExecutiveReportPage = lazy(loadExecutiveReportPage);
 const StorageCenterPage = lazy(loadStorageCenterPage);
 const SettingsPage = lazy(loadSettingsPage);
+const ProfilePage = lazy(loadProfilePage);
 
 function ViewLoader() {
   return (
@@ -67,6 +69,7 @@ function AppContent() {
         hasPermission("manage_roles") || hasPermission("view_audit") ? "roles" : null,
         hasPermission("manage_settings") || user?.isSuperAdmin ? "settings" : null,
         user ? "novedades" : null,
+        user ? "perfil" : null,
         hasPermission("manage_employees") ? "empleados" : null,
         hasPermission("manage_competencies") ? "competencias" : null,
         hasPermission("manage_metrics") ? "metricas" : null,
@@ -159,6 +162,7 @@ function AppContent() {
     if (!isAuthenticated || !user) return;
 
     const preloaders = [loadDashboardPage];
+    preloaders.push(loadProfilePage);
 
     if (isAdminOrgUser(user) || isManagerUser(user) || isEmployeeUser(user)) {
       preloaders.push(loadEvaluationsPage, loadDevelopmentPlansPage);
@@ -219,6 +223,7 @@ function AppContent() {
         <Suspense fallback={<ViewLoader />}>
           {view === "dashboard" && <DashboardPage />}
           {view === "novedades" && <AnnouncementsPage />}
+          {view === "perfil" && <ProfilePage />}
           {view === "organizaciones" && <OrganizationsPage />}
           {view === "empleados" && <EmployeesPage />}
           {view === "competencias" && <CompetenciesPage />}
