@@ -165,6 +165,7 @@ export default function ExecutiveReportPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [filters, setFilters] = useState({ cycleId: "", department: "", employeeId: "" });
   const [draftFilters, setDraftFilters] = useState({ cycleId: "", department: "", employeeId: "" });
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [overview, setOverview] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -182,6 +183,12 @@ export default function ExecutiveReportPage() {
 
   const isEmployee = isEmployeeUser(user);
 
+  const scrollDetailIntoView = useCallback(() => {
+    window.requestAnimationFrame(() => {
+      detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }, []);
+
   const loadOverview = useCallback(async () => {
     if (!token || !canViewExecutive || isEmployee) return;
     try {
@@ -198,12 +205,24 @@ export default function ExecutiveReportPage() {
       const normalizedFilters = {
         cycleId: data?.filters?.selectedCycleId || filters.cycleId || "",
         department: data?.filters?.selectedDepartment || filters.department || "",
-        employeeId: data?.filters?.selectedEmployeeId || filters.employeeId || "",
+        employeeId: filters.employeeId || "",
       };
-      setFilters(normalizedFilters);
-      setDraftFilters(normalizedFilters);
+      setFilters((current) =>
+        current.cycleId === normalizedFilters.cycleId &&
+        current.department === normalizedFilters.department &&
+        current.employeeId === normalizedFilters.employeeId
+          ? current
+          : normalizedFilters
+      );
+      setDraftFilters((current) =>
+        current.cycleId === normalizedFilters.cycleId &&
+        current.department === normalizedFilters.department &&
+        current.employeeId === normalizedFilters.employeeId
+          ? current
+          : normalizedFilters
+      );
 
-      if (!normalizedFilters.employeeId) {
+      if (!selectedEmployeeId) {
         setDetail(null);
       }
     } catch (nextError) {
@@ -213,7 +232,7 @@ export default function ExecutiveReportPage() {
     } finally {
       setLoadingOverview(false);
     }
-  }, [canViewExecutive, filters, isEmployee, token]);
+  }, [canViewExecutive, filters.cycleId, filters.department, filters.employeeId, isEmployee, selectedEmployeeId, token]);
 
   const loadEmployeeDetail = useCallback(
     async (currentEmployeeId) => {
@@ -231,9 +250,7 @@ export default function ExecutiveReportPage() {
         setDetail(data);
         if (pendingDetailScrollRef.current) {
           pendingDetailScrollRef.current = false;
-          window.requestAnimationFrame(() => {
-            detailRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-          });
+          scrollDetailIntoView();
         }
       } catch (nextError) {
         setDetail(null);
@@ -243,7 +260,7 @@ export default function ExecutiveReportPage() {
         setLoadingDetail(false);
       }
     },
-    [canViewExecutive, filters.cycleId, isEmployee, token]
+    [canViewExecutive, filters.cycleId, isEmployee, scrollDetailIntoView, token]
   );
 
   useEffect(() => {
@@ -251,10 +268,12 @@ export default function ExecutiveReportPage() {
   }, [loadOverview]);
 
   useEffect(() => {
-    if (overview?.filters?.selectedEmployeeId) {
-      loadEmployeeDetail(overview.filters.selectedEmployeeId);
+    if (selectedEmployeeId) {
+      loadEmployeeDetail(selectedEmployeeId);
+    } else {
+      setDetail(null);
     }
-  }, [loadEmployeeDetail, overview?.filters?.selectedEmployeeId]);
+  }, [loadEmployeeDetail, selectedEmployeeId]);
 
   const employees = useMemo(() => {
     const items = overview?.catalogs?.employees || [];
@@ -269,15 +288,30 @@ export default function ExecutiveReportPage() {
 
   const cycles = overview?.catalogs?.cycles || [];
   const departments = overview?.catalogs?.departments || [];
-  const selectedEmployeeId = overview?.filters?.selectedEmployeeId || filters.employeeId || "";
-  const selectedEmployee = detail?.employee || overview?.selectedEmployee || null;
+  const selectedEmployee =
+    detail?.employee ||
+    employees.find((employee) => employee._id === selectedEmployeeId) ||
+    overview?.selectedEmployee ||
+    null;
 
-  const focusEmployeeDetail = useCallback((employeeId) => {
-    setActiveTab("individual");
-    setDraftFilters((current) => ({ ...current, employeeId }));
-    setFilters((current) => ({ ...current, employeeId }));
-    pendingDetailScrollRef.current = true;
-  }, []);
+  const focusEmployeeDetail = useCallback(
+    (employeeId, options = {}) => {
+      if (!employeeId) return;
+      const { activateTab = true } = options;
+      if (activateTab) {
+        setActiveTab("individual");
+      }
+      setDraftFilters((current) => (current.employeeId === employeeId ? current : { ...current, employeeId }));
+      if (selectedEmployeeId === employeeId) {
+        pendingDetailScrollRef.current = false;
+        scrollDetailIntoView();
+        return;
+      }
+      pendingDetailScrollRef.current = true;
+      setSelectedEmployeeId(employeeId);
+    },
+    [scrollDetailIntoView, selectedEmployeeId]
+  );
 
   function applyFilters() {
     setFilters({ ...draftFilters });
@@ -497,7 +531,7 @@ export default function ExecutiveReportPage() {
       ) : !overview ? (
         <EmptyPanel text="No pudimos cargar el reporte en este momento." />
       ) : activeTab === "general" ? (
-        <div className="space-y-5">
+        <div className="min-h-[36rem] space-y-5">
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <StatCard label="Personas visibles" value={overview.summary?.employeesTotal || 0} hint="Dentro del alcance actual" />
             <StatCard label="Desempeño promedio" value={overview.summary?.averageScore || 0} hint="Resultado visible" tone="success" />
@@ -651,18 +685,23 @@ export default function ExecutiveReportPage() {
           </SurfaceCard>
         </div>
       ) : (
-        <div className="space-y-5">
+        <div className="min-h-[36rem] space-y-5">
           <SurfaceCard title="Reporte individual" subtitle="Elegí una persona para ver su desempeño, sus evaluaciones, objetivos y desarrollo en un solo lugar.">
             <div className="grid gap-4 xl:grid-cols-[1.2fr_auto]">
               <label className="block">
                 <span className="mb-2 block text-sm text-[#c5d5de]">Persona</span>
                 <select
                   className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
-                  value={draftFilters.employeeId}
+                  value={selectedEmployeeId}
                   onChange={(event) => {
                     const nextId = event.target.value;
                     setDraftFilters((current) => ({ ...current, employeeId: nextId }));
-                    setFilters((current) => ({ ...current, employeeId: nextId }));
+                    if (!nextId) {
+                      pendingDetailScrollRef.current = false;
+                      setSelectedEmployeeId("");
+                      return;
+                    }
+                    focusEmployeeDetail(nextId, { activateTab: false });
                   }}
                 >
                   <option value="">Elegí una persona</option>
@@ -676,7 +715,7 @@ export default function ExecutiveReportPage() {
               <div className="flex items-end">
                 <button
                   type="button"
-                  onClick={() => selectedEmployeeId && focusEmployeeDetail(selectedEmployeeId)}
+                  onClick={() => selectedEmployeeId && scrollDetailIntoView()}
                   disabled={!selectedEmployeeId}
                   className="w-full rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
                 >
@@ -689,7 +728,7 @@ export default function ExecutiveReportPage() {
           {!selectedEmployeeId ? (
             <EmptyPanel text="Elegí una persona para ver su reporte individual." />
           ) : (
-            <div ref={detailRef} className="space-y-5">
+            <div ref={detailRef} className="min-h-[24rem] space-y-5">
               <SurfaceCard
                 title="Detalle individual"
                 subtitle={
