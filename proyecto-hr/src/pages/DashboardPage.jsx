@@ -4,6 +4,7 @@ import { apiFetch, apiUrl } from "../lib/api";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import { useView } from "../context/ViewContext";
 import OnboardingChecklist from "../components/OnboardingChecklist";
+import CollapsibleList from "../components/CollapsibleList";
 
 function getDashboardCacheKey(user, companyId) {
   const role = user?.roleKey || user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
@@ -462,7 +463,11 @@ export default function DashboardPage() {
         >
           <div className="space-y-3">
             {actionsToday.length ? (
-              actionsToday.map((item, index) => (
+              <CollapsibleList
+                items={actionsToday}
+                initialCount={3}
+                className="space-y-3"
+                renderItem={(item, index) => (
                 <article key={`${item.title}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-white md:text-base">{item.title}</p>
@@ -477,7 +482,8 @@ export default function DashboardPage() {
                     {item.actionLabel}
                   </button>
                 </article>
-              ))
+                )}
+              />
             ) : (
               <EmptyState text="No hay acciones urgentes por ahora." />
             )}
@@ -507,7 +513,11 @@ export default function DashboardPage() {
         <SurfaceCard title="Actividad reciente" subtitle="Usamos la actividad real registrada en auditoria y eventos visibles.">
           <div className="space-y-3">
             {recentActivity.length ? (
-              recentActivity.map((item) => (
+              <CollapsibleList
+                items={recentActivity}
+                initialCount={3}
+                className="space-y-3"
+                renderItem={(item) => (
                 <div key={item.id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-white">{item.title}</p>
@@ -515,7 +525,8 @@ export default function DashboardPage() {
                   </div>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{item.detail}</p>
                 </div>
-              ))
+                )}
+              />
             ) : (
               <EmptyState text="No hay actividad reciente todavía." />
             )}
@@ -525,12 +536,17 @@ export default function DashboardPage() {
         <SurfaceCard title="Proximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
           <div className="space-y-3">
             {upcomingMilestones.length ? (
-              upcomingMilestones.map((item) => (
+              <CollapsibleList
+                items={upcomingMilestones}
+                initialCount={3}
+                className="space-y-3"
+                renderItem={(item) => (
                 <div key={item.title} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
                   <p className="text-sm font-semibold text-white">{item.title}</p>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{item.detail}</p>
                 </div>
-              ))
+                )}
+              />
             ) : (
               <EmptyState text="No hay próximos hitos con fecha visible todavía." />
             )}
@@ -573,7 +589,11 @@ export default function DashboardPage() {
         <SurfaceCard title="Objetivos / indicadores" subtitle="Mostramos solo datos reales que hoy ya existen.">
           <div className="space-y-3">
             {training.length ? (
-              training.slice(0, 4).map((item) => (
+              <CollapsibleList
+                items={training}
+                initialCount={3}
+                className="space-y-3"
+                renderItem={(item) => (
                 <div key={item.competencia} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-semibold text-white">{item.competencia}</p>
@@ -581,7 +601,8 @@ export default function DashboardPage() {
                   </div>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{item.action}</p>
                 </div>
-              ))
+                )}
+              />
             ) : (
               <EmptyState text="Todavía no hay objetivos o indicadores visibles para este alcance." />
             )}

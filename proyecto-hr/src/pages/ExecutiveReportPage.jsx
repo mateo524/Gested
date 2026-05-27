@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
+import CollapsibleList from "../components/CollapsibleList";
 
 const PRIMARY_TABS = [
   { key: "general", label: "Reporte general" },
@@ -569,7 +570,11 @@ export default function ExecutiveReportPage() {
               </div>
               <div className="mt-4 space-y-3">
                 {overviewActions.length ? (
-                  overviewActions.slice(0, 4).map((action, index) => {
+                  <CollapsibleList
+                    items={overviewActions}
+                    initialCount={3}
+                    className="space-y-3"
+                    renderItem={(action, index) => {
                     const destination = mapActionDestination(action);
                     return (
                       <article key={`${action.key || action.title}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
@@ -598,7 +603,8 @@ export default function ExecutiveReportPage() {
                         ) : null}
                       </article>
                     );
-                  })
+                    }}
+                  />
                 ) : (
                   <EmptyPanel text="No hay acciones generales para destacar con los filtros actuales." />
                 )}
@@ -648,8 +654,11 @@ export default function ExecutiveReportPage() {
 
           <SurfaceCard title="Personas visibles" subtitle="Desde acá podés saltar directo al reporte individual de cada persona.">
             {employees.length ? (
-              <div className="grid gap-3 xl:grid-cols-2">
-                {employees.map((employee) => (
+              <CollapsibleList
+                items={employees}
+                initialCount={4}
+                className="grid gap-3 xl:grid-cols-2"
+                renderItem={(employee) => (
                   <article key={employee._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -677,8 +686,8 @@ export default function ExecutiveReportPage() {
                       </button>
                     </div>
                   </article>
-                ))}
-              </div>
+                )}
+              />
             ) : (
               <EmptyPanel text="No hay personas visibles para los filtros seleccionados." />
             )}
@@ -813,8 +822,11 @@ export default function ExecutiveReportPage() {
                     <div className="grid gap-5 xl:grid-cols-2">
                       <SurfaceCard title="Evaluaciones" subtitle="Autoevaluación, evaluación superior y cierre final cuando existan.">
                         {detail.evaluations?.length ? (
-                          <div className="space-y-3">
-                            {detail.evaluations.map((evaluation) => (
+                          <CollapsibleList
+                            items={detail.evaluations}
+                            initialCount={3}
+                            className="space-y-3"
+                            renderItem={(evaluation) => (
                               <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                   <div>
@@ -834,8 +846,8 @@ export default function ExecutiveReportPage() {
                                   <p className="mt-3 text-sm text-[#c8d8df]">{evaluation.comentariosGenerales}</p>
                                 ) : null}
                               </article>
-                            ))}
-                          </div>
+                            )}
+                          />
                         ) : (
                           <EmptyPanel text="No hay evaluaciones visibles para esta persona." />
                         )}

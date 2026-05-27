@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import CollapsibleList from "../components/CollapsibleList";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
@@ -433,8 +434,12 @@ export default function DevelopmentPlansPage() {
                   description="Estamos cruzando evaluaciones, KPI, OKR y planes vigentes."
                 />
               ) : visibleSuggestions.length ? (
-                visibleSuggestions.map((suggestion) => (
-                  <article key={suggestion.id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                <CollapsibleList
+                  items={visibleSuggestions}
+                  initialCount={3}
+                  className="space-y-4"
+                  renderItem={(suggestion) => (
+                    <article key={suggestion.id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="text-lg font-semibold text-white">{suggestion.employeeName}</p>
@@ -503,8 +508,9 @@ export default function DevelopmentPlansPage() {
                         Descartar
                       </button>
                     </div>
-                  </article>
-                ))
+                    </article>
+                  )}
+                />
               ) : (
                 <EmptyState
                   compact
@@ -628,8 +634,12 @@ export default function DevelopmentPlansPage() {
               />
             ) : null}
             {!isLoadingBase && !isLoadingPlans && visiblePlans.length ? (
-              visiblePlans.map((plan) => (
-                <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+              <CollapsibleList
+                items={visiblePlans}
+                initialCount={3}
+                className="space-y-4"
+                renderItem={(plan) => (
+                  <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-lg font-semibold text-white">{plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
                     <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
@@ -664,8 +674,9 @@ export default function DevelopmentPlansPage() {
                       </button>
                     </div>
                   ) : null}
-                </article>
-              ))
+                  </article>
+                )}
+              />
             ) : (
               !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
                 <EmptyState

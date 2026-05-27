@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import CollapsibleList from "../components/CollapsibleList";
 
 const emptyForm = {
   employeeId: "",
@@ -371,7 +372,11 @@ export default function EvaluationsPage() {
               />
             ) : null}
             {!isLoadingBase && !isLoadingEvaluations && visibleEvaluations.length ? (
-              visibleEvaluations.map((evaluation) => (
+              <CollapsibleList
+                items={visibleEvaluations}
+                initialCount={3}
+                className="space-y-4"
+                renderItem={(evaluation) => (
                 <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
@@ -389,7 +394,8 @@ export default function EvaluationsPage() {
                     </button>
                   </div>
                 </article>
-              ))
+                )}
+              />
             ) : (
               !isLoadingBase && !isLoadingEvaluations && messageType !== "error" ? (
                 <EmptyState
