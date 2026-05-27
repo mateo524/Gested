@@ -31,6 +31,11 @@ const UserRoleAssignmentSchema = new mongoose.Schema(
       enum: ["ORGANIZATION", "REGION_COUNTRY", "BUSINESS_UNIT", "DEPARTMENT", "TEAM", "SELF"],
       required: true,
     },
+    roleLabel: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     departmentCode: {
       type: String,
       default: "",

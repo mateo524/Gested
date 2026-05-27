@@ -3,12 +3,18 @@ import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import School from "../models/School.js";
+import User from "../models/User.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 import { isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
+import {
+  normalizeEmail,
+  resolveDefaultEmployeeRole,
+  syncUserForEmployeeCreation,
+} from "../utils/userEmployeeSync.js";
 
 const router = express.Router();
 
@@ -187,6 +193,26 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     return res.status(400).json({ mensaje: "El colegio seleccionado no existe o no pertenece a tu organizacion" });
   }
 
+  const normalizedEmail = normalizeEmail(req.body.email);
+  if (normalizedEmail) {
+    const existingUser = await User.findOne({
+      companyId,
+      email: normalizedEmail,
+      isSuperAdmin: false,
+    })
+      .select("_id")
+      .lean();
+
+    if (!existingUser) {
+      const employeeRole = await resolveDefaultEmployeeRole({ companyId });
+      if (!employeeRole) {
+        return res.status(400).json({
+          mensaje: "No existe un rol base EMPLEADO configurado para crear el usuario asociado.",
+        });
+      }
+    }
+  }
+
   const managerValidation = await validateManager({
     managerId: req.body.managerId || null,
     companyId,
@@ -203,13 +229,14 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     legajo: req.body.legajo?.trim() || "",
     nombre: req.body.nombre.trim(),
     apellido: req.body.apellido.trim(),
-    email: req.body.email?.trim().toLowerCase() || "",
+    email: normalizedEmail || "",
     cargo: req.body.cargo.trim(),
     area: req.body.area?.trim() || "",
     tipoEmpleado: req.body.tipoEmpleado || "DOCENTE",
     fechaIngreso: req.body.fechaIngreso || null,
     activo: req.body.activo !== false,
   });
+  const userLinkResult = await syncUserForEmployeeCreation({ employee });
 
   await logAudit({
     companyId,
@@ -220,7 +247,19 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     detalle: `Se creo el empleado ${employee.apellido}, ${employee.nombre}`,
   });
 
-  res.status(201).json({ mensaje: "Empleado creado", employee });
+  res.status(201).json({
+    mensaje: "Empleado creado",
+    employee,
+    user:
+      userLinkResult?.user
+        ? {
+            _id: userLinkResult.user._id,
+            email: userLinkResult.user.email,
+            action: userLinkResult.action,
+          }
+        : null,
+    temporaryPassword: userLinkResult?.temporaryPassword || null,
+  });
 });
 
 router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {

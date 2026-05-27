@@ -5,6 +5,7 @@ import ExcelJS from "exceljs";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
+import Employee from "../models/Employee.js";
 import DatabaseFile from "../models/DatabaseFile.js";
 import Announcement from "../models/Announcement.js";
 import CompanySetting from "../models/CompanySetting.js";
@@ -20,6 +21,11 @@ import {
   syncPrimaryRoleAssignmentForUser,
 } from "../utils/accessControl.js";
 import { getPresetByLegacyRoleCode } from "../utils/rolePresets.js";
+import {
+  normalizeEmail,
+  resolveDefaultActiveSchoolId,
+  syncEmployeeForUserCreation,
+} from "../utils/userEmployeeSync.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage() });
@@ -109,6 +115,7 @@ async function syncAssignmentFromRole({ user, role }) {
     employeeId: user.employeeId || null,
     roleKey: preset.roleKey,
     scope: preset.allowedScopes[0],
+    roleLabel: role.nombre || preset.label,
     departmentCode: "",
     teamId: "",
     active: true,
@@ -177,7 +184,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
     return res.status(400).json({ mensaje: "Faltan datos obligatorios del usuario" });
   }
 
-  const normalizedEmail = email.trim().toLowerCase();
+  const normalizedEmail = normalizeEmail(email);
   const existingUser = await User.findOne({ email: normalizedEmail });
   if (existingUser) {
     return res.status(409).json({ mensaje: "Ya existe un usuario con ese email" });
@@ -191,18 +198,40 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
     return res.status(403).json({ mensaje: "SUPER_ADMIN solo puede gestionarse desde plataforma" });
   }
 
+  const existingEmployee = await Employee.findOne({ companyId, email: normalizedEmail })
+    .select("_id schoolId")
+    .lean();
+  const effectiveSchoolId =
+    existingEmployee?.schoolId ||
+    (await resolveDefaultActiveSchoolId({
+      companyId,
+      preferredSchoolId: req.user.schoolId || null,
+    }));
+
+  if (!existingEmployee && !effectiveSchoolId) {
+    return res.status(400).json({
+      mensaje: "No hay un colegio o sede activa para crear el perfil del empleado asociado.",
+    });
+  }
+
   const generatedPassword = password?.trim() || generateTempPassword();
   const mustChangePassword = !password?.trim();
 
   const passwordHash = await bcrypt.hash(generatedPassword, 10);
   const user = await User.create({
     companyId,
+    schoolId: effectiveSchoolId || null,
     nombre: nombre.trim(),
     email: normalizedEmail,
     passwordHash,
     roleId,
     activo,
     mustChangePassword,
+  });
+  const employeeLinkResult = await syncEmployeeForUserCreation({
+    user,
+    preferredSchoolId: effectiveSchoolId || null,
+    role,
   });
   await syncAssignmentFromRole({ user, role });
 
@@ -221,6 +250,14 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   res.status(201).json({
     mensaje: "Usuario creado",
     user: hydratedUser,
+    employee:
+      employeeLinkResult?.employee
+        ? {
+            _id: employeeLinkResult.employee._id,
+            email: employeeLinkResult.employee.email,
+            action: employeeLinkResult.action,
+          }
+        : null,
     temporaryPassword: mustChangePassword ? generatedPassword : null,
   });
 });
