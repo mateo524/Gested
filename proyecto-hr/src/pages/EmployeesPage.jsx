@@ -4,6 +4,7 @@ import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
+import CollapsibleList from "../components/CollapsibleList";
 
 const emptyForm = {
   schoolId: "",
@@ -309,30 +310,35 @@ export default function EmployeesPage() {
               />
             ) : null}
             {!isLoading && filteredEmployees.length ? (
-              filteredEmployees.map((employee) => {
-                const manager = employeesById.get(employee.managerId);
-                return (
-                  <article key={employee._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                    <p className="text-base font-semibold text-white">
-                      {employee.apellido}, {employee.nombre}
-                    </p>
-                    <p className="mt-1 text-sm text-[#9fb6c4]">
-                      {employee.cargo || "-"} - {employee.area || "Sin área"} - {employee.tipoEmpleado || "-"}
-                    </p>
-                    <p className="mt-1 text-xs text-[#7f99a8]">
-                      Ingreso: {formatDate(employee.fechaIngreso)} - Jefe: {manager ? `${manager.apellido}, ${manager.nombre}` : "Sin jefe"}
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
-                        Editar
-                      </button>
-                      <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
-                        Eliminar
-                      </button>
-                    </div>
-                  </article>
-                );
-              })
+              <CollapsibleList
+                items={filteredEmployees}
+                initialCount={5}
+                buttonLabelMore={`Ver más (${filteredEmployees.length - 5})`}
+                renderItem={(employee) => {
+                  const manager = employeesById.get(employee.managerId);
+                  return (
+                    <article key={employee._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <p className="text-base font-semibold text-white">
+                        {employee.apellido}, {employee.nombre}
+                      </p>
+                      <p className="mt-1 text-sm text-[#9fb6c4]">
+                        {employee.cargo || "-"} - {employee.area || "Sin área"} - {employee.tipoEmpleado || "-"}
+                      </p>
+                      <p className="mt-1 text-xs text-[#7f99a8]">
+                        Ingreso: {formatDate(employee.fechaIngreso)} - Jefe: {manager ? `${manager.apellido}, ${manager.nombre}` : "Sin jefe"}
+                      </p>
+                      <div className="mt-3 flex gap-2">
+                        <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                          Editar
+                        </button>
+                        <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                          Eliminar
+                        </button>
+                      </div>
+                    </article>
+                  );
+                }}
+              />
             ) : null}
             {!isLoading && messageType !== "error" && !filteredEmployees.length ? (
               <EmptyState

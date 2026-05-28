@@ -311,17 +311,22 @@ export default function EvaluationsPage() {
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-sm font-semibold text-[#c5d5de]">Contenido evaluativo asociado</p>
-              {scores.map((score) => (
-                <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
-                  <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
-                  <select className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={score.nivel} onChange={(event) => updateScore(score.metricId, "nivel", Number(event.target.value))}>
-                    {[1, 2, 3, 4, 5].map((nivel) => (
-                      <option key={nivel} value={nivel}>{nivel}</option>
-                    ))}
-                  </select>
-                  <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Comentario o evidencia breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
-                </div>
-              ))}
+              <CollapsibleList
+                items={scores}
+                initialCount={5}
+                buttonLabelMore={`Ver más (${scores.length - 5})`}
+                renderItem={(score) => (
+                  <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
+                    <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
+                    <select className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={score.nivel} onChange={(event) => updateScore(score.metricId, "nivel", Number(event.target.value))}>
+                      {[1, 2, 3, 4, 5].map((nivel) => (
+                        <option key={nivel} value={nivel}>{nivel}</option>
+                      ))}
+                    </select>
+                    <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Comentario o evidencia breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
+                  </div>
+                )}
+              />
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
@@ -450,21 +455,25 @@ export default function EvaluationsPage() {
                 <div className="space-y-4">
                   <SurfaceCard title="Contenido evaluativo asociado" subtitle="Acá concentramos las mediciones visibles del formulario actual.">
                     <div className="space-y-3">
-                      {selectedScores.length ? selectedScores.map((score) => (
-                        <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                          <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                              <p className="font-semibold text-white">{score.metricId?.nombre || "Indicador"}</p>
-                              <p className="mt-1 text-sm text-[#9fb6c4]">{score.comentario || "Sin comentario asociado."}</p>
+                      <CollapsibleList
+                        items={selectedScores}
+                        initialCount={5}
+                        buttonLabelMore={`Ver más (${selectedScores.length - 5})`}
+                        emptyState={<EmptyState compact title="No hay mediciones cargadas" description="Esta evaluación todavía no tiene metas o competencias detalladas." />}
+                        renderItem={(score) => (
+                          <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div>
+                                <p className="font-semibold text-white">{score.metricId?.nombre || "Indicador"}</p>
+                                <p className="mt-1 text-sm text-[#9fb6c4]">{score.comentario || "Sin comentario asociado."}</p>
+                              </div>
+                              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
+                                Nivel {score.nivel}
+                              </span>
                             </div>
-                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
-                              Nivel {score.nivel}
-                            </span>
-                          </div>
-                        </article>
-                      )) : (
-                        <EmptyState compact title="No hay mediciones cargadas" description="Esta evaluación todavía no tiene metas o competencias detalladas." />
-                      )}
+                          </article>
+                        )}
+                      />
                     </div>
                   </SurfaceCard>
                 </div>

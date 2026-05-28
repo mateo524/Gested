@@ -60,7 +60,7 @@ export default function ProfilePage() {
       apellido: next.apellido,
       avatarUrl: user?.avatarUrl || "",
     });
-  }, [user]);
+  }, []);
 
   const organizationLabel = activeCompany?.nombre || user?.companyName || "Organización activa";
   const displayName = useMemo(

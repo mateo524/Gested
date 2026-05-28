@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import ConfirmDialog from "../components/ConfirmDialog";
+import CollapsibleList from "../components/CollapsibleList";
 
 const emptyForm = {
   anio: new Date().getFullYear(),
@@ -283,41 +284,38 @@ export default function EvaluationCyclesPage() {
             ) : null}
             {isLoading ? <p className="pf-alert-info">Cargando ciclos...</p> : null}
             {!isLoading && visibleCycles.length
-              ? visibleCycles.map((cycle) => (
-                  <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <p className="text-lg font-semibold text-white">
-                        {cycle.periodo} {cycle.anio}
+              ? <CollapsibleList
+                  items={visibleCycles}
+                  initialCount={5}
+                  buttonLabelMore={`Ver más (${visibleCycles.length - 5})`}
+                  renderItem={(cycle) => (
+                    <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-lg font-semibold text-white">
+                          {cycle.periodo} {cycle.anio}
+                        </p>
+                        <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
+                          {formatStage(cycle.etapa)}
+                        </span>
+                        <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">
+                          {cycle.estado}
+                        </span>
+                      </div>
+                      <p className="mt-2 text-sm text-[#9fb6c4]">
+                        {cycle.fechaInicio ? new Date(cycle.fechaInicio).toLocaleDateString("es-AR") : "-"} al{" "}
+                        {cycle.fechaFin ? new Date(cycle.fechaFin).toLocaleDateString("es-AR") : "-"}
                       </p>
-                      <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
-                        {formatStage(cycle.etapa)}
-                      </span>
-                      <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">
-                        {cycle.estado}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-sm text-[#9fb6c4]">
-                      {cycle.fechaInicio ? new Date(cycle.fechaInicio).toLocaleDateString("es-AR") : "-"} al{" "}
-                      {cycle.fechaFin ? new Date(cycle.fechaFin).toLocaleDateString("es-AR") : "-"}
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEdit(cycle)}
-                        className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmState({ open: true, cycle })}
-                        className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200"
-                      >
-                        Eliminar
-                      </button>
-                    </div>
-                  </article>
-                ))
+                      <div className="mt-3 flex gap-2">
+                        <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                          Editar
+                        </button>
+                        <button type="button" onClick={() => setConfirmState({ open: true, cycle })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                          Eliminar
+                        </button>
+                      </div>
+                    </article>
+                  )}
+                />
               : null}
             {!isLoading && !visibleCycles.length ? (
               <p className="pf-alert-warning">

@@ -856,26 +856,36 @@ export default function ExecutiveReportPage() {
                       <SurfaceCard title="KPIs y OKRs asignados" subtitle="Objetivos e indicadores visibles dentro del alcance actual.">
                         {detail.kpis?.items?.length || detail.okrs?.items?.length ? (
                           <div className="space-y-3">
-                            {detail.kpis?.items?.map((item) => (
-                              <article key={`kpi-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                                <p className="font-semibold text-white">{item.name}</p>
-                                <p className="mt-1 text-sm text-[#8FA9B7]">
-                                  KPI {item.code || "sin código"} · {item.status || "Sin estado"}
-                                </p>
-                                <p className="mt-2 text-sm text-[#c8d8df]">
-                                  Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"} {item.unit || ""}
-                                </p>
-                              </article>
-                            ))}
-                            {detail.okrs?.items?.map((item) => (
-                              <article key={`okr-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                                <p className="font-semibold text-white">{item.objectiveTitle}</p>
-                                <p className="mt-1 text-sm text-[#8FA9B7]">{item.keyResultTitle || "Sin resultado clave visible"}</p>
-                                <p className="mt-2 text-sm text-[#c8d8df]">
-                                  Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"}
-                                </p>
-                              </article>
-                            ))}
+                            <CollapsibleList
+                              items={detail.kpis?.items || []}
+                              initialCount={5}
+                              buttonLabelMore={`Ver más (${(detail.kpis?.items?.length || 0) - 5})`}
+                              renderItem={(item) => (
+                                <article key={`kpi-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                  <p className="font-semibold text-white">{item.name}</p>
+                                  <p className="mt-1 text-sm text-[#8FA9B7]">
+                                    KPI {item.code || "sin código"} · {item.status || "Sin estado"}
+                                  </p>
+                                  <p className="mt-2 text-sm text-[#c8d8df]">
+                                    Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"} {item.unit || ""}
+                                  </p>
+                                </article>
+                              )}
+                            />
+                            <CollapsibleList
+                              items={detail.okrs?.items || []}
+                              initialCount={5}
+                              buttonLabelMore={`Ver más (${(detail.okrs?.items?.length || 0) - 5})`}
+                              renderItem={(item) => (
+                                <article key={`okr-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                  <p className="font-semibold text-white">{item.objectiveTitle}</p>
+                                  <p className="mt-1 text-sm text-[#8FA9B7]">{item.keyResultTitle || "Sin resultado clave visible"}</p>
+                                  <p className="mt-2 text-sm text-[#c8d8df]">
+                                    Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"}
+                                  </p>
+                                </article>
+                              )}
+                            />
                           </div>
                         ) : (
                           <EmptyPanel text="No hay KPIs u OKRs visibles para esta persona." />
@@ -887,23 +897,28 @@ export default function ExecutiveReportPage() {
                       <SurfaceCard title="Desarrollo" subtitle="Planes activos, vencidos o completados para esta persona.">
                         {detail.developmentPlans?.length ? (
                           <div className="space-y-3">
-                            {detail.developmentPlans.map((plan) => (
-                              <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div>
-                                    <p className="font-semibold text-white">{plan.aspectoDesarrollar}</p>
-                                    <p className="mt-1 text-sm text-[#8FA9B7]">
-                                      Seguimiento {formatDate(plan.fechaSeguimiento)} · creado {formatDate(plan.createdAt)}
-                                    </p>
+                            <CollapsibleList
+                              items={detail.developmentPlans || []}
+                              initialCount={5}
+                              buttonLabelMore={`Ver más (${(detail.developmentPlans?.length || 0) - 5})`}
+                              renderItem={(plan) => (
+                                <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                  <div className="flex flex-wrap items-start justify-between gap-3">
+                                    <div>
+                                      <p className="font-semibold text-white">{plan.aspectoDesarrollar}</p>
+                                      <p className="mt-1 text-sm text-[#8FA9B7]">
+                                        Seguimiento {formatDate(plan.fechaSeguimiento)} · creado {formatDate(plan.createdAt)}
+                                      </p>
+                                    </div>
+                                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">{plan.estado}</span>
                                   </div>
-                                  <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">{plan.estado}</span>
-                                </div>
-                                {plan.fortalezas?.length ? (
-                                  <p className="mt-3 text-sm text-[#c8d8df]">Fortalezas: {plan.fortalezas.join(", ")}</p>
-                                ) : null}
-                                {plan.medicion ? <p className="mt-2 text-sm text-[#c8d8df]">Medición: {plan.medicion}</p> : null}
-                              </article>
-                            ))}
+                                  {plan.fortalezas?.length ? (
+                                    <p className="mt-3 text-sm text-[#c8d8df]">Fortalezas: {plan.fortalezas.join(", ")}</p>
+                                  ) : null}
+                                  {plan.medicion ? <p className="mt-2 text-sm text-[#c8d8df]">Medición: {plan.medicion}</p> : null}
+                                </article>
+                              )}
+                            />
                           </div>
                         ) : (
                           <EmptyPanel text="No hay planes de desarrollo visibles para esta persona." />
@@ -913,15 +928,20 @@ export default function ExecutiveReportPage() {
                       <SurfaceCard title="Acciones pendientes" subtitle="Qué conviene atender ahora según lo visible en el reporte individual.">
                         {detail.actions?.length ? (
                           <div className="space-y-3">
-                            {detail.actions.map((action, index) => (
-                              <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-semibold">{action.title}</p>
-                                  <ActionBadge severity={action.severity} />
-                                </div>
-                                <p className="mt-2 text-sm opacity-90">{action.description}</p>
-                              </article>
-                            ))}
+                            <CollapsibleList
+                              items={detail.actions || []}
+                              initialCount={5}
+                              buttonLabelMore={`Ver más (${(detail.actions?.length || 0) - 5})`}
+                              renderItem={(action, index) => (
+                                <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="font-semibold">{action.title}</p>
+                                    <ActionBadge severity={action.severity} />
+                                  </div>
+                                  <p className="mt-2 text-sm opacity-90">{action.description}</p>
+                                </article>
+                              )}
+                            />
                           </div>
                         ) : (
                           <EmptyPanel text="No hay acciones pendientes para esta persona con los datos visibles hoy." />

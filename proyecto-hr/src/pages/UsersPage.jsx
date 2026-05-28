@@ -4,6 +4,7 @@ import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
+import CollapsibleList from "../components/CollapsibleList";
 
 const emptyForm = {
   nombre: "",
@@ -382,24 +383,29 @@ export default function UsersPage() {
               />
             ) : null}
             {!isLoading && filteredUsers.length ? (
-              filteredUsers.map((user) => (
-                <article key={user._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <label className="flex items-start gap-3">
-                      <input type="checkbox" checked={selectedIds.includes(user._id)} onChange={() => toggleSelection(user._id)} className="mt-1" />
-                      <div>
-                        <p className="font-semibold text-white">{user.nombre}</p>
-                        <p className="text-sm text-[#9fb6c4]">{user.email}</p>
-                        <p className="text-xs text-[#7f99a8]">{user.roleId?.nombre || "Sin rol"} - {user.activo ? "Activo" : "Inactivo"}</p>
+              <CollapsibleList
+                items={filteredUsers}
+                initialCount={5}
+                buttonLabelMore={`Ver más (${filteredUsers.length - 5})`}
+                renderItem={(user) => (
+                  <article key={user._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <label className="flex items-start gap-3">
+                        <input type="checkbox" checked={selectedIds.includes(user._id)} onChange={() => toggleSelection(user._id)} className="mt-1" />
+                        <div>
+                          <p className="font-semibold text-white">{user.nombre}</p>
+                          <p className="text-sm text-[#9fb6c4]">{user.email}</p>
+                          <p className="text-xs text-[#7f99a8]">{user.roleId?.nombre || "Sin rol"} - {user.activo ? "Activo" : "Inactivo"}</p>
+                        </div>
+                      </label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-[#22c55e]/40 px-3 py-1.5 text-xs text-[#8be6ac]">Editar</button>
+                        <button type="button" onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
                       </div>
-                    </label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-[#22c55e]/40 px-3 py-1.5 text-xs text-[#8be6ac]">Editar</button>
-                      <button type="button" onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
                     </div>
-                  </div>
-                </article>
-              ))
+                  </article>
+                )}
+              />
             ) : null}
             {!isLoading && messageType !== "error" && !filteredUsers.length ? (
               <EmptyState
