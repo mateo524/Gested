@@ -18,6 +18,7 @@ import {
   LoadingState,
   PermissionState,
 } from "../components/AppStates";
+import CollapsibleList from "../components/CollapsibleList";
 import ConfirmDialog from "../components/ConfirmDialog";
 
 const TABS = [
@@ -189,8 +190,11 @@ function MetricDescriptorCard({
         <StatusPill label={`${descriptors.length} descriptores`} />
       </div>
 
-      <div className="mt-4 space-y-3">
-        {descriptors.map((descriptor) => {
+      <CollapsibleList
+        items={descriptors}
+        initialCount={3}
+        buttonLabelMore={`Ver más (${descriptors.length - 3})`}
+        renderItem={(descriptor) => {
           const isHighlighted = highlightedMetricIds.has(String(descriptor.metricId));
           return (
             <div
@@ -227,8 +231,8 @@ function MetricDescriptorCard({
               </div>
             </div>
           );
-        })}
-      </div>
+        }}
+      />
     </article>
   );
 }
@@ -354,8 +358,11 @@ function EvaluationEditor({
           </div>
         </div>
 
-        <div className="space-y-4">
-          {groups.map((group) => (
+        <CollapsibleList
+          items={groups}
+          initialCount={3}
+          buttonLabelMore={`Ver más (${groups.length - 3})`}
+          renderItem={(group) => (
             <MetricDescriptorCard
               key={group.id}
               groupTitle={group.title}
@@ -373,8 +380,8 @@ function EvaluationEditor({
               onLevelChange={onScoreChange}
               onCommentChange={onCommentChange}
             />
-          ))}
-        </div>
+          )}
+        />
 
         <div>
           <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Observaciones</label>
@@ -1155,31 +1162,31 @@ export default function MetricsPage() {
                 ) : null
               }
             >
-              <div className="space-y-4">
-                {groups.length ? (
-                  groups.map((group) => (
-                    <MetricDescriptorCard
-                      key={group.id}
-                      groupTitle={group.title}
-                      groupDefinition={group.description}
-                      descriptors={group.descriptors.map((descriptor) => {
-                        const score = autoDetail.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
-                        return {
-                          ...descriptor,
-                          nivel: score?.nivel ?? 3,
-                          comentario: score?.comentario ?? "",
-                        };
-                      })}
-                      canEdit={false}
-                      highlightedMetricIds={new Set()}
-                      onLevelChange={() => {}}
-                      onCommentChange={() => {}}
-                    />
-                  ))
-                ) : (
-                  <EmptyState compact title="No hay descriptores cargados" description="Cuando existan competencias activas para evaluar, aparecerán acá." />
+              <CollapsibleList
+                items={groups}
+                initialCount={3}
+                buttonLabelMore={`Ver más (${groups.length - 3})`}
+                emptyState={<EmptyState compact title="No hay descriptores cargados" description="Cuando existan competencias activas para evaluar, aparecerán acá." />}
+                renderItem={(group) => (
+                  <MetricDescriptorCard
+                    key={group.id}
+                    groupTitle={group.title}
+                    groupDefinition={group.description}
+                    descriptors={group.descriptors.map((descriptor) => {
+                      const score = autoDetail.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
+                      return {
+                        ...descriptor,
+                        nivel: score?.nivel ?? 3,
+                        comentario: score?.comentario ?? "",
+                      };
+                    })}
+                    canEdit={false}
+                    highlightedMetricIds={new Set()}
+                    onLevelChange={() => {}}
+                    onCommentChange={() => {}}
+                  />
                 )}
-              </div>
+              />
             </SurfaceCard>
           </div>
         ) : (
@@ -1210,31 +1217,31 @@ export default function MetricsPage() {
                 ) : null
               }
             >
-              <div className="space-y-4">
-                {groups.length ? (
-                  groups.map((group) => (
-                    <MetricDescriptorCard
-                      key={group.id}
-                      groupTitle={group.title}
-                      groupDefinition={group.description}
-                      descriptors={group.descriptors.map((descriptor) => {
-                        const score = managerDetail.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
-                        return {
-                          ...descriptor,
-                          nivel: score?.nivel ?? 3,
-                          comentario: score?.comentario ?? "",
-                        };
-                      })}
-                      canEdit={false}
-                      highlightedMetricIds={new Set()}
-                      onLevelChange={() => {}}
-                      onCommentChange={() => {}}
-                    />
-                  ))
-                ) : (
-                  <EmptyState compact title="No hay descriptores cargados" description="Cuando existan competencias activas para evaluar, aparecerán acá." />
+              <CollapsibleList
+                items={groups}
+                initialCount={3}
+                buttonLabelMore={`Ver más (${groups.length - 3})`}
+                emptyState={<EmptyState compact title="No hay descriptores cargados" description="Cuando existan competencias activas para evaluar, aparecerán acá." />}
+                renderItem={(group) => (
+                  <MetricDescriptorCard
+                    key={group.id}
+                    groupTitle={group.title}
+                    groupDefinition={group.description}
+                    descriptors={group.descriptors.map((descriptor) => {
+                      const score = managerDetail.scores.find((item) => String(item.metricId) === String(descriptor.metricId));
+                      return {
+                        ...descriptor,
+                        nivel: score?.nivel ?? 3,
+                        comentario: score?.comentario ?? "",
+                      };
+                    })}
+                    canEdit={false}
+                    highlightedMetricIds={new Set()}
+                    onLevelChange={() => {}}
+                    onCommentChange={() => {}}
+                  />
                 )}
-              </div>
+              />
             </SurfaceCard>
           </div>
         ) : (

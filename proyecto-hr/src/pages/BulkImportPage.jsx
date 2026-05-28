@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
+import CollapsibleList from "../components/CollapsibleList";
 
 const sheetLabels = {
   organization: "Organización",
@@ -322,6 +323,7 @@ export default function BulkImportPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
+  const [showAllJobs, setShowAllJobs] = useState(false);
 
   const summary = analyzeResponse?.summary || null;
   const preview = analyzeResponse?.preview || null;
@@ -892,8 +894,12 @@ export default function BulkImportPage() {
 
             {selectedTab === "errors" ? (
               <div className="space-y-3">
-                {filteredIssues.length ? (
-                  filteredIssues.map((issue, index) => {
+                <CollapsibleList
+                  items={filteredIssues}
+                  initialCount={5}
+                  buttonLabelMore={`Ver más (${filteredIssues.length - 5})`}
+                  emptyState={<div className="pf-alert-success">No se detectaron errores ni advertencias.</div>}
+                  renderItem={(issue, index) => {
                     const meta = statusMeta(issue.severity);
                     return (
                       <article key={`${issue.sheet}-${issue.rowNumber || "general"}-${index}`} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
@@ -905,10 +911,8 @@ export default function BulkImportPage() {
                         <p className="mt-3 text-sm text-[#E8EEF1]">{issue.message}</p>
                       </article>
                     );
-                  })
-                ) : (
-                  <div className="pf-alert-success">No se detectaron errores ni advertencias.</div>
-                )}
+                  }}
+                />
               </div>
             ) : filteredVisibleRows.length ? (
               <div className="space-y-3">
@@ -976,7 +980,7 @@ export default function BulkImportPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10 bg-[#122530]">
-                {jobs.map((job) => (
+                {(showAllJobs ? jobs : jobs.slice(0, 10)).map((job) => (
                   <tr key={job._id} className="text-[#E8EEF1]">
                     <td className="px-4 py-3">{formatDate(job.createdAt)}</td>
                     <td className="px-4 py-3">{job.sourceFileName}</td>
@@ -994,6 +998,15 @@ export default function BulkImportPage() {
                     </td>
                   </tr>
                 ))}
+                {jobs.length > 10 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-3 text-center">
+                      <button type="button" onClick={() => setShowAllJobs((prev) => !prev)} className="rounded-2xl border border-white/12 bg-white/5 px-3 py-2 text-xs font-medium text-[#d5e2e9] transition hover:bg-white/10">
+                        {showAllJobs ? "Ver menos" : `Ver más (${jobs.length - 10})`}
+                      </button>
+                    </td>
+                  </tr>
+                ) : null}
                 {!jobs.length ? (
                   <tr>
                     <td colSpan={6} className="px-4 py-6 text-sm text-[#8FA9B7]">

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
+import CollapsibleList from "../components/CollapsibleList";
 
 const ROLE_ORDER = [
   "ORG_OWNER",
@@ -802,44 +803,49 @@ export default function RolesPage() {
 
                     <div className="mt-5 space-y-3">
                       {canReadAssignments ? (
-                        filteredAssignments.map((item) => {
-                          const preset = presetMap.get(item.roleKey);
-                          return (
-                            <article key={item._id} className="rounded-2xl border border-white/10 bg-[#122530] p-4">
-                              <div className="flex flex-wrap items-start justify-between gap-3">
-                                <div>
-                                  <p className="font-semibold text-white">{getUserLabel(item.userId)}</p>
-                                  <p className="text-sm text-[#9fb6c4]">
-                                    {(preset?.label || item.roleKey) + " - " + getScopeLabel(item.scope)}
-                                  </p>
-                                  <p className="mt-1 text-xs text-[#7f97a5]">
-                                    {getUserEmail(item.userId) || "Sin email"} - {buildScopeDescription(item)}
-                                  </p>
-                                </div>
-                                <div className="flex flex-wrap gap-2">
-                                  <span
-                                    className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${
-                                      item.active !== false
-                                        ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
-                                        : "border-white/10 bg-[#0f1f28] text-[#9eb3bf]"
-                                    }`}
-                                  >
-                                    {item.active !== false ? "Activa" : "Inactiva"}
-                                  </span>
-                                  {canManageAssignments ? (
-                                    <button
-                                      type="button"
-                                      onClick={() => startEdit(item)}
-                                      className="rounded-full border border-blue-300/30 bg-blue-500/10 px-3 py-1 text-xs text-blue-100"
+                        <CollapsibleList
+                          items={filteredAssignments}
+                          initialCount={5}
+                          buttonLabelMore={`Ver más (${filteredAssignments.length - 5})`}
+                          renderItem={(item) => {
+                            const preset = presetMap.get(item.roleKey);
+                            return (
+                              <article key={item._id} className="rounded-2xl border border-white/10 bg-[#122530] p-4">
+                                <div className="flex flex-wrap items-start justify-between gap-3">
+                                  <div>
+                                    <p className="font-semibold text-white">{getUserLabel(item.userId)}</p>
+                                    <p className="text-sm text-[#9fb6c4]">
+                                      {(preset?.label || item.roleKey) + " - " + getScopeLabel(item.scope)}
+                                    </p>
+                                    <p className="mt-1 text-xs text-[#7f97a5]">
+                                      {getUserEmail(item.userId) || "Sin email"} - {buildScopeDescription(item)}
+                                    </p>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2">
+                                    <span
+                                      className={`inline-flex items-center rounded-full border px-3 py-1 text-xs ${
+                                        item.active !== false
+                                          ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-100"
+                                          : "border-white/10 bg-[#0f1f28] text-[#9eb3bf]"
+                                      }`}
                                     >
-                                      Editar
-                                    </button>
-                                  ) : null}
+                                      {item.active !== false ? "Activa" : "Inactiva"}
+                                    </span>
+                                    {canManageAssignments ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => startEdit(item)}
+                                        className="rounded-full border border-blue-300/30 bg-blue-500/10 px-3 py-1 text-xs text-blue-100"
+                                      >
+                                        Editar
+                                      </button>
+                                    ) : null}
+                                  </div>
                                 </div>
-                              </div>
-                            </article>
-                          );
-                        })
+                              </article>
+                            );
+                          }}
+                        />
                       ) : (
                         <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-5 text-sm text-[#95aebc]">
                           No hay permisos de lectura para ver asignaciones detalladas.
