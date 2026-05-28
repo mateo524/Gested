@@ -70,7 +70,7 @@ function StatePanel({
 }
 
 export function LoadingState({
-  title = "Cargando informacion",
+  title = "Cargando información",
   description = "Estamos preparando esta vista para vos.",
   compact = false,
 }) {
@@ -78,8 +78,8 @@ export function LoadingState({
 }
 
 export function EmptyState({
-  title = "No encontramos datos todavia",
-  description = "Cuando haya informacion disponible, la vas a ver aca.",
+  title = "No encontramos datos todavía",
+  description = "Cuando haya información disponible, la vas a ver acá.",
   actionLabel,
   onAction,
   compact = false,
@@ -98,7 +98,7 @@ export function EmptyState({
 
 export function ErrorState({
   title = "No pudimos cargar esta vista",
-  description = "Reintenta en unos segundos. Si el problema sigue, revisa tus permisos o la conexion.",
+  description = "Reintentá en unos segundos. Si el problema sigue, revisá tus permisos o la conexión.",
   actionLabel,
   onAction,
   compact = false,
@@ -116,8 +116,8 @@ export function ErrorState({
 }
 
 export function PermissionState({
-  title = "No tienes acceso a esta seccion",
-  description = "Tu rol actual no tiene permisos para ver esta informacion.",
+  title = "No tienes acceso a esta sección",
+  description = "Tu rol actual no tiene permisos para ver esta información.",
   actionLabel,
   onAction,
   compact = false,

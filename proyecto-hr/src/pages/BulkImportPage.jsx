@@ -24,7 +24,7 @@ const templateSheets = [
   { key: "usersAndRoles", label: "Usuarios_y_Roles", detail: "Accesos, roles y scopes permitidos." },
   { key: "managers", label: "Managers", detail: "Relaciones de liderazgo y responsables." },
   { key: "kpis", label: "KPIs", detail: "Indicadores operativos cuando existan." },
-  { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del periodo." },
+  { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del per?odo." },
   { key: "evaluations", label: "Evaluaciones", detail: "Cabecera de evaluaciones existentes por empleado y ciclo." },
   { key: "performanceMeasurements", label: "Mediciones de desempeño", detail: "Metas, competencias, autoevaluaciones y evidencias por evaluación." },
   { key: "developmentPlans", label: "Planes de desarrollo", detail: "Planes de desarrollo previos o activos para importar o validar." },
@@ -972,7 +972,7 @@ export default function BulkImportPage() {
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Filas</th>
                   <th className="px-4 py-3">Errores</th>
-                  <th className="px-4 py-3">Accion</th>
+                  <th className="px-4 py-3">Acci?n</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10 bg-[#122530]">

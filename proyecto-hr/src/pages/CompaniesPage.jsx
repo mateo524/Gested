@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyCompany = {
   nombre: "",
@@ -31,6 +32,8 @@ export default function CompaniesPage() {
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [seedFile, setSeedFile] = useState(null);
+  const [confirmDeactivateOpen, setConfirmDeactivateOpen] = useState(false);
+  const [isConfirming, setIsConfirming] = useState(false);
 
   function downloadInitialTemplate() {
     const csv = [
@@ -102,10 +105,8 @@ export default function CompaniesPage() {
     }
 
     if (action === "deactivate") {
-      const approved = window.confirm(
-        `Vas a desactivar ${selectedIds.length} empresa(s). Confirma para continuar.`
-      );
-      if (!approved) return;
+      setConfirmDeactivateOpen(true);
+      return;
     }
 
     try {
@@ -124,6 +125,30 @@ export default function CompaniesPage() {
       await refreshCompanies();
     } catch (error) {
       setMessage(error.message);
+    }
+  }
+
+  async function confirmDeactivateCompanies() {
+    try {
+      setIsConfirming(true);
+      const data = await apiFetch("/companies/bulk", {
+        method: "POST",
+        token,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action: "deactivate", companyIds: selectedIds }),
+      });
+
+      setMessage(data.mensaje);
+      setSelectedIds([]);
+      setConfirmDeactivateOpen(false);
+      await loadCompanies();
+      await refreshCompanies();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setIsConfirming(false);
     }
   }
 
@@ -459,6 +484,18 @@ export default function CompaniesPage() {
           </div>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={confirmDeactivateOpen}
+        title="¿Desactivar estas empresas?"
+        message={`Vas a desactivar ${selectedIds.length} empresa(s). Confirmá para continuar.`}
+        confirmLabel="Desactivar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isConfirming}
+        onCancel={() => setConfirmDeactivateOpen(false)}
+        onConfirm={confirmDeactivateCompanies}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 function formatDate(value) {
   return new Date(value).toLocaleString("es-AR", {
@@ -25,6 +26,8 @@ export default function StorageCenterPage() {
   const [messageType, setMessageType] = useState("info");
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [confirmFile, setConfirmFile] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [uploadForm, setUploadForm] = useState({
     companyId: "",
     nombreVisible: "",
@@ -66,16 +69,18 @@ export default function StorageCenterPage() {
     }
   }
 
-  async function removeFile(file) {
-    const confirmed = window.confirm(`¿Eliminar "${file.nombreVisible}"? Esta acción no se puede deshacer.`);
-    if (!confirmed) return;
+  async function removeFile() {
+    const file = confirmFile;
+    if (!file) return;
     try {
+      setIsDeleting(true);
       setMessage("");
       setMessageType("info");
       await apiFetch(`/storage/${file._id}`, {
         method: "DELETE",
         token,
       });
+      setConfirmFile(null);
       setMessageType("success");
       setMessage("Archivo eliminado correctamente");
       if (detail?.file?._id === file._id) {
@@ -86,6 +91,8 @@ export default function StorageCenterPage() {
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -337,7 +344,7 @@ export default function StorageCenterPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => removeFile(file)}
+                  onClick={() => setConfirmFile(file)}
                   className="mt-4 ml-2 rounded-2xl border border-rose-300/40 px-4 py-2 text-sm font-medium text-rose-200"
                 >
                   Eliminar
@@ -345,7 +352,7 @@ export default function StorageCenterPage() {
               </article>
             )) : (
               <EmptyState
-                title="No hay archivos cargados todavia"
+                title="No hay archivos cargados todav?a"
                 description="Sube el primer documento operativo para empezar a centralizar contenido por empresa."
               />
             )}
@@ -368,7 +375,7 @@ export default function StorageCenterPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => removeFile(detail.file)}
+                  onClick={() => setConfirmFile(detail.file)}
                   className="mt-4 rounded-2xl border border-rose-300/40 px-4 py-2 text-sm font-medium text-rose-200"
                 >
                   Eliminar archivo
@@ -421,6 +428,22 @@ export default function StorageCenterPage() {
           {message}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={Boolean(confirmFile)}
+        title="¿Eliminar este archivo?"
+        message={
+          confirmFile
+            ? `Vas a eliminar "${confirmFile.nombreVisible}". Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isDeleting}
+        onCancel={() => setConfirmFile(null)}
+        onConfirm={removeFile}
+      />
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   LoadingState,
   PermissionState,
 } from "../components/AppStates";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const TABS = [
   { key: "resumen", label: "Resumen" },
@@ -472,6 +473,8 @@ export default function MetricsPage() {
   const [editorForm, setEditorForm] = useState(emptyEditor);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
+  const [confirmDeleteId, setConfirmDeleteId] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const canReadMetrics = Boolean(
     hasPermission("manage_metrics") ||
@@ -846,16 +849,19 @@ export default function MetricsPage() {
     }
   }
 
-  async function handleDeleteEvaluation(id) {
-    const ok = window.confirm("Vas a eliminar esta evaluación. Esta acción no se puede deshacer.");
-    if (!ok) return;
+  async function handleDeleteEvaluation() {
+    if (!confirmDeleteId) return;
     try {
-      await apiFetch(`/evaluations/${id}`, { method: "DELETE", token });
+      setIsDeleting(true);
+      await apiFetch(`/evaluations/${confirmDeleteId}`, { method: "DELETE", token });
       await refreshEvaluationsAfterSave();
       setMessage({ type: "success", text: "Evaluación eliminada." });
       closeEditor();
+      setConfirmDeleteId("");
     } catch (nextError) {
       setMessage({ type: "error", text: nextError.message });
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -1374,7 +1380,7 @@ export default function MetricsPage() {
             onCommentChange={updateEditorComment}
             onSubmit={handleSaveEditor}
             onCancel={closeEditor}
-            onDelete={() => handleDeleteEvaluation(editorForm.id)}
+            onDelete={() => setConfirmDeleteId(editorForm.id)}
             highlight
           />
         </div>
@@ -1408,6 +1414,18 @@ export default function MetricsPage() {
           </div>
         </div>
       </SurfaceCard>
+
+      <ConfirmDialog
+        open={Boolean(confirmDeleteId)}
+        title="¿Eliminar esta evaluación?"
+        message="Esta acción no se puede deshacer."
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isDeleting}
+        onCancel={() => setConfirmDeleteId("")}
+        onConfirm={handleDeleteEvaluation}
+      />
     </div>
   );
 }

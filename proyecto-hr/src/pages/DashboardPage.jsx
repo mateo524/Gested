@@ -210,7 +210,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Finalizar ${pendingEvaluations} evaluaciones`,
-          detail: "Así podrás consolidar planes y acciones del equipo.",
+          detail: "Así podrás consolidar planes y acci?nes del equipo.",
           actionLabel: "Ir a Evaluaciones",
           goTo: "evaluaciones",
         });
@@ -226,7 +226,7 @@ export default function DashboardPage() {
         items.push({
           priority: "MEDIA",
           title: `${lowPerformance} casos para desarrollo`,
-          detail: "Prioriza seguimiento y acciones en la vista de desarrollo.",
+          detail: "Prioriza seguimiento y acci?nes en la vista de desarrollo.",
           actionLabel: "Ir a Desarrollo",
           goTo: "planes",
         });
@@ -313,7 +313,7 @@ export default function DashboardPage() {
         {
           label: "Ciclos activos",
           value: summary.cards?.[2]?.value || 0,
-          hint: "Estado actual del periodo",
+          hint: "Estado actual del per?odo",
           accent: "blue",
         }
       );
@@ -336,7 +336,7 @@ export default function DashboardPage() {
       {
         label: "Ciclos activos",
         value: summary.cards?.[2]?.value || 0,
-        hint: "Seguimiento del periodo actual",
+        hint: "Seguimiento del per?odo actual",
         accent: "blue",
       },
       {
@@ -365,7 +365,7 @@ export default function DashboardPage() {
       { label: "Importación", view: "carga-masiva", show: !isEmpleado && !isLector },
       { label: "Reporte ejecutivo", view: "reporte-ejecutivo", show: !isEmpleado },
       { label: "Evaluaciones", view: "evaluaciones", show: true },
-      { label: "Objetivos / Indicadores", view: "metricas", show: !isEmpleado && !isLector },
+      { label: "Objetivos / Indicadores", view: "m?tricas", show: !isEmpleado && !isLector },
     ];
     return items.filter((item) => item.show);
   }, [isEmpleado, isLector]);
@@ -485,7 +485,7 @@ export default function DashboardPage() {
                 )}
               />
             ) : (
-              <EmptyState text="No hay acciones urgentes por ahora." />
+              <EmptyState text="No hay acci?nes urgentes por ahora." />
             )}
           </div>
         </SurfaceCard>
@@ -533,7 +533,7 @@ export default function DashboardPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard title="Proximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
+        <SurfaceCard title="Pr?ximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
           <div className="space-y-3">
             {upcomingMilestones.length ? (
               <CollapsibleList

@@ -369,8 +369,8 @@ export default function DevelopmentPlansPage() {
             {[
               ["Plan", "La mejora o brecha a trabajar."],
               ["Responsable", "Quien acompana o hace seguimiento."],
-              ["Accion", "La accion concreta de mejora."],
-              ["Proximo paso", "La fecha y el estado del siguiente seguimiento."],
+              ["Acci?n", "La acci?n concreta de mejora."],
+              ["Pr?ximo paso", "La fecha y el estado del siguiente seguimiento."],
             ].map(([title, text]) => (
               <article key={title} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
                 <p className="text-sm font-semibold text-white">{title}</p>
@@ -387,7 +387,7 @@ export default function DevelopmentPlansPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Sugerencias de desarrollo</p>
-                <h4 className="mt-2 text-xl font-semibold text-white">Que accion conviene revisar ahora</h4>
+                <h4 className="mt-2 text-xl font-semibold text-white">Que acci?n conviene revisar ahora</h4>
                 <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
                   Estas sugerencias se generan a partir de evaluaciones, KPIs, OKRs y planes existentes. Revisalas antes de crear un plan.
                 </p>
@@ -474,7 +474,7 @@ export default function DevelopmentPlansPage() {
                       <div>
                         <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Motivo</p>
                         <p className="mt-2 text-sm leading-relaxed text-[#d6e1e7]">{suggestion.reason}</p>
-                        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Accion sugerida</p>
+                        <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Acci?n sugerida</p>
                         <div className="mt-2 rounded-2xl border border-[#1e3a8a]/35 bg-[#132847] px-4 py-3 text-sm font-medium text-[#dbe7ff]">
                           {suggestion.suggestedAction}
                         </div>
@@ -654,8 +654,8 @@ export default function DevelopmentPlansPage() {
                   </div>
                   <p className="mt-2 text-sm text-[#c5d5de]">{plan.aspectoDesarrollar}</p>
                   <p className="mt-1 text-sm text-[#9fb6c4]">Responsable: {plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Accion / metrica: {plan.medicion || "-"}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Proximo paso: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Acci?n / m?trica: {plan.medicion || "-"}</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">Pr?ximo paso: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
                   {canManagePlans ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
@@ -681,10 +681,10 @@ export default function DevelopmentPlansPage() {
               !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavia no tienes planes asociados" : "No hay planes todavia"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todav?a no tienes planes asociados" : "No hay planes todav?a"}
                   description={
                     user?.roleCode === "EMPLEADO"
-                      ? "Cuando te asignen un plan, lo vas a ver aca con su proximo seguimiento."
+                      ? "Cuando te asignen un plan, lo vas a ver aca con su pr?ximo seguimiento."
                       : searchQuery
                         ? "No encontramos planes para la búsqueda actual."
                         : "Podes crear uno desde una evaluacion o cargarlo manualmente."

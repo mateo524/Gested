@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
   schoolId: "",
@@ -34,6 +35,8 @@ export default function EmployeesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [confirmState, setConfirmState] = useState({ open: false, employee: null });
+  const [isDeleting, setIsDeleting] = useState(false);
   const deferredSearch = useDeferredValue(filters.q);
   const appliedFilters = useMemo(
     () => ({ ...filters, q: deferredSearch }),
@@ -149,20 +152,24 @@ export default function EmployeesPage() {
     setFieldErrors({});
   }
 
-  async function handleDelete(employee) {
-    const ok = window.confirm(`¿Eliminar a ${employee.apellido}, ${employee.nombre}? Esta acción no se puede deshacer.`);
-    if (!ok) return;
+  async function confirmDeleteEmployee() {
+    const employee = confirmState.employee;
+    if (!employee) return;
     try {
+      setIsDeleting(true);
       await apiFetch(`/employees/${employee._id}`, { method: "DELETE", token });
       if (editingId === employee._id) {
         cancelEdit();
       }
+      setConfirmState({ open: false, employee: null });
       setMessageType("success");
       setMessage("Empleado eliminado.");
       await loadBase();
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -258,7 +265,7 @@ export default function EmployeesPage() {
             <p className="text-xs uppercase tracking-[0.14em] text-[#9fb6c4]">Atajos útiles</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setView("competencias")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Competencias</button>
-              <button type="button" onClick={() => setView("metricas")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Indicadores</button>
+              <button type="button" onClick={() => setView("m?tricas")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Indicadores</button>
               <button type="button" onClick={() => setView("ciclos")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Períodos</button>
               <button type="button" onClick={() => setView("evaluaciones")} className="rounded-lg border border-white/20 px-3 py-2 text-xs text-[#c5d5de]">Evaluación</button>
             </div>
@@ -319,7 +326,7 @@ export default function EmployeesPage() {
                       <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
                         Editar
                       </button>
-                      <button type="button" onClick={() => handleDelete(employee)} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                      <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
                         Eliminar
                       </button>
                     </div>
@@ -350,6 +357,22 @@ export default function EmployeesPage() {
           {message}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title="¿Eliminar este empleado?"
+        message={
+          confirmState.employee
+            ? `Vas a eliminar a ${confirmState.employee.apellido}, ${confirmState.employee.nombre}. Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isDeleting}
+        onCancel={() => setConfirmState({ open: false, employee: null })}
+        onConfirm={confirmDeleteEmployee}
+      />
     </div>
   );
 }
