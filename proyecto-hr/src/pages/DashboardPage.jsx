@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
+  const [isDownloadingReport, setIsDownloadingReport] = useState(false);
 
   const isSuperOrDirector =
     user?.isSuperAdmin ||
@@ -115,7 +116,7 @@ export default function DashboardPage() {
     if (summary?.alerts?.summary) {
       items.push({
         tone: summary.alerts.isLow ? "warning" : "info",
-        title: "Ultima revision de calidad",
+        title: "Última revisión de calidad",
         detail: summary.alerts.summary,
         meta: summary.alerts.latestQualityRunAt ? formatDate(summary.alerts.latestQualityRunAt) : "",
       });
@@ -184,7 +185,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Cerrar ${pendingEvaluations} evaluaciones pendientes`,
-          detail: "Deja el ciclo listo para una lectura ejecutiva mas clara.",
+          detail: "Deja el ciclo listo para una lectura ejecutiva más clara.",
           actionLabel: "Ir a Evaluaciones",
           goTo: "evaluaciones",
         });
@@ -192,7 +193,7 @@ export default function DashboardPage() {
       items.push({
         priority: "MEDIA",
         title: "Revisar el reporte ejecutivo",
-        detail: "Consolida personas, resultados y prioridades del per?odo.",
+        detail: "Consolida personas, resultados y prioridades del período.",
         actionLabel: "Abrir reporte",
         goTo: "reporte-ejecutivo",
       });
@@ -210,7 +211,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Finalizar ${pendingEvaluations} evaluaciones`,
-          detail: "Así podrás consolidar planes y acci?nes del equipo.",
+          detail: "Así podrás consolidar planes y acciones del equipo.",
           actionLabel: "Ir a Evaluaciones",
           goTo: "evaluaciones",
         });
@@ -218,7 +219,7 @@ export default function DashboardPage() {
       items.push({
         priority: "MEDIA",
         title: "Validar próximas importaciones",
-        detail: "Importa empleados, usuarios y cat?logos con la plantilla oficial.",
+        detail: "Importá empleados, usuarios y catálogos con la plantilla oficial.",
         actionLabel: "Ir a Importación",
         goTo: "carga-masiva",
       });
@@ -226,7 +227,7 @@ export default function DashboardPage() {
         items.push({
           priority: "MEDIA",
           title: `${lowPerformance} casos para desarrollo`,
-          detail: "Prioriza seguimiento y acci?nes en la vista de desarrollo.",
+          detail: "Priorizá seguimiento y acciones en la vista de desarrollo.",
           actionLabel: "Ir a Desarrollo",
           goTo: "planes",
         });
@@ -236,7 +237,7 @@ export default function DashboardPage() {
         items.push({
           priority: "ALTA",
           title: `Completar ${pendingEvaluations} evaluaciones del equipo`,
-          detail: "Te permite pasar a seguimiento y desarrollo sin fricci?n.",
+          detail: "Te permite pasar a seguimiento y desarrollo sin fricción.",
           actionLabel: "Ir a Evaluaciones",
           goTo: "evaluaciones",
         });
@@ -252,7 +253,7 @@ export default function DashboardPage() {
       items.push({
         priority: "MEDIA",
         title: "Completar mi autoevaluación",
-        detail: "Ordena tu feedback y tu conversaci?n con jefatura.",
+        detail: "Ordená tu feedback y tu conversación con jefatura.",
         actionLabel: "Ir a Evaluaciones",
         goTo: "evaluaciones",
       });
@@ -277,7 +278,7 @@ export default function DashboardPage() {
       items.push({
         priority: topTraining.priority === "ALTA" ? "ALTA" : "MEDIA",
         title: `Seguir ${topTraining.competencia}`,
-        detail: "Es el foco de desarrollo mas visible en este momento.",
+        detail: "Es el foco de desarrollo más visible en este momento.",
         actionLabel: "Ir a Desarrollo",
         goTo: "planes",
       });
@@ -313,7 +314,7 @@ export default function DashboardPage() {
         {
           label: "Ciclos activos",
           value: summary.cards?.[2]?.value || 0,
-          hint: "Estado actual del per?odo",
+          hint: "Estado actual del período",
           accent: "blue",
         }
       );
@@ -336,7 +337,7 @@ export default function DashboardPage() {
       {
         label: "Ciclos activos",
         value: summary.cards?.[2]?.value || 0,
-        hint: "Seguimiento del per?odo actual",
+        hint: "Seguimiento del período actual",
         accent: "blue",
       },
       {
@@ -365,12 +366,14 @@ export default function DashboardPage() {
       { label: "Importación", view: "carga-masiva", show: !isEmpleado && !isLector },
       { label: "Reporte ejecutivo", view: "reporte-ejecutivo", show: !isEmpleado },
       { label: "Evaluaciones", view: "evaluaciones", show: true },
-      { label: "Objetivos / Indicadores", view: "m?tricas", show: !isEmpleado && !isLector },
+      { label: "Objetivos / Indicadores", view: "metricas", show: !isEmpleado && !isLector },
     ];
     return items.filter((item) => item.show);
   }, [isEmpleado, isLector]);
 
   async function downloadDecisionReport() {
+    if (isDownloadingReport) return;
+    setIsDownloadingReport(true);
     try {
       const response = await fetch(`${apiUrl}/dashboard/decision-report`, {
         headers: {
@@ -388,6 +391,8 @@ export default function DashboardPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setIsDownloadingReport(false);
     }
   }
 
@@ -429,9 +434,10 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={downloadDecisionReport}
-              className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white"
+              disabled={isDownloadingReport}
+              className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
             >
-              Descargar resumen
+              {isDownloadingReport ? "Descargando..." : "Descargar resumen"}
             </button>
           </div>
         </div>
@@ -485,7 +491,7 @@ export default function DashboardPage() {
                 )}
               />
             ) : (
-              <EmptyState text="No hay acci?nes urgentes por ahora." />
+              <EmptyState text="No hay acciones urgentes por ahora." />
             )}
           </div>
         </SurfaceCard>
@@ -533,7 +539,7 @@ export default function DashboardPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard title="Pr?ximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
+        <SurfaceCard title="Próximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
           <div className="space-y-3">
             {upcomingMilestones.length ? (
               <CollapsibleList

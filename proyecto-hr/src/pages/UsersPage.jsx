@@ -407,7 +407,7 @@ export default function UsersPage() {
                 title="No hay usuarios para mostrar"
                 description={
                   query || searchQuery
-                    ? "Prueba con otra b?squeda o limpia el filtro actual."
+                    ? "Prueba con otra búsqueda o limpia el filtro actual."
                     : "Crea el primer acceso para empezar a asignar roles."
                 }
               />

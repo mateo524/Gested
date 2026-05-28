@@ -211,7 +211,7 @@ export default function CompetenciesPage() {
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar competencia" : "Nueva competencia"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
-            Cargá nombre, definición, descriptores y a quién aplica. No hace falta elegir institución.
+            Cargá nombre, definición, descriptores y a quién aplica. Las competencias están disponibles para toda la organización activa.
           </p>
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <input
