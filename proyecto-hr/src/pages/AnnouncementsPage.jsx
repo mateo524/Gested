@@ -4,6 +4,7 @@ import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { isAdminOrgUser } from "../lib/roleHelpers";
 import CollapsibleList from "../components/CollapsibleList";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const EMPTY_FORM = {
   title: "",
@@ -160,6 +161,7 @@ export default function AnnouncementsPage() {
   const [actionBusy, setActionBusy] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [confirmDeactivateId, setConfirmDeactivateId] = useState("");
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
@@ -357,16 +359,17 @@ export default function AnnouncementsPage() {
     }
   }
 
-  async function handleDeactivate(item) {
-    if (!canManage || actionBusy) return;
-    setActionBusy(item._id);
+  async function handleDeactivate() {
+    if (!canManage || actionBusy || !confirmDeactivateId) return;
+    setActionBusy(confirmDeactivateId);
     setError("");
     setNotice("");
     try {
-      await apiFetch(`/announcements/${item._id}`, {
+      await apiFetch(`/announcements/${confirmDeactivateId}`, {
         method: "DELETE",
         token,
       });
+      setConfirmDeactivateId("");
       setNotice("Novedad desactivada.");
       await Promise.all([loadAnnouncements(), refreshAnnouncementSummary()]);
     } catch (deleteError) {
@@ -671,7 +674,7 @@ export default function AnnouncementsPage() {
                 employees={employees}
                 onMarkRead={handleMarkRead}
                 onEdit={startEdit}
-                onDeactivate={handleDeactivate}
+                onDeactivate={(item) => setConfirmDeactivateId(item._id)}
                 onFocus={focusAnnouncement}
                 busyId={busyId}
                 actionBusy={actionBusy}
@@ -694,6 +697,18 @@ export default function AnnouncementsPage() {
           )}
         </div>
       </section>
+
+      <ConfirmDialog
+        open={Boolean(confirmDeactivateId)}
+        title="¿Desactivar esta novedad?"
+        message="La novedad dejará de mostrarse como activa para su audiencia."
+        confirmLabel="Desactivar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={Boolean(actionBusy && confirmDeactivateId)}
+        onCancel={() => setConfirmDeactivateId("")}
+        onConfirm={handleDeactivate}
+      />
     </div>
   );
 }

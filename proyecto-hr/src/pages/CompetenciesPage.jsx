@@ -4,6 +4,7 @@ import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import CollapsibleList from "../components/CollapsibleList";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
   nombre: "",
@@ -46,6 +47,8 @@ export default function CompetenciesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
+  const [confirmState, setConfirmState] = useState({ open: false, competency: null });
+  const [isDeleting, setIsDeleting] = useState(false);
   const listRef = useRef(null);
 
   const departmentOptions = useMemo(() => {
@@ -166,18 +169,22 @@ export default function CompetenciesPage() {
     setMessage("Editando competencia seleccionada.");
   }
 
-  async function handleDelete(competency) {
-    const ok = window.confirm(`¿Eliminar la competencia "${competency.nombre}"?`);
-    if (!ok) return;
+  async function confirmDeleteCompetency() {
+    const competency = confirmState.competency;
+    if (!competency) return;
     try {
+      setIsDeleting(true);
       await apiFetch(`/competencies/${competency._id}`, { method: "DELETE", token });
       if (editingId === competency._id) resetForm();
+      setConfirmState({ open: false, competency: null });
       setMessageType("success");
       setMessage("Competencia eliminada.");
       await loadData();
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -439,7 +446,7 @@ export default function CompetenciesPage() {
                       <button type="button" onClick={() => handleEdit(competency)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
                         Editar
                       </button>
-                      <button type="button" onClick={() => handleDelete(competency)} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                      <button type="button" onClick={() => setConfirmState({ open: true, competency })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
                         Eliminar
                       </button>
                     </div>
@@ -469,6 +476,22 @@ export default function CompetenciesPage() {
           {message}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title="¿Eliminar esta competencia?"
+        message={
+          confirmState.competency
+            ? `Vas a eliminar "${confirmState.competency.nombre}". Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isDeleting}
+        onCancel={() => setConfirmState({ open: false, competency: null })}
+        onConfirm={confirmDeleteCompetency}
+      />
     </div>
   );
 }

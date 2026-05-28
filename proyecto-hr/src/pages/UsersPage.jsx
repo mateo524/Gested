@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
   nombre: "",
@@ -27,6 +28,8 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
+  const [confirmState, setConfirmState] = useState({ open: false, mode: "", userId: "", count: 0 });
+  const [isConfirming, setIsConfirming] = useState(false);
   const deferredQuery = useDeferredValue(query);
   const availableRoles = useMemo(
     () =>
@@ -186,10 +189,8 @@ export default function UsersPage() {
       return;
     }
     if (action === "delete") {
-      const approved = window.confirm(
-        `Vas a eliminar ${selectedIds.length} usuario(s). Esta accion es irreversible.`
-      );
-      if (!approved) return;
+      setConfirmState({ open: true, mode: "bulk-delete", userId: "", count: selectedIds.length });
+      return;
     }
     try {
       const data = await apiFetch("/users/bulk", {
@@ -199,7 +200,7 @@ export default function UsersPage() {
         body: JSON.stringify({ action, userIds: selectedIds }),
       });
       setMessageType("success");
-      setMessage(data.mensaje || "Accion masiva aplicada.");
+      setMessage(data.mensaje || "Acción masiva aplicada.");
       setBulkPasswords(data.temporaryPasswords || []);
       setSelectedIds([]);
       await loadData();
@@ -209,9 +210,7 @@ export default function UsersPage() {
     }
   }
 
-  async function removeUser(userId) {
-    const approved = window.confirm("Eliminar usuario? Esta accion no se puede deshacer.");
-    if (!approved) return;
+  async function performUserDelete(userId) {
     try {
       await apiFetch(`/users/${userId}`, { method: "DELETE", token });
       await loadData();
@@ -221,6 +220,33 @@ export default function UsersPage() {
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    }
+  }
+
+  async function confirmCurrentAction() {
+    try {
+      setIsConfirming(true);
+      if (confirmState.mode === "bulk-delete") {
+        const data = await apiFetch("/users/bulk", {
+          method: "POST",
+          token,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", userIds: selectedIds }),
+        });
+        setMessageType("success");
+        setMessage(data.mensaje || "Acción masiva aplicada.");
+        setBulkPasswords(data.temporaryPasswords || []);
+        setSelectedIds([]);
+        await loadData();
+      } else if (confirmState.mode === "delete-user" && confirmState.userId) {
+        await performUserDelete(confirmState.userId);
+      }
+      setConfirmState({ open: false, mode: "", userId: "", count: 0 });
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setIsConfirming(false);
     }
   }
 
@@ -369,7 +395,7 @@ export default function UsersPage() {
                     </label>
                     <div className="flex gap-2">
                       <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-[#22c55e]/40 px-3 py-1.5 text-xs text-[#8be6ac]">Editar</button>
-                      <button type="button" onClick={() => removeUser(user._id)} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
+                      <button type="button" onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
                     </div>
                   </div>
                 </article>
@@ -381,7 +407,7 @@ export default function UsersPage() {
                 title="No hay usuarios para mostrar"
                 description={
                   query || searchQuery
-                    ? "Prueba con otra busqueda o limpia el filtro actual."
+                    ? "Prueba con otra b?squeda o limpia el filtro actual."
                     : "Crea el primer acceso para empezar a asignar roles."
                 }
               />
@@ -405,6 +431,22 @@ export default function UsersPage() {
           {message}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.mode === "bulk-delete" ? "¿Eliminar estos usuarios?" : "¿Eliminar este usuario?"}
+        message={
+          confirmState.mode === "bulk-delete"
+            ? `Vas a eliminar ${confirmState.count} usuario(s). Esta acción no se puede deshacer.`
+            : "Esta acción no se puede deshacer."
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isConfirming}
+        onCancel={() => setConfirmState({ open: false, mode: "", userId: "", count: 0 })}
+        onConfirm={confirmCurrentAction}
+      />
     </div>
   );
 }

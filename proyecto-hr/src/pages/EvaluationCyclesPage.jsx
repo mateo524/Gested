@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
+import ConfirmDialog from "../components/ConfirmDialog";
 
 const emptyForm = {
   anio: new Date().getFullYear(),
@@ -28,6 +29,8 @@ export default function EvaluationCyclesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
+  const [confirmState, setConfirmState] = useState({ open: false, cycle: null });
+  const [isDeleting, setIsDeleting] = useState(false);
   const formRef = useRef(null);
   const listRef = useRef(null);
 
@@ -131,20 +134,24 @@ export default function EvaluationCyclesPage() {
     setFieldErrors({});
   }
 
-  async function handleDelete(cycle) {
-    const ok = window.confirm(`¿Eliminar el ciclo "${cycle.periodo} ${cycle.anio}"?`);
-    if (!ok) return;
+  async function confirmDeleteCycle() {
+    const cycle = confirmState.cycle;
+    if (!cycle) return;
     try {
+      setIsDeleting(true);
       await apiFetch(`/evaluation-cycles/${cycle._id}`, { method: "DELETE", token });
       if (editingId === cycle._id) {
         cancelEdit();
       }
+      setConfirmState({ open: false, cycle: null });
       setMessageType("success");
       setMessage("Ciclo eliminado.");
       await loadData();
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -303,7 +310,7 @@ export default function EvaluationCyclesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(cycle)}
+                        onClick={() => setConfirmState({ open: true, cycle })}
                         className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200"
                       >
                         Eliminar
@@ -336,6 +343,22 @@ export default function EvaluationCyclesPage() {
           {message}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title="¿Eliminar este ciclo?"
+        message={
+          confirmState.cycle
+            ? `Vas a eliminar el ciclo "${confirmState.cycle.periodo} ${confirmState.cycle.anio}". Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isDeleting}
+        onCancel={() => setConfirmState({ open: false, cycle: null })}
+        onConfirm={confirmDeleteCycle}
+      />
     </div>
   );
 }
