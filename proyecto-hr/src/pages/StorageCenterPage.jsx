@@ -352,7 +352,7 @@ export default function StorageCenterPage() {
               </article>
             )) : (
               <EmptyState
-                title="No hay archivos cargados todav?a"
+                title="No hay archivos cargados todavía"
                 description="Sube el primer documento operativo para empezar a centralizar contenido por empresa."
               />
             )}

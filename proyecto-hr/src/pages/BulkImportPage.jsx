@@ -24,7 +24,7 @@ const templateSheets = [
   { key: "usersAndRoles", label: "Usuarios_y_Roles", detail: "Accesos, roles y scopes permitidos." },
   { key: "managers", label: "Managers", detail: "Relaciones de liderazgo y responsables." },
   { key: "kpis", label: "KPIs", detail: "Indicadores operativos cuando existan." },
-  { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del per?odo." },
+  { key: "okrs", label: "OKRs", detail: "Objetivos y resultados clave del período." },
   { key: "evaluations", label: "Evaluaciones", detail: "Cabecera de evaluaciones existentes por empleado y ciclo." },
   { key: "performanceMeasurements", label: "Mediciones de desempeño", detail: "Metas, competencias, autoevaluaciones y evidencias por evaluación." },
   { key: "developmentPlans", label: "Planes de desarrollo", detail: "Planes de desarrollo previos o activos para importar o validar." },
@@ -253,7 +253,7 @@ function PreviewCard({ row, issues }) {
           ))
         ) : (
           <p className="rounded-2xl border border-emerald-300/20 bg-emerald-500/10 px-3 py-3 text-sm text-emerald-200">
-            El registro se valido correctamente.
+            El registro se validó correctamente.
           </p>
         )}
       </div>
@@ -483,7 +483,7 @@ export default function BulkImportPage() {
       setFeedback(
         "error",
         error?.name === "AbortError"
-          ? "La descarga de la plantilla demoro demasiado. Reintenta en unos segundos."
+          ? "La descarga de la plantilla demoró demasiado. Reintenta en unos segundos."
           : error.message
       );
     } finally {
@@ -593,9 +593,9 @@ export default function BulkImportPage() {
       setFeedback(
         "error",
         text.includes("expir")
-          ? "La vista previa expiro. Volve a subir el archivo."
+          ? "La vista previa expiró. Volvé a subir el archivo."
           : text.includes("tardo demasiado")
-            ? "La confirmacion demoro demasiado. Revisa el historial antes de reintentar."
+            ? "La confirmación demoró demasiado. Revisá el historial antes de reintentar."
             : error.message
       );
     } finally {
@@ -716,7 +716,7 @@ export default function BulkImportPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard title="Subir archivo" subtitle="Solo aceptamos .xlsx y validamos antes de permitir cualquier confirmacion.">
+        <SurfaceCard title="Subir archivo" subtitle="Solo aceptamos .xlsx y validamos antes de permitir cualquier confirmación.">
           <div
             onDragEnter={(event) => {
               event.preventDefault();
@@ -745,7 +745,7 @@ export default function BulkImportPage() {
                   <path d="M4 20h16" />
                 </svg>
               </div>
-              <p className="mt-4 text-base font-semibold text-white">Arrastra la plantilla aqui o seleccionala desde tu equipo</p>
+              <p className="mt-4 text-base font-semibold text-white">Arrastrá la plantilla aquí o selecciónala desde tu equipo</p>
               <p className="mt-2 text-sm text-[#8FA9B7]">Archivo permitido: .xlsx</p>
               <button
                 type="button"
@@ -820,7 +820,7 @@ export default function BulkImportPage() {
 
         <SurfaceCard title="Confirmación" subtitle="Esta acción creará o actualizará registros en la organización activa.">
           {!summary ? (
-            <EmptyState text="Primero valida el archivo para habilitar la confirmacion." />
+            <EmptyState text="Primero validá el archivo para habilitar la confirmación." />
           ) : (
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2">
@@ -972,7 +972,7 @@ export default function BulkImportPage() {
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Filas</th>
                   <th className="px-4 py-3">Errores</th>
-                  <th className="px-4 py-3">Acci?n</th>
+                  <th className="px-4 py-3">Acción</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10 bg-[#122530]">

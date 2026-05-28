@@ -85,8 +85,8 @@ const MATRIX_ROWS = [
   { label: "Objetivos / Indicadores", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "allow", EMPLOYEE: "limited", VIEWER: "limited", AUDITOR: "limited" } },
   { label: "Desarrollo", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "allow", COORDINADOR: "allow", EMPLOYEE: "limited", VIEWER: "deny", AUDITOR: "limited" } },
   { label: "Reportes", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "limited", EMPLOYEE: "limited", VIEWER: "limited", AUDITOR: "allow" } },
-  { label: "Configuracion", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", VIEWER: "deny", AUDITOR: "deny" } },
-  { label: "Datos / Carga masiva", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", VIEWER: "deny", AUDITOR: "deny" } },
+  { label: "Configuración", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", VIEWER: "deny", AUDITOR: "deny" } },
+  { label: "Datos / Importación", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", VIEWER: "deny", AUDITOR: "deny" } },
 ];
 
 const STATE_META = {

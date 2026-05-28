@@ -17,7 +17,7 @@ import { apiFetch, apiUrl } from "../lib/api";
 const chartColors = ["#10b981", "#0f172a", "#f59e0b", "#38bdf8", "#fb7185", "#8b5cf6"];
 
 function formatDate(value) {
-  if (!value) return "Todav?a sin cargas";
+  if (!value) return "Todavía sin cargas";
 
   return new Date(value).toLocaleString("es-AR", {
     dateStyle: "short",
@@ -164,7 +164,7 @@ export default function ExportPage() {
         <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
           <p className="text-sm uppercase tracking-[0.24em] text-emerald-500">Centro de datos Performia</p>
           <h3 className="mt-3 text-4xl font-bold text-slate-950">
-            Importa, compara y explota la informaci?n de {activeCompany?.nombre || "tu empresa"}
+            Importá, compará y explotá la información de {activeCompany?.nombre || "tu empresa"}
           </h3>
           <p className="mt-4 max-w-3xl text-slate-500">
             Este modulo sirve para subir bases, decidir cuales quedan activas para el analisis,
@@ -344,7 +344,7 @@ export default function ExportPage() {
                 </article>
               ))
             ) : (
-              <p className="text-slate-500">Todav?a no se cargaron bases en esta empresa.</p>
+              <p className="text-slate-500">Todavía no se cargaron bases en esta empresa.</p>
             )}
           </div>
         </div>
@@ -372,7 +372,7 @@ export default function ExportPage() {
               </ResponsiveContainer>
             ) : (
               <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
-                Sin datos suficientes para graficar todav?a.
+                Sin datos suficientes para graficar todavía.
               </div>
             )}
           </div>
@@ -411,7 +411,7 @@ export default function ExportPage() {
             <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Comparacion de bases</p>
             <h3 className="mt-2 text-2xl font-semibold">Comparar dos cargas</h3>
             <p className="mt-2 text-slate-500">
-              Ideal para validar diferencias entre per?odos o cortes subidos por una misma empresa.
+              Ideal para validar diferencias entre períodos o cortes subidos por una misma empresa.
             </p>
           </div>
 
@@ -588,7 +588,7 @@ export default function ExportPage() {
                 ) : (
                   <tr>
                     <td className="px-4 py-6 text-slate-500" colSpan="3">
-                      Todav?a no hay registros importados para mostrar.
+                      Todavía no hay registros importados para mostrar.
                     </td>
                   </tr>
                 )}
