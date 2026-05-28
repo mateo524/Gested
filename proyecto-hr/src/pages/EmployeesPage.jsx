@@ -38,6 +38,7 @@ export default function EmployeesPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmState, setConfirmState] = useState({ open: false, employee: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [temporaryPassword, setTemporaryPassword] = useState("");
   const deferredSearch = useDeferredValue(filters.q);
   const appliedFilters = useMemo(
     () => ({ ...filters, q: deferredSearch }),
@@ -106,8 +107,9 @@ export default function EmployeesPage() {
     try {
       setIsSubmitting(true);
       setMessage("");
+      setTemporaryPassword("");
       const isEditing = Boolean(editingId);
-      await apiFetch(isEditing ? `/employees/${editingId}` : "/employees", {
+      const data = await apiFetch(isEditing ? `/employees/${editingId}` : "/employees", {
         method: isEditing ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
@@ -118,6 +120,9 @@ export default function EmployeesPage() {
       setFieldErrors({});
       setMessageType("success");
       setMessage(isEditing ? "Empleado actualizado correctamente." : "Empleado creado correctamente.");
+      if (!isEditing && data?.temporaryPassword) {
+        setTemporaryPassword(data.temporaryPassword);
+      }
       await loadBase();
     } catch (error) {
       setMessageType("error");
@@ -362,6 +367,13 @@ export default function EmployeesPage() {
           {messageType === "error" ? "No se pudo guardar. " : ""}
           {message}
         </p>
+      ) : null}
+
+      {temporaryPassword ? (
+        <div className="mt-4 rounded-2xl border border-amber-300/40 bg-amber-500/10 p-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Password temporal del usuario vinculado</p>
+          <p className="mt-2 text-sm text-[#f7e9c2]">{temporaryPassword}</p>
+        </div>
       ) : null}
 
       <ConfirmDialog
