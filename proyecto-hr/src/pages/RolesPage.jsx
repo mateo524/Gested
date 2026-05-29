@@ -805,8 +805,8 @@ export default function RolesPage() {
                       {canReadAssignments ? (
                         <CollapsibleList
                           items={filteredAssignments}
-                          initialCount={5}
-                          buttonLabelMore={`Ver más (${filteredAssignments.length - 5})`}
+                          initialCount={3}
+                          buttonLabelMore={`Ver más (${filteredAssignments.length - 3})`}
                           renderItem={(item) => {
                             const preset = presetMap.get(item.roleKey);
                             return (

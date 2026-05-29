@@ -385,8 +385,8 @@ export default function UsersPage() {
             {!isLoading && filteredUsers.length ? (
               <CollapsibleList
                 items={filteredUsers}
-                initialCount={5}
-                buttonLabelMore={`Ver más (${filteredUsers.length - 5})`}
+                initialCount={3}
+                buttonLabelMore={`Ver más (${filteredUsers.length - 3})`}
                 renderItem={(user) => (
                   <article key={user._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                     <div className="flex items-start justify-between gap-3">

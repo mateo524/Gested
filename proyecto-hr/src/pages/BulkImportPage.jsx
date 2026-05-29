@@ -896,8 +896,8 @@ export default function BulkImportPage() {
               <div className="space-y-3">
                 <CollapsibleList
                   items={filteredIssues}
-                  initialCount={5}
-                  buttonLabelMore={`Ver más (${filteredIssues.length - 5})`}
+                  initialCount={3}
+                  buttonLabelMore={`Ver más (${filteredIssues.length - 3})`}
                   emptyState={<div className="pf-alert-success">No se detectaron errores ni advertencias.</div>}
                   renderItem={(issue, index) => {
                     const meta = statusMeta(issue.severity);
