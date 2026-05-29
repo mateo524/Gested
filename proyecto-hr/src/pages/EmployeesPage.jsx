@@ -16,6 +16,8 @@ const emptyForm = {
   tipoEmpleado: "DOCENTE",
   managerId: "",
   fechaIngreso: "",
+  roleId: "",
+  password: "",
 };
 
 function formatDate(value) {
@@ -28,6 +30,7 @@ export default function EmployeesPage() {
   const { setView, searchQuery } = useView();
   const [employees, setEmployees] = useState([]);
   const [schools, setSchools] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [filters, setFilters] = useState({ q: "", schoolId: "" });
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
@@ -58,6 +61,10 @@ export default function EmployeesPage() {
     () => new Map(employees.map((employee) => [employee._id, employee])),
     [employees]
   );
+  const availableRoles = useMemo(
+    () => roles.filter((role) => String(role.code || role.nombre || "").toUpperCase() !== "SUPER_ADMIN"),
+    [roles]
+  );
 
   function buildEmployeeQuery(nextFilters) {
     const params = new URLSearchParams();
@@ -70,12 +77,14 @@ export default function EmployeesPage() {
   const loadBase = useCallback(async () => {
     try {
       setIsLoading(true);
-      const [schoolsData, employeesData] = await Promise.all([
+      const [schoolsData, employeesData, rolesData] = await Promise.all([
         apiFetch("/schools", { token }),
         apiFetch(`/employees${buildEmployeeQuery(appliedFilters)}`, { token }),
+        apiFetch("/roles", { token }),
       ]);
       setSchools(schoolsData);
       setEmployees(employeesData);
+      setRoles(rolesData);
       if (!form.schoolId && schoolsData[0]?._id) {
         setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
       }
@@ -94,7 +103,6 @@ export default function EmployeesPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     const nextErrors = {};
-    if (!form.schoolId) nextErrors.schoolId = "No encontramos una organización activa para guardar este perfil.";
     if (!form.nombre?.trim()) nextErrors.nombre = "Nombre obligatorio.";
     if (!form.apellido?.trim()) nextErrors.apellido = "Apellido obligatorio.";
     if (!form.cargo?.trim()) nextErrors.cargo = "Cargo obligatorio.";
@@ -144,6 +152,8 @@ export default function EmployeesPage() {
       tipoEmpleado: employee.tipoEmpleado || "DOCENTE",
       managerId: employee.managerId || "",
       fechaIngreso: employee.fechaIngreso ? new Date(employee.fechaIngreso).toISOString().slice(0, 10) : "",
+      roleId: "",
+      password: "",
     });
     setMessageType("info");
     setMessage("Editando empleado seleccionado.");
@@ -195,8 +205,6 @@ export default function EmployeesPage() {
           <p className="mt-2 text-sm text-[#9fb6c4]">Completa los datos mínimos y guarda. Luego puedes editar cuando quieras.</p>
 
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            {fieldErrors.schoolId ? <p className="text-xs text-rose-300">{fieldErrors.schoolId}</p> : null}
-
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Nombre</label>
@@ -210,8 +218,9 @@ export default function EmployeesPage() {
             {(fieldErrors.nombre || fieldErrors.apellido) ? <p className="text-xs text-rose-300">{fieldErrors.nombre || fieldErrors.apellido}</p> : null}
 
             <div>
-              <label className="mb-1 block text-xs text-[#9fb6c4]">Correo institucional (opcional)</label>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">Correo institucional</label>
               <input className="pf-input" placeholder="Ej: nombre@colegio.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+              <p className="mt-1 text-xs text-[#7f99a8]">Si completás email, también se crea un usuario con acceso a la plataforma.</p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
@@ -225,6 +234,30 @@ export default function EmployeesPage() {
               </div>
             </div>
             {fieldErrors.cargo ? <p className="text-xs text-rose-300">{fieldErrors.cargo}</p> : null}
+
+            {!editingId ? (
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <p className="mb-3 text-xs uppercase tracking-[0.08em] text-[#9fb6c4]">Crear usuario (opcional)</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-1 block text-xs text-[#9fb6c4]">Rol del usuario</label>
+                    <select className="pf-select" value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
+                      <option value="">Sin acceso</option>
+                      {availableRoles.map((role) => (
+                        <option key={role._id} value={role._id}>
+                          {role.nombre}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs text-[#9fb6c4]">Contraseña (opcional)</label>
+                    <input className="pf-input" type="password" placeholder="Auto-generada si se deja vacío" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-[#7f99a8]">Elegí un rol y contraseña para que el empleado acceda a la plataforma.</p>
+              </div>
+            ) : null}
 
             <div className="grid gap-4 md:grid-cols-2">
               <div>
