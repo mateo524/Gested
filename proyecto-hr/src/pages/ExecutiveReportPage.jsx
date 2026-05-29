@@ -656,7 +656,7 @@ export default function ExecutiveReportPage() {
             {employees.length ? (
               <CollapsibleList
                 items={employees}
-                initialCount={4}
+                initialCount={3}
                 className="grid gap-3 xl:grid-cols-2"
                 renderItem={(employee) => (
                   <article key={employee._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
@@ -858,8 +858,8 @@ export default function ExecutiveReportPage() {
                           <div className="space-y-3">
                             <CollapsibleList
                               items={detail.kpis?.items || []}
-                              initialCount={5}
-                              buttonLabelMore={`Ver más (${(detail.kpis?.items?.length || 0) - 5})`}
+                              initialCount={3}
+                              buttonLabelMore={`Ver más (${(detail.kpis?.items?.length || 0) - 3})`}
                               renderItem={(item) => (
                                 <article key={`kpi-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                                   <p className="font-semibold text-white">{item.name}</p>
@@ -874,8 +874,8 @@ export default function ExecutiveReportPage() {
                             />
                             <CollapsibleList
                               items={detail.okrs?.items || []}
-                              initialCount={5}
-                              buttonLabelMore={`Ver más (${(detail.okrs?.items?.length || 0) - 5})`}
+                              initialCount={3}
+                              buttonLabelMore={`Ver más (${(detail.okrs?.items?.length || 0) - 3})`}
                               renderItem={(item) => (
                                 <article key={`okr-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                                   <p className="font-semibold text-white">{item.objectiveTitle}</p>
@@ -899,8 +899,8 @@ export default function ExecutiveReportPage() {
                           <div className="space-y-3">
                             <CollapsibleList
                               items={detail.developmentPlans || []}
-                              initialCount={5}
-                              buttonLabelMore={`Ver más (${(detail.developmentPlans?.length || 0) - 5})`}
+                              initialCount={3}
+                              buttonLabelMore={`Ver más (${(detail.developmentPlans?.length || 0) - 3})`}
                               renderItem={(plan) => (
                                 <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                                   <div className="flex flex-wrap items-start justify-between gap-3">
@@ -930,8 +930,8 @@ export default function ExecutiveReportPage() {
                           <div className="space-y-3">
                             <CollapsibleList
                               items={detail.actions || []}
-                              initialCount={5}
-                              buttonLabelMore={`Ver más (${(detail.actions?.length || 0) - 5})`}
+                              initialCount={3}
+                              buttonLabelMore={`Ver más (${(detail.actions?.length || 0) - 3})`}
                               renderItem={(action, index) => (
                                 <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
                                   <div className="flex flex-wrap items-center gap-2">

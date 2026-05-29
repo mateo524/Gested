@@ -286,8 +286,8 @@ export default function EvaluationCyclesPage() {
             {!isLoading && visibleCycles.length
               ? <CollapsibleList
                   items={visibleCycles}
-                  initialCount={5}
-                  buttonLabelMore={`Ver más (${visibleCycles.length - 5})`}
+                  initialCount={3}
+                  buttonLabelMore={`Ver más (${visibleCycles.length - 3})`}
                   renderItem={(cycle) => (
                     <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                       <div className="flex flex-wrap items-center gap-2">

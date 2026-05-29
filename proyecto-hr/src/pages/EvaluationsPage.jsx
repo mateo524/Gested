@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -34,19 +34,19 @@ function buildPrintableReport(data) {
       </head>
       <body>
         <h1>Performia</h1>
-        <p class="muted">Reporte individual de evaluación</p>
+        <p class="muted">Reporte individual de evaluaci�n</p>
         <p class="muted">Generado: ${new Date(data.generatedAt).toLocaleString("es-AR")}</p>
 
         <h2>Empleado</h2>
         <div class="card">
           <p><strong>Nombre:</strong> ${data.employee?.nombreCompleto || "-"}</p>
           <p><strong>Cargo:</strong> ${data.employee?.cargo || "-"}</p>
-          <p><strong>Área:</strong> ${data.employee?.area || "-"}</p>
+          <p><strong>�rea:</strong> ${data.employee?.area || "-"}</p>
           <p><strong>Email:</strong> ${data.employee?.email || "-"}</p>
           <p><strong>Colegio:</strong> ${data.schoolName || "-"}</p>
         </div>
 
-        <h2>Evaluación</h2>
+        <h2>Evaluaci�n</h2>
         <div class="card">
           <p><strong>Tipo:</strong> ${data.evaluation?.tipo || "-"}</p>
           <p><strong>Estado:</strong> ${data.evaluation?.estado || "-"}</p>
@@ -190,7 +190,7 @@ export default function EvaluationsPage() {
     event.preventDefault();
     if (!form.employeeId || !form.cycleId) {
       setMessageType("warning");
-      setMessage("Seleccioná empleado y período para guardar la evaluación.");
+      setMessage("Seleccion� empleado y per�odo para guardar la evaluaci�n.");
       return;
     }
     try {
@@ -209,7 +209,7 @@ export default function EvaluationsPage() {
       setForm(emptyForm);
       setScores(metrics.map((metric) => defaultScore(metric._id)));
       setMessageType("success");
-      setMessage("Evaluación creada.");
+      setMessage("Evaluaci�n creada.");
       await loadEvaluations();
       window.requestAnimationFrame(() => {
         document.getElementById("evaluations-list-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -231,7 +231,7 @@ export default function EvaluationsPage() {
       const popup = window.open("", "_blank", "width=900,height=800");
       if (!popup) {
         setMessageType("warning");
-        setMessage("Tu navegador bloqueó la ventana del reporte.");
+        setMessage("Tu navegador bloque� la ventana del reporte.");
         return;
       }
       popup.document.open();
@@ -248,16 +248,16 @@ export default function EvaluationsPage() {
   return (
     <div className="space-y-5">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeño</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Gestión de evaluaciones</h3>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempe�o</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Gesti�n de evaluaciones</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Una evaluación mide desempeño durante un ciclo. El contexto define a quién se evalúa, con qué criterios y en qué período.
+          Una evaluaci�n mide desempe�o durante un ciclo. El contexto define a qui�n se eval�a, con qu� criterios y en qu� per�odo.
         </p>
       </section>
 
-      <SurfaceCard title="Cómo se construye una evaluación" subtitle="Tomamos como referencia el flujo real de desempeño del formulario 2024.">
+      <SurfaceCard title="C�mo se construye una evaluaci�n" subtitle="Tomamos como referencia el flujo real de desempe�o del formulario 2024.">
         <div className="grid gap-3 md:grid-cols-6">
-          {["Ciclo", "Metas / competencias", "Autoevaluación", "Evaluación superior", "Evidencias", "Resumen"].map((step, index) => (
+          {["Ciclo", "Metas / competencias", "Autoevaluaci�n", "Evaluaci�n superior", "Evidencias", "Resumen"].map((step, index) => (
             <article key={step} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
               <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Paso {index + 1}</p>
               <p className="mt-2 text-sm font-semibold text-white">{step}</p>
@@ -268,7 +268,7 @@ export default function EvaluationsPage() {
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
-          <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>
+          <h4 className="text-xl font-semibold text-white">Nueva evaluaci�n</h4>
           <div className="mt-3 flex flex-wrap gap-2">
             <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Evaluado y ciclo</span>
             <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Tipo y estado</span>
@@ -277,7 +277,7 @@ export default function EvaluationsPage() {
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Datos del evaluado</p>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
-              <option value="">Seleccioná empleado</option>
+              <option value="">Seleccion� empleado</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
                   {employee.apellido}, {employee.nombre}
@@ -285,7 +285,7 @@ export default function EvaluationsPage() {
               ))}
             </select>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.cycleId} onChange={(event) => setForm({ ...form, cycleId: event.target.value })}>
-              <option value="">Seleccioná ciclo o período</option>
+              <option value="">Seleccion� ciclo o per�odo</option>
               {cycles.map((cycle) => (
                 <option key={cycle._id} value={cycle._id}>
                   {cycle.periodo} {cycle.anio} - {cycle.etapa}
@@ -293,11 +293,11 @@ export default function EvaluationsPage() {
               ))}
             </select>
 
-            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Cómo se evaluará</p>
+            <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">C�mo se evaluar�</p>
             <div className="grid gap-4 md:grid-cols-2">
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
-                <option value="AUTOEVALUACION">Autoevaluación</option>
-                <option value="JEFATURA">Evaluación de jefatura</option>
+                <option value="AUTOEVALUACION">Autoevaluaci�n</option>
+                <option value="JEFATURA">Evaluaci�n de jefatura</option>
                 <option value="FINAL">Cierre / final</option>
               </select>
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(event) => setForm({ ...form, estado: event.target.value })}>
@@ -313,8 +313,8 @@ export default function EvaluationsPage() {
               <p className="text-sm font-semibold text-[#c5d5de]">Contenido evaluativo asociado</p>
               <CollapsibleList
                 items={scores}
-                initialCount={5}
-                buttonLabelMore={`Ver más (${scores.length - 5})`}
+                initialCount={3}
+                buttonLabelMore={`Ver m�s (${scores.length - 3})`}
                 renderItem={(score) => (
                   <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
                     <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
@@ -330,7 +330,7 @@ export default function EvaluationsPage() {
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
-              {isSubmitting ? "Guardando..." : "Crear evaluación"}
+              {isSubmitting ? "Guardando..." : "Crear evaluaci�n"}
             </button>
           </form>
         </section>
@@ -339,7 +339,7 @@ export default function EvaluationsPage() {
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h4 className="text-xl font-semibold text-white">Evaluaciones asignadas</h4>
-              <p className="mt-1 text-sm text-[#9fb6c4]">Revisá la lista visible y abrí el detalle cuando quieras leer datos, mediciones y comentarios.</p>
+              <p className="mt-1 text-sm text-[#9fb6c4]">Revis� la lista visible y abr� el detalle cuando quieras leer datos, mediciones y comentarios.</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-right">
               <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Registros</p>
@@ -349,13 +349,13 @@ export default function EvaluationsPage() {
           <div className="mt-5 space-y-4">
             {searchQuery ? (
               <div className="pf-alert-info flex flex-wrap items-center justify-between gap-3">
-                <span>Hay una búsqueda activa. Limpiála para ver todas las evaluaciones.</span>
+                <span>Hay una b�squeda activa. Limpi�la para ver todas las evaluaciones.</span>
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
                   className="rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white"
                 >
-                  Limpiar búsqueda
+                  Limpiar b�squeda
                 </button>
               </div>
             ) : null}
@@ -366,7 +366,7 @@ export default function EvaluationsPage() {
               <ErrorState
                 compact
                 title="No pudimos cargar las evaluaciones"
-                description="Reintentá para recuperar la lista del ciclo actual."
+                description="Reintent� para recuperar la lista del ciclo actual."
                 actionLabel="Reintentar"
                 onAction={() =>
                   loadEvaluations().catch((error) => {
@@ -388,7 +388,7 @@ export default function EvaluationsPage() {
                     <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{evaluation.tipo}</span>
                     <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{evaluation.estado}</span>
                   </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} · Resultado final: {evaluation.resultadoFinal}</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} � Resultado final: {evaluation.resultadoFinal}</p>
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => loadEvaluationDetail(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
@@ -405,11 +405,11 @@ export default function EvaluationsPage() {
               !isLoadingBase && !isLoadingEvaluations && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tienes evaluaciones cargadas" : "Todavía no hay evaluaciones registradas"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todav�a no tienes evaluaciones cargadas" : "Todav�a no hay evaluaciones registradas"}
                   description={
                     user?.roleCode === "EMPLEADO"
-                      ? "Cuando te asignen un ciclo o una autoevaluación, la vas a ver acá."
-                      : "Creá la primera evaluación para empezar a seguir resultados por persona."
+                      ? "Cuando te asignen un ciclo o una autoevaluaci�n, la vas a ver ac�."
+                      : "Cre� la primera evaluaci�n para empezar a seguir resultados por persona."
                   }
                 />
               ) : null
@@ -420,14 +420,14 @@ export default function EvaluationsPage() {
 
       <div ref={detailRef}>
         <SurfaceCard
-          title={selectedEvaluation ? "Detalle de evaluación" : "Detalle de evaluación"}
-          subtitle={selectedEvaluation ? "Acercamos la lectura al formulario real: datos del evaluado, mediciones, resumen y comentarios." : "Seleccioná una evaluación para ver datos del evaluado, mediciones, evidencias y resumen evaluativo."}
+          title={selectedEvaluation ? "Detalle de evaluaci�n" : "Detalle de evaluaci�n"}
+          subtitle={selectedEvaluation ? "Acercamos la lectura al formulario real: datos del evaluado, mediciones, resumen y comentarios." : "Seleccion� una evaluaci�n para ver datos del evaluado, mediciones, evidencias y resumen evaluativo."}
           actions={selectedEvaluation ? <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">{selectedEvaluation.estado}</span> : null}
         >
           {loadingDetail ? (
             <LoadingState compact title="Cargando detalle" description="Estamos trayendo mediciones, comentarios y resultado final." />
           ) : !selectedEvaluation ? (
-            <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá “Ver proceso” en la lista para abrir una vista más útil del desempeño." />
+            <EmptyState compact title="Todav�a no elegiste una evaluaci�n" description="Us� �Ver proceso� en la lista para abrir una vista m�s �til del desempe�o." />
           ) : (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -442,7 +442,7 @@ export default function EvaluationsPage() {
                   <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.employeeId?.cargo || "-"}</p>
                 </article>
                 <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Área</p>
+                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">�rea</p>
                   <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.employeeId?.area || "-"}</p>
                 </article>
                 <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
@@ -453,13 +453,13 @@ export default function EvaluationsPage() {
 
               <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
                 <div className="space-y-4">
-                  <SurfaceCard title="Contenido evaluativo asociado" subtitle="Acá concentramos las mediciones visibles del formulario actual.">
+                  <SurfaceCard title="Contenido evaluativo asociado" subtitle="Ac� concentramos las mediciones visibles del formulario actual.">
                     <div className="space-y-3">
                       <CollapsibleList
                         items={selectedScores}
-                        initialCount={5}
-                        buttonLabelMore={`Ver más (${selectedScores.length - 5})`}
-                        emptyState={<EmptyState compact title="No hay mediciones cargadas" description="Esta evaluación todavía no tiene metas o competencias detalladas." />}
+                        initialCount={3}
+                        buttonLabelMore={`Ver m�s (${selectedScores.length - 3})`}
+                        emptyState={<EmptyState compact title="No hay mediciones cargadas" description="Esta evaluaci�n todav�a no tiene metas o competencias detalladas." />}
                         renderItem={(score) => (
                           <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -486,7 +486,7 @@ export default function EvaluationsPage() {
                         <p className="mt-2 text-2xl font-semibold text-white">{selectedEvaluation.resultadoFinal ?? "-"}</p>
                       </article>
                       <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Comentarios de la evaluación</p>
+                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Comentarios de la evaluaci�n</p>
                         <p className="mt-2 text-sm text-[#9fb6c4]">{selectedEvaluation.comentariosGenerales || "Sin comentarios generales."}</p>
                       </article>
                       <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">

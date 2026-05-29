@@ -317,8 +317,8 @@ export default function EmployeesPage() {
             {!isLoading && filteredEmployees.length ? (
               <CollapsibleList
                 items={filteredEmployees}
-                initialCount={5}
-                buttonLabelMore={`Ver más (${filteredEmployees.length - 5})`}
+                initialCount={3}
+                buttonLabelMore={`Ver más (${filteredEmployees.length - 3})`}
                 renderItem={(employee) => {
                   const manager = employeesById.get(employee.managerId);
                   return (
