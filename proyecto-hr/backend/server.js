@@ -60,6 +60,10 @@ app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(process.env.PORT || 3000, () => {
+    console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
+  });
+}
+
+export default app;
