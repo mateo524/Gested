@@ -1,4 +1,5 @@
 import express from "express";
+import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
@@ -7,6 +8,53 @@ import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
 
 const router = express.Router();
+
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ mensaje: "Email y contraseña son requeridos" });
+    }
+
+    const user = await User.findOne({ email, activo: true }).populate("roleId");
+
+    if (!user) {
+      return res.status(401).json({ mensaje: "Credenciales inválidas" });
+    }
+
+    const valid = await bcrypt.compare(password, user.passwordHash);
+    if (!valid) {
+      return res.status(401).json({ mensaje: "Credenciales inválidas" });
+    }
+
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        companyId: user.companyId,
+        nombre: user.nombre,
+        email: user.email,
+        roleId: user.roleId?._id,
+        permisos: user.roleId?.permisos || [],
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "24h" }
+    );
+
+    res.json({
+      token,
+      user: {
+        _id: user._id,
+        nombre: user.nombre,
+        email: user.email,
+        roleId: user.roleId?._id,
+        permisos: user.roleId?.permisos || [],
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ mensaje: "Error al iniciar sesión", error: error.message });
+  }
+});
 
 router.get("/", auth, permit("manage_users"), async (req, res) => {
   try {

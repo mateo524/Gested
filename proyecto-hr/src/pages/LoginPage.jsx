@@ -1,39 +1,48 @@
 import { useState } from "react";
 import { useAuth } from "../context/AuthContext";
 
+const API = import.meta.env.VITE_API_URL;
+
 export default function LoginPage() {
   const { login } = useAuth();
-  const [form, setForm] = useState({
-    email: "",
-    password: "",
-  });
+  const [form, setForm] = useState({ email: "", password: "" });
   const [message, setMessage] = useState("");
+  const [cargando, setCargando] = useState(false);
+  const [despertando, setDespertando] = useState(false);
 
   const handleSubmit = async () => {
+    setMessage("");
+
+    // 1. Despertar servidor si está dormido
+    if (!despertando) {
+      setDespertando(true);
+      setMessage("Conectando con el servidor...");
+      try {
+        await fetch(`${API}/health`, { signal: AbortSignal.timeout(8000) });
+      } catch {
+        // si falla igual intentamos login
+      }
+      setDespertando(false);
+    }
+
+    setCargando(true);
+    setMessage("Iniciando sesión...");
+
     try {
-      setMessage("");
-
-      const url = `${import.meta.env.VITE_API_URL}/auth/login`;
-      console.log("LOGIN URL:", url);
-
-      const response = await fetch(url, {
+      const response = await fetch(`${API}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
 
       const text = await response.text();
-      console.log("LOGIN STATUS:", response.status);
-      console.log("LOGIN RESPONSE TEXT:", text);
 
-      let data = {};
+      let data;
       try {
         data = text ? JSON.parse(text) : {};
       } catch {
         throw new Error(
-          `El backend no devolvió JSON válido. Respuesta recibida: ${text || "vacía"}`
+          `El servidor no respondió correctamente. ${text ? "Respuesta: " + text : "Intentalo de nuevo."}`
         );
       }
 
@@ -44,6 +53,8 @@ export default function LoginPage() {
       login(data);
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setCargando(false);
     }
   };
 
@@ -66,7 +77,8 @@ export default function LoginPage() {
             placeholder="Email"
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
-            className="w-full border border-slate-300 rounded-2xl px-4 py-3"
+            disabled={cargando}
+            className="w-full border border-slate-300 rounded-2xl px-4 py-3 disabled:opacity-50"
           />
 
           <input
@@ -74,19 +86,30 @@ export default function LoginPage() {
             placeholder="Contraseña"
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            className="w-full border border-slate-300 rounded-2xl px-4 py-3"
+            disabled={cargando}
+            className="w-full border border-slate-300 rounded-2xl px-4 py-3 disabled:opacity-50"
           />
 
           <button
             onClick={handleSubmit}
-            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl py-3 font-semibold"
+            disabled={cargando || despertando}
+            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl py-3 font-semibold flex items-center justify-center gap-2"
           >
-            Entrar
+            {(cargando || despertando) && (
+              <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            )}
+            {cargando || despertando ? "Esperando..." : "Entrar"}
           </button>
         </div>
 
         {message && (
-          <p className="mt-4 text-red-500 whitespace-pre-wrap">{message}</p>
+          <p className="mt-4 text-red-500 whitespace-pre-wrap text-sm flex items-center gap-2">
+            <span>{message === "Conectando con el servidor..." || message === "Iniciando sesión..." ? "⏳" : "⚠️"}</span>
+            {message}
+          </p>
         )}
 
         <div className="mt-6 text-sm text-slate-500">
