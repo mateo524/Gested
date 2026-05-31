@@ -11,7 +11,7 @@ const EvaluationCycleSchema = new mongoose.Schema(
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "School",
-      required: true,
+      default: null,
       index: true,
     },
     anio: { type: Number, required: true },
