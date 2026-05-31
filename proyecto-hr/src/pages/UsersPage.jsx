@@ -58,8 +58,8 @@ export default function UsersPage() {
     try {
       setIsLoading(true);
       const [usersData, rolesData] = await Promise.all([
-        apiFetch("/users", { token }),
-        apiFetch("/roles", { token }),
+        apiFetch("/users", { token, cache: "no-cache" }),
+        apiFetch("/roles", { token, cache: "no-cache" }),
       ]);
       setUsers(usersData);
       setRoles(rolesData);

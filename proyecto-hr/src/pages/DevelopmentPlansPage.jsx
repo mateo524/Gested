@@ -105,6 +105,7 @@ export default function DevelopmentPlansPage() {
         token,
         signal,
         timeoutMs: 20000,
+        cache: "no-cache",
       });
       setPlans(plansData);
       sessionStorage.setItem(plansCacheKey, JSON.stringify(plansData));
@@ -117,8 +118,8 @@ export default function DevelopmentPlansPage() {
     setIsLoadingBase(true);
     try {
       const [employeesData, evaluationsData] = await Promise.all([
-        apiFetch("/employees", { token, signal, timeoutMs: 20000 }),
-        apiFetch("/evaluations", { token, signal, timeoutMs: 20000 }),
+        apiFetch("/employees", { token, signal, timeoutMs: 20000, cache: "no-cache" }),
+        apiFetch("/evaluations", { token, signal, timeoutMs: 20000, cache: "no-cache" }),
       ]);
       setEmployees(employeesData);
       setEvaluations(evaluationsData);
@@ -138,6 +139,7 @@ export default function DevelopmentPlansPage() {
         token,
         signal,
         timeoutMs: 20000,
+        cache: "no-cache",
       });
       setSuggestions(data.suggestions || []);
     } finally {
