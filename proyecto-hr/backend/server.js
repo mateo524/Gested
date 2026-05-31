@@ -115,7 +115,7 @@ app.use((req, res, next) => {
     return next();
   }
 
-  res.setHeader("Cache-Control", "private, max-age=20, stale-while-revalidate=60");
+  res.setHeader("Cache-Control", "private, no-cache");
   res.setHeader("Vary", "Authorization, X-Company-Id");
   return next();
 });
