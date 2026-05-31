@@ -49,11 +49,29 @@ export async function resolveDefaultActiveSchoolId({ companyId, preferredSchoolI
 }
 
 export async function resolveDefaultEmployeeRole({ companyId }) {
-  return Role.findOne({
+  const legacyRole = await Role.findOne({
     companyId,
     code: "EMPLEADO",
     activo: { $ne: false },
   });
+  if (legacyRole) return legacyRole;
+
+  const anyRole = await Role.findOne({
+    companyId,
+    activo: { $ne: false },
+  }).sort({ createdAt: 1 });
+  if (anyRole) return anyRole;
+
+  const [role] = await Role.create([{
+    companyId,
+    code: "EMPLEADO",
+    nombre: "Empleado",
+    descripcion: "Rol base para empleados creado automáticamente.",
+    scope: "self",
+    activo: true,
+    isSystem: true,
+  }]);
+  return role;
 }
 
 async function updateExistingAssignmentEmployee({ user, employeeId, roleLabel = "" }) {

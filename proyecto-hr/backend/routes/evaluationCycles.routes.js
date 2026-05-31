@@ -11,14 +11,19 @@ const router = express.Router();
 
 export function resolveTenantIds(req) {
   const companyFromHeader = req.get("X-Company-Id");
-  return {
-    companyId: req.scope.isSuperAdmin
-      ? req.body.companyId || req.query.companyId || companyFromHeader
-      : req.scope.companyId,
-    schoolId: req.scope.isSuperAdmin
-      ? req.body.schoolId || req.query.schoolId
-      : req.scope.schoolId,
-  };
+  const companyId = req.scope.isSuperAdmin
+    ? req.body.companyId || req.query.companyId || companyFromHeader
+    : req.scope.companyId;
+
+  let schoolId = req.scope.isSuperAdmin
+    ? req.body.schoolId || req.query.schoolId
+    : req.scope.schoolId;
+
+  if (!schoolId && companyId) {
+    schoolId = req.body.schoolId || req.query.schoolId || null;
+  }
+
+  return { companyId, schoolId };
 }
 
 async function assertSchoolInCompany(companyId, schoolId) {
@@ -75,15 +80,15 @@ router.post(
   async (req, res) => {
     const { companyId, schoolId } = resolveTenantIds(req);
 
-    if (!companyId || !schoolId) {
-      return res.status(400).json({ mensaje: "No pudimos resolver la institución activa para crear el ciclo." });
+    if (!companyId) {
+      return res.status(400).json({ mensaje: "No pudimos resolver la organización activa para crear el ciclo." });
     }
 
     if (!req.body.anio || !req.body.periodo || !req.body.etapa) {
       return res.status(400).json({ mensaje: "Debes indicar año, período y etapa." });
     }
 
-    if (!(await assertSchoolInCompany(companyId, schoolId))) {
+    if (schoolId && !(await assertSchoolInCompany(companyId, schoolId))) {
       return res.status(400).json({ mensaje: "La institución activa no pertenece a tu organización." });
     }
 
@@ -94,7 +99,7 @@ router.post(
 
     const cycle = await EvaluationCycle.create({
       companyId,
-      schoolId,
+      schoolId: schoolId || null,
       anio: Number(req.body.anio),
       periodo: req.body.periodo.trim(),
       etapa: req.body.etapa,
