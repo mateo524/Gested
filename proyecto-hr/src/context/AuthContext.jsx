@@ -106,7 +106,12 @@ export function AuthProvider({ children }) {
   }, [token, user?.isSuperAdmin]);
 
   const fetchCompanies = useCallback(async (nextToken, nextUser) => {
-    if (!nextToken || !nextUser?.permisos?.includes("manage_companies")) {
+    if (!nextToken) {
+      setCompanies([]);
+      return;
+    }
+
+    if (!nextUser?.isSuperAdmin && !nextUser?.permisos?.includes("manage_companies")) {
       setCompanies([]);
       return;
     }
