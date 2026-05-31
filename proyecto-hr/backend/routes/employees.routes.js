@@ -9,7 +9,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
-import { isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
+import { isEmployeeScope, isManagerScope, getScopedEmployeeIds } from "../utils/employeeScope.js";
 import {
   normalizeEmail,
   resolveDefaultEmployeeRole,
@@ -57,8 +57,29 @@ async function validateManager({ managerId, companyId, schoolId, employeeId = nu
   return { ok: true, value: manager._id };
 }
 
-router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
-  const filter = buildScopedFilter(req, {});
+router.get(
+  "/",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.VIEW_TEAM,
+    PERMISSIONS.VIEW_SELF_PROFILE,
+    PERMISSIONS.VIEW_REPORTS,
+  ),
+  async (req, res) => {
+    const filter = buildScopedFilter(req, {});
+
+    if (isManagerScope(req.scope)) {
+      const teamIds = await getScopedEmployeeIds(req.scope);
+      if (teamIds && teamIds.length) {
+        filter._id = { $in: teamIds };
+      }
+    }
+
+    if (isEmployeeScope(req.scope)) {
+      filter._id = req.scope.employeeId;
+    }
 
   if (req.query.schoolId && req.scope.isSuperAdmin) {
     filter.schoolId = req.query.schoolId;
