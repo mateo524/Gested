@@ -1,16 +1,35 @@
-export const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+function resolveApiUrl() {
+  const configuredUrl = String(import.meta.env.VITE_API_URL || "").trim();
+  if (configuredUrl) {
+    return configuredUrl.replace(/\/$/, "");
+  }
+
+  if (typeof window !== "undefined" && window.location?.origin) {
+    const origin = window.location.origin.replace(/\/$/, "");
+    const isLocalOrigin =
+      origin.includes("localhost") ||
+      origin.includes("127.0.0.1") ||
+      origin.includes("[::1]");
+
+    return isLocalOrigin ? "http://localhost:3000" : origin;
+  }
+
+  return "http://localhost:3000";
+}
+
+export const apiUrl = resolveApiUrl();
 
 const DEFAULT_TIMEOUT_MS = 12000;
 const NETWORK_ERROR_MESSAGE =
-  "No se pudo conectar con el servidor. Verifica conexión o intenta nuevamente.";
+  "No se pudo conectar con el servidor. Verificá tu conexión o intentá nuevamente.";
 const TIMEOUT_ERROR_MESSAGE =
-  "La solicitud está demorando más de lo esperado. Intenta nuevamente en unos segundos.";
+  "La solicitud está demorando más de lo esperado. Intentá nuevamente en unos segundos.";
 
 function sanitizeServerMessage(raw) {
   const value = String(raw || "").trim();
   if (!value) return "";
   if (value.startsWith("<!DOCTYPE") || value.startsWith("<html")) {
-    return "Error interno del servidor. Intenta nuevamente en unos segundos.";
+    return "Error interno del servidor. Intentá nuevamente en unos segundos.";
   }
   return value.replace(/<[^>]*>/g, "").trim();
 }

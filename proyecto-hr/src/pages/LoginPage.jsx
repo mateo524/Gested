@@ -25,14 +25,14 @@ export default function LoginPage() {
     if (urlToken) {
       setResetForm((prev) => ({ ...prev, token: urlToken }));
       setMode("reset");
-      setMessage("Token detectado. Ingresa tu nueva contraseña para continuar.");
+      setMessage("Token detectado. Ingresá tu nueva contraseña para continuar.");
     }
   }, []);
 
   const pageStyle = useMemo(
     () => ({
       borderColor: `${portalBranding.primaryColor}22`,
-      background: "linear-gradient(180deg, #f8f4ec, #f8f4ec)",
+      background: "linear-gradient(180deg, rgba(15, 27, 36, 0.98), rgba(16, 27, 36, 0.94))",
     }),
     [portalBranding.primaryColor]
   );
@@ -103,7 +103,7 @@ export default function LoginPage() {
           newPassword: resetForm.newPassword,
         }),
       });
-      setMessage("Contraseña actualizada. Ahora inicia sesión con la nueva clave.");
+      setMessage("Contraseña actualizada. Ahora iniciá sesión con la nueva clave.");
       setMode("login");
       setResetForm({ token: "", newPassword: "" });
     } catch (error) {
@@ -138,7 +138,10 @@ export default function LoginPage() {
               >
                 Plataforma interna
               </p>
-              <h1 className="mt-4 text-5xl leading-[0.95] md:text-6xl" style={{ fontFamily: "Instrument Serif, serif" }}>
+              <h1
+                className="mt-4 text-5xl leading-[0.95] md:text-6xl"
+                style={{ fontFamily: "Instrument Serif, serif" }}
+              >
                 Datos mejor organizados para tomar decisiones con más claridad
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#AFC3CE] md:text-lg">
@@ -167,7 +170,10 @@ export default function LoginPage() {
         <section className="flex items-center bg-[#142028] p-8 md:p-12">
           <div className="mx-auto w-full max-w-md rounded-[1.75rem] border border-white/10 bg-[#1A2C38] p-7 shadow-sm backdrop-blur">
             <p className="text-xs uppercase tracking-[0.28em] text-[#7A9AAA]">Ingreso seguro</p>
-            <h2 className="mt-3 text-4xl leading-tight text-white" style={{ fontFamily: "Instrument Serif, serif" }}>
+            <h2
+              className="mt-3 text-4xl leading-tight text-white"
+              style={{ fontFamily: "Instrument Serif, serif" }}
+            >
               Entrar a {portalBranding.nombreVisible}
             </h2>
             <p className="mt-3 text-base leading-7 text-[#AFC3CE]">
@@ -218,7 +224,7 @@ export default function LoginPage() {
                   className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#7A9AAA]"
                   title="Próximo paso recomendado: login con Google Workspace"
                 >
-                  Iniciar con Google (proximamente)
+                  Iniciar con Google (próximamente)
                 </button>
               </form>
             )}
