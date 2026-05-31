@@ -60,7 +60,7 @@ export default function OrganizationsPage() {
         <p className="mt-2 text-slate-500">
           {canManageCompanies
             ? "Todo el alta institucional en una sola pantalla, con permisos por rol."
-            : "Espacio personalizado de tu institucion, con acceso solo a tu entorno."}
+            : "Espacio personalizado de tu institución, con acceso solo a tu entorno."}
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
           {tabs.map((item) => (

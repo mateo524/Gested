@@ -134,7 +134,7 @@ export default function DashboardPage() {
       items.push({
         tone: "info",
         title: `${lowPerformance} personas requieren seguimiento`,
-        detail: "Revisa desarrollo y acompanamiento desde una mirada agregada.",
+        detail: "Revisa desarrollo y acompañamiento desde una mirada agregada.",
       });
     }
     return items.slice(0, 4);

@@ -564,7 +564,7 @@ export default function MetricsPage() {
     if (!selectedEmployeeId && visibleEmployees.length) {
       setSelectedEmployeeId(String(visibleEmployees[0]._id));
     }
-  }, [visibleEmployees]);
+  }, [visibleEmployees, selectedEmployeeId]);
 
   const employeeEvaluations = useMemo(() => {
     return evaluations.filter((evaluation) => {

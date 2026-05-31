@@ -449,7 +449,7 @@ export default function RolesPage() {
                 <p className="pf-section-title">Configuracion &gt; Roles y accesos</p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Roles y accesos</h1>
                 <p className="mt-3 text-sm leading-relaxed text-[#a5bcc8] md:text-base">
-                  Define roles base, scopes y permisos para controlar el acceso a la informacion y las acciones en Performia.
+                  Define roles base, scopes y permisos para controlar el acceso a la información y las acciones en Performia.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
@@ -629,16 +629,16 @@ export default function RolesPage() {
                       <article className="rounded-2xl border border-white/10 bg-[#122530] p-4">
                         <p className="text-sm font-semibold text-white">No puede hacer</p>
                         <ul className="mt-3 space-y-2 text-sm text-[#d5e2e9]">
-                          <li>- Modificar configuracion de la organizacion</li>
-                          <li>- Ver informacion de otras areas o departamentos</li>
+                          <li>- Modificar configuración de la organización</li>
+                          <li>- Ver información de otras áreas o departamentos</li>
                           <li>- Gestionar roles y permisos</li>
-                          <li>- Eliminar informacion historica</li>
+                          <li>- Eliminar información histórica</li>
                         </ul>
                       </article>
                       <article className="rounded-2xl border border-white/10 bg-[#122530] p-4">
                         <p className="text-sm font-semibold text-white">Sobre los roles y permisos</p>
                         <p className="mt-3 text-sm leading-relaxed text-[#9db2be]">
-                          La matriz es orientativa. La autorizacion real siempre la valida el backend segun el scope y la organizacion activa.
+                          La matriz es orientativa. La autorización real siempre la valida el backend según el scope y la organización activa.
                         </p>
                       </article>
                     </div>
@@ -790,7 +790,7 @@ export default function RolesPage() {
                       <div>
                         <h3 className="text-lg font-semibold text-white">Todas las asignaciones</h3>
                         <p className="mt-1 text-sm text-[#95aebc]">
-                          Panel operativo de lectura y edicion de asignaciones activas.
+                          Panel operativo de lectura y edición de asignaciones activas.
                         </p>
                       </div>
                       <input
@@ -861,9 +861,9 @@ export default function RolesPage() {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <h3 className="text-xl font-semibold text-white">{editingId ? "Editar asignacion" : "Asignar rol"}</h3>
+                    <h3 className="text-xl font-semibold text-white">{editingId ? "Editar asignación" : "Asignar rol"}</h3>
                     <p className="mt-2 text-sm text-[#95aebc]">
-                      El backend valida nuevamente rol, scope y organizacion activa antes de guardar.
+                      El backend valida nuevamente rol, scope y organización activa antes de guardar.
                     </p>
                   </div>
                   <button
@@ -1008,7 +1008,7 @@ export default function RolesPage() {
                   </form>
                 ) : (
                   <div className="mt-5 rounded-2xl border border-white/10 bg-[#122530] p-4 text-sm text-[#95aebc]">
-                    Si el usuario actual no puede asignar roles, esta accion queda oculta o en solo lectura. La autorizacion final sigue en backend.
+                    Si el usuario actual no puede asignar roles, esta acción queda oculta o en solo lectura. La autorizacion final sigue en backend.
                   </div>
                 )}
               </aside>

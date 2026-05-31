@@ -78,9 +78,9 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Control de organizacion</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Control de organización</p>
         <h3 className="mt-3 text-3xl font-bold text-white">
-          Configuracion de {activeCompany?.nombre || "la organizacion"}
+          Configuración de {activeCompany?.nombre || "la organización"}
         </h3>
         <p className="mt-3 text-[#9fb6c4]">
           Ajusta marca visual, reglas de carga y automatizaciones operativas.
@@ -134,7 +134,7 @@ export default function SettingsPage() {
           </div>
 
           <button onClick={save} className="mt-6 rounded-2xl px-6 py-3 font-semibold text-white" style={{ backgroundColor: settings.primaryColor }}>
-            Guardar configuracion
+            Guardar configuración
           </button>
           {message ? (
             <p
