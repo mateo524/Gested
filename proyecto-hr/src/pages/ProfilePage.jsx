@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -40,10 +40,13 @@ const emptyPasswordForm = {
 
 export default function ProfilePage() {
   const { token, user, activeCompany, updateSession } = useAuth();
-  const [profileForm, setProfileForm] = useState({
-    nombre: "",
-    apellido: "",
-    avatarUrl: "",
+  const [profileForm, setProfileForm] = useState(() => {
+    const next = splitUserName(user);
+    return {
+      nombre: next.nombre,
+      apellido: next.apellido,
+      avatarUrl: user?.avatarUrl || "",
+    };
   });
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
   const [profileMessage, setProfileMessage] = useState("");
@@ -52,15 +55,6 @@ export default function ProfilePage() {
   const [passwordMessageType, setPasswordMessageType] = useState("info");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-
-  useEffect(() => {
-    const next = splitUserName(user);
-    setProfileForm({
-      nombre: next.nombre,
-      apellido: next.apellido,
-      avatarUrl: user?.avatarUrl || "",
-    });
-  }, [user]);
 
   const organizationLabel = activeCompany?.nombre || user?.companyName || "Organización activa";
   const displayName = useMemo(

@@ -15,10 +15,10 @@ const ROLE_ORDER = [
 ];
 
 const SCOPE_LABELS = {
-  ORGANIZATION: "Acceso a toda la organizacion.",
-  DEPARTMENT: "Acceso limitado a un departamento o area.",
+  ORGANIZATION: "Acceso a toda la organización.",
+  DEPARTMENT: "Acceso limitado a un departamento o área.",
   TEAM: "Acceso limitado a un equipo.",
-  SELF: "Acceso solo a la informacion propia.",
+  SELF: "Acceso solo a la información propia.",
 };
 
 const ROLE_ICONS = {
@@ -105,7 +105,7 @@ const PAGE_TABS = [
 ];
 
 const CONFIG_ITEMS = [
-  { key: "settings", label: "Organizacion" },
+  { key: "settings", label: "Organización" },
   { key: "empleados", label: "Departamentos" },
   { key: "ciclos", label: "Ciclos" },
   { key: "carga-masiva", label: "Plantillas" },
@@ -144,7 +144,7 @@ function getScopeLabel(scope) {
 function buildScopeDescription(item) {
   if (item.scope === "DEPARTMENT" && item.departmentCode) return item.departmentCode;
   if (item.scope === "TEAM" && item.teamId) return item.teamId;
-  return item.scope === "SELF" ? "Solo la persona" : "Toda la organizacion";
+  return item.scope === "SELF" ? "Solo la persona" : "Toda la organización";
 }
 
 function summarizeCapabilities(preset) {
@@ -370,7 +370,7 @@ export default function RolesPage() {
 
     if ((form.scope === "DEPARTMENT" || form.scope === "TEAM") && !form.scopeReference.trim()) {
       setMessageType("warning");
-      setMessage("Completa el area o equipo antes de guardar.");
+      setMessage("Completa el área o equipo antes de guardar.");
       return;
     }
 
@@ -395,7 +395,7 @@ export default function RolesPage() {
       await loadData();
       resetForm();
       setMessageType("success");
-      setMessage(editingId ? "Asignacion actualizada." : "Asignacion creada.");
+      setMessage(editingId ? "Asignación actualizada." : "Asignación creada.");
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -406,9 +406,9 @@ export default function RolesPage() {
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)_360px]">
+      <section className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="pf-card p-4">
-          <p className="pf-section-title">Configuracion</p>
+          <p className="pf-section-title">Configuración</p>
           <div className="mt-4 space-y-1.5">
             {CONFIG_ITEMS.map((item) => (
               <button
@@ -428,16 +428,16 @@ export default function RolesPage() {
           </div>
 
           <div className="mt-6 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-            <p className="text-sm font-semibold text-white">Necesitas ayuda?</p>
+            <p className="text-sm font-semibold text-white">¿Necesitas ayuda?</p>
             <p className="mt-2 text-sm text-[#95aebc]">
-              Usa esta pantalla para definir roles base, alcances y asignaciones sin exponer detalles tecnicos.
+              Usa esta pantalla para definir roles base, alcances y asignaciones sin exponer detalles técnicos.
             </p>
             <button
               type="button"
               onClick={() => setActiveTab("matrix")}
               className="mt-4 w-full rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white"
             >
-              Ver guia rapida
+              Ver guía rápida
             </button>
           </div>
         </aside>
@@ -446,7 +446,7 @@ export default function RolesPage() {
           <section className="pf-surface pf-surface-pad">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="max-w-3xl">
-                <p className="pf-section-title">Configuracion &gt; Roles y accesos</p>
+                <p className="pf-section-title">Configuración &gt; Roles y accesos</p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Roles y accesos</h1>
                 <p className="mt-3 text-sm leading-relaxed text-[#a5bcc8] md:text-base">
                   Define roles base, scopes y permisos para controlar el acceso a la información y las acciones en Performia.
@@ -465,7 +465,7 @@ export default function RolesPage() {
                 onClick={() => setActiveTab("matrix")}
                 className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
               >
-                Ver guia
+                Ver guía
               </button>
             </div>
 
@@ -598,7 +598,7 @@ export default function RolesPage() {
                         <div className="mt-3 flex flex-wrap gap-2">
                           <IconBadge tone="info">Base: MANAGER</IconBadge>
                           <IconBadge tone="info">Scope: DEPARTMENT</IconBadge>
-                          <IconBadge>Area: Academico</IconBadge>
+                          <IconBadge>Área: Académico</IconBadge>
                         </div>
                       </div>
 
@@ -620,9 +620,9 @@ export default function RolesPage() {
                       <article className="rounded-2xl border border-white/10 bg-[#122530] p-4">
                         <p className="text-sm font-semibold text-white">Puede hacer</p>
                         <ul className="mt-3 space-y-2 text-sm text-[#d5e2e9]">
-                          <li>- Gestionar objetivos e indicadores del area</li>
-                          <li>- Iniciar y dar seguimiento a evaluaciones del area</li>
-                          <li>- Ver reportes del area</li>
+                          <li>- Gestionar objetivos e indicadores del área</li>
+                          <li>- Iniciar y dar seguimiento a evaluaciones del área</li>
+                          <li>- Ver reportes del área</li>
                           <li>- Gestionar desarrollo del equipo</li>
                         </ul>
                       </article>
@@ -718,13 +718,13 @@ export default function RolesPage() {
                         />
                       </div>
 
-                      <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
+                      <div className="mt-5 overflow-x-auto rounded-2xl border border-white/10">
                         <table className="min-w-full text-sm">
                           <thead className="bg-[#132530] text-left text-[#97adba]">
                             <tr>
                               <th className="px-4 py-3">Usuario</th>
                               <th className="px-4 py-3">Scope</th>
-                              <th className="px-4 py-3">Area / Departamento</th>
+                              <th className="px-4 py-3">Área / Departamento</th>
                               <th className="px-4 py-3">Estado</th>
                             </tr>
                           </thead>
@@ -925,7 +925,7 @@ export default function RolesPage() {
                     </label>
 
                     <label className="block">
-                      <span className="mb-2 block text-sm text-[#d6e2e8]">Area / Departamento</span>
+                      <span className="mb-2 block text-sm text-[#d6e2e8]">Área / Departamento</span>
                       <input
                         value={form.scope === "DEPARTMENT" || form.scope === "TEAM" ? form.scopeReference : ""}
                         onChange={(event) => setField("scopeReference", event.target.value)}
@@ -985,12 +985,12 @@ export default function RolesPage() {
                         value={form.notes}
                         onChange={(event) => setField("notes", event.target.value)}
                         className="min-h-28 w-full rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm text-white"
-                        placeholder="Contexto de la asignacion, observaciones o vigencia."
+                        placeholder="Contexto de la asignación, observaciones o vigencia."
                       />
                     </label>
 
                     <div className="rounded-2xl border border-blue-300/20 bg-blue-500/10 p-4 text-sm text-blue-100">
-                      El usuario recibira permisos segun el rol seleccionado y el alcance definido. Fechas y notas quedan por ahora como apoyo visual en esta UI.
+                      El usuario recibirá permisos según el rol seleccionado y el alcance definido. Fechas y notas quedan por ahora como apoyo visual en esta UI.
                     </div>
 
                     <div className="flex gap-3">
@@ -1008,7 +1008,7 @@ export default function RolesPage() {
                   </form>
                 ) : (
                   <div className="mt-5 rounded-2xl border border-white/10 bg-[#122530] p-4 text-sm text-[#95aebc]">
-                    Si el usuario actual no puede asignar roles, esta acción queda oculta o en solo lectura. La autorizacion final sigue en backend.
+                    Si el usuario actual no puede asignar roles, esta acción queda oculta o en solo lectura. La autorización final sigue en backend.
                   </div>
                 )}
               </aside>
@@ -1016,30 +1016,7 @@ export default function RolesPage() {
           </section>
         </div>
 
-        <aside className="hidden xl:block">
-          <div className="sticky top-28 space-y-4">
-            <div className="pf-card p-4">
-              <p className="text-sm font-semibold text-white">Reglas de seguridad</p>
-              <ul className="mt-3 space-y-2 text-sm text-[#95aebc]">
-                <li>- SUPER_ADMIN no se crea desde esta UI.</li>
-                <li>- PLATFORM no aparece como opcion de cliente.</li>
-                <li>- roleKey y scope se validan otra vez en backend.</li>
-                <li>- El frontend no decide permisos finales.</li>
-              </ul>
-            </div>
 
-            <div className="pf-card p-4">
-              <p className="text-sm font-semibold text-white">Que se guarda hoy</p>
-              <ul className="mt-3 space-y-2 text-sm text-[#95aebc]">
-                <li>- Usuario</li>
-                <li>- Rol base</li>
-                <li>- Scope</li>
-                <li>- Departamento o equipo</li>
-                <li>- Estado</li>
-              </ul>
-            </div>
-          </div>
-        </aside>
       </section>
 
       {loading ? (
