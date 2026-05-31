@@ -361,7 +361,7 @@ export default function DevelopmentPlansPage() {
             <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Para que sirven los planes</p>
             <h4 className="mt-2 text-xl font-semibold text-white">Convertir una necesidad detectada en acciones concretas</h4>
             <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
-              Los planes de desarrollo convierten una evaluacion o necesidad detectada en acciones concretas de mejora, con
+              Los planes de desarrollo convierten una evaluación o necesidad detectada en acciones concretas de mejora, con
               responsable, fecha objetivo y seguimiento.
             </p>
           </div>
