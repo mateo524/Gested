@@ -34,6 +34,9 @@ export default function CompaniesPage() {
   const [seedFile, setSeedFile] = useState(null);
   const [confirmDeactivateOpen, setConfirmDeactivateOpen] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmSingleDeactivateOpen, setConfirmSingleDeactivateOpen] = useState(false);
+  const [singleTargetCompany, setSingleTargetCompany] = useState(null);
+  const [isSingleConfirming, setIsSingleConfirming] = useState(false);
 
   function downloadInitialTemplate() {
     const csv = [
@@ -223,26 +226,34 @@ export default function CompaniesPage() {
     }
   }
 
-  async function deleteCompany(company) {
-    const confirmation = window.prompt(
-      `Para eliminar "${company.nombre}" escribe ELIMINAR en mayusculas.`
-    );
-    if (confirmation !== "ELIMINAR") {
-      setMessage("Eliminacion cancelada por seguridad.");
-      return;
-    }
+  function requestDeactivateCompany(company) {
+    setSingleTargetCompany(company);
+    setConfirmSingleDeactivateOpen(true);
+  }
+
+  async function confirmSingleDeactivate() {
+    if (!singleTargetCompany) return;
 
     try {
+      setIsSingleConfirming(true);
       setMessage("");
-      await apiFetch(`/companies/${company._id}`, {
-        method: "DELETE",
+      await apiFetch(`/companies/${singleTargetCompany._id}`, {
+        method: "PUT",
         token,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ activa: false }),
       });
-      setMessage("Empresa eliminada");
+      setMessage(`"${singleTargetCompany.nombre}" desactivada`);
+      setConfirmSingleDeactivateOpen(false);
+      setSingleTargetCompany(null);
       await loadCompanies();
       await refreshCompanies();
     } catch (error) {
       setMessage(error.message);
+    } finally {
+      setIsSingleConfirming(false);
     }
   }
 
@@ -471,10 +482,10 @@ export default function CompaniesPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => deleteCompany(company)}
+                        onClick={() => requestDeactivateCompany(company)}
                         className="rounded-2xl border border-red-300 px-4 py-2 text-sm font-medium text-red-600"
                       >
-                        Eliminar empresa
+                        Desactivar empresa
                       </button>
                     </div>
                   </div>
@@ -495,6 +506,25 @@ export default function CompaniesPage() {
         loading={isConfirming}
         onCancel={() => setConfirmDeactivateOpen(false)}
         onConfirm={confirmDeactivateCompanies}
+      />
+
+      <ConfirmDialog
+        open={confirmSingleDeactivateOpen}
+        title="Desactivar empresa"
+        message={
+          singleTargetCompany
+            ? `Vas a desactivar "${singleTargetCompany.nombre}". Los usuarios de esta empresa no podrán acceder hasta que la reactives.`
+            : ""
+        }
+        confirmLabel="Desactivar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isSingleConfirming}
+        onCancel={() => {
+          setConfirmSingleDeactivateOpen(false);
+          setSingleTargetCompany(null);
+        }}
+        onConfirm={confirmSingleDeactivate}
       />
     </div>
   );
