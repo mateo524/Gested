@@ -159,6 +159,15 @@ app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
 });
 
+app.use((err, _req, res, _next) => {
+  console.error("Unhandled error:", err);
+  const status = err.status || err.statusCode || 500;
+  res.status(status).json({
+    mensaje: err.mensaje || err.message || "Error interno del servidor",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+});
+
 async function start() {
   try {
     assertRuntimeConfig();
