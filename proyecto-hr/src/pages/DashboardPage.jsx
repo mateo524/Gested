@@ -366,7 +366,7 @@ export default function DashboardPage() {
       { label: "Importación", view: "carga-masiva", show: !isEmpleado && !isLector },
       { label: "Reporte ejecutivo", view: "reporte-ejecutivo", show: !isEmpleado },
       { label: "Evaluaciones", view: "evaluaciones", show: true },
-      { label: "Objetivos / Indicadores", view: "metricas", show: !isEmpleado && !isLector },
+      { label: "Mediciones", view: "metricas", show: !isEmpleado && !isLector },
     ];
     return items.filter((item) => item.show);
   }, [isEmpleado, isLector]);
