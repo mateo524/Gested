@@ -16,10 +16,12 @@ const DRY_RUN = process.argv.includes("--dry-run");
 const RESET_PASSWORDS = process.argv.includes("--reset-passwords");
 
 let TOKEN = "";
+let COMPANY_ID = "";
 
-async function api(method, path, body) {
-  const headers = { "Content-Type": "application/json" };
+async function api(method, path, body, extraHeaders = {}) {
+  const headers = { "Content-Type": "application/json", ...extraHeaders };
   if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
+  if (COMPANY_ID) headers["X-Company-Id"] = COMPANY_ID;
   const res = await fetch(`${API_URL}${path}`, {
     method,
     headers,
@@ -78,6 +80,79 @@ const PILOT_USERS = [
   { email: "viewer.demo@performia.test", roleCode: "VIEWER", nombre: "Lector Demo" },
   { email: "auditor.demo@performia.test", roleCode: "AUDITOR", nombre: "Auditor Demo" },
 ];
+
+// Map pilot roleKey → preferred matchers (checked against code, then nombre)
+const PILOT_ROLE_CODE_PRIORITY = {
+  ORG_ADMIN: ["ADMIN_COLEGIO", "ADMIN", "ORG_ADMIN"],
+  HR: ["RRHH", "HR"],
+  MANAGER: ["JEFE", "MANAGER", "SUPERVISOR"],
+  EMPLOYEE: ["EMPLEADO", "EMPLOYEE"],
+  VIEWER: ["LECTOR", "VIEWER"],
+  AUDITOR: ["AUDITOR", "LECTOR"],
+};
+
+// Fallback: try these legacy codes if preferred match fails
+const PILOT_ROLE_FALLBACK = {
+  HR: "ADMIN_COLEGIO",
+  VIEWER: "EMPLEADO",
+  AUDITOR: "EMPLEADO",
+};
+
+const PILOT_ROLE_LABEL = {
+  ORG_ADMIN: "Admin de organización",
+  HR: "RRHH",
+  MANAGER: "Manager / Jefe",
+  EMPLOYEE: "Empleado",
+  VIEWER: "Lector",
+  AUDITOR: "Auditor",
+  SUPER_ADMIN: "Super Admin",
+};
+
+function resolveRoleForPilot(roleKey, roles, companyId) {
+  if (roleKey === "SUPER_ADMIN") return null;
+
+  const preferred = PILOT_ROLE_CODE_PRIORITY[roleKey] || [];
+
+  // 1. Try exact match by code (case-insensitive)
+  for (const code of preferred) {
+    const match = roles.find(r =>
+      String(r.code || "").toUpperCase() === code.toUpperCase()
+      && String(r.companyId) === String(companyId)
+    );
+    if (match) return { role: match, strategy: "code" };
+  }
+
+  // 2. Try match by nombre (contains, case-insensitive)
+  for (const role of roles) {
+    if (String(role.code || "").toUpperCase() === "SUPER_ADMIN") continue;
+    if (String(role.companyId) !== String(companyId)) continue;
+    const nombre = String(role.nombre || "").toUpperCase();
+    for (const code of preferred) {
+      if (nombre.includes(code.toUpperCase())) {
+        return { role, strategy: "nombre" };
+      }
+    }
+  }
+
+  // 3. Try fallback legacy code
+  const fallbackCode = PILOT_ROLE_FALLBACK[roleKey];
+  if (fallbackCode) {
+    const match = roles.find(r =>
+      String(r.code || "").toUpperCase() === fallbackCode.toUpperCase()
+      && String(r.companyId) === String(companyId)
+    );
+    if (match) return { role: match, strategy: "fallback" };
+  }
+
+  // 4. Any company role (not SUPER_ADMIN)
+  const anyRole = roles.find(r =>
+    String(r.code || "").toUpperCase() !== "SUPER_ADMIN"
+    && String(r.companyId) === String(companyId)
+  );
+  if (anyRole) return { role: anyRole, strategy: "any" };
+
+  return null;
+}
 
 const DEMO_EMPLOYEES = [
   { nombre: "Carlos", apellido: "Rodríguez", email: "carlos.rodriguez@horizonte.edu", cargo: "Director General", area: "Dirección", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-01-15" },
@@ -140,10 +215,10 @@ const DEMO_COMPETENCIES = [
 ];
 
 const DEMO_CYCLES = [
-  { periodo: "Q3", anio: 2025, etapa: "CIERRE", estado: "CERRADO", fechaInicio: "2025-07-01", fechaFin: "2025-09-30" },
-  { periodo: "Q4", anio: 2025, etapa: "CIERRE", estado: "CERRADO", fechaInicio: "2025-10-01", fechaFin: "2025-12-31" },
-  { periodo: "Q1", anio: 2026, etapa: "REVISION", estado: "CERRADO", fechaInicio: "2026-01-01", fechaFin: "2026-03-31" },
-  { periodo: "Q2", anio: 2026, etapa: "SEGUIMIENTO", estado: "ACTIVO", fechaInicio: "2026-04-01", fechaFin: "2026-06-30" },
+  { periodo: "Q3", anio: 2025, etapa: "EVALUACION_FINAL", estado: "CERRADO", fechaInicio: "2025-07-01", fechaFin: "2025-09-30" },
+  { periodo: "Q4", anio: 2025, etapa: "EVALUACION_FINAL", estado: "CERRADO", fechaInicio: "2025-10-01", fechaFin: "2025-12-31" },
+  { periodo: "Q1", anio: 2026, etapa: "REVISION_INTERMEDIA", estado: "CERRADO", fechaInicio: "2026-01-01", fechaFin: "2026-03-31" },
+  { periodo: "Q2", anio: 2026, etapa: "INICIO", estado: "ABIERTO", fechaInicio: "2026-04-01", fechaFin: "2026-06-30" },
 ];
 
 const DEMO_PLANS = [
@@ -208,7 +283,8 @@ async function main() {
   console.log("→ Logging in...");
   const auth = await api("POST", "/auth/login", { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
   TOKEN = auth.token;
-  console.log(`  OK: ${auth.user?.email || ADMIN_EMAIL}\n`);
+  COMPANY_ID = auth.user?.companyId || "";
+  console.log(`  OK: ${auth.user?.email || ADMIN_EMAIL} (company: ${auth.user?.companyName || "N/A"})\n`);
 
   // 2. Fetch existing data
   console.log("→ Checking existing data...");
@@ -218,7 +294,35 @@ async function main() {
   const existingCompetencies = await listAll("/competencies");
   const existingCycles = await listAll("/evaluation-cycles");
   console.log(`  Employees: ${existingEmployees.length}, Users: ${existingUsers.length}, Roles: ${existingRoles.length}`);
+  if (existingRoles.length > 0) {
+    for (const r of existingRoles) {
+      console.log(`    role: _id=${r._id} code=${JSON.stringify(r.code)} nombre="${r.nombre}" companyId=${r.companyId ? String(r.companyId).slice(0,8) : "N/A"}...`);
+    }
+  }
   console.log(`  Competencies: ${existingCompetencies.length}, Cycles: ${existingCycles.length}\n`);
+
+  // 2.5. Ensure a school exists (users require an active school)
+  console.log("→ Checking schools...");
+  const existingSchools = await listAll("/schools");
+  const ourSchools = existingSchools.filter(s => String(s.companyId) === COMPANY_ID);
+  console.log(`  Schools for this company: ${ourSchools.length}`);
+  if (!DRY_RUN && ourSchools.length === 0) {
+    console.log("  → Creating default school...");
+    const school = await apiSafe("POST", "/schools", {
+      nombre: "Escuela Horizonte - Sede Principal",
+      codigo: "HQ",
+      ciudad: "Buenos Aires",
+      provincia: "CABA",
+      pais: "Argentina",
+      activa: true,
+      companyId: COMPANY_ID,
+    });
+    if (school._error) {
+      console.warn(`  ⚠ Could not create school: ${school._error}`);
+    } else {
+      console.log(`  Created school: ${school.school?.nombre || "OK"}\n`);
+    }
+  }
 
   const roleByCode = new Map();
   for (const role of existingRoles) {
@@ -283,8 +387,18 @@ async function main() {
   if (DRY_RUN) {
     for (const pu of PILOT_USERS) {
       const exists = existingUsers.find(u => String(u.email || "").trim().toLowerCase() === pu.email);
-      console.log(`  ${exists ? "EXISTS" : "WOULD CREATE"} ${pu.email} (${pu.roleCode})`);
-      userResults.push({ ...pu, created: !exists });
+      if (pu.roleCode === "SUPER_ADMIN") {
+        console.log(`  SKIP  ${pu.email} (SUPER_ADMIN - usar admin existente)`);
+        userResults.push({ ...pu, status: "omitido", motivo: "simulado" });
+      } else if (exists) {
+        console.log(`  EXISTS ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: "ya existía" });
+      } else {
+        const resolved = resolveRoleForPilot(pu.roleCode, existingRoles, COMPANY_ID);
+        const roleInfo = resolved ? ` → rol: ${resolved.role.nombre || resolved.role.code}` : " → NO HAY ROL COMPATIBLE";
+        console.log(`  WOULD CREATE${roleInfo} ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: resolved ? "creado (simulado)" : "falló (simulado)", motivo: resolved ? null : "rol compatible no encontrado" });
+      }
     }
   } else {
     for (const pu of PILOT_USERS) {
@@ -300,12 +414,22 @@ async function main() {
         userResults.push({ ...pu, created: false, id: exists._id });
         continue;
       }
-      const role = roleByCode.get(pu.roleCode);
-      if (!role) {
-        console.warn(`  ⚠ Role ${pu.roleCode} not found, skipping ${pu.email}`);
-        userResults.push({ ...pu, created: false, error: "role not found" });
+      if (pu.roleCode === "SUPER_ADMIN") {
+        console.log(`  SKIP  ${pu.email} (SUPER_ADMIN - usar admin existente)`);
+        userResults.push({ ...pu, status: "omitido", motivo: "usar admin existente admin@demo.com" });
         continue;
       }
+
+      const resolved = resolveRoleForPilot(pu.roleCode, existingRoles, COMPANY_ID);
+      if (!resolved) {
+        console.warn(`  FALLÓ ${pu.email} (${pu.roleCode}): ningún rol compatible`);
+        userResults.push({ ...pu, status: "falló", motivo: "rol compatible no encontrado" });
+        continue;
+      }
+
+      const role = resolved.role;
+      const strategyLabel = resolved.strategy === "code" ? "" : ` (vía ${resolved.strategy}: ${role.nombre || role.code})`;
+      console.log(`  ${pu.roleCode}: usando rol "${role.nombre || role.code}"${strategyLabel}`);
       const created = await apiSafe("POST", "/users", {
         nombre: pu.nombre,
         email: pu.email,
@@ -315,19 +439,23 @@ async function main() {
       });
       if (created._error) {
         if (created._error.includes("409") || created._error.includes("ya existe")) {
-          console.log(`  EXISTS ${pu.email} (${pu.roleCode})`);
-          userResults.push({ ...pu, created: false });
+          console.log(`  YA EXISTE ${pu.email} (${pu.roleCode})`);
+          userResults.push({ ...pu, status: "ya existía" });
         } else {
           console.warn(`  ⚠ ${pu.email}: ${created._error}`);
-          userResults.push({ ...pu, created: false, error: created._error });
+          userResults.push({ ...pu, status: "falló", motivo: created._error });
         }
       } else {
-        console.log(`  CREATED ${pu.email} (${pu.roleCode})`);
-        userResults.push({ ...pu, created: true, id: created._id });
+        console.log(`  CREADO ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: "creado", id: created._id });
       }
     }
   }
-  console.log(`  Pilot users: ${userResults.filter(u => u.created).length} created, ${userResults.filter(u => !u.created && !u.error).length} existing\n`);
+  const creados = userResults.filter(u => u.status === "creado").length;
+  const existentes = userResults.filter(u => u.status === "ya existía").length;
+  const omitidos = userResults.filter(u => u.status === "omitido").length;
+  const fallos = userResults.filter(u => u.status === "falló").length;
+  console.log(`  Pilot users: ${creados} creados, ${existentes} existentes, ${omitidos} omitidos, ${fallos} fallos\n`);
 
   // 5. Create competencies (if missing)
   console.log("→ Creating competencies...");
@@ -438,11 +566,13 @@ async function main() {
   console.log(`  Password: ${ADMIN_PASSWORD}\n`);
 
   for (const u of PILOT_USERS) {
-    const status = u.roleCode === "SUPER_ADMIN" ? "(mismo admin existente)" : userResults.find(r => r.email === u.email)?.created ? "(creado)" : "(ya existía)";
+    const result = userResults.find(r => r.email === u.email);
+    const statusText = result?.status || "desconocido";
+    const motivoText = result?.motivo ? ` (${result.motivo})` : "";
     console.log(`${u.roleCode}:`);
     console.log(`  Email:    ${u.email}`);
     console.log(`  Password: ${DEMO_PASSWORD}`);
-    console.log(`  Estado:   ${status}\n`);
+    console.log(`  Estado:   ${statusText}${motivoText}\n`);
   }
 
   console.log(`Organización demo: ${auth.user?.companyName || "Horizonte Educativo"}`);
