@@ -975,7 +975,7 @@ export default function MetricsPage() {
         title="Persona evaluada"
         subtitle="Elegí una persona para revisar su desempeño, autoevaluaciones y evaluación del evaluador."
       >
-        <div>
+        <div className="relative">
           <select
             className="pf-select"
             value={selectedEmployeeId}
@@ -988,6 +988,7 @@ export default function MetricsPage() {
               </option>
             ))}
           </select>
+          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#7f99a8] text-sm">▼</span>
           {!visibleEmployees.length ? (
             <p className="mt-2 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
           ) : null}
