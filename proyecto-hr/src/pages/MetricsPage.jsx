@@ -971,6 +971,29 @@ export default function MetricsPage() {
         </div>
       </SurfaceCard>
 
+      <SurfaceCard
+        title="Persona evaluada"
+        subtitle="Elegí una persona para revisar su desempeño, autoevaluaciones y evaluación del evaluador."
+      >
+        <div>
+          <select
+            className="pf-select"
+            value={selectedEmployeeId}
+            disabled={!visibleEmployees.length}
+            onChange={(event) => setSelectedEmployeeId(event.target.value)}
+          >
+            {visibleEmployees.map((employee) => (
+              <option key={employee._id} value={employee._id}>
+                {buildEmployeeLabel(employee)}
+              </option>
+            ))}
+          </select>
+          {!visibleEmployees.length ? (
+            <p className="mt-2 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
+          ) : null}
+        </div>
+      </SurfaceCard>
+
       <div ref={detailRef}>
         <EvaluationHeader
           employee={selectedEmployee}
@@ -1054,26 +1077,7 @@ export default function MetricsPage() {
             title="Evaluación individual"
             subtitle="Seleccioná una persona y un período. Desde acá podés leer desempeño, abrir autoevaluación o completar la evaluación del jefe."
           >
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Empleado</label>
-                <select
-                  className="pf-select"
-                  value={selectedEmployeeId}
-                  disabled={!visibleEmployees.length}
-                  onChange={(event) => setSelectedEmployeeId(event.target.value)}
-                >
-                  <option value="">Seleccioná una persona</option>
-                  {visibleEmployees.map((employee) => (
-                    <option key={employee._id} value={employee._id}>
-                      {buildEmployeeLabel(employee)}
-                    </option>
-                  ))}
-                </select>
-                {!visibleEmployees.length ? (
-                  <p className="mt-2 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
-                ) : null}
-              </div>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div>
                 <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo / período</label>
                 <select
