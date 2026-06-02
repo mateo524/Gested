@@ -487,13 +487,13 @@ async function main() {
       const exists = existingUsers.find(u => String(u.email || "").trim().toLowerCase() === pu.email);
       if (exists && !RESET_PASSWORDS) {
         console.log(`  EXISTS ${pu.email} (${pu.roleCode})`);
-        userResults.push({ ...pu, created: false, id: exists._id });
+        userResults.push({ ...pu, status: "ya existía", created: false, id: exists._id });
         continue;
       }
       if (exists && RESET_PASSWORDS) {
         // Update password - we can't update via API easily, so skip for now
         console.log(`  EXISTS ${pu.email} - use --reset-passwords via backend`);
-        userResults.push({ ...pu, created: false, id: exists._id });
+        userResults.push({ ...pu, status: "ya existía", created: false, id: exists._id });
         continue;
       }
       if (pu.roleCode === "SUPER_ADMIN") {
@@ -645,8 +645,21 @@ async function main() {
   }
 
   // 7. Create evaluations
+  let evalsFailed = 0;
+  let evalsOmitted = 0;
+  let evalSampleErrors = [];
   if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0 && metricIds.length > 0) {
     console.log("→ Creating evaluations...");
+    // Pre-fetch existing evaluations for idempotency
+    const existingEvals = await listAll("/evaluations");
+    const existingEvalKey = new Set();
+    for (const ev of existingEvals) {
+      const eid = String(ev.employeeId?._id || ev.employeeId || "");
+      const cid = String(ev.cycleId?._id || ev.cycleId || "");
+      const t = ev.tipo || "";
+      if (eid && cid && t) existingEvalKey.add(`${eid}|${cid}|${t}`);
+    }
+
     for (let ci = 0; ci < cycleIds.length; ci++) {
       const evalStatus = ci < 3 ? "CERRADA" : "ENVIADA";
       for (let ei = 0; ei < empIds.length; ei++) {
@@ -657,24 +670,64 @@ async function main() {
         const { auto: autoScores, jefe: mgrScores } = scoresByPattern(pattern);
 
         if (autoScores && pattern !== "jefe_only") {
+          const key = `${empIds[ei]}|${cycleIds[ci]}|AUTOEVALUACION`;
+          if (existingEvalKey.has(key)) {
+            evalsOmitted++;
+            continue;
+          }
+          existingEvalKey.add(key);
           const autoResult = await apiSafe("POST", "/evaluations", {
             employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "AUTOEVALUACION",
             scores: autoScores, estado: evalStatus,
           });
-          if (!autoResult._error) evalsCreated++;
+          if (!autoResult._error) {
+            evalsCreated++;
+          } else {
+            evalsFailed++;
+            if (evalSampleErrors.length < 3) evalSampleErrors.push(`AUTOEVAL empIdx=${ei} cycleIdx=${ci}: ${autoResult._error}`);
+          }
         }
 
         if (mgrScores && pattern !== "auto_only" && pattern !== "both_open") {
+          const key = `${empIds[ei]}|${cycleIds[ci]}|JEFATURA`;
+          if (existingEvalKey.has(key)) {
+            evalsOmitted++;
+            continue;
+          }
+          existingEvalKey.add(key);
           const mgrResult = await apiSafe("POST", "/evaluations", {
             employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "JEFATURA",
             scores: mgrScores, estado: evalStatus,
           });
-          if (!mgrResult._error) evalsCreated++;
+          if (!mgrResult._error) {
+            evalsCreated++;
+          } else {
+            evalsFailed++;
+            if (evalSampleErrors.length < 3) evalSampleErrors.push(`JEFATURA empIdx=${ei} cycleIdx=${ci}: ${mgrResult._error}`);
+          }
         }
       }
-      console.log(`  Cycle ${ci + 1}/${cycleIds.length}: ${evalStatus} (${evalsCreated} so far)`);
+      const cycleLabel = `${DEMO_CYCLES[ci].periodo} ${DEMO_CYCLES[ci].anio}`;
+      console.log(`  Cycle ${ci + 1}/${cycleIds.length} (${cycleLabel}): ${evalStatus} — ${evalsCreated + evalsOmitted} total, ${evalsFailed} errors`);
     }
-    console.log(`  Total evaluations: ${evalsCreated}\n`);
+
+    if (evalSampleErrors.length > 0) {
+      console.warn("  ⚠ Sample eval errors:");
+      for (const err of evalSampleErrors) console.warn(`    ${err}`);
+    }
+    console.log(`  Evaluations: ${evalsCreated} created, ${evalsOmitted} existed, ${evalsFailed} failed\n`);
+  } else if (DRY_RUN && cycleIds.length > 0 && metricIds.length > 0) {
+    let dryEvalCount = 0;
+    for (let ci = 0; ci < cycleIds.length; ci++) {
+      for (let ei = 0; ei < DEMO_EMPLOYEES.length; ei++) {
+        const pattern = evalPattern(ei, ci);
+        if (pattern === "skip") continue;
+        const p = scoresByPattern(pattern);
+        if (p.auto && pattern !== "jefe_only") dryEvalCount++;
+        if (p.jefe && pattern !== "auto_only" && pattern !== "both_open") dryEvalCount++;
+      }
+    }
+    console.log(`→ Evaluations: would create ~${dryEvalCount} evaluations across ${cycleIds.length} cycles\n`);
   }
 
   // 8. Create development plans
@@ -700,34 +753,82 @@ async function main() {
   // 9. Create KPI records
   let kpiCreated = 0;
   let kpiOmitted = 0;
+  let kpiFailed = 0;
+  let kpiSampleErrors = [];
   if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0) {
     console.log("→ Creating KPI records...");
-    for (const kpi of DEMO_KPIS) {
-      const empIdx = pickRandom(Array.from({ length: empIds.length }, (_, i) => i).filter(i => empIds[i]));
-      if (empIdx === undefined) continue;
-      const ci = pickRandom([0, 1, 2, 3]);
-      const result = await apiSafe("POST", "/metrics/kpi-records", {
-        employeeId: empIds[empIdx],
-        cycleId: cycleIds[ci],
-        name: kpi.name,
-        targetValue: kpi.targetValue,
-        currentValue: kpi.currentValue,
-        unit: kpi.unit,
-        frequency: kpi.frequency,
-        period: `${DEMO_CYCLES[ci].periodo} ${DEMO_CYCLES[ci].anio}`,
-        departmentCode: DEMO_EMPLOYEES[empIdx].area,
-        status: kpi.status,
-      });
-      if (result._error) {
-        // KPI may already exist (lookupKey unique)
-        if (result._error.includes("duplicate") || result._error.includes("E11000")) {
-          kpiOmitted++;
-        }
-      } else {
-        kpiCreated++;
+
+    // Probe if endpoint exists first
+    const probe = await apiSafe("GET", "/metrics/kpi-records?limit=1");
+    const endpointAvailable = !probe._error;
+
+    if (!endpointAvailable) {
+      console.warn(`  ⚠ /metrics/kpi-records endpoint not available: ${probe._error}`);
+      console.warn("  → KPIs omitidos: endpoint no disponible/restringido\n");
+      kpiOmitted = DEMO_KPIS.length;
+    } else {
+      // Pre-fetch existing KPI records for idempotency
+      const existingKpis = await listAll("/metrics/kpi-records");
+      const existingKpiKey = new Set();
+      for (const k of existingKpis) {
+        const n = (k.name || "").toLowerCase().trim();
+        const p = (k.period || "").toLowerCase().trim();
+        const e = String(k.employeeId || "");
+        const d = (k.departmentCode || "").toLowerCase().trim();
+        if (n && p) existingKpiKey.add(`${n}|${p}|${e}|${d}`);
       }
+
+      for (const kpi of DEMO_KPIS) {
+        const empIdx = pickRandom(Array.from({ length: empIds.length }, (_, i) => i).filter(i => empIds[i]));
+        if (empIdx === undefined) continue;
+        const ci = pickRandom([0, 1, 2, 3]);
+        const period = `${DEMO_CYCLES[ci].periodo} ${DEMO_CYCLES[ci].anio}`;
+        const empId = empIds[empIdx];
+        const deptCode = DEMO_EMPLOYEES[empIdx].area;
+
+        // Check duplicate by composite key
+        const lookup = `${kpi.name.toLowerCase().trim()}|${period.toLowerCase().trim()}|${String(empId)}|${deptCode.toLowerCase().trim()}`;
+        if (existingKpiKey.has(lookup)) {
+          kpiOmitted++;
+          continue;
+        }
+        existingKpiKey.add(lookup);
+
+        // Build cycle-valid status: use "active" instead of custom status values
+        // since model only has default "active"
+        const payload = {
+          employeeId: empId,
+          cycleId: cycleIds[ci],
+          name: kpi.name,
+          targetValue: kpi.targetValue,
+          currentValue: kpi.currentValue,
+          unit: kpi.unit,
+          frequency: kpi.frequency,
+          period,
+          departmentCode: deptCode,
+          status: kpi.status === "on_track" ? "active" : kpi.status === "critical" ? "active" : kpi.status === "warning" ? "active" : kpi.status,
+        };
+
+        const result = await apiSafe("POST", "/metrics/kpi-records", payload);
+        if (result._error) {
+          if (result._error.includes("duplicate") || result._error.includes("E11000") || result._error.includes("ya existe")) {
+            kpiOmitted++;
+          } else {
+            kpiFailed++;
+            if (kpiSampleErrors.length < 3) kpiSampleErrors.push(`"${kpi.name}": ${result._error}`);
+          }
+        } else {
+          kpiCreated++;
+        }
+      }
+      if (kpiSampleErrors.length > 0) {
+        console.warn("  ⚠ Sample KPI errors:");
+        for (const err of kpiSampleErrors) console.warn(`    ${err}`);
+      }
+      console.log(`  KPIs: ${kpiCreated} created, ${kpiOmitted} existed/omitted, ${kpiFailed} failed\n`);
     }
-    console.log(`  Created ${kpiCreated} KPIs (${kpiOmitted} duplicate)\n`);
+  } else if (DRY_RUN) {
+    console.log(`→ KPIs: would create ${DEMO_KPIS.length} records (1 por empleado/ciclo)\n`);
   }
 
   // 10. Create OKR records
@@ -783,28 +884,48 @@ async function main() {
   const createdCreds = userResults.filter(u => u.status === "creado").length;
   const existingCreds = userResults.filter(u => u.status === "ya existía").length;
   const failedCreds = userResults.filter(u => u.status === "falló").length;
+  const omittedCreds = userResults.filter(u => u.status === "omitido").length;
   console.log(`Empresa:         ${auth.user?.companyName || "Perfomia Corp"}`);
-  console.log(`Empleados:       ${DRY_RUN ? "(simulado)" : totalEmps} (${DEMO_EMPLOYEES.length} definidos)`);
-  console.log(`Usuarios:        ${createdCreds} creados / ${existingCreds} existentes / ${failedCreds} fallidos`);
+  const preExistingEmps = existingEmployees.length;
+  console.log(`Empleados:       ${DRY_RUN ? "(simulado)" : `${totalEmps} en lista seed`} (${DEMO_EMPLOYEES.length} definidos)`);
+  if (!DRY_RUN) {
+    const alreadyInDb = DEMO_EMPLOYEES.length - empCreated;
+    console.log(`                 → ${preExistingEmps} total en DB antes del seed, ${empCreated} creados nuevos, ${alreadyInDb} ya existían en DB`);
+  }
+  console.log(`Usuarios:        ${createdCreds} creados / ${existingCreds} existentes / ${omittedCreds} omitidos / ${failedCreds} fallidos`);
   console.log(`Roles:           ${Object.keys(roleMap || {}).length} estándar garantizados`);
   console.log(`Competencias:    ${DRY_RUN ? DEMO_COMPETENCIES.length + " (simulado)" : totalComps}`);
   console.log(`Ciclos:          ${DRY_RUN ? DEMO_CYCLES.length + " (simulado)" : totalCycles}`);
-  console.log(`Evaluaciones:    ${evalsCreated || 0} creadas`);
-  console.log(`KPIs:            ${kpiCreated} creados / ${kpiOmitted} omitidos`);
+  console.log(`Evaluaciones:    ${evalsCreated || 0} creadas / ${evalsOmitted || 0} existentes / ${evalsFailed || 0} fallidas`);
+  console.log(`KPIs:            ${kpiCreated} creados / ${kpiOmitted} omitidos / ${kpiFailed || 0} fallidos`);
   console.log(`OKRs:            ${okrCreated} creados`);
   console.log(`Planes:          ${plansCreated || 0} creados`);
   console.log(`Novedades:       ${annCreated} creadas\n`);
 
+  const completeModules = [];
+  if (totalEmps > 0) completeModules.push("Empleados con jerarquía de managers");
+  if (Object.keys(roleMap || {}).length > 0) completeModules.push("Roles estándar + pilot users (7 cuentas)");
+  if (totalCycles > 0) completeModules.push("Ciclos de evaluación (4 trimestres)");
+  if (totalComps > 0) completeModules.push("Competencias (transversales, docente, liderazgo)");
+  if (plansCreated > 0) completeModules.push("Planes de desarrollo");
+  if (okrCreated > 0) completeModules.push("OKRs (objetivos y resultados clave)");
+  if (annCreated > 0) completeModules.push("Novedades / anuncios");
+
+  const partialModules = [];
+  if (evalsCreated === 0 && evalsFailed > 0) partialModules.push({ name: "Evaluaciones", reason: `${evalsFailed} fallaron — revisar endpoint y ciclo/employee IDs` });
+  else if (evalsCreated === 0 && !DRY_RUN) partialModules.push({ name: "Evaluaciones", reason: "no se crearon — endpoint puede requerir permisos adicionales" });
+  else if (evalsCreated > 0) completeModules.push("Evaluaciones (AUTOEVALUACION + JEFATURA, estados variados)");
+
+  if (kpiCreated === 0 && kpiFailed > 0) partialModules.push({ name: "KPIs", reason: `${kpiFailed} fallaron — revisar endpoint y payload` });
+  else if (kpiCreated === 0 && kpiOmitted > 0 && !DRY_RUN) partialModules.push({ name: "KPIs", reason: "todos existían o endpoint no disponible" });
+  else if (kpiCreated > 0) completeModules.push("KPIs (métricas por empleado/área)");
+
   console.log("─── Módulos completos ───");
-  console.log("  ✅ Empleados con jerarquía de managers");
-  console.log("  ✅ Roles estándar + pilot users (7 cuentas)");
-  console.log("  ✅ Ciclos de evaluación (4 trimestres)");
-  console.log("  ✅ Competencias (transversales, docente, liderazgo)");
-  console.log("  ✅ Evaluaciones (AUTOEVALUACION + JEFATURA, estados variados)");
-  console.log("  ✅ Planes de desarrollo");
-  console.log("  ✅ KPIs / OKRs (métricas por empleado/área)");
-  if (annCreated > 0) {
-    console.log("  ✅ Novedades / anuncios");
+  for (const m of completeModules) console.log(`  ✅ ${m}`);
+
+  if (partialModules.length > 0) {
+    console.log("\n─── Módulos parciales ───");
+    for (const m of partialModules) console.log(`  ⚠ ${m.name}: ${m.reason}`);
   }
 
   console.log("\n─── Módulos con datos suficientes ───");
@@ -812,7 +933,7 @@ async function main() {
   console.log("  ✅ Reporte Ejecutivo — vista individual (evaluaciones, KPIs, planes, acciones)");
   console.log("  ✅ Dashboard / Métricas — backend poblado, visual depende del frontend");
   console.log("  ✅ Importación — plantilla descargable vía GET /bulk-import/template");
-  console.log("  ✅ Mediciones — scores con diferencias auto/jefe para probar gaps");
+  if (evalsCreated > 0 && (evalsFailed === 0)) console.log("  ✅ Mediciones — scores con diferencias auto/jefe para probar gaps");
 
   console.log("\n─── No aplica para seed ───");
   console.log("  — Landing: no tocar");
@@ -826,7 +947,11 @@ async function main() {
 
   for (const u of PILOT_USERS) {
     const result = userResults.find(r => r.email === u.email);
-    const statusText = result?.status || "desconocido";
+    let statusText = result?.status || "desconocido";
+    if (statusText === "creado") statusText = "creado";
+    else if (statusText === "omitido" || result?.created === false) statusText = "omitido";
+    else if (statusText === "ya existía" || result?.created === false) statusText = "ya existía";
+    else if (statusText === "falló") statusText = "falló";
     const motivoText = result?.motivo ? ` (${result.motivo})` : "";
     console.log(`${u.roleCode}:`);
     console.log(`  Email:    ${u.email}`);
