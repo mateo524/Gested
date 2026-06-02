@@ -418,13 +418,32 @@ export default function AppShell({
   );
 
   const visibleViews = useMemo(() => allViews.filter((item) => item.show), [allViews]);
-  const sidebarViews = useMemo(
-    () =>
-      visibleViews.filter(
-        (item) => !["roles", "settings", "archivo-central", "organizaciones"].includes(item.key) && item.key !== "bases-descargas"
-      ),
-    [visibleViews]
-  );
+
+  const navGroups = useMemo(() => {
+    const byKey = {};
+    visibleViews.forEach(v => { byKey[v.key] = v; });
+
+    const groups = [];
+    groups.push({ label: "Inicio", keys: ["dashboard"] });
+    groups.push({ label: "Personas y accesos", keys: ["empleados", "usuarios"] });
+    groups.push({ label: "Evaluación de desempeño", keys: ["evaluaciones", "metricas", "ciclos", "competencias"] });
+    groups.push({ label: "Desarrollo", keys: ["planes"] });
+    groups.push({ label: "Reportes", keys: ["reporte-ejecutivo"] });
+    groups.push({ label: "Comunicación", keys: ["novedades"] });
+    groups.push({ label: "Operación", keys: ["carga-masiva"] });
+    if (isSuperAdmin) {
+      groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "archivo-central"] });
+    } else {
+      groups.push({ label: "Configuración", keys: ["settings"] });
+    }
+
+    return groups
+      .map(group => ({
+        ...group,
+        items: group.keys.map(key => byKey[key]).filter(Boolean)
+      }))
+      .filter(group => group.items.length > 0);
+  }, [visibleViews, isSuperAdmin]);
 
   const organizationLabel = user?.companyName || "Organización activa";
   const displayName = getUserDisplayName(user);
@@ -521,26 +540,51 @@ export default function AppShell({
           </div>
 
           <div className="flex-1 overflow-y-auto px-3 py-4">
-            <nav className="space-y-2">
-              {sidebarViews.map((item) => {
-                const isActive = view === item.key;
-                return (
+            {!sidebarCollapsed ? (
+              <nav className="space-y-5">
+                {navGroups.map((group) => (
+                  <div key={group.label}>
+                    <p className="px-3 pb-1 text-[11px] uppercase tracking-[0.14em] text-[#7f99a8] font-semibold">
+                      {group.label}
+                    </p>
+                    <div className="space-y-1">
+                      {group.items.map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          onClick={() => setView(item.key)}
+                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
+                            view === item.key
+                              ? "bg-[#1e3a8a] text-white shadow-[0_10px_24px_rgba(30,58,138,0.28)]"
+                              : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          <AppIcon name={item.key} active={view === item.key} />
+                          <span>{translateNavLabel(item.key, item.label, t)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </nav>
+            ) : (
+              <nav className="space-y-2">
+                {navGroups.flatMap(group => group.items).map((item) => (
                   <button
                     key={item.key}
                     type="button"
                     onClick={() => setView(item.key)}
-                    className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
-                      isActive
-                        ? "bg-[#1e3a8a] text-white shadow-[0_10px_24px_rgba(30,58,138,0.28)]"
+                    className={`flex w-full items-center justify-center rounded-2xl px-0 py-3 text-sm font-medium transition ${
+                      view === item.key
+                        ? "bg-[#1e3a8a] text-white"
                         : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
                     }`}
                   >
-                    <AppIcon name={item.key} active={isActive} />
-                    {!sidebarCollapsed ? <span>{translateNavLabel(item.key, item.label, t)}</span> : null}
+                    <AppIcon name={item.key} active={view === item.key} />
                   </button>
-                );
-              })}
-            </nav>
+                ))}
+              </nav>
+            )}
           </div>
 
           <div className="border-t border-white/10 px-3 py-4">
