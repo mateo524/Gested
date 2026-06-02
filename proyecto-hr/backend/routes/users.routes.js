@@ -20,7 +20,7 @@ import {
   buildAssignmentSyncPlanForLegacyRole,
   syncPrimaryRoleAssignmentForUser,
 } from "../utils/accessControl.js";
-import { getPresetByLegacyRoleCode } from "../utils/rolePresets.js";
+import { getPresetByLegacyRoleCode, getRolePreset } from "../utils/rolePresets.js";
 import {
   normalizeEmail,
   resolveDefaultActiveSchoolId,
@@ -104,9 +104,13 @@ async function buildUniqueEmail({ companySlug, baseLocalPart, companyId }) {
   return candidate;
 }
 
-async function syncAssignmentFromRole({ user, role }) {
+async function syncAssignmentFromRole({ user, role, roleKey }) {
   if (!user || !role?.code) return;
-  const preset = getPresetByLegacyRoleCode(role.code);
+
+  const preset = roleKey
+    ? getRolePreset(roleKey)
+    : getPresetByLegacyRoleCode(role.code);
+
   if (!preset || preset.roleKey === "SUPER_ADMIN") return;
 
   await syncPrimaryRoleAssignmentForUser({
@@ -177,7 +181,7 @@ router.get("/", auth, permit("manage_users"), async (req, res) => {
 });
 
 router.post("/", auth, permit("manage_users"), async (req, res) => {
-  const { nombre, email, password, roleId, activo = true } = req.body;
+  const { nombre, email, password, roleId, roleKey, activo = true } = req.body;
   const { companyId } = await resolveCompanyScope(req);
 
   if (!nombre || !email || !roleId) {
@@ -233,8 +237,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
     preferredSchoolId: effectiveSchoolId || null,
     role,
   });
-  await syncAssignmentFromRole({ user, role });
-
+      await syncAssignmentFromRole({ user, role, roleKey });
   await logAudit({
     companyId,
     userId: req.user.userId,
