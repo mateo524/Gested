@@ -84,10 +84,10 @@ async function validateEvaluationCreation(req) {
   }
 
   const cycle = await EvaluationCycle.findOne(
-    buildScopedFilter(req, { _id: req.body.cycleId, schoolId: employee.schoolId })
+    buildScopedFilter(req, { _id: req.body.cycleId })
   ).lean();
   if (!cycle) {
-    return { error: { status: 404, mensaje: "Ciclo no encontrado para este colegio" } };
+    return { error: { status: 404, mensaje: "Ciclo no encontrado dentro de tu alcance" } };
   }
 
   if (isManagerScope(req.scope)) {
