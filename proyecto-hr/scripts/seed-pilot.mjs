@@ -650,21 +650,25 @@ async function main() {
   let evalSampleErrors = [];
   if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0 && metricIds.length > 0) {
     console.log("→ Creating evaluations...");
-    // Pre-fetch existing evaluations for idempotency
-    const existingEvals = await listAll("/evaluations");
+
+    // Pre-fetch existing evaluations per cycle for idempotency (faster than fetching all)
     const existingEvalKey = new Set();
-    for (const ev of existingEvals) {
-      const eid = String(ev.employeeId?._id || ev.employeeId || "");
-      const cid = String(ev.cycleId?._id || ev.cycleId || "");
-      const t = ev.tipo || "";
-      if (eid && cid && t) existingEvalKey.add(`${eid}|${cid}|${t}`);
+    for (const cid of cycleIds) {
+      const evals = await apiSafe("GET", `/evaluations?cycleId=${cid}&limit=200`);
+      if (evals._error) continue;
+      const list = Array.isArray(evals) ? evals : evals?.data || evals?.items || evals?.results || [];
+      for (const ev of list) {
+        const eid = String(ev.employeeId?._id || ev.employeeId || "");
+        const t = ev.tipo || "";
+        if (eid && cid && t) existingEvalKey.add(`${eid}|${cid}|${t}`);
+      }
     }
 
     for (let ci = 0; ci < cycleIds.length; ci++) {
       const evalStatus = ci < 3 ? "CERRADA" : "ENVIADA";
       for (let ei = 0; ei < empIds.length; ei++) {
         if (!empIds[ei] || !cycleIds[ci]) continue;
-        await sleep(30);
+        await sleep(10);
         const pattern = evalPattern(ei, ci);
         if (pattern === "skip") continue;
         const { auto: autoScores, jefe: mgrScores } = scoresByPattern(pattern);
@@ -794,11 +798,10 @@ async function main() {
         }
         existingKpiKey.add(lookup);
 
-        // Build cycle-valid status: use "active" instead of custom status values
-        // since model only has default "active"
+        // Skip cycleId — deployed backend's resolveScopedCycle requires companyId match
+        // that fails for SUPER_ADMIN tokens. cycleId is optional in KPIRecord model.
         const payload = {
           employeeId: empId,
-          cycleId: cycleIds[ci],
           name: kpi.name,
           targetValue: kpi.targetValue,
           currentValue: kpi.currentValue,
@@ -912,9 +915,9 @@ async function main() {
   if (annCreated > 0) completeModules.push("Novedades / anuncios");
 
   const partialModules = [];
-  if (evalsCreated === 0 && evalsFailed > 0) partialModules.push({ name: "Evaluaciones", reason: `${evalsFailed} fallaron — revisar endpoint y ciclo/employee IDs` });
+  if (evalsCreated > 0 || evalsOmitted > 0) completeModules.push("Evaluaciones (AUTOEVALUACION + JEFATURA, estados variados)");
+  else if (evalsFailed > 0) partialModules.push({ name: "Evaluaciones", reason: `${evalsFailed} fallaron — revisar endpoint y ciclo/employee IDs` });
   else if (evalsCreated === 0 && !DRY_RUN) partialModules.push({ name: "Evaluaciones", reason: "no se crearon — endpoint puede requerir permisos adicionales" });
-  else if (evalsCreated > 0) completeModules.push("Evaluaciones (AUTOEVALUACION + JEFATURA, estados variados)");
 
   if (kpiCreated === 0 && kpiFailed > 0) partialModules.push({ name: "KPIs", reason: `${kpiFailed} fallaron — revisar endpoint y payload` });
   else if (kpiCreated === 0 && kpiOmitted > 0 && !DRY_RUN) partialModules.push({ name: "KPIs", reason: "todos existían o endpoint no disponible" });
@@ -949,10 +952,12 @@ async function main() {
     const result = userResults.find(r => r.email === u.email);
     let statusText = result?.status || "desconocido";
     if (statusText === "creado") statusText = "creado";
-    else if (statusText === "omitido" || result?.created === false) statusText = "omitido";
-    else if (statusText === "ya existía" || result?.created === false) statusText = "ya existía";
+    else if (statusText === "ya existía") statusText = "ya existía";
+    else if (statusText === "omitido") statusText = "omitido";
     else if (statusText === "falló") statusText = "falló";
-    const motivoText = result?.motivo ? ` (${result.motivo})` : "";
+    else if (result?.created === false) statusText = "ya existía";
+    let motivoText = result?.motivo ? ` (${result.motivo})` : "";
+    if (statusText === "omitido" && !motivoText) motivoText = " (usar admin@demo.com)";
     console.log(`${u.roleCode}:`);
     console.log(`  Email:    ${u.email}`);
     console.log(`  Password: ${DEMO_PASSWORD}`);

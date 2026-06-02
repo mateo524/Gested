@@ -294,9 +294,7 @@ async function resolveOwnerUser(companyId, ownerUserId) {
 
 async function resolveScopedCycle(req, companyId, schoolId, cycleId) {
   if (!cycleId) return null;
-  const filter = req.scope.isSuperAdmin
-    ? { _id: cycleId, companyId, ...(schoolId ? { schoolId } : {}) }
-    : buildScopedFilter(req, { _id: cycleId, companyId, ...(schoolId ? { schoolId } : {}) });
+  const filter = buildScopedFilter(req, { _id: cycleId });
   const cycle = await EvaluationCycle.findOne(filter).select("_id anio periodo etapa estado schoolId").lean();
   if (!cycle) {
     const error = new Error("El ciclo no existe dentro de tu alcance");
