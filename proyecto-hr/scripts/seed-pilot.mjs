@@ -81,77 +81,94 @@ const PILOT_USERS = [
   { email: "auditor.demo@performia.test", roleCode: "AUDITOR", nombre: "Auditor Demo" },
 ];
 
-// Map pilot roleKey → preferred matchers (checked against code, then nombre)
-const PILOT_ROLE_CODE_PRIORITY = {
-  ORG_ADMIN: ["ADMIN_COLEGIO", "ADMIN", "ORG_ADMIN"],
-  HR: ["RRHH", "HR"],
-  MANAGER: ["JEFE", "MANAGER", "SUPERVISOR"],
-  EMPLOYEE: ["EMPLEADO", "EMPLOYEE"],
-  VIEWER: ["LECTOR", "VIEWER"],
-  AUDITOR: ["AUDITOR", "LECTOR"],
-};
+// Standard roles required for pilot users
+const PILOT_ROLE_DEFS = [
+  { roleKey: "ORG_ADMIN", legacyCode: "ADMIN_COLEGIO", nombre: "Administrador", roleLabel: "Administrador" },
+  { roleKey: "HR", legacyCode: "RRHH", nombre: "RRHH", roleLabel: "RRHH" },
+  { roleKey: "MANAGER", legacyCode: "JEFE", nombre: "Manager", roleLabel: "Manager" },
+  { roleKey: "EMPLOYEE", legacyCode: "EMPLEADO", nombre: "Empleado", roleLabel: "Empleado" },
+  { roleKey: "VIEWER", legacyCode: "LECTOR", nombre: "Lector", roleLabel: "Lector" },
+  { roleKey: "AUDITOR", legacyCode: "LECTOR", nombre: "Auditor", roleLabel: "Auditor" },
+];
 
-// Fallback: try these legacy codes if preferred match fails
-const PILOT_ROLE_FALLBACK = {
-  HR: "ADMIN_COLEGIO",
-  VIEWER: "EMPLEADO",
-  AUDITOR: "EMPLEADO",
-};
+// Ensure standard roles exist, return map legacyCode → role
+async function ensurePilotRoles(existingRoles, companyId) {
+  console.log("→ Ensuring standard roles...\n");
 
-const PILOT_ROLE_LABEL = {
-  ORG_ADMIN: "Admin de organización",
-  HR: "RRHH",
-  MANAGER: "Manager / Jefe",
-  EMPLOYEE: "Empleado",
-  VIEWER: "Lector",
-  AUDITOR: "Auditor",
-  SUPER_ADMIN: "Super Admin",
-};
+  // Filter to company-specific roles
+  const companyRoles = existingRoles.filter(r => String(r.companyId) === String(companyId));
 
-function resolveRoleForPilot(roleKey, roles, companyId) {
-  if (roleKey === "SUPER_ADMIN") return null;
+  const results = [];
 
-  const preferred = PILOT_ROLE_CODE_PRIORITY[roleKey] || [];
+  for (const def of PILOT_ROLE_DEFS) {
+    // AUDITOR uses LECTOR legacy role, handled after
+    if (def.roleKey === "AUDITOR") continue;
 
-  // 1. Try exact match by code (case-insensitive)
-  for (const code of preferred) {
-    const match = roles.find(r =>
-      String(r.code || "").toUpperCase() === code.toUpperCase()
-      && String(r.companyId) === String(companyId)
+    const existing = companyRoles.find(r =>
+      String(r.code || "").toUpperCase() === def.legacyCode.toUpperCase()
     );
-    if (match) return { role: match, strategy: "code" };
-  }
 
-  // 2. Try match by nombre (contains, case-insensitive)
-  for (const role of roles) {
-    if (String(role.code || "").toUpperCase() === "SUPER_ADMIN") continue;
-    if (String(role.companyId) !== String(companyId)) continue;
-    const nombre = String(role.nombre || "").toUpperCase();
-    for (const code of preferred) {
-      if (nombre.includes(code.toUpperCase())) {
-        return { role, strategy: "nombre" };
-      }
+    if (existing) {
+      results.push({ ...def, role: existing, status: "existente" });
+      continue;
+    }
+
+    if (DRY_RUN) {
+      results.push({ ...def, role: null, status: "a crear" });
+      continue;
+    }
+
+    const created = await apiSafe("POST", "/roles", {
+      nombre: def.nombre,
+      code: def.legacyCode,
+      descripcion: `Rol estándar para ${def.roleLabel}`,
+    });
+
+    if (created._error) {
+      console.warn(`  ⚠ Error creating role ${def.legacyCode}: ${created._error}`);
+      results.push({ ...def, role: null, status: "error" });
+    } else {
+      results.push({ ...def, role: created.role, status: "creado" });
     }
   }
 
-  // 3. Try fallback legacy code
-  const fallbackCode = PILOT_ROLE_FALLBACK[roleKey];
-  if (fallbackCode) {
-    const match = roles.find(r =>
-      String(r.code || "").toUpperCase() === fallbackCode.toUpperCase()
-      && String(r.companyId) === String(companyId)
-    );
-    if (match) return { role: match, strategy: "fallback" };
+  // Print summary
+  for (const r of results) {
+    const roleId = r.role ? r.role._id : "N/A";
+    console.log(`  ${r.legacyCode}: ${roleId} / ${r.status.toUpperCase()}`);
   }
 
-  // 4. Any company role (not SUPER_ADMIN)
-  const anyRole = roles.find(r =>
-    String(r.code || "").toUpperCase() !== "SUPER_ADMIN"
-    && String(r.companyId) === String(companyId)
-  );
-  if (anyRole) return { role: anyRole, strategy: "any" };
+  const missing = results.filter(r => !r.role && r.status !== "a crear");
+  if (missing.length > 0) {
+    console.error(`\n  ✗ ${missing.length} rol(es) sin crear. Abortando.`);
+    return null;
+  }
 
-  return null;
+  // Build role map: legacyCode → role document
+  const roleMap = {};
+  for (const r of results) {
+    if (r.role) {
+      roleMap[r.legacyCode] = r.role;
+    } else if (DRY_RUN) {
+      // Placeholder for dry-run so downstream code can still map
+      roleMap[r.legacyCode] = { _id: "dry-run", code: r.legacyCode, nombre: r.nombre };
+    }
+  }
+
+  // AUDITOR shares LECTOR as legacy role
+  const lector = roleMap["LECTOR"];
+  if (!lector) {
+    console.error("\n  ✗ LECTOR role required for AUDITOR but not available. Abortando.");
+    return null;
+  }
+  if (!roleMap["AUDITOR"]) {
+    roleMap["AUDITOR"] = DRY_RUN
+      ? { _id: "dry-run", code: "LECTOR", nombre: "Auditor" }
+      : lector;
+  }
+
+  console.log(`  → ${Object.keys(roleMap).length} roles ready\n`);
+  return roleMap;
 }
 
 const DEMO_EMPLOYEES = [
@@ -324,10 +341,11 @@ async function main() {
     }
   }
 
-  const roleByCode = new Map();
-  for (const role of existingRoles) {
-    const code = String(role.code || role.nombre || "").trim().toUpperCase();
-    roleByCode.set(code, role);
+  // 2.6. Ensure standard roles exist
+  const roleMap = await ensurePilotRoles(existingRoles, COMPANY_ID);
+  if (!roleMap && !DRY_RUN) {
+    console.error("\n  ✗ No se pueden crear usuarios sin roles estándar. Abortando.");
+    process.exit(1);
   }
 
   const employeeByEmail = new Map();
@@ -394,10 +412,11 @@ async function main() {
         console.log(`  EXISTS ${pu.email} (${pu.roleCode})`);
         userResults.push({ ...pu, status: "ya existía" });
       } else {
-        const resolved = resolveRoleForPilot(pu.roleCode, existingRoles, COMPANY_ID);
-        const roleInfo = resolved ? ` → rol: ${resolved.role.nombre || resolved.role.code}` : " → NO HAY ROL COMPATIBLE";
+        const def = PILOT_ROLE_DEFS.find(d => d.roleKey === pu.roleCode);
+        const legacyRole = def ? roleMap?.[def.legacyCode] : null;
+        const roleInfo = legacyRole ? ` → ${def.legacyCode} (${legacyRole.nombre || legacyRole.code})` : " → SIN ROL";
         console.log(`  WOULD CREATE${roleInfo} ${pu.email} (${pu.roleCode})`);
-        userResults.push({ ...pu, status: resolved ? "creado (simulado)" : "falló (simulado)", motivo: resolved ? null : "rol compatible no encontrado" });
+        userResults.push({ ...pu, status: legacyRole ? "creado (simulado)" : "falló (simulado)", motivo: legacyRole ? null : "rol compatible no encontrado" });
       }
     }
   } else {
@@ -420,23 +439,34 @@ async function main() {
         continue;
       }
 
-      const resolved = resolveRoleForPilot(pu.roleCode, existingRoles, COMPANY_ID);
-      if (!resolved) {
-        console.warn(`  FALLÓ ${pu.email} (${pu.roleCode}): ningún rol compatible`);
-        userResults.push({ ...pu, status: "falló", motivo: "rol compatible no encontrado" });
+      const def = PILOT_ROLE_DEFS.find(d => d.roleKey === pu.roleCode);
+      if (!def) {
+        console.warn(`  FALLÓ ${pu.email} (${pu.roleCode}): sin definición de rol`);
+        userResults.push({ ...pu, status: "falló", motivo: "sin definición de rol" });
         continue;
       }
 
-      const role = resolved.role;
-      const strategyLabel = resolved.strategy === "code" ? "" : ` (vía ${resolved.strategy}: ${role.nombre || role.code})`;
-      console.log(`  ${pu.roleCode}: usando rol "${role.nombre || role.code}"${strategyLabel}`);
-      const created = await apiSafe("POST", "/users", {
+      const role = roleMap?.[def.legacyCode];
+      if (!role) {
+        console.warn(`  FALLÓ ${pu.email} (${pu.roleCode}): rol legacy "${def.legacyCode}" no disponible`);
+        userResults.push({ ...pu, status: "falló", motivo: `rol ${def.legacyCode} no disponible` });
+        continue;
+      }
+
+      // AUDITOR needs roleKey override so assignment gets AUDITOR (not VIEWER from LECTOR preset)
+      const userPayload = {
         nombre: pu.nombre,
         email: pu.email,
         password: DEMO_PASSWORD,
         roleId: role._id,
         activo: true,
-      });
+      };
+      if (pu.roleCode === "AUDITOR") {
+        userPayload.roleKey = "AUDITOR";
+      }
+
+      console.log(`  ${pu.roleCode}: usando rol "${role.nombre || role.code}" (ID: ${role._id})`);
+      const created = await apiSafe("POST", "/users", userPayload);
       if (created._error) {
         if (created._error.includes("409") || created._error.includes("ya existe")) {
           console.log(`  YA EXISTE ${pu.email} (${pu.roleCode})`);
