@@ -211,6 +211,20 @@ const DEMO_EMPLOYEES = [
   { nombre: "Andrea", apellido: "Reyes", email: "andrea.reyes@horizonte.edu", cargo: "Soporte TI", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
   { nombre: "Francisco", apellido: "Peña", email: "francisco.pena@horizonte.edu", cargo: "Analista de Datos", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-15" },
   { nombre: "Marina", apellido: "Costas", email: "marina.costas@horizonte.edu", cargo: "Analista de Datos", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-03-01" },
+  { nombre: "Leonardo", apellido: "Vargas", email: "leonardo.vargas@horizonte.edu", cargo: "Jefe de Ventas", area: "Ventas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-04-01" },
+  { nombre: "Brenda", apellido: "Aguirre", email: "brenda.aguirre@horizonte.edu", cargo: "Coordinadora de Ventas", area: "Ventas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-02-01" },
+  { nombre: "Héctor", apellido: "Mansilla", email: "hector.mansilla@horizonte.edu", cargo: "Coordinador de Postventa", area: "Ventas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-03-01" },
+  { nombre: "Lorena", apellido: "Ponce", email: "lorena.ponce@horizonte.edu", cargo: "Ejecutiva de Ventas", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-06-01" },
+  { nombre: "Mauro", apellido: "Delgado", email: "mauro.delgado@horizonte.edu", cargo: "Ejecutivo de Ventas", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-07-01" },
+  { nombre: "Paula", apellido: "Arias", email: "paula.arias@horizonte.edu", cargo: "Ejecutiva de Ventas", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-08-01" },
+  { nombre: "Iván", apellido: "Benítez", email: "ivan.benitez@horizonte.edu", cargo: "Analista de Mercado", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
+  { nombre: "Débora", apellido: "Quiroga", email: "debora.quiroga@horizonte.edu", cargo: "Asistente Comercial", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-01" },
+  { nombre: "Ricardo", apellido: "Montenegro", email: "ricardo.montenegro@horizonte.edu", cargo: "Jefe de Finanzas", area: "Finanzas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-05-01" },
+  { nombre: "Silvina", apellido: "Lorenzini", email: "silvina.lorenzini@horizonte.edu", cargo: "Coordinadora de Presupuesto", area: "Finanzas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-03-15" },
+  { nombre: "Gonzalo", apellido: "Fábrega", email: "gonzalo.fabrega@horizonte.edu", cargo: "Analista Financiero", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-06-01" },
+  { nombre: "Melisa", apellido: "Pizarro", email: "melisa.pizarro@horizonte.edu", cargo: "Analista Financiera", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-07-01" },
+  { nombre: "Brian", apellido: "Soria", email: "brian.soria@horizonte.edu", cargo: "Analista de Costos", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
+  { nombre: "Luisina", apellido: "Barrientos", email: "luisina.barrientos@horizonte.edu", cargo: "Analista de Contabilidad", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-01" },
 ];
 
 const DEMO_COMPETENCIES = [
@@ -284,9 +298,10 @@ const DEMO_OKRS = [
 const DEMO_ANNOUNCEMENTS = [
   { titulo: "Inicio del ciclo de evaluaciones Q2 2026", cuerpo: "Se habilita la plataforma para completar las autoevaluaciones y evaluaciones de jefatura del segundo trimestre. Fecha límite: 30/06/2026.", prioridad: "importante", tipo: "info", audienceType: "all" },
   { titulo: "Nueva plataforma de formación disponible", cuerpo: "Ya está disponible el acceso a la nueva plataforma de capacitación con cursos sobre liderazgo, comunicación efectiva y herramientas digitales.", prioridad: "informativa", tipo: "success", audienceType: "all" },
-  { titulo: "Recordatorio: completar feedback trimestral", cuerpo: "Recuerden completar las evaluaciones de desempeño pendientes. El equipo de RRHH hará seguimiento esta semana.", prioridad: "importante", tipo: "warning", audienceType: "department", audienceDepartmentCodes: ["Académica", "Operaciones"] },
-  { titulo: "Actualización del sistema de RRHH", cuerpo: "Se implementaron mejoras en el módulo de reportes ejecutivos y la carga de KPIs. Consultar con el equipo de tecnología ante cualquier duda.", prioridad: "informativa", tipo: "update", audienceType: "all" },
+  { titulo: "Recordatorio: completar feedback trimestral", cuerpo: "Recuerden completar las evaluaciones de desempeño pendientes. El equipo de RRHH hará seguimiento esta semana.", prioridad: "importante", tipo: "warning", audienceType: "department", audienceDepartmentCodes: ["Académica", "Operaciones"], audienceRoleKeys: ["MANAGER", "HR"] },
+  { titulo: "Actualización del sistema de RRHH", cuerpo: "Se implementaron mejoras en el módulo de reportes ejecutivos y la carga de KPIs.", prioridad: "informativa", tipo: "update", audienceType: "all" },
   { titulo: "Plan de desarrollo profesional 2026", cuerpo: "Se abre la convocatoria para el plan de desarrollo profesional. Los interesados deben completar el formulario antes del 15/07.", prioridad: "importante", tipo: "info", audienceType: "all", pinned: true },
+  { titulo: "Política de feedback continuo", cuerpo: "Recordar que desde RRHH se implementó la política de feedback continuo. Todos los managers deben realizar al menos una reunión 1:1 semanal.", prioridad: "informativa", tipo: "info", audienceType: "all", audienceRoleKeys: ["MANAGER", "HR"], expiresAt: "2026-09-01" },
 ];
 
 // Helper: pick random item from array
@@ -296,16 +311,21 @@ function pickRandom(arr) {
 
 function getManagerIdx(empIdx) {
   if (empIdx === 0) return null;
-  const areaManager = { "Dirección": null, "Académica": 1, "Operaciones": 12, "RRHH": 21, "Tecnología": 29 };
+  const areaManager = {
+    "Dirección": null, "Académica": 1, "Operaciones": 12, "RRHH": 21, "Tecnología": 29, "Ventas": 39, "Finanzas": 49,
+  };
   const coordinators = {
     "Académica": [2, 3], "Operaciones": [13, 14], "RRHH": [22, 23], "Tecnología": [30, 31],
+    "Ventas": [40, 41], "Finanzas": [50],
   };
   const emp = DEMO_EMPLOYEES[empIdx];
-  if ([1, 12, 21, 29].includes(empIdx)) return 0;
+  if ([1, 12, 21, 29, 39, 49].includes(empIdx)) return 0;
   if ([2, 3].includes(empIdx)) return 1;
   if ([13, 14].includes(empIdx)) return 12;
   if ([22, 23].includes(empIdx)) return 21;
   if ([30, 31].includes(empIdx)) return 29;
+  if ([40, 41].includes(empIdx)) return 39;
+  if ([50].includes(empIdx)) return 49;
   const deptCoords = coordinators[emp.area] || [];
   return deptCoords.length > 0 ? deptCoords[empIdx % deptCoords.length] : (areaManager[emp.area] ?? null);
 }
@@ -583,32 +603,76 @@ async function main() {
   let evalsCreated = 0;
   let plansCreated = 0;
 
+  // Patterns for varied evaluation distribution
+  function evalPattern(empIdx, cycleIdx) {
+    // 54 employees, 4 cycles — deterministic distribution
+    const seed = (empIdx * 7 + cycleIdx * 13) % 100;
+    // Skip for last cycle (Q2 2026 — not yet due)
+    if (cycleIdx === 3) {
+      if (seed < 30) return "skip";          // 30% no evaluation yet
+      if (seed < 55) return "auto_only";     // 25% employee submitted, manager pending
+      return "both_open";                     // 45% both in draft
+    }
+    // Finished cycles (Q3/Q4 2025, Q1 2026)
+    if (seed < 10) return "skip";             // 10% never evaluated
+    if (seed < 20) return "auto_only";        // 10% only autoevaluación exists
+    if (seed < 30) return "jefe_only";        // 10% only jefatura exists
+    if (seed < 50 && cycleIdx === 0) return "both_alert"; // 20% first cycle: alert (bajo desempeño)
+    if (seed < 65) return "both_aligned";     // 15% aligned
+    if (seed < 80) return "both_gap";         // 15% gap (auto > jefe)
+    return "both_aligned";                    // remainder
+  }
+
+  function scoresByPattern(pattern) {
+    const base = () => 3 + Math.floor(Math.random() * 3);
+    const low = () => 2 + Math.floor(Math.random() * 2);
+    const high = () => 4 + Math.round(Math.random());
+    switch (pattern) {
+      case "both_alert":
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: base() })), jefe: metricIds.map(mid => ({ metricId: mid, nivel: low() })) };
+      case "both_gap":
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: high() })), jefe: metricIds.map(mid => ({ metricId: mid, nivel: low() })) };
+      case "both_aligned":
+        const v = base();
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: v })), jefe: metricIds.map(mid => ({ metricId: mid, nivel: v })) };
+      case "jefe_only":
+        return { auto: null, jefe: metricIds.map(mid => ({ metricId: mid, nivel: base() })) };
+      case "both_open":
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: base() })), jefe: null };
+      default:
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: base() })), jefe: null };
+    }
+  }
+
   // 7. Create evaluations
   if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0 && metricIds.length > 0) {
     console.log("→ Creating evaluations...");
-    const evalStatuses = ["CERRADA", "CERRADA", "REVISADA", "ENVIADA"];
     for (let ci = 0; ci < cycleIds.length; ci++) {
+      const evalStatus = ci < 3 ? "CERRADA" : "ENVIADA";
       for (let ei = 0; ei < empIds.length; ei++) {
         if (!empIds[ei] || !cycleIds[ci]) continue;
         await sleep(30);
-        const scores = metricIds.map(mid => ({ metricId: mid, nivel: ci === 0 ? randomScore(true) : randomScore() }));
-        const rFinal = scores.reduce((a, s) => a + s.nivel, 0) / scores.length;
-        const autoResult = await apiSafe("POST", "/evaluations", {
-          employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "AUTOEVALUACION",
-          scores, estado: evalStatuses[ci],
-        });
-        if (!autoResult._error) evalsCreated++;
-        const mgrIdx = getManagerIdx(ei);
-        if (mgrIdx !== null && empIds[mgrIdx]) {
-          const mgrScores = metricIds.map(mid => ({ metricId: mid, nivel: ci === 0 ? randomScore(true) : randomScore() }));
+        const pattern = evalPattern(ei, ci);
+        if (pattern === "skip") continue;
+        const { auto: autoScores, jefe: mgrScores } = scoresByPattern(pattern);
+
+        if (autoScores && pattern !== "jefe_only") {
+          const autoResult = await apiSafe("POST", "/evaluations", {
+            employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "AUTOEVALUACION",
+            scores: autoScores, estado: evalStatus,
+          });
+          if (!autoResult._error) evalsCreated++;
+        }
+
+        if (mgrScores && pattern !== "auto_only" && pattern !== "both_open") {
           const mgrResult = await apiSafe("POST", "/evaluations", {
             employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "JEFATURA",
-            scores: mgrScores, estado: evalStatuses[ci],
+            scores: mgrScores, estado: evalStatus,
           });
           if (!mgrResult._error) evalsCreated++;
         }
       }
-      console.log(`  Cycle ${ci + 1}/${cycleIds.length}: evaluations complete`);
+      console.log(`  Cycle ${ci + 1}/${cycleIds.length}: ${evalStatus} (${evalsCreated} so far)`);
     }
     console.log(`  Total evaluations: ${evalsCreated}\n`);
   }
@@ -694,16 +758,18 @@ async function main() {
   if (!DRY_RUN) {
     console.log("→ Creating announcements...");
     for (const ann of DEMO_ANNOUNCEMENTS) {
-      const result = await apiSafe("POST", "/announcements", {
+      const payload = {
         titulo: ann.titulo,
         cuerpo: ann.cuerpo,
         prioridad: ann.prioridad,
         type: ann.tipo,
         audienceType: ann.audienceType,
         audienceDepartmentCodes: ann.audienceDepartmentCodes || [],
-        audienceRoleKeys: ann.audienceType === "all" ? [] : ["ORG_ADMIN", "HR", "MANAGER"],
+        audienceRoleKeys: ann.audienceRoleKeys || [],
         pinned: ann.pinned || false,
-      });
+      };
+      if (ann.expiresAt) payload.expiresAt = ann.expiresAt;
+      const result = await apiSafe("POST", "/announcements", payload);
       if (!result._error) annCreated++;
     }
     console.log(`  Created ${annCreated} announcements\n`);
@@ -718,7 +784,7 @@ async function main() {
   const existingCreds = userResults.filter(u => u.status === "ya existía").length;
   const failedCreds = userResults.filter(u => u.status === "falló").length;
   console.log(`Empresa:         ${auth.user?.companyName || "Perfomia Corp"}`);
-  console.log(`Empleados:       ${DRY_RUN ? "(simulado)" : totalEmps}`);
+  console.log(`Empleados:       ${DRY_RUN ? "(simulado)" : totalEmps} (${DEMO_EMPLOYEES.length} definidos)`);
   console.log(`Usuarios:        ${createdCreds} creados / ${existingCreds} existentes / ${failedCreds} fallidos`);
   console.log(`Roles:           ${Object.keys(roleMap || {}).length} estándar garantizados`);
   console.log(`Competencias:    ${DRY_RUN ? DEMO_COMPETENCIES.length + " (simulado)" : totalComps}`);
@@ -729,23 +795,29 @@ async function main() {
   console.log(`Planes:          ${plansCreated || 0} creados`);
   console.log(`Novedades:       ${annCreated} creadas\n`);
 
-  console.log("Módulos completos:");
+  console.log("─── Módulos completos ───");
   console.log("  ✅ Empleados con jerarquía de managers");
-  console.log("  ✅ Roles estándar + pilot users");
-  console.log("  ✅ Ciclos de evaluación");
-  console.log("  ✅ Competencias");
-  console.log("  ✅ Evaluaciones (AUTOEVALUACION + JEFATURA)");
+  console.log("  ✅ Roles estándar + pilot users (7 cuentas)");
+  console.log("  ✅ Ciclos de evaluación (4 trimestres)");
+  console.log("  ✅ Competencias (transversales, docente, liderazgo)");
+  console.log("  ✅ Evaluaciones (AUTOEVALUACION + JEFATURA, estados variados)");
   console.log("  ✅ Planes de desarrollo");
-  console.log("  ✅ KPIs / OKRs");
-
+  console.log("  ✅ KPIs / OKRs (métricas por empleado/área)");
   if (annCreated > 0) {
-    console.log("  ✅ Novedades");
+    console.log("  ✅ Novedades / anuncios");
   }
 
-  console.log("\nMódulos parciales:");
-  console.log("  ⚠ Reporte Ejecutivo: datos generados (empleados, evaluaciones, KPIs, planes)");
-  console.log("  ⚠ Dashboard/Métricas: datos en backend, visual completa depende del frontend");
-  console.log("  ⚠ Importación: plantilla disponible vía GET /bulk-import/template");
+  console.log("\n─── Módulos con datos suficientes ───");
+  console.log("  ✅ Reporte Ejecutivo — vista general (empleados, evaluaciones, KPIs, planes)");
+  console.log("  ✅ Reporte Ejecutivo — vista individual (evaluaciones, KPIs, planes, acciones)");
+  console.log("  ✅ Dashboard / Métricas — backend poblado, visual depende del frontend");
+  console.log("  ✅ Importación — plantilla descargable vía GET /bulk-import/template");
+  console.log("  ✅ Mediciones — scores con diferencias auto/jefe para probar gaps");
+
+  console.log("\n─── No aplica para seed ───");
+  console.log("  — Landing: no tocar");
+  console.log("  — n8n: no tocar");
+  console.log("  — Plataforma SUPER_ADMIN: no crear más admins");
 
   console.log("\n=== CREDENCIALES PILOTO ===\n");
   console.log(`Admin (SUPER_ADMIN existente):`);
@@ -767,7 +839,8 @@ async function main() {
   console.log("Cómo ejecutar:");
   console.log("  1. SEED_CONFIRM=1 node scripts/seed-pilot.mjs");
   console.log("  2. Login con cualquier credencial de arriba");
-  console.log(`  3. Modo dry-run: node scripts/seed-pilot.mjs --dry-run\n`);
+  console.log(`  3. Modo dry-run: node scripts/seed-pilot.mjs --dry-run`);
+  console.log(`  4. Para datos completos adicionales: SEED_CONFIRM=1 node scripts/seed-demo.mjs\n`);
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
   console.log(`Duration: ${elapsed}s`);
