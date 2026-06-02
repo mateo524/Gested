@@ -350,9 +350,9 @@ export default function DashboardPage() {
 
     if ((summary.educational?.metricsTotal || 0) > 0) {
       cards.push({
-        label: "Objetivos / Indicadores",
+        label: "Mediciones",
         value: summary.educational?.metricsTotal || 0,
-        hint: "Indicadores configurados",
+        hint: "Métricas configuradas",
         accent: "green",
       });
     }
