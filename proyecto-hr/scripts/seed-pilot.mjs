@@ -214,21 +214,23 @@ const DEMO_EMPLOYEES = [
 ];
 
 const DEMO_COMPETENCIES = [
-  { competencia: "Dominio del contenido disciplinar", definicion: "Demuestra dominio de los contenidos del area que ensena.", tipo: "DESEMPENO", escala: "1_5" },
-  { competencia: "Planificacion de la ensenanza", definicion: "Planifica sus clases con objetivos claros y materiales adecuados.", tipo: "DESEMPENO", escala: "1_5" },
-  { competencia: "Evaluacion de aprendizajes", definicion: "Utiliza instrumentos variados para evaluar el progreso del estudiante.", tipo: "DESEMPENO", escala: "1_5" },
-  { competencia: "Comunicacion con estudiantes", definicion: "Establece una comunicacion clara y efectiva con los estudiantes.", tipo: "DESEMPENO", escala: "1_5" },
-  { competencia: "Trabajo en equipo", definicion: "Colabora activamente con colegas en proyectos institucionales.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Liderazgo", definicion: "Inspira y guia a otros hacia el logro de objetivos.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Resolucion de conflictos", definicion: "Media y resuelve conflictos de manera constructiva.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Gestion del tiempo", definicion: "Organiza su tiempo para cumplir con plazos y prioridades.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Uso de herramientas digitales", definicion: "Utiliza plataformas y herramientas digitales para su trabajo.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Comunicacion escrita", definicion: "Redacta informes y comunicaciones con claridad y correccion.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Atencion al cliente interno", definicion: "Responde a necesidades de colegas con eficiencia y amabilidad.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Innovacion y mejora continua", definicion: "Propone mejoras y nuevas ideas para optimizar procesos.", tipo: "COMPETENCIA", escala: "1_5" },
-  { competencia: "Cumplimiento de objetivos", definicion: "Alcanza los objetivos definidos para su rol en el periodo.", tipo: "DESEMPENO", escala: "1_5" },
-  { competencia: "Asistencia y puntualidad", definicion: "Asiste regularmente y cumple con el horario laboral.", tipo: "DESEMPENO", escala: "1_5" },
-  { competencia: "Responsabilidad institucional", definicion: "Asume compromisos institucionales y los cumple.", tipo: "DESEMPENO", escala: "1_5" },
+  { nombre: "Dominio del contenido disciplinar", descripcion: "Demuestra dominio de los contenidos del area que ensena.", tipo: "DOCENTE", componente: "C" },
+  { nombre: "Planificacion de la ensenanza", descripcion: "Planifica sus clases con objetivos claros y materiales adecuados.", tipo: "DOCENTE", componente: "H" },
+  { nombre: "Evaluacion de aprendizajes", descripcion: "Utiliza instrumentos variados para evaluar el progreso del estudiante.", tipo: "DOCENTE", componente: "H" },
+  { nombre: "Comunicacion con estudiantes", descripcion: "Establece una comunicacion clara y efectiva con los estudiantes.", tipo: "DOCENTE", componente: "A" },
+  { nombre: "Trabajo en equipo", descripcion: "Colabora activamente con colegas en proyectos institucionales.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Liderazgo", descripcion: "Inspira y guia a otros hacia el logro de objetivos.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Resolucion de conflictos", descripcion: "Media y resuelve conflictos de manera constructiva.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Gestion del tiempo", descripcion: "Organiza su tiempo para cumplir con plazos y prioridades.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Uso de herramientas digitales", descripcion: "Utiliza plataformas y herramientas digitales para su trabajo.", tipo: "TRANSVERSAL", componente: "H" },
+  { nombre: "Comunicacion escrita", descripcion: "Redacta informes y comunicaciones con claridad y correccion.", tipo: "TRANSVERSAL", componente: "H" },
+  { nombre: "Atencion al cliente interno", descripcion: "Responde a necesidades de colegas con eficiencia y amabilidad.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Innovacion y mejora continua", descripcion: "Propone mejoras y nuevas ideas para optimizar procesos.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Cumplimiento de objetivos", descripcion: "Alcanza los objetivos definidos para su rol en el periodo.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Asistencia y puntualidad", descripcion: "Asiste regularmente y cumple con el horario laboral.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Feedback y acompanamiento", descripcion: "Brinda retroalimentacion constructiva y acompanamiento al equipo.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Gestion operativa", descripcion: "Coordina recursos y procesos para asegurar la operacion diaria.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Toma de decisiones", descripcion: "Analiza opciones y toma decisiones informadas y oportunas.", tipo: "LIDERAZGO", componente: "H" },
 ];
 
 const DEMO_CYCLES = [
@@ -239,17 +241,58 @@ const DEMO_CYCLES = [
 ];
 
 const DEMO_PLANS = [
-  { nombre: "Plan de liderazgo pedagógico", descripcion: "Desarrollar habilidades de liderazgo para coordinar el equipo docente.", estado: "EN_CURSO", prioridad: "ALTA" },
-  { nombre: "Formación en herramientas digitales", descripcion: "Capacitarse en nuevas plataformas educativas para integrar tecnologia.", estado: "EN_CURSO", prioridad: "MEDIA" },
-  { nombre: "Plan de comunicación efectiva", descripcion: "Mejorar la comunicación con padres y colegas.", estado: "PENDIENTE", prioridad: "ALTA" },
-  { nombre: "Optimización de procesos operativos", descripcion: "Revisar y optimizar los procesos de logística y mantenimiento.", estado: "EN_CURSO", prioridad: "ALTA" },
-  { nombre: "Plan de bienestar laboral", descripcion: "Implementar acciones para mejorar el clima laboral.", estado: "PENDIENTE", prioridad: "MEDIA" },
-  { nombre: "Formación en evaluación por competencias", descripcion: "Capacitarse en el diseño de instrumentos de evaluación.", estado: "COMPLETADO", prioridad: "MEDIA" },
-  { nombre: "Plan de desarrollo de RRHH", descripcion: "Implementar un sistema de seguimiento de desempeño.", estado: "EN_CURSO", prioridad: "ALTA" },
-  { nombre: "Actualización técnica en infraestructura TI", descripcion: "Actualizar servidores y red para mejorar conectividad.", estado: "EN_CURSO", prioridad: "ALTA" },
-  { nombre: "Plan de mentoría para nuevos docentes", descripcion: "Acompañar a los docentes ingresantes durante su primer semestre.", estado: "COMPLETADO", prioridad: "MEDIA" },
-  { nombre: "Implementación de OKR institucionales", descripcion: "Definir y hacer seguimiento de OKR por departamento.", estado: "EN_CURSO", prioridad: "ALTA" },
+  { aspectoDesarrollar: "Liderazgo pedagógico", medicion: "Encuesta de satisfacción del equipo docente", estado: "EN_CURSO", fortalezas: ["Planificación", "Organización"] },
+  { aspectoDesarrollar: "Herramientas digitales", medicion: "Cantidad de plataformas integradas en el aula", estado: "EN_CURSO", fortalezas: ["Curiosidad tecnológica"] },
+  { aspectoDesarrollar: "Comunicación efectiva con familias", medicion: "Encuesta de satisfacción de padres", estado: "PENDIENTE", fortalezas: ["Empatía"] },
+  { aspectoDesarrollar: "Optimización de procesos operativos", medicion: "Tiempo promedio de resolución de incidencias", estado: "EN_CURSO", fortalezas: ["Visión sistémica"] },
+  { aspectoDesarrollar: "Bienestar laboral del equipo", medicion: "Índice de clima laboral trimestral", estado: "PENDIENTE", fortalezas: ["Escucha activa"] },
+  { aspectoDesarrollar: "Evaluación por competencias", medicion: "Cantidad de evaluaciones completadas con rúbrica", estado: "CERRADO", fortalezas: ["Rigor académico"] },
+  { aspectoDesarrollar: "Sistema de seguimiento de desempeño", medicion: "% de empleados con evaluación al día", estado: "EN_CURSO", fortalezas: ["Organización", "Análisis"] },
+  { aspectoDesarrollar: "Infraestructura TI", medicion: "Uptime de servidores y disponibilidad de red", estado: "EN_CURSO", fortalezas: ["Conocimiento técnico"] },
+  { aspectoDesarrollar: "Mentoría a nuevos docentes", medicion: "Retención de docentes en primer año", estado: "CERRADO", fortalezas: ["Paciencia", "Comunicación"] },
+  { aspectoDesarrollar: "OKR institucionales", medicion: "% de OKR cumplidos por departamento", estado: "EN_CURSO", fortalezas: ["Pensamiento estratégico"] },
+  { aspectoDesarrollar: "Feedback continuo al equipo", medicion: "Frecuencia de reuniones 1:1 realizadas", estado: "EN_CURSO", fortalezas: ["Escucha activa", "Comunicación"] },
+  { aspectoDesarrollar: "Planificación estratégica anual", medicion: "Cumplimiento de hitos del plan anual", estado: "PENDIENTE", fortalezas: ["Visión de futuro"] },
 ];
+
+const DEMO_KPIS = [
+  { name: "Cumplimiento de objetivos académicos", targetValue: 90, currentValue: 78, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Asistencia del personal", targetValue: 95, currentValue: 92, unit: "percent", frequency: "monthly", status: "on_track" },
+  { name: "Calidad de entregables", targetValue: 85, currentValue: 72, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Satisfacción de familias", targetValue: 88, currentValue: 85, unit: "percent", frequency: "quarterly", status: "on_track" },
+  { name: "Tiempo de respuesta a incidencias", targetValue: 4, currentValue: 6, unit: "hours", frequency: "monthly", status: "critical" },
+  { name: "Avance de proyectos tecnológicos", targetValue: 80, currentValue: 55, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Cumplimiento de evaluaciones", targetValue: 100, currentValue: 67, unit: "percent", frequency: "monthly", status: "critical" },
+  { name: "Rotación de personal", targetValue: 5, currentValue: 8, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Capacitaciones completadas", targetValue: 90, currentValue: 65, unit: "percent", frequency: "monthly", status: "warning" },
+  { name: "Clima laboral", targetValue: 80, currentValue: 73, unit: "percent", frequency: "quarterly", status: "on_track" },
+];
+
+const DEMO_OKRS = [
+  { objectiveTitle: "Mejorar calidad operativa", keyResultTitle: "Reducir incidencias críticas un 40%", targetValue: 40, currentValue: 22, status: "in_progress" },
+  { objectiveTitle: "Mejorar calidad operativa", keyResultTitle: "Implementar protocolos en todas las áreas", targetValue: 100, currentValue: 60, status: "in_progress" },
+  { objectiveTitle: "Transformación digital", keyResultTitle: "Capacitar 100% del personal en plataformas", targetValue: 100, currentValue: 45, status: "at_risk" },
+  { objectiveTitle: "Transformación digital", keyResultTitle: "Migrar 80% de procesos a digital", targetValue: 80, currentValue: 35, status: "at_risk" },
+  { objectiveTitle: "Excelencia académica", keyResultTitle: "Alcanzar 90% de satisfacción estudiantil", targetValue: 90, currentValue: 78, status: "in_progress" },
+  { objectiveTitle: "Excelencia académica", keyResultTitle: "Completar evaluaciones 100% del plantel", targetValue: 100, currentValue: 67, status: "at_risk" },
+  { objectiveTitle: "Bienestar organizacional", keyResultTitle: "Mejorar clima laboral a 80% positivo", targetValue: 80, currentValue: 73, status: "in_progress" },
+  { objectiveTitle: "Bienestar organizacional", keyResultTitle: "Reducir rotación anual a menos de 5%", targetValue: 5, currentValue: 8, status: "at_risk" },
+  { objectiveTitle: "Eficiencia operativa", keyResultTitle: "Reducir tiempo de respuesta a <4hs", targetValue: 4, currentValue: 6, status: "at_risk" },
+  { objectiveTitle: "Eficiencia operativa", keyResultTitle: "Automatizar 50% de reportes manuales", targetValue: 50, currentValue: 20, status: "in_progress" },
+];
+
+const DEMO_ANNOUNCEMENTS = [
+  { titulo: "Inicio del ciclo de evaluaciones Q2 2026", cuerpo: "Se habilita la plataforma para completar las autoevaluaciones y evaluaciones de jefatura del segundo trimestre. Fecha límite: 30/06/2026.", prioridad: "importante", tipo: "info", audienceType: "all" },
+  { titulo: "Nueva plataforma de formación disponible", cuerpo: "Ya está disponible el acceso a la nueva plataforma de capacitación con cursos sobre liderazgo, comunicación efectiva y herramientas digitales.", prioridad: "informativa", tipo: "success", audienceType: "all" },
+  { titulo: "Recordatorio: completar feedback trimestral", cuerpo: "Recuerden completar las evaluaciones de desempeño pendientes. El equipo de RRHH hará seguimiento esta semana.", prioridad: "importante", tipo: "warning", audienceType: "department", audienceDepartmentCodes: ["Académica", "Operaciones"] },
+  { titulo: "Actualización del sistema de RRHH", cuerpo: "Se implementaron mejoras en el módulo de reportes ejecutivos y la carga de KPIs. Consultar con el equipo de tecnología ante cualquier duda.", prioridad: "informativa", tipo: "update", audienceType: "all" },
+  { titulo: "Plan de desarrollo profesional 2026", cuerpo: "Se abre la convocatoria para el plan de desarrollo profesional. Los interesados deben completar el formulario antes del 15/07.", prioridad: "importante", tipo: "info", audienceType: "all", pinned: true },
+];
+
+// Helper: pick random item from array
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 function getManagerIdx(empIdx) {
   if (empIdx === 0) return null;
@@ -493,18 +536,18 @@ async function main() {
   let compCreated = 0;
   const existingCompNames = new Set(existingCompetencies.map(c => String(c.competencia || c.nombre || "").trim().toLowerCase()));
   if (DRY_RUN) {
-    const missing = DEMO_COMPETENCIES.filter(c => !existingCompNames.has(String(c.competencia).trim().toLowerCase()));
+    const missing = DEMO_COMPETENCIES.filter(c => !existingCompNames.has(String(c.nombre).trim().toLowerCase()));
     console.log(`  Would create ${missing.length} competencies`);
   } else {
     for (const c of DEMO_COMPETENCIES) {
-      if (existingCompNames.has(String(c.competencia).trim().toLowerCase())) {
-        const found = existingCompetencies.find(x => String(x.competencia || x.nombre || "").trim().toLowerCase() === String(c.competencia).trim().toLowerCase());
+      if (existingCompNames.has(String(c.nombre).trim().toLowerCase())) {
+        const found = existingCompetencies.find(x => String(x.competencia || x.nombre || "").trim().toLowerCase() === String(c.nombre).trim().toLowerCase());
         if (found) metricIds.push(found._id);
         continue;
       }
       const created = await apiSafe("POST", "/competencies", c);
       if (created._error) {
-        console.warn(`  ⚠ Competency "${c.competencia}": ${created._error}`);
+        console.warn(`  ⚠ Competency "${c.nombre}": ${created._error}`);
       } else {
         metricIds.push(created._id);
         compCreated++;
@@ -537,11 +580,13 @@ async function main() {
     console.log(`  Created ${cycleCreated} cycles\n`);
   }
 
+  let evalsCreated = 0;
+  let plansCreated = 0;
+
   // 7. Create evaluations
   if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0 && metricIds.length > 0) {
     console.log("→ Creating evaluations...");
-    const evalStatuses = ["CERRADA", "CERRADA", "CERRADA", "APROBADA"];
-    let evalsCreated = 0;
+    const evalStatuses = ["CERRADA", "CERRADA", "REVISADA", "ENVIADA"];
     for (let ci = 0; ci < cycleIds.length; ci++) {
       for (let ei = 0; ei < empIds.length; ei++) {
         if (!empIds[ei] || !cycleIds[ci]) continue;
@@ -550,16 +595,15 @@ async function main() {
         const rFinal = scores.reduce((a, s) => a + s.nivel, 0) / scores.length;
         const autoResult = await apiSafe("POST", "/evaluations", {
           employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "AUTOEVALUACION",
-          scores, estado: evalStatuses[ci], resultadoFinal: rFinal,
+          scores, estado: evalStatuses[ci],
         });
         if (!autoResult._error) evalsCreated++;
         const mgrIdx = getManagerIdx(ei);
         if (mgrIdx !== null && empIds[mgrIdx]) {
           const mgrScores = metricIds.map(mid => ({ metricId: mid, nivel: ci === 0 ? randomScore(true) : randomScore() }));
-          const mgrFinal = mgrScores.reduce((a, s) => a + s.nivel, 0) / mgrScores.length;
           const mgrResult = await apiSafe("POST", "/evaluations", {
             employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "JEFATURA",
-            scores: mgrScores, estado: evalStatuses[ci], resultadoFinal: mgrFinal,
+            scores: mgrScores, estado: evalStatuses[ci],
           });
           if (!mgrResult._error) evalsCreated++;
         }
@@ -572,25 +616,138 @@ async function main() {
   // 8. Create development plans
   if (!DRY_RUN && empIds.filter(Boolean).length > 0) {
     console.log("→ Creating development plans...");
-    const planEmpIndices = [1, 2, 5, 8, 13, 16, 22, 24, 30, 33];
-    let plansCreated = 0;
+    const planEmpIndices = [1, 2, 4, 7, 12, 15, 21, 23, 29, 32, 5, 10];
     for (let i = 0; i < DEMO_PLANS.length; i++) {
-      const empIdx = planEmpIndices[i];
+      const empIdx = planEmpIndices[i % planEmpIndices.length];
       if (!empIds[empIdx]) continue;
       const result = await apiSafe("POST", "/development-plans", {
-        nombre: DEMO_PLANS[i].nombre, descripcion: DEMO_PLANS[i].descripcion,
-        estado: DEMO_PLANS[i].estado, prioridad: DEMO_PLANS[i].prioridad,
-        empleadoId: empIds[empIdx],
-        fechaInicio: randomDate(new Date("2025-07-01"), new Date("2026-04-01")),
-        fechaFin: DEMO_PLANS[i].estado === "COMPLETADO" ? randomDate(new Date("2026-01-01"), new Date("2026-04-01")) : undefined,
+        employeeId: empIds[empIdx],
+        aspectoDesarrollar: DEMO_PLANS[i].aspectoDesarrollar,
+        medicion: DEMO_PLANS[i].medicion,
+        fortalezas: DEMO_PLANS[i].fortalezas,
+        estado: DEMO_PLANS[i].estado,
+        fechaSeguimiento: randomDate(new Date("2026-06-01"), new Date("2026-09-30")),
       });
       if (!result._error) plansCreated++;
     }
     console.log(`  Created ${plansCreated} plans\n`);
   }
 
-  // 9. Print credentials
-  console.log("=== CREDENCIALES PILOTO ===\n");
+  // 9. Create KPI records
+  let kpiCreated = 0;
+  let kpiOmitted = 0;
+  if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0) {
+    console.log("→ Creating KPI records...");
+    for (const kpi of DEMO_KPIS) {
+      const empIdx = pickRandom(Array.from({ length: empIds.length }, (_, i) => i).filter(i => empIds[i]));
+      if (empIdx === undefined) continue;
+      const ci = pickRandom([0, 1, 2, 3]);
+      const result = await apiSafe("POST", "/metrics/kpi-records", {
+        employeeId: empIds[empIdx],
+        cycleId: cycleIds[ci],
+        name: kpi.name,
+        targetValue: kpi.targetValue,
+        currentValue: kpi.currentValue,
+        unit: kpi.unit,
+        frequency: kpi.frequency,
+        period: `${DEMO_CYCLES[ci].periodo} ${DEMO_CYCLES[ci].anio}`,
+        departmentCode: DEMO_EMPLOYEES[empIdx].area,
+        status: kpi.status,
+      });
+      if (result._error) {
+        // KPI may already exist (lookupKey unique)
+        if (result._error.includes("duplicate") || result._error.includes("E11000")) {
+          kpiOmitted++;
+        }
+      } else {
+        kpiCreated++;
+      }
+    }
+    console.log(`  Created ${kpiCreated} KPIs (${kpiOmitted} duplicate)\n`);
+  }
+
+  // 10. Create OKR records
+  let okrCreated = 0;
+  if (!DRY_RUN && cycleIds.length > 0) {
+    console.log("→ Creating OKR records...");
+    const areas = [...new Set(DEMO_EMPLOYEES.filter(e => e.area).map(e => e.area))];
+    for (const okr of DEMO_OKRS) {
+      const area = pickRandom(areas);
+      const ci = pickRandom([1, 2, 3]);
+      const result = await apiSafe("POST", "/metrics/okr-records", {
+        objectiveTitle: okr.objectiveTitle,
+        keyResultTitle: okr.keyResultTitle,
+        targetValue: okr.targetValue,
+        currentValue: okr.currentValue,
+        quarter: `${DEMO_CYCLES[ci].anio}-${DEMO_CYCLES[ci].periodo}`,
+        departmentCode: area,
+        cycleId: cycleIds[ci],
+        status: okr.status,
+      });
+      if (!result._error) okrCreated++;
+    }
+    console.log(`  Created ${okrCreated} OKRs\n`);
+  }
+
+  // 11. Create announcements
+  let annCreated = 0;
+  if (!DRY_RUN) {
+    console.log("→ Creating announcements...");
+    for (const ann of DEMO_ANNOUNCEMENTS) {
+      const result = await apiSafe("POST", "/announcements", {
+        titulo: ann.titulo,
+        cuerpo: ann.cuerpo,
+        prioridad: ann.prioridad,
+        type: ann.tipo,
+        audienceType: ann.audienceType,
+        audienceDepartmentCodes: ann.audienceDepartmentCodes || [],
+        audienceRoleKeys: ann.audienceType === "all" ? [] : ["ORG_ADMIN", "HR", "MANAGER"],
+        pinned: ann.pinned || false,
+      });
+      if (!result._error) annCreated++;
+    }
+    console.log(`  Created ${annCreated} announcements\n`);
+  }
+
+  // 12. Summary
+  console.log("=== RESUMEN PILOTO ===\n");
+  const totalEmps = empIds.filter(Boolean).length;
+  const totalComps = metricIds.length;
+  const totalCycles = cycleIds.length;
+  const createdCreds = userResults.filter(u => u.status === "creado").length;
+  const existingCreds = userResults.filter(u => u.status === "ya existía").length;
+  const failedCreds = userResults.filter(u => u.status === "falló").length;
+  console.log(`Empresa:         ${auth.user?.companyName || "Perfomia Corp"}`);
+  console.log(`Empleados:       ${DRY_RUN ? "(simulado)" : totalEmps}`);
+  console.log(`Usuarios:        ${createdCreds} creados / ${existingCreds} existentes / ${failedCreds} fallidos`);
+  console.log(`Roles:           ${Object.keys(roleMap || {}).length} estándar garantizados`);
+  console.log(`Competencias:    ${DRY_RUN ? DEMO_COMPETENCIES.length + " (simulado)" : totalComps}`);
+  console.log(`Ciclos:          ${DRY_RUN ? DEMO_CYCLES.length + " (simulado)" : totalCycles}`);
+  console.log(`Evaluaciones:    ${evalsCreated || 0} creadas`);
+  console.log(`KPIs:            ${kpiCreated} creados / ${kpiOmitted} omitidos`);
+  console.log(`OKRs:            ${okrCreated} creados`);
+  console.log(`Planes:          ${plansCreated || 0} creados`);
+  console.log(`Novedades:       ${annCreated} creadas\n`);
+
+  console.log("Módulos completos:");
+  console.log("  ✅ Empleados con jerarquía de managers");
+  console.log("  ✅ Roles estándar + pilot users");
+  console.log("  ✅ Ciclos de evaluación");
+  console.log("  ✅ Competencias");
+  console.log("  ✅ Evaluaciones (AUTOEVALUACION + JEFATURA)");
+  console.log("  ✅ Planes de desarrollo");
+  console.log("  ✅ KPIs / OKRs");
+
+  if (annCreated > 0) {
+    console.log("  ✅ Novedades");
+  }
+
+  console.log("\nMódulos parciales:");
+  console.log("  ⚠ Reporte Ejecutivo: datos generados (empleados, evaluaciones, KPIs, planes)");
+  console.log("  ⚠ Dashboard/Métricas: datos en backend, visual completa depende del frontend");
+  console.log("  ⚠ Importación: plantilla disponible vía GET /bulk-import/template");
+
+  console.log("\n=== CREDENCIALES PILOTO ===\n");
   console.log(`Admin (SUPER_ADMIN existente):`);
   console.log(`  Email:    ${ADMIN_EMAIL}`);
   console.log(`  Password: ${ADMIN_PASSWORD}\n`);
@@ -605,23 +762,12 @@ async function main() {
     console.log(`  Estado:   ${statusText}${motivoText}\n`);
   }
 
-  console.log(`Organización demo: ${auth.user?.companyName || "Horizonte Educativo"}`);
   console.log(`API URL: ${API_URL}\n`);
-
-  console.log("Datos demo garantizados:");
-  console.log(`  - Organización demo con tenant configurado`);
-  console.log(`  - ${DRY_RUN ? "(simulado)" : empIds.filter(Boolean).length} empleados con jerarquía de managers`);
-  console.log(`  - ${DRY_RUN ? "(simulado)" : metricIds.length} competencias configuradas`);
-  console.log(`  - ${DRY_RUN ? "(simulado)" : cycleIds.length} ciclos de evaluación`);
-  console.log(`  - Evaluaciones de tipo AUTOEVALUACION y JEFATURA`);
-  console.log(`  - Planes de desarrollo`);
-  console.log(`  - KPIs y OKRs (ejecutar seed-demo.mjs para datos completos)\n`);
 
   console.log("Cómo ejecutar:");
   console.log("  1. SEED_CONFIRM=1 node scripts/seed-pilot.mjs");
   console.log("  2. Login con cualquier credencial de arriba");
-  console.log(`  3. Para datos completos (40 empleados): SEED_CONFIRM=1 node scripts/seed-demo.mjs`);
-  console.log(`  4. Modo dry-run: node scripts/seed-pilot.mjs --dry-run\n`);
+  console.log(`  3. Modo dry-run: node scripts/seed-pilot.mjs --dry-run\n`);
 
   const elapsed = Math.round((Date.now() - startTime) / 1000);
   console.log(`Duration: ${elapsed}s`);
