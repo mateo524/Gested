@@ -29,6 +29,16 @@ function average(values = []) {
   return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
+function pct(value, total) {
+  if (!total || total <= 0) return 0;
+  return Math.min(100, Math.max(0, Math.round((Number(value) / total) * 100)));
+}
+
+function safeNum(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
 function SurfaceCard({ title, subtitle, actions, children }) {
   return (
     <section className="pf-card p-5 md:p-6">
@@ -44,7 +54,7 @@ function SurfaceCard({ title, subtitle, actions, children }) {
   );
 }
 
-function StatCard({ label, value, hint, tone = "default" }) {
+function StatCard({ label, value, hint, tone = "default", progress, compact }) {
   const toneClass =
     tone === "success"
       ? "border-emerald-300/20 bg-emerald-500/10"
@@ -54,10 +64,20 @@ function StatCard({ label, value, hint, tone = "default" }) {
           ? "border-rose-300/20 bg-rose-500/10"
           : "border-white/10 bg-[#0f1f28]";
   return (
-    <article className={`rounded-3xl border p-4 ${toneClass}`}>
+    <article className={`rounded-3xl border p-4 ${toneClass} ${compact ? "p-3" : ""}`}>
       <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
+      <p className={`font-semibold text-white ${compact ? "mt-1 text-xl" : "mt-2 text-2xl"}`}>{value}</p>
       {hint ? <p className="mt-2 text-sm text-[#9ab0bc]">{hint}</p> : null}
+      {progress !== undefined ? (
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className={`h-full rounded-full transition-all ${
+              progress >= 80 ? "bg-emerald-400" : progress >= 50 ? "bg-amber-400" : "bg-rose-400"
+            }`}
+            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+          />
+        </div>
+      ) : null}
     </article>
   );
 }
@@ -75,6 +95,24 @@ function ActionBadge({ severity }) {
     <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${severityTone[severity] || severityTone.low}`}>
       {severity === "high" ? "Alta" : severity === "medium" ? "Media" : "Baja"}
     </span>
+  );
+}
+
+function ProgressBar({ value, max = 100, tone, label, showPct }) {
+  const pctVal = max > 0 ? Math.min(100, Math.max(0, (Number(value) / max) * 100)) : 0;
+  const color = tone || (pctVal >= 80 ? "bg-emerald-400" : pctVal >= 50 ? "bg-amber-400" : "bg-rose-400");
+  return (
+    <div>
+      {label ? (
+        <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+          <span>{label}</span>
+          {showPct ? <span>{pctVal}%</span> : null}
+        </div>
+      ) : null}
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pctVal}%` }} />
+      </div>
+    </div>
   );
 }
 
@@ -107,6 +145,34 @@ function MiniBarChart({ title, items, emptyText = "Sin datos para mostrar." }) {
   );
 }
 
+function MiniDonut({ value, total, label, color = "stroke-emerald-400", size = 56 }) {
+  const safeTotal = Math.max(1, total);
+  const pctVal = Math.min(100, Math.max(0, (value / safeTotal) * 100));
+  const radius = 22;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (pctVal / 100) * circumference;
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <svg width={size} height={size} viewBox="0 0 48 48" className="-rotate-90">
+        <circle cx="24" cy="24" r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
+        <circle
+          cx="24"
+          cy="24"
+          r={radius}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          className={color}
+        />
+      </svg>
+      <span className="text-xs text-[#9fb6c4]">{label}</span>
+    </div>
+  );
+}
+
 function mapActionDestination(action) {
   const text = `${action?.key || ""} ${action?.title || ""} ${action?.description || ""}`.toLowerCase();
   if (text.includes("evalu")) return "evaluaciones";
@@ -135,19 +201,6 @@ function buildEvaluationTypeChart(evaluations = []) {
   ];
 }
 
-function buildStatusChart(items = [], statusKey = "status") {
-  const buckets = new Map();
-  items.forEach((item) => {
-    const key = String(item?.[statusKey] || "Sin estado").trim() || "Sin estado";
-    buckets.set(key, (buckets.get(key) || 0) + 1);
-  });
-  return [...buckets.entries()].map(([label, value], index) => ({
-    label,
-    value,
-    tone: ["bg-sky-400", "bg-amber-400", "bg-rose-400", "bg-emerald-400", "bg-violet-400"][index % 5],
-  }));
-}
-
 function buildMetricSignalRows(metricSignals = []) {
   return metricSignals
     .slice()
@@ -156,8 +209,49 @@ function buildMetricSignalRows(metricSignals = []) {
     .map((item) => ({
       label: item.competencyName || item.metricName || "Competencia",
       value: Number(item.averageScore || 0),
+      scoreCount: item.scoreCount,
       tone: "bg-sky-400",
     }));
+}
+
+function KpiCard({ item }) {
+  const progress = item.targetValue > 0 ? pct(item.currentValue, item.targetValue) : 0;
+  const tone = progress >= 80 ? "bg-emerald-500/10 border-emerald-300/20" :
+    progress >= 50 ? "bg-amber-500/10 border-amber-300/20" :
+    "bg-rose-500/10 border-rose-300/20";
+  return (
+    <article className={`rounded-2xl border p-4 ${tone}`}>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm font-semibold text-white leading-snug">{item.name}</p>
+        <span className="whitespace-nowrap rounded-full border border-white/10 bg-[#122530] px-2 py-0.5 text-[10px] text-[#d8e4ea]">{item.status || "activo"}</span>
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <span className="text-2xl font-semibold text-white">{safeNum(item.currentValue, "-")}</span>
+        <span className="text-sm text-[#9fb6c4]">/ {safeNum(item.targetValue, "-")} {item.unit || ""}</span>
+      </div>
+      <ProgressBar value={progress} />
+    </article>
+  );
+}
+
+function OkrCard({ item }) {
+  const progress = item.targetValue > 0 ? pct(item.currentValue, item.targetValue) : 0;
+  const tone = progress >= 80 ? "bg-emerald-500/10 border-emerald-300/20" :
+    progress >= 50 ? "bg-amber-500/10 border-amber-300/20" :
+    "bg-rose-500/10 border-rose-300/20";
+  return (
+    <article className={`rounded-2xl border p-4 ${tone}`}>
+      <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">{item.objectiveTitle}</p>
+      <p className="mt-1 text-sm font-semibold text-white leading-snug">{item.keyResultTitle}</p>
+      <div className="mt-2 flex items-baseline gap-2">
+        <span className="text-lg font-semibold text-white">{safeNum(item.currentValue, "-")}</span>
+        <span className="text-xs text-[#9fb6c4]">/ {safeNum(item.targetValue, "-")}</span>
+      </div>
+      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className={`h-full rounded-full ${progress >= 80 ? "bg-emerald-400" : progress >= 50 ? "bg-amber-400" : "bg-rose-400"}`} style={{ width: `${Math.min(100, progress)}%` }} />
+      </div>
+    </article>
+  );
 }
 
 export default function ExecutiveReportPage() {
@@ -370,14 +464,11 @@ export default function ExecutiveReportPage() {
     ];
   }, [overview]);
 
-  const developmentChart = useMemo(
-    () => [
-      { label: "Activos", value: Number(overview?.development?.active || 0), tone: "bg-sky-400" },
-      { label: "Vencidos", value: Number(overview?.development?.overdue || 0), tone: "bg-rose-400" },
-      { label: "Completados", value: Number(overview?.development?.completed || 0), tone: "bg-emerald-400" },
-    ],
-    [overview]
-  );
+  const evaluationCoverage = useMemo(() => {
+    const total = Number(overview?.summary?.evaluationsTotal || 0);
+    const completed = Number(overview?.summary?.completedEvaluations || 0);
+    return { total, completed, pct: total > 0 ? Math.round((completed / total) * 100) : 0 };
+  }, [overview]);
 
   const individualEvaluationChart = useMemo(
     () => buildEvaluationTypeChart(detail?.evaluations || []),
@@ -389,20 +480,7 @@ export default function ExecutiveReportPage() {
     [detail?.metricSignals]
   );
 
-  const individualKpiChart = useMemo(
-    () => buildStatusChart(detail?.kpis?.items || []),
-    [detail?.kpis?.items]
-  );
 
-  const individualOkrChart = useMemo(
-    () => buildStatusChart(detail?.okrs?.items || []),
-    [detail?.okrs?.items]
-  );
-
-  const individualPlanChart = useMemo(
-    () => buildStatusChart(detail?.developmentPlans || [], "estado"),
-    [detail?.developmentPlans]
-  );
 
   if (!canViewExecutive || isEmployee) {
     return (
@@ -424,7 +502,20 @@ export default function ExecutiveReportPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-4xl">
             <p className="pf-section-title">Reportes &gt; Reporte ejecutivo</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Reporte ejecutivo</h1>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <h1 className="text-3xl font-semibold tracking-tight text-white">Reporte ejecutivo</h1>
+              {overview?.selectedCycle ? (
+                <span className="rounded-full border border-sky-300/30 bg-sky-500/10 px-3 py-1 text-xs font-medium text-sky-100">
+                  {overview.selectedCycle.label}
+                  {overview.selectedCycle.estado ? ` · ${overview.selectedCycle.estado}` : ""}
+                </span>
+              ) : null}
+              {overview?.summary?.employeesTotal > 0 ? (
+                <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
+                  {overview.summary.employeesTotal} personas
+                </span>
+              ) : null}
+            </div>
             <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
               Leé el estado general de la organización y, cuando haga falta, bajá al detalle individual de cada persona.
             </p>
@@ -533,14 +624,41 @@ export default function ExecutiveReportPage() {
         <EmptyPanel text="No pudimos cargar el reporte en este momento." />
       ) : activeTab === "general" ? (
         <div className="min-h-[36rem] space-y-5">
+          {/* Top stat cards */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <StatCard label="Personas visibles" value={overview.summary?.employeesTotal || 0} hint="Dentro del alcance actual" />
-            <StatCard label="Desempeño promedio" value={overview.summary?.averageScore || 0} hint="Resultado visible" tone="success" />
-            <StatCard label="Evaluaciones pendientes" value={overview.summary?.evaluationsPending || 0} hint="Requieren seguimiento" tone="warning" />
-            <StatCard label="KPIs visibles" value={overview.kpis?.total || 0} hint="Indicadores agregados" />
-            <StatCard label="Planes abiertos" value={overview.development?.active || 0} hint={`${overview.development?.overdue || 0} vencidos`} />
+            <StatCard
+              label="Personas visibles"
+              value={overview.summary?.employeesTotal || 0}
+              hint="Dentro del alcance actual"
+            />
+            <StatCard
+              label="Desempeño promedio"
+              value={overview.summary?.averageScore || 0}
+              hint="Sobre 5.0"
+              tone={overview.summary?.averageScore >= 4 ? "success" : overview.summary?.averageScore >= 3 ? "warning" : "danger"}
+            />
+            <StatCard
+              label="Evaluaciones pendientes"
+              value={overview.summary?.evaluationsPending || 0}
+              hint={overview.summary?.evaluationsTotal > 0 ? `${evaluationCoverage.pct}% completadas` : "Sin datos"}
+              tone={overview.summary?.evaluationsPending > 0 ? "warning" : "success"}
+              progress={evaluationCoverage.pct}
+            />
+            <StatCard
+              label="KPIs/OKRs en riesgo"
+              value={safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0)}
+              hint={`${safeNum(overview?.kpis?.total, 0)} KPIs · ${safeNum(overview?.okrs?.total, 0)} OKRs`}
+              tone={safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0) > 0 ? "danger" : "default"}
+            />
+            <StatCard
+              label="Planes activos"
+              value={overview.development?.active || 0}
+              hint={`${overview.development?.overdue || 0} vencidos · ${overview.development?.completed || 0} completados`}
+              tone={overview.development?.overdue > 0 ? "warning" : "default"}
+            />
           </div>
 
+          {/* Panorama + Actions */}
           <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <SurfaceCard title="Panorama general" subtitle="Lectura rápida del estado actual del desempeño y el seguimiento.">
               <div className="grid gap-3 md:grid-cols-3">
@@ -548,25 +666,38 @@ export default function ExecutiveReportPage() {
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo activo</p>
                   <p className="mt-2 text-base font-semibold text-white">{overview.selectedCycle?.label || "Todos los ciclos visibles"}</p>
                   <p className="mt-2 text-sm text-[#9fb6c4]">Estado {overview.selectedCycle?.estado || "Sin filtro"}</p>
+                  {overview.summary?.cyclesTotal > 0 ? (
+                    <p className="mt-1 text-sm text-[#9fb6c4]">{overview.summary.cyclesTotal} ciclos en total</p>
+                  ) : null}
                 </article>
                 <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Cobertura de evaluación</p>
-                  <p className="mt-2 text-base font-semibold text-white">{overview.summary?.evaluationsTotal || 0} registros</p>
+                  <p className="mt-2 text-base font-semibold text-white">{evaluationCoverage.total} registros</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <div className="flex-1 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className={`h-full rounded-full ${evaluationCoverage.pct >= 80 ? "bg-emerald-400" : evaluationCoverage.pct >= 50 ? "bg-amber-400" : "bg-rose-400"}`}
+                        style={{ width: `${Math.min(100, evaluationCoverage.pct)}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-semibold text-white">{evaluationCoverage.pct}%</span>
+                  </div>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{overview.summary?.completedEvaluations || 0} cerradas o revisadas</p>
                 </article>
                 <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Desarrollo</p>
                   <p className="mt-2 text-base font-semibold text-white">{overview.development?.active || 0} planes activos</p>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{overview.development?.overdue || 0} con seguimiento vencido</p>
+                  <p className="mt-1 text-sm text-[#9fb6c4]">{overview.development?.completed || 0} completados</p>
                 </article>
               </div>
             </SurfaceCard>
 
             <SurfaceCard title="Acciones recomendadas" subtitle="Prioridades generales según los datos visibles hoy.">
               <div className="grid gap-3 md:grid-cols-3">
-                <StatCard label="Alta" value={actionPrioritySummary.high} tone="danger" />
-                <StatCard label="Media" value={actionPrioritySummary.medium} tone="warning" />
-                <StatCard label="Baja" value={actionPrioritySummary.low} />
+                <StatCard label="Alta" value={actionPrioritySummary.high} tone="danger" compact />
+                <StatCard label="Media" value={actionPrioritySummary.medium} tone="warning" compact />
+                <StatCard label="Baja" value={actionPrioritySummary.low} compact />
               </div>
               <div className="mt-4 space-y-3">
                 {overviewActions.length ? (
@@ -612,62 +743,136 @@ export default function ExecutiveReportPage() {
             </SurfaceCard>
           </div>
 
+          {/* Progress charts */}
           <div className="grid gap-5 xl:grid-cols-2">
             <MiniBarChart title="Estado de evaluaciones" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
-            <MiniBarChart title="Planes de desarrollo" items={developmentChart} emptyText="No hay planes visibles." />
-            <MiniBarChart title="KPIs agregados" items={kpiChart} emptyText={overview?.kpis?.message || "No hay KPIs visibles."} />
-            <MiniBarChart title="OKRs agregados" items={okrChart} emptyText={overview?.okrs?.message || "No hay OKRs visibles."} />
+
+            <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+              <p className="text-sm font-semibold text-white">Planes de desarrollo</p>
+              <div className="mt-4 flex items-center justify-around">
+                <MiniDonut value={overview.development?.completed || 0} total={overview.development?.total || 1} label="Completados" color="stroke-emerald-400" />
+                <MiniDonut value={overview.development?.active || 0} total={overview.development?.total || 1} label="Activos" color="stroke-sky-400" />
+                <MiniDonut value={overview.development?.overdue || 0} total={overview.development?.total || 1} label="Vencidos" color="stroke-rose-400" />
+              </div>
+              <div className="mt-4 text-center text-sm text-[#9fb6c4]">
+                {overview.development?.total || 0} planes en total
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+              <p className="text-sm font-semibold text-white">KPIs agregados</p>
+              <div className="mt-4 flex items-center gap-4">
+                <div className="flex-1 space-y-3">
+                  {kpiChart.map((item) => {
+                    const maxVal = Math.max(...kpiChart.map((i) => Number(i.value)), 0);
+                    const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
+                    return (
+                      <div key={item.label}>
+                        <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+                          <span>{item.label}</span>
+                          <span className="font-semibold text-white">{item.value}</span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </article>
+
+            <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+              <p className="text-sm font-semibold text-white">OKRs agregados</p>
+              <div className="mt-4 space-y-3">
+                {okrChart.map((item) => {
+                  const maxVal = Math.max(...okrChart.map((i) => Number(i.value)), 0);
+                  const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
+                  return (
+                    <div key={item.label}>
+                      <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+                        <span>{item.label}</span>
+                        <span className="font-semibold text-white">{item.value}</span>
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
           </div>
 
+          {/* Department distribution */}
           <SurfaceCard title="Distribución por departamento / equipo" subtitle="Cómo se reparte el seguimiento entre áreas visibles.">
             {overview?.departments?.length ? (
               <div className="grid gap-3 xl:grid-cols-2">
-                {overview.departments.map((item) => (
-                  <article key={item.code} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                    <div className="flex items-center justify-between gap-3">
-                      <p className="font-semibold text-white">{item.label}</p>
-                      <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
-                        {item.count} personas
-                      </span>
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                      <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
-                        <p className="mt-2 text-base font-semibold text-white">{item.kpis || 0}</p>
+                {overview.departments.map((item) => {
+                  const deptEmployeeCount = item.employees || item.count || 0;
+                  const maxEmployeeCount = Math.max(...overview.departments.map((d) => d.employees || d.count || 0), 1);
+                  const deptWidth = Math.max(8, Math.round((deptEmployeeCount / maxEmployeeCount) * 100));
+                  return (
+                    <article key={item.code} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex-1">
+                          <p className="font-semibold text-white">{item.label}</p>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                            <div className="h-full rounded-full bg-sky-400" style={{ width: `${deptWidth}%` }} />
+                          </div>
+                        </div>
+                        <span className="whitespace-nowrap rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
+                          {deptEmployeeCount} personas
+                        </span>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
-                        <p className="mt-2 text-base font-semibold text-white">{item.okrs || 0}</p>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
+                          <p className="mt-2 text-base font-semibold text-white">{item.kpis || 0}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
+                          <p className="mt-2 text-base font-semibold text-white">{item.okrs || 0}</p>
+                        </div>
+                        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
+                          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Planes pendientes</p>
+                          <p className="mt-2 text-base font-semibold text-white">{item.pendingPlans || 0}</p>
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Planes pendientes</p>
-                        <p className="mt-2 text-base font-semibold text-white">{item.pendingPlans || 0}</p>
-                      </div>
-                    </div>
-                  </article>
-                ))}
+                    </article>
+                  );
+                })}
               </div>
             ) : (
               <EmptyPanel text="No hay departamentos con datos suficientes para resumir." />
             )}
           </SurfaceCard>
 
+          {/* Employee list */}
           <SurfaceCard title="Personas visibles" subtitle="Desde acá podés saltar directo al reporte individual de cada persona.">
             {employees.length ? (
               <CollapsibleList
                 items={employees}
-                initialCount={3}
+                initialCount={5}
                 className="grid gap-3 xl:grid-cols-2"
                 renderItem={(employee) => (
-                  <article key={employee._id} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+                  <article key={employee._id} className={`rounded-3xl border p-4 ${employee.needsAttention ? "border-amber-300/20 bg-amber-500/5" : "border-white/10 bg-[#0f1f28]"}`}>
                     <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <p className="font-semibold text-white">{employee.fullName}</p>
-                        <p className="mt-1 text-sm text-[#8FA9B7]">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="font-semibold text-white truncate">{employee.fullName}</p>
+                          {employee.needsAttention ? (
+                            <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-200">Atención</span>
+                          ) : null}
+                          {employee.hasManager ? null : (
+                            <span className="shrink-0 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-medium text-rose-200">Sin manager</span>
+                          )}
+                        </div>
+                        <p className="mt-1 text-sm text-[#8FA9B7] truncate">
                           {employee.cargo || "Sin cargo"} {employee.area ? `· ${employee.area}` : ""}
                         </p>
                       </div>
-                      <div className="flex flex-wrap gap-2 text-xs">
+                      <div className="flex flex-wrap gap-2 text-xs shrink-0">
                         <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
                           Eval: {employee.evaluationCount}
                         </span>
@@ -676,7 +881,19 @@ export default function ExecutiveReportPage() {
                         </span>
                       </div>
                     </div>
-                    <div className="mt-4 flex justify-end">
+                    {employee.averageScore > 0 ? (
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="text-xs text-[#9fb6c4]">Promedio</span>
+                        <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className={`h-full rounded-full ${employee.averageScore >= 4 ? "bg-emerald-400" : employee.averageScore >= 3 ? "bg-amber-400" : "bg-rose-400"}`}
+                            style={{ width: `${(employee.averageScore / 5) * 100}%` }}
+                          />
+                        </div>
+                        <span className="text-xs font-semibold text-white">{employee.averageScore.toFixed(1)}</span>
+                      </div>
+                    ) : null}
+                    <div className="mt-3 flex justify-end">
                       <button
                         type="button"
                         onClick={() => focusEmployeeDetail(employee._id)}
@@ -770,13 +987,24 @@ export default function ExecutiveReportPage() {
                   <EmptyPanel text="No hay detalle disponible para esta persona en el alcance actual." />
                 ) : (
                   <div className="space-y-5">
+                    {/* Summary stat cards */}
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <StatCard label="Evaluaciones" value={detail.summary?.evaluationCount || 0} />
-                      <StatCard label="Pendientes" value={detail.summary?.pendingEvaluations || 0} tone="warning" />
-                      <StatCard label="Promedio" value={detail.summary?.averageScore || 0} tone="success" />
+                      <StatCard
+                        label="Pendientes"
+                        value={detail.summary?.pendingEvaluations || 0}
+                        tone={detail.summary?.pendingEvaluations > 0 ? "warning" : "success"}
+                      />
+                      <StatCard
+                        label="Promedio"
+                        value={detail.summary?.averageScore || 0}
+                        tone={detail.summary?.averageScore >= 4 ? "success" : detail.summary?.averageScore >= 3 ? "warning" : "danger"}
+                        progress={detail.summary?.averageScore > 0 ? (detail.summary.averageScore / 5) * 100 : 0}
+                      />
                       <StatCard label="Planes abiertos" value={detail.summary?.openPlans || 0} hint={`${detail.summary?.overduePlans || 0} vencidos`} />
                     </div>
 
+                    {/* Person info */}
                     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                       <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                         <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Nombre</p>
@@ -796,6 +1024,7 @@ export default function ExecutiveReportPage() {
                       </article>
                     </div>
 
+                    {/* Charts: Competency + Auto vs Manager */}
                     <div className="grid gap-5 xl:grid-cols-2">
                       <MiniBarChart
                         title="Desempeño por competencia"
@@ -807,18 +1036,44 @@ export default function ExecutiveReportPage() {
                         items={individualEvaluationChart}
                         emptyText="Todavía no hay evaluaciones suficientes para comparar."
                       />
-                      <MiniBarChart
-                        title="KPIs / OKRs por estado"
-                        items={[...individualKpiChart.slice(0, 3), ...individualOkrChart.slice(0, 2)]}
-                        emptyText="No hay KPIs u OKRs visibles para esta persona."
-                      />
-                      <MiniBarChart
-                        title="Planes de desarrollo"
-                        items={individualPlanChart}
-                        emptyText="No hay planes de desarrollo visibles para esta persona."
-                      />
                     </div>
 
+                    {/* KPI / OKR cards */}
+                    <div className="grid gap-5 xl:grid-cols-2">
+                      <SurfaceCard title="KPIs asignados" subtitle="Indicadores medibles y avance contra metas.">
+                        {detail.kpis?.items?.length ? (
+                          <div className="grid gap-3">
+                            <CollapsibleList
+                              items={detail.kpis.items}
+                              initialCount={2}
+                              className="grid gap-3"
+                              buttonLabelMore={`Ver más KPIs (+${(detail.kpis.items.length - 2)})`}
+                              renderItem={(item) => <KpiCard item={item} />}
+                            />
+                          </div>
+                        ) : (
+                          <EmptyPanel text={detail.kpis?.message || "No hay KPIs visibles para esta persona."} />
+                        )}
+                      </SurfaceCard>
+
+                      <SurfaceCard title="OKRs asignados" subtitle="Objetivos y resultados clave.">
+                        {detail.okrs?.items?.length ? (
+                          <div className="grid gap-3">
+                            <CollapsibleList
+                              items={detail.okrs.items}
+                              initialCount={2}
+                              className="grid gap-3"
+                              buttonLabelMore={`Ver más OKRs (+${(detail.okrs.items.length - 2)})`}
+                              renderItem={(item) => <OkrCard item={item} />}
+                            />
+                          </div>
+                        ) : (
+                          <EmptyPanel text={detail.okrs?.message || "No hay OKRs visibles para esta persona."} />
+                        )}
+                      </SurfaceCard>
+                    </div>
+
+                    {/* Evaluations + Development plans */}
                     <div className="grid gap-5 xl:grid-cols-2">
                       <SurfaceCard title="Evaluaciones" subtitle="Autoevaluación, evaluación superior y cierre final cuando existan.">
                         {detail.evaluations?.length ? (
@@ -827,7 +1082,11 @@ export default function ExecutiveReportPage() {
                             initialCount={3}
                             className="space-y-3"
                             renderItem={(evaluation) => (
-                              <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                              <article key={evaluation._id} className={`rounded-2xl border p-4 ${
+                                evaluation.estado === "CERRADA" || evaluation.estado === "REVISADA"
+                                  ? "border-emerald-300/20 bg-emerald-500/5"
+                                  : "border-amber-300/20 bg-amber-500/5"
+                              }`}>
                                 <div className="flex flex-wrap items-start justify-between gap-3">
                                   <div>
                                     <p className="font-semibold text-white">{evaluation.tipo}</p>
@@ -836,9 +1095,13 @@ export default function ExecutiveReportPage() {
                                     </p>
                                   </div>
                                   <div className="flex gap-2 text-xs">
-                                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">{evaluation.estado}</span>
+                                    <span className={`rounded-full border px-3 py-1 ${
+                                      evaluation.estado === "CERRADA" || evaluation.estado === "REVISADA"
+                                        ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+                                        : "border-amber-300/30 bg-amber-500/10 text-amber-100"
+                                    }`}>{evaluation.estado}</span>
                                     <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                                      Resultado {evaluation.resultadoFinal || 0}
+                                      {evaluation.resultadoFinal || 0}/5
                                     </span>
                                   </div>
                                 </div>
@@ -853,48 +1116,7 @@ export default function ExecutiveReportPage() {
                         )}
                       </SurfaceCard>
 
-                      <SurfaceCard title="KPIs y OKRs asignados" subtitle="Objetivos e indicadores visibles dentro del alcance actual.">
-                        {detail.kpis?.items?.length || detail.okrs?.items?.length ? (
-                          <div className="space-y-3">
-                            <CollapsibleList
-                              items={detail.kpis?.items || []}
-                              initialCount={3}
-                              buttonLabelMore={`Ver más (${(detail.kpis?.items?.length || 0) - 3})`}
-                              renderItem={(item) => (
-                                <article key={`kpi-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                                  <p className="font-semibold text-white">{item.name}</p>
-                                  <p className="mt-1 text-sm text-[#8FA9B7]">
-                                    KPI {item.code || "sin código"} · {item.status || "Sin estado"}
-                                  </p>
-                                  <p className="mt-2 text-sm text-[#c8d8df]">
-                                    Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"} {item.unit || ""}
-                                  </p>
-                                </article>
-                              )}
-                            />
-                            <CollapsibleList
-                              items={detail.okrs?.items || []}
-                              initialCount={3}
-                              buttonLabelMore={`Ver más (${(detail.okrs?.items?.length || 0) - 3})`}
-                              renderItem={(item) => (
-                                <article key={`okr-${item._id}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                                  <p className="font-semibold text-white">{item.objectiveTitle}</p>
-                                  <p className="mt-1 text-sm text-[#8FA9B7]">{item.keyResultTitle || "Sin resultado clave visible"}</p>
-                                  <p className="mt-2 text-sm text-[#c8d8df]">
-                                    Actual {item.currentValue ?? "-"} / Meta {item.targetValue ?? "-"}
-                                  </p>
-                                </article>
-                              )}
-                            />
-                          </div>
-                        ) : (
-                          <EmptyPanel text="No hay KPIs u OKRs visibles para esta persona." />
-                        )}
-                      </SurfaceCard>
-                    </div>
-
-                    <div className="grid gap-5 xl:grid-cols-2">
-                      <SurfaceCard title="Desarrollo" subtitle="Planes activos, vencidos o completados para esta persona.">
+                      <SurfaceCard title="Plan de desarrollo" subtitle="Planes activos, vencidos o completados para esta persona.">
                         {detail.developmentPlans?.length ? (
                           <div className="space-y-3">
                             <CollapsibleList
@@ -902,7 +1124,13 @@ export default function ExecutiveReportPage() {
                               initialCount={3}
                               buttonLabelMore={`Ver más (${(detail.developmentPlans?.length || 0) - 3})`}
                               renderItem={(plan) => (
-                                <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                                <article key={plan._id} className={`rounded-2xl border p-4 ${
+                                  plan.estado === "CERRADO"
+                                    ? "border-emerald-300/20 bg-emerald-500/5"
+                                    : plan.estado === "EN_CURSO"
+                                      ? "border-sky-300/20 bg-sky-500/5"
+                                      : "border-white/10 bg-[#0f1f28]"
+                                }`}>
                                   <div className="flex flex-wrap items-start justify-between gap-3">
                                     <div>
                                       <p className="font-semibold text-white">{plan.aspectoDesarrollar}</p>
@@ -910,7 +1138,13 @@ export default function ExecutiveReportPage() {
                                         Seguimiento {formatDate(plan.fechaSeguimiento)} · creado {formatDate(plan.createdAt)}
                                       </p>
                                     </div>
-                                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">{plan.estado}</span>
+                                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${
+                                      plan.estado === "CERRADO"
+                                        ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
+                                        : plan.estado === "EN_CURSO"
+                                          ? "border-sky-300/30 bg-sky-500/10 text-sky-100"
+                                          : "border-white/10 bg-[#122530] text-[#d8e4ea]"
+                                    }`}>{plan.estado}</span>
                                   </div>
                                   {plan.fortalezas?.length ? (
                                     <p className="mt-3 text-sm text-[#c8d8df]">Fortalezas: {plan.fortalezas.join(", ")}</p>
@@ -924,30 +1158,31 @@ export default function ExecutiveReportPage() {
                           <EmptyPanel text="No hay planes de desarrollo visibles para esta persona." />
                         )}
                       </SurfaceCard>
-
-                      <SurfaceCard title="Acciones pendientes" subtitle="Qué conviene atender ahora según lo visible en el reporte individual.">
-                        {detail.actions?.length ? (
-                          <div className="space-y-3">
-                            <CollapsibleList
-                              items={detail.actions || []}
-                              initialCount={3}
-                              buttonLabelMore={`Ver más (${(detail.actions?.length || 0) - 3})`}
-                              renderItem={(action, index) => (
-                                <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <p className="font-semibold">{action.title}</p>
-                                    <ActionBadge severity={action.severity} />
-                                  </div>
-                                  <p className="mt-2 text-sm opacity-90">{action.description}</p>
-                                </article>
-                              )}
-                            />
-                          </div>
-                        ) : (
-                          <EmptyPanel text="No hay acciones pendientes para esta persona con los datos visibles hoy." />
-                        )}
-                      </SurfaceCard>
                     </div>
+
+                    {/* Actions */}
+                    <SurfaceCard title="Acciones pendientes" subtitle="Qué conviene atender ahora según lo visible en el reporte individual.">
+                      {detail.actions?.length ? (
+                        <div className="space-y-3">
+                          <CollapsibleList
+                            items={detail.actions || []}
+                            initialCount={3}
+                            buttonLabelMore={`Ver más (${(detail.actions?.length || 0) - 3})`}
+                            renderItem={(action, index) => (
+                              <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-semibold">{action.title}</p>
+                                  <ActionBadge severity={action.severity} />
+                                </div>
+                                <p className="mt-2 text-sm opacity-90">{action.description}</p>
+                              </article>
+                            )}
+                          />
+                        </div>
+                      ) : (
+                        <EmptyPanel text="No hay acciones pendientes para esta persona con los datos visibles hoy." />
+                      )}
+                    </SurfaceCard>
                   </div>
                 )}
               </SurfaceCard>
