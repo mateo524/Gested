@@ -470,6 +470,41 @@ export default function ExecutiveReportPage() {
     return { total, completed, pct: total > 0 ? Math.round((completed / total) * 100) : 0 };
   }, [overview]);
 
+  const priorityEmployees = useMemo(() => {
+    const items = overview?.catalogs?.employees || [];
+    return items
+      .filter((employee) => employee.needsAttention)
+      .sort((a, b) => (a.averageScore || 0) - (b.averageScore || 0));
+  }, [overview]);
+
+  const departmentScores = useMemo(() => {
+    const items = overview?.catalogs?.employees || [];
+    const groups = {};
+    items.forEach((employee) => {
+      const area = employee.area || "Sin \u00e1rea";
+      if (!groups[area]) groups[area] = { scores: [], count: 0 };
+      if (employee.averageScore > 0) groups[area].scores.push(employee.averageScore);
+      groups[area].count++;
+    });
+    return Object.entries(groups)
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        averageScore: data.scores.length
+          ? data.scores.reduce((sum, v) => sum + v, 0) / data.scores.length
+          : 0,
+      }))
+      .sort((a, b) => a.averageScore - b.averageScore);
+  }, [overview]);
+
+  const topPerformers = useMemo(() => {
+    const items = overview?.catalogs?.employees || [];
+    return items
+      .filter((employee) => employee.averageScore > 0)
+      .sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0))
+      .slice(0, 3);
+  }, [overview]);
+
   const individualEvaluationChart = useMemo(
     () => buildEvaluationTypeChart(detail?.evaluations || []),
     [detail?.evaluations]
@@ -479,8 +514,6 @@ export default function ExecutiveReportPage() {
     () => buildMetricSignalRows(detail?.metricSignals || []),
     [detail?.metricSignals]
   );
-
-
 
   if (!canViewExecutive || isEmployee) {
     return (
@@ -657,6 +690,82 @@ export default function ExecutiveReportPage() {
               tone={overview.development?.overdue > 0 ? "warning" : "default"}
             />
           </div>
+
+          {/* Coaching signals: priority people + top performers + dept pulse */}
+          {priorityEmployees.length > 0 || topPerformers.length > 0 ? (
+            <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+              {priorityEmployees.length > 0 ? (
+                <SurfaceCard title="Personas que necesitan atenci\u00f3n" subtitle="Ordenadas por puntaje m\u00e1s bajo. Estas personas se beneficiar\u00edan de una conversaci\u00f3n pronto.">
+                  <div className="grid gap-2">
+                    {priorityEmployees.slice(0, 6).map((employee) => (
+                      <article key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300/15 bg-amber-500/5 px-4 py-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-white truncate">{employee.fullName}</p>
+                          <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin \u00e1rea"} \u00b7 {employee.cargo || "Sin cargo"}</p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-3">
+                          {employee.pendingEvaluations > 0 ? (
+                            <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-200">{employee.pendingEvaluations} eval. pend.</span>
+                          ) : null}
+                          {employee.overduePlans > 0 ? (
+                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{employee.overduePlans} planes venc.</span>
+                          ) : null}
+                          {employee.averageScore > 0 ? (
+                            <span className={`text-xs font-semibold ${employee.averageScore >= 4 ? "text-emerald-300" : employee.averageScore >= 3 ? "text-amber-300" : "text-rose-300"}`}>
+                              {employee.averageScore.toFixed(1)}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[#7f99a8]">Sin score</span>
+                          )}
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                </SurfaceCard>
+              ) : null}
+
+              <div className="space-y-5">
+                {topPerformers.length > 0 ? (
+                  <SurfaceCard title="Mejores puntajes" subtitle="Personas con desempe\u00f1o destacado en el per\u00edodo visible.">
+                    <div className="space-y-2">
+                      {topPerformers.map((employee, index) => (
+                        <div key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-500/5 px-4 py-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="shrink-0 text-lg font-bold text-emerald-300">#{index + 1}</span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-white truncate">{employee.fullName}</p>
+                              <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin \u00e1rea"}</p>
+                            </div>
+                          </div>
+                          <span className="shrink-0 text-sm font-bold text-white">{employee.averageScore.toFixed(1)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </SurfaceCard>
+                ) : null}
+
+                {departmentScores.length > 1 && departmentScores.some((d) => d.averageScore > 0) ? (
+                  <SurfaceCard title="Rendimiento por \u00e1rea" subtitle="Promedio visible por equipo, ordenado de menor a mayor.">
+                    <div className="space-y-2">
+                      {departmentScores.filter((d) => d.averageScore > 0).slice(0, 5).map((dept) => (
+                        <div key={dept.name} className="flex items-center gap-3">
+                          <span className="w-28 shrink-0 truncate text-xs text-[#9fb6c4]">{dept.name}</span>
+                          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-white/10">
+                            <div
+                              className={`h-full rounded-full ${dept.averageScore >= 4 ? "bg-emerald-400" : dept.averageScore >= 3 ? "bg-amber-400" : "bg-rose-400"}`}
+                              style={{ width: `${(dept.averageScore / 5) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-12 text-right text-xs font-semibold text-white">{dept.averageScore.toFixed(1)}</span>
+                          <span className="w-8 text-right text-[10px] text-[#7f99a8]">{dept.count}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </SurfaceCard>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
 
           {/* Panorama + Actions */}
           <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
