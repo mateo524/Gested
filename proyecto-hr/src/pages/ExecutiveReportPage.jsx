@@ -858,28 +858,35 @@ export default function ExecutiveReportPage() {
 
             <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-sm font-semibold text-white">Planes de desarrollo</p>
-              <div className="mt-4 flex items-center justify-around">
-                <MiniDonut value={overview.development?.completed || 0} total={overview.development?.total || 1} label="Completados" color="stroke-emerald-400" />
-                <MiniDonut value={overview.development?.active || 0} total={overview.development?.total || 1} label="Activos" color="stroke-sky-400" />
-                <MiniDonut value={overview.development?.overdue || 0} total={overview.development?.total || 1} label="Vencidos" color="stroke-rose-400" />
-              </div>
-              <div className="mt-4 text-center text-sm text-[#9fb6c4]">
-                {overview.development?.total || 0} planes en total
-              </div>
+              {Number(overview.development?.total) > 0 ? (
+                <>
+                  <div className="mt-4 flex items-center justify-around">
+                    <MiniDonut value={overview.development?.completed || 0} total={overview.development?.total} label="Completados" color="stroke-emerald-400" />
+                    <MiniDonut value={overview.development?.active || 0} total={overview.development?.total} label="Activos" color="stroke-sky-400" />
+                    <MiniDonut value={overview.development?.overdue || 0} total={overview.development?.total} label="Vencidos" color="stroke-rose-400" />
+                  </div>
+                  <div className="mt-4 text-center text-sm text-[#9fb6c4]">
+                    {overview.development?.total} planes en total
+                  </div>
+                </>
+              ) : (
+                <p className="mt-4 text-sm text-[#8fa9b7]">No hay planes de desarrollo visibles.</p>
+              )}
             </article>
 
             <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-sm font-semibold text-white">KPIs agregados</p>
-              <div className="mt-4 flex items-center gap-4">
-                <div className="flex-1 space-y-3">
+              {kpiChart.some((item) => Number(item.value) > 0) ? (
+                <div className="mt-4 space-y-3">
                   {kpiChart.map((item) => {
                     const maxVal = Math.max(...kpiChart.map((i) => Number(i.value)), 0);
                     const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
+                    const pctVal = maxVal > 0 ? Math.round((Number(item.value) / maxVal) * 100) : 0;
                     return (
                       <div key={item.label}>
                         <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
                           <span>{item.label}</span>
-                          <span className="font-semibold text-white">{item.value}</span>
+                          <span className="font-semibold text-white">{item.value} <span className="font-normal text-[#7f99a8]">({pctVal}%)</span></span>
                         </div>
                         <div className="h-2 overflow-hidden rounded-full bg-white/10">
                           <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
@@ -888,28 +895,35 @@ export default function ExecutiveReportPage() {
                     );
                   })}
                 </div>
-              </div>
+              ) : (
+                <p className="mt-4 text-sm text-[#8fa9b7]">No hay KPIs visibles.</p>
+              )}
             </article>
 
             <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-sm font-semibold text-white">OKRs agregados</p>
-              <div className="mt-4 space-y-3">
-                {okrChart.map((item) => {
-                  const maxVal = Math.max(...okrChart.map((i) => Number(i.value)), 0);
-                  const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
-                  return (
-                    <div key={item.label}>
-                      <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
-                        <span>{item.label}</span>
-                        <span className="font-semibold text-white">{item.value}</span>
+              {okrChart.some((item) => Number(item.value) > 0) ? (
+                <div className="mt-4 space-y-3">
+                  {okrChart.map((item) => {
+                    const maxVal = Math.max(...okrChart.map((i) => Number(i.value)), 0);
+                    const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
+                    const pctVal = maxVal > 0 ? Math.round((Number(item.value) / maxVal) * 100) : 0;
+                    return (
+                      <div key={item.label}>
+                        <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+                          <span>{item.label}</span>
+                          <span className="font-semibold text-white">{item.value} <span className="font-normal text-[#7f99a8]">({pctVal}%)</span></span>
+                        </div>
+                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                          <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
+                        </div>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-[#8fa9b7]">No hay OKRs visibles.</p>
+              )}
             </article>
           </div>
 

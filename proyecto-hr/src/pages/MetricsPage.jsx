@@ -268,6 +268,7 @@ function EvaluationEditor({
   title,
   form,
   groups,
+  cycleOptions,
   saving,
   canDelete,
   onFieldChange,
@@ -313,7 +314,7 @@ function EvaluationEditor({
           Revisá y ajustá el plan de evaluación antes de guardarlo. Esta pantalla prioriza metas, competencias, autoevaluación y evidencias.
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           <div className="rounded-2xl border border-emerald-300/20 bg-[#122530] px-4 py-3">
             <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Empleado</label>
             <input
@@ -322,13 +323,23 @@ function EvaluationEditor({
               readOnly
             />
           </div>
-          <div className="rounded-2xl border border-emerald-300/20 bg-[#122530] px-4 py-3">
+          <div>
             <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo / período</label>
-            <input
-              className="w-full bg-transparent text-sm text-white outline-none"
-              value={buildCycleLabel(form.cycle) || "-"}
-              readOnly
-            />
+            <select
+              className="pf-select"
+              value={form.cycleId}
+              onChange={(event) => onFieldChange("cycleId", event.target.value)}
+            >
+              {cycleOptions.length ? (
+                cycleOptions.map((cycle) => (
+                  <option key={cycle._id} value={cycle._id}>
+                    {buildCycleLabel(cycle)}
+                  </option>
+                ))
+              ) : (
+                <option value="">No hay ciclos disponibles</option>
+              )}
+            </select>
           </div>
           <div>
             <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Estado</label>
@@ -342,18 +353,6 @@ function EvaluationEditor({
                   {option.label}
                 </option>
               ))}
-            </select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Acuerdo</label>
-            <select
-              className="pf-select"
-              value={form.acuerdoEmpleado}
-              onChange={(event) => onFieldChange("acuerdoEmpleado", event.target.value)}
-            >
-              <option value="PENDIENTE">Pendiente</option>
-              <option value="ACUERDO">De acuerdo</option>
-              <option value="DESACUERDO">En desacuerdo</option>
             </select>
           </div>
         </div>
@@ -1302,11 +1301,25 @@ export default function MetricsPage() {
 
           <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
             <SurfaceCard title="Observación final" subtitle="Comentario general del cierre disponible para esta evaluación.">
-              <p className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4]">
-                {managerDetail?.comentariosGenerales ||
-                  autoDetail?.comentariosGenerales ||
-                  "Todavía no hay observaciones finales cargadas."}
-              </p>
+              {managerDetail?.comentariosGenerales || autoDetail?.comentariosGenerales ? (
+                <p className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4]">
+                  {managerDetail?.comentariosGenerales || autoDetail?.comentariosGenerales}
+                </p>
+              ) : autoDetail?.scores?.length || managerDetail?.scores?.length ? (
+                <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4] space-y-1">
+                  {autoDetail?.scores?.length ? (
+                    <p>Autoevaluación: {currentAutoAverage.toFixed(1)}/5 ({autoDetail.scores.length} descriptores)</p>
+                  ) : null}
+                  {managerDetail?.scores?.length ? (
+                    <p>Jefatura: {currentManagerAverage.toFixed(1)}/5 ({managerDetail.scores.length} descriptores)</p>
+                  ) : null}
+                  <p className="text-xs text-[#7f99a8]">No se cargó observación final.</p>
+                </div>
+              ) : (
+                <p className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4]">
+                  Todavía no hay observaciones finales cargadas.
+                </p>
+              )}
             </SurfaceCard>
 
             <SurfaceCard title="Evidencias" subtitle="Mostramos evidencia o comentario descriptor por descriptor cuando ya existe.">
@@ -1319,6 +1332,10 @@ export default function MetricsPage() {
                     </article>
                   ))}
                 </div>
+              ) : autoDetail?.scores?.length || managerDetail?.scores?.length ? (
+                <p className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4]">
+                  No se registraron comentarios por descriptor, pero hay {(autoDetail?.scores?.length || 0) + (managerDetail?.scores?.length || 0)} puntajes cargados.
+                </p>
               ) : (
                 <EmptyState compact title="Todavía no hay evidencias visibles" description="Cuando existan comentarios o evidencia por descriptor, aparecerán acá." />
               )}
@@ -1385,9 +1402,17 @@ export default function MetricsPage() {
             }
             form={editorForm}
             groups={groups}
+            cycleOptions={cycles}
             saving={saving}
             canDelete={editor.mode === "edit" && Boolean(editorForm.id)}
-            onFieldChange={(field, value) => setEditorForm((current) => ({ ...current, [field]: value }))}
+            onFieldChange={(field, value) => {
+              if (field === "cycleId") {
+                const cycle = cycles.find((c) => String(c._id) === String(value)) || null;
+                setEditorForm((current) => ({ ...current, cycleId: value, cycle }));
+              } else {
+                setEditorForm((current) => ({ ...current, [field]: value }));
+              }
+            }}
             onScoreChange={updateEditorScore}
             onCommentChange={updateEditorComment}
             onSubmit={handleSaveEditor}
