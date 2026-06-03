@@ -1,16 +1,12 @@
-import LogoIcon from "./LogoIcon";
+import logoSrc from "../../assets/brand/zentor-logo-horizontal.svg";
+import logoWhiteSrc from "../../assets/brand/zentor-logo-white.svg";
 
 export default function LogoHorizontal({ dark = false }) {
   return (
-    <div className="flex items-center gap-2">
-      <LogoIcon size={28} dark={dark} />
-      <span
-        className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}
-        style={{ letterSpacing: "-0.02em" }}
-      >
-        ZENTOR
-      </span>
-    </div>
+    <img
+      src={dark ? logoWhiteSrc : logoSrc}
+      alt="ZENTOR"
+      className="h-8 w-auto"
+    />
   );
 }
-
