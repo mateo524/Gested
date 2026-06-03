@@ -176,7 +176,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
       });
       const userByEmail = new Map(existingUsers.map((item) => [normalizeEmail(item.email), item]));
       const importedDepartmentMap = new Map(
-        (preview.departments || []).map((item) => [normalizeText(item.department_code), normalizeText(item.department_name)])
+        (preview.departments || []).map((item) => [normalizeText(item.departamento), normalizeText(item.department_name)])
       );
 
       result.departments.processed = (preview.departments || []).length;
@@ -184,7 +184,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
 
       for (const row of preview.employees || []) {
         result.employees.processed += 1;
-        const employeeCode = normalizeText(row.employee_code);
+        const employeeCode = normalizeText(row.legajo);
         const email = normalizeEmail(row.work_email);
         const employeePayload = {
           companyId: job.companyId,
@@ -194,7 +194,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           apellido: normalizeText(row.last_name),
           email,
           cargo: normalizeText(row.job_title),
-          area: importedDepartmentMap.get(normalizeText(row.department_code)) || normalizeText(row.department_code),
+          area: importedDepartmentMap.get(normalizeText(row.departamento)) || normalizeText(row.departamento),
           activo: toBooleanWord(row.active, true),
           fechaIngreso: parseDateValue(row.hire_date),
         };
@@ -230,7 +230,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
       for (const row of preview.usersAndRoles || []) {
         result.users.processed += 1;
         const email = normalizeEmail(row.work_email);
-        const employeeCode = normalizeText(row.employee_code);
+        const employeeCode = normalizeText(row.legajo);
         const employee = employeeByCode.get(employeeCode) || employeeByEmail.get(email);
         const current = userByEmail.get(email);
         const roleKey = normalizeText(row.role_key).toUpperCase();
@@ -255,8 +255,8 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
             employeeId: employee._id,
             roleKey,
             scope: String(row.scope || mapped.allowedScopes?.[0] || "TEAM").trim().toUpperCase(),
-            departmentCode: String(row.scope_reference_code || "").trim(),
-            teamId: String(row.scope_reference_code || "").trim(),
+            departmentCode: String(row.referencia_alcance || "").trim(),
+            teamId: String(row.referencia_alcance || "").trim(),
             active: true,
             session,
           });
@@ -285,8 +285,8 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
             employeeId: employee._id,
             roleKey,
             scope: String(row.scope || mapped.allowedScopes?.[0] || "TEAM").trim().toUpperCase(),
-            departmentCode: String(row.scope_reference_code || "").trim(),
-            teamId: String(row.scope_reference_code || "").trim(),
+            departmentCode: String(row.referencia_alcance || "").trim(),
+            teamId: String(row.referencia_alcance || "").trim(),
             active: true,
             session,
           });
@@ -318,10 +318,10 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
       for (const row of preview.managers || []) {
         result.managers.processed += 1;
         const employee =
-          employeeByCode.get(normalizeText(row.employee_code)) ||
+          employeeByCode.get(normalizeText(row.legajo)) ||
           employeeByEmail.get(normalizeEmail(row.employee_email));
         const manager =
-          employeeByCode.get(normalizeText(row.manager_employee_code)) ||
+          employeeByEmail.get(normalizeEmail(row.email_jefe)) ||
           employeeByEmail.get(normalizeEmail(row.manager_email));
 
         if (!employee || !manager) {
@@ -336,7 +336,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
       for (const row of preview.kpis || []) {
         result.kpis.processed += 1;
         const employee =
-          employeeByCode.get(normalizeText(row.owner_employee_code)) ||
+          employeeByEmail.get(normalizeEmail(row.email_responsable)) ||
           employeeByEmail.get(normalizeEmail(row.employee_email || row.work_email));
         if (!employee) {
           result.kpis.skipped += 1;
@@ -346,23 +346,21 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
         const ownerUser = userByEmail.get(normalizeEmail(row.employee_email || row.work_email)) || null;
         const period = resolvePeriodValue(row.period, row.quarter, row.frequency);
         const lookupKey = buildLookupKey(
-          row.kpi_code || row.kpi_name,
+          row.kpi_name,
           row.kpi_name,
           period,
-          employee._id,
-          row.department_code,
-          row.team_id
+          employee._id
         );
         const payload = {
           companyId: job.companyId,
           schoolId: job.schoolId || null,
           employeeId: employee._id,
           ownerUserId: ownerUser?._id || null,
-          departmentCode: normalizeText(row.department_code || employee.area),
+          departmentCode: normalizeText(employee.area),
           teamId: normalizeText(row.team_id),
           cycleId: null,
           lookupKey,
-          kpiCode: normalizeText(row.kpi_code),
+          kpiCode: "",
           name: normalizeText(row.kpi_name),
           targetValue: toNumber(row.target_value, 0),
           currentValue: toNumber(row.current_value, null),
@@ -400,7 +398,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
       for (const row of preview.okrs || []) {
         result.okrs.processed += 1;
         const employee =
-          employeeByCode.get(normalizeText(row.owner_employee_code)) ||
+          employeeByEmail.get(normalizeEmail(row.email_responsable)) ||
           employeeByEmail.get(normalizeEmail(row.employee_email || row.work_email));
         if (!employee) {
           result.okrs.skipped += 1;
@@ -410,25 +408,21 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
         const ownerUser = userByEmail.get(normalizeEmail(row.employee_email || row.work_email)) || null;
         const period = resolvePeriodValue(row.period, row.quarter);
         const lookupKey = buildLookupKey(
-          row.okr_code || row.objective_title,
           row.objective_title,
-          row.key_result_title
-          ,
+          row.key_result_title,
           period,
-          employee._id,
-          row.department_code,
-          row.team_id
+          employee._id
         );
         const payload = {
           companyId: job.companyId,
           schoolId: job.schoolId || null,
           employeeId: employee._id,
           ownerUserId: ownerUser?._id || null,
-          departmentCode: normalizeText(row.department_code || employee.area),
+          departmentCode: normalizeText(employee.area),
           teamId: normalizeText(row.team_id),
           cycleId: null,
           lookupKey,
-          okrCode: normalizeText(row.okr_code),
+          okrCode: "",
           objective: normalizeText(row.objective_title),
           objectiveTitle: normalizeText(row.objective_title),
           keyResult: normalizeText(row.key_result_title),

@@ -140,15 +140,6 @@ export default function DashboardPage() {
     return items.slice(0, 4);
   }, [summary, isEmpleado]);
 
-  const recentActivity = useMemo(() => {
-    return (summary?.latestAudit || []).slice(0, 5).map((item, index) => ({
-      id: item._id || `${item.accion}-${index}`,
-      date: formatDate(item.createdAt),
-      title: item.accion || "Actividad",
-      detail: item.detalle || item.modulo || "Sin detalle adicional",
-    }));
-  }, [summary]);
-
   const upcomingMilestones = useMemo(() => {
     const items = [];
     const cycleCount = Number(summary?.cards?.[2]?.value || 0);
@@ -515,30 +506,7 @@ export default function DashboardPage() {
         </SurfaceCard>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-3">
-        <SurfaceCard title="Actividad reciente" subtitle="Usamos la actividad real registrada en auditoria y eventos visibles.">
-          <div className="space-y-3">
-            {recentActivity.length ? (
-              <CollapsibleList
-                items={recentActivity}
-                initialCount={3}
-                className="space-y-3"
-                renderItem={(item) => (
-                <div key={item.id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-white">{item.title}</p>
-                    {item.date ? <span className="text-xs text-[#7f99a8]">{item.date}</span> : null}
-                  </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{item.detail}</p>
-                </div>
-                )}
-              />
-            ) : (
-              <EmptyState text="No hay actividad reciente todavía." />
-            )}
-          </div>
-        </SurfaceCard>
-
+      <section className="grid gap-5 xl:grid-cols-2">
         <SurfaceCard title="Próximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
           <div className="space-y-3">
             {upcomingMilestones.length ? (

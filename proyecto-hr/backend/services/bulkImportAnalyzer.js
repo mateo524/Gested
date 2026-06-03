@@ -49,14 +49,14 @@ const OPTIONAL_SHEETS = [
 
 const SHEET_COLUMN_CONFIG = {
   "Organización": {
-    required: ["organization_code", "organization_name", "status"],
+    required: ["organization_name", "status"],
   },
   Departamentos: {
-    required: ["department_code", "department_name", "status"],
+    required: ["departamento", "department_name", "status"],
   },
   Empleados: {
     required: [
-      "employee_code",
+      "legajo",
       "first_name",
       "last_name",
       "work_email",
@@ -67,7 +67,7 @@ const SHEET_COLUMN_CONFIG = {
   },
   Usuarios_y_Roles: {
     required: [
-      "employee_code",
+      "legajo",
       "work_email",
       "role_key",
       "scope",
@@ -76,7 +76,7 @@ const SHEET_COLUMN_CONFIG = {
     ],
   },
   Managers: {
-    required: ["employee_code", "relationship_type", "primary_manager", "status"],
+    required: ["legajo", "relationship_type", "primary_manager", "status"],
   },
   KPIs: {
     required: ["kpi_name", "status", "active"],
@@ -88,13 +88,13 @@ const SHEET_COLUMN_CONFIG = {
     required: ["catalog", "value", "description"],
   },
   Evaluaciones: {
-    required: ["evaluation_code", "employee_email", "period", "status"],
+    required: ["employee_email", "period", "status"],
   },
   Mediciones_Desempeno: {
-    required: ["evaluation_code", "measurement_type", "measurement_name"],
+    required: ["measurement_type", "measurement_name"],
   },
   Planes_Desarrollo: {
-    required: ["plan_code", "employee_email", "title", "status"],
+    required: ["employee_email", "title", "status"],
   },
 };
 
@@ -333,18 +333,18 @@ function validateDepartmentRows(rows, issues, summaryBySheet) {
   const seenCodes = new Set();
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Departamentos", issues);
-    const code = normalizeText(row.department_code);
+    const code = normalizeText(row.departamento);
     const name = normalizeText(row.department_name);
     const status = normalizeText(row.status);
     if (!code) {
-      issues.push(createIssue({ sheet: "Departamentos", rowNumber: row._rowNumber, field: "department_code", message: "department_code es obligatorio" }));
+      issues.push(createIssue({ sheet: "Departamentos", rowNumber: row._rowNumber, field: "departamento", message: "departamento es obligatorio" }));
     }
     if (!name) {
       issues.push(createIssue({ sheet: "Departamentos", rowNumber: row._rowNumber, field: "department_name", message: "department_name es obligatorio" }));
     }
     if (code) {
       if (seenCodes.has(code)) {
-        issues.push(createIssue({ sheet: "Departamentos", rowNumber: row._rowNumber, field: "department_code", message: `department_code duplicado en archivo: ${code}` }));
+        issues.push(createIssue({ sheet: "Departamentos", rowNumber: row._rowNumber, field: "departamento", message: `departamento duplicado en archivo: ${code}` }));
       }
       seenCodes.add(code);
     }
@@ -356,7 +356,7 @@ function validateDepartmentRows(rows, issues, summaryBySheet) {
 
 function validateEmployeeRows(rows, issues, summaryBySheet, context) {
   summaryBySheet.Empleados.totalRows = rows.length;
-  const importedDepartmentCodes = new Set(context.departments.map((item) => normalizeText(item.department_code)).filter(Boolean));
+  const importedDepartmentCodes = new Set(context.departments.map((item) => normalizeText(item.departamento)).filter(Boolean));
   const seenCodes = new Set();
   const seenEmails = new Set();
   const existingByCode = new Map(
@@ -367,22 +367,22 @@ function validateEmployeeRows(rows, issues, summaryBySheet, context) {
 
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Empleados", issues);
-    const employeeCode = normalizeText(row.employee_code);
+    const employeeCode = normalizeText(row.legajo);
     const email = normalizeEmail(row.work_email);
-    const departmentCode = normalizeText(row.department_code);
+    const departmentCode = normalizeText(row.departamento);
     const employmentStatus = normalizeText(row.employment_status || row.status);
     const active = normalizeText(row.active);
     const hireDate = parseDateValue(row.hire_date);
 
     if (!employeeCode) {
-      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "employee_code", message: "employee_code es obligatorio" }));
+      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "legajo", message: "legajo es obligatorio" }));
     } else {
       if (seenCodes.has(employeeCode)) {
-        issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "employee_code", message: `employee_code duplicado en archivo: ${employeeCode}` }));
+        issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "legajo", message: `legajo duplicado en archivo: ${employeeCode}` }));
       }
       const existing = existingByCode.get(employeeCode);
       if (existing && normalizeEmail(existing.email) && normalizeEmail(existing.email) !== email) {
-        issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "employee_code", message: `employee_code ya existe con otro email en la organizacion: ${employeeCode}` }));
+        issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "legajo", message: `legajo ya existe con otro email en la organizacion: ${employeeCode}` }));
       }
       seenCodes.add(employeeCode);
     }
@@ -408,7 +408,7 @@ function validateEmployeeRows(rows, issues, summaryBySheet, context) {
       issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "job_title", message: "job_title es obligatorio" }));
     }
     if (departmentCode && !importedDepartmentCodes.has(departmentCode)) {
-      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "department_code", message: `department_code no existe en la hoja Departamentos: ${departmentCode}` }));
+      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "departamento", message: `departamento no existe en la hoja Departamentos: ${departmentCode}` }));
     }
     if (employmentStatus && !BULK_IMPORT_CATALOGS.status.includes(employmentStatus)) {
       issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "employment_status", message: `employment_status invalido: ${employmentStatus}` }));
@@ -424,12 +424,12 @@ function validateEmployeeRows(rows, issues, summaryBySheet, context) {
 
 function validateUsersRolesRows(rows, issues, summaryBySheet, context) {
   summaryBySheet.Usuarios_y_Roles.totalRows = rows.length;
-  const importedEmployeesByCode = new Set(context.employees.map((item) => normalizeText(item.employee_code)).filter(Boolean));
+  const importedEmployeesByCode = new Set(context.employees.map((item) => normalizeText(item.legajo)).filter(Boolean));
   const importedEmployeesByEmail = new Set(context.employees.map((item) => normalizeEmail(item.work_email)).filter(Boolean));
 
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Usuarios_y_Roles", issues);
-    const employeeCode = normalizeText(row.employee_code);
+    const employeeCode = normalizeText(row.legajo);
     const email = normalizeEmail(row.work_email);
     const roleKey = normalizeText(row.role_key).toUpperCase();
     const scope = normalizeText(row.scope).toUpperCase();
@@ -437,11 +437,11 @@ function validateUsersRolesRows(rows, issues, summaryBySheet, context) {
     const canLogin = normalizeText(row.can_login);
 
     if (!employeeCode) {
-      issues.push(createIssue({ sheet: "Usuarios_y_Roles", rowNumber: row._rowNumber, field: "employee_code", message: "employee_code es obligatorio" }));
+      issues.push(createIssue({ sheet: "Usuarios_y_Roles", rowNumber: row._rowNumber, field: "legajo", message: "legajo es obligatorio" }));
     } else if (!importedEmployeesByCode.has(employeeCode)) {
       const exists = context.existingEmployees.some((item) => normalizeText(item.legajo) === employeeCode);
       if (!exists) {
-        issues.push(createIssue({ sheet: "Usuarios_y_Roles", rowNumber: row._rowNumber, field: "employee_code", message: `employee_code no existe entre empleados importados ni existentes: ${employeeCode}` }));
+        issues.push(createIssue({ sheet: "Usuarios_y_Roles", rowNumber: row._rowNumber, field: "legajo", message: `legajo no existe entre empleados importados ni existentes: ${employeeCode}` }));
       }
     }
 
@@ -480,14 +480,13 @@ function validateUsersRolesRows(rows, issues, summaryBySheet, context) {
 
 function validateManagersRows(rows, issues, summaryBySheet, context) {
   summaryBySheet.Managers.totalRows = rows.length;
-  const employeeCodes = new Set(context.employees.map((item) => normalizeText(item.employee_code)).filter(Boolean));
+  const employeeCodes = new Set(context.employees.map((item) => normalizeText(item.legajo)).filter(Boolean));
   const employeeEmails = new Set(context.employees.map((item) => normalizeEmail(item.work_email)).filter(Boolean));
 
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Managers", issues);
-    const employeeCode = normalizeText(row.employee_code);
-    const managerEmployeeCode = normalizeText(row.manager_employee_code);
-    const managerEmail = normalizeEmail(row.manager_email);
+    const employeeCode = normalizeText(row.legajo);
+    const managerEmail = normalizeEmail(row.email_jefe);
     const relationshipType = normalizeText(row.relationship_type);
     const primaryManager = normalizeText(row.primary_manager);
     const status = normalizeText(row.status);
@@ -495,18 +494,14 @@ function validateManagersRows(rows, issues, summaryBySheet, context) {
     const endDate = parseDateValue(row.end_date);
 
     if (!employeeCode) {
-      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "employee_code", message: "employee_code es obligatorio" }));
+      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "legajo", message: "legajo es obligatorio" }));
     } else if (!employeeCodes.has(employeeCode) && !context.existingEmployees.some((item) => normalizeText(item.legajo) === employeeCode)) {
-      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "employee_code", message: `employee_code no existe: ${employeeCode}` }));
+      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "legajo", message: `legajo no existe: ${employeeCode}` }));
     }
-    if (!managerEmployeeCode && !managerEmail) {
-      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "manager_employee_code", message: "Debes informar manager_employee_code o manager_email" }));
-    }
-    if (managerEmployeeCode && !employeeCodes.has(managerEmployeeCode) && !context.existingEmployees.some((item) => normalizeText(item.legajo) === managerEmployeeCode)) {
-      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "manager_employee_code", message: `manager_employee_code no existe: ${managerEmployeeCode}` }));
-    }
-    if (managerEmail && !employeeEmails.has(managerEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === managerEmail)) {
-      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "manager_email", message: `manager_email no existe entre empleados importados o existentes: ${managerEmail}` }));
+    if (!managerEmail) {
+      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "email_jefe", message: "email_jefe es obligatorio" }));
+    } else if (!employeeEmails.has(managerEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === managerEmail)) {
+      issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "email_jefe", message: `email_jefe no existe entre empleados importados o existentes: ${managerEmail}` }));
     }
     if (relationshipType && !BULK_IMPORT_CATALOGS.relationshipType.includes(relationshipType)) {
       issues.push(createIssue({ sheet: "Managers", rowNumber: row._rowNumber, field: "relationship_type", message: `relationship_type invalido: ${relationshipType}` }));
@@ -535,7 +530,7 @@ function validateKpisRows(rows, issues, summaryBySheet, context) {
     validateNoTenantColumns(row, "KPIs", issues);
     const name = normalizeText(row.kpi_name);
     const employeeEmail = normalizeEmail(row.employee_email || row.work_email);
-    const ownerCode = normalizeText(row.owner_employee_code);
+    const ownerEmail = normalizeEmail(row.email_responsable);
     const targetValue = normalizeText(row.target_value);
     const status = normalizeText(row.status);
     const active = normalizeText(row.active);
@@ -543,14 +538,14 @@ function validateKpisRows(rows, issues, summaryBySheet, context) {
     if (!name) {
       issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "kpi_name", message: "kpi_name es obligatorio" }));
     }
-    if (!employeeEmail && !ownerCode) {
-      issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "employee_email", message: "Debes informar employee_email o owner_employee_code" }));
+    if (!employeeEmail && !ownerEmail) {
+      issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "employee_email", message: "Debes informar employee_email o email_responsable" }));
     }
     if (employeeEmail && !context.employees.some((item) => normalizeEmail(item.work_email) === employeeEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === employeeEmail)) {
       issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "employee_email", message: `employee_email no existe: ${employeeEmail}` }));
     }
-    if (ownerCode && !context.employees.some((item) => normalizeText(item.employee_code) === ownerCode) && !context.existingEmployees.some((item) => normalizeText(item.legajo) === ownerCode)) {
-      issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "owner_employee_code", message: `owner_employee_code no existe: ${ownerCode}` }));
+    if (ownerEmail && !context.employees.some((item) => normalizeEmail(item.work_email) === ownerEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === ownerEmail)) {
+      issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "email_responsable", message: `email_responsable no existe: ${ownerEmail}` }));
     }
     if (!targetValue || Number.isNaN(Number(targetValue))) {
       issues.push(createIssue({ sheet: "KPIs", rowNumber: row._rowNumber, field: "target_value", message: "target_value debe ser numerico y obligatorio" }));
@@ -571,7 +566,7 @@ function validateOkrsRows(rows, issues, summaryBySheet, context) {
     const objective = normalizeText(row.objective_title);
     const keyResult = normalizeText(row.key_result_title);
     const employeeEmail = normalizeEmail(row.employee_email || row.work_email);
-    const ownerCode = normalizeText(row.owner_employee_code);
+    const ownerEmail = normalizeEmail(row.email_responsable);
     const status = normalizeText(row.status);
 
     if (!objective) {
@@ -583,8 +578,8 @@ function validateOkrsRows(rows, issues, summaryBySheet, context) {
     if (employeeEmail && !context.employees.some((item) => normalizeEmail(item.work_email) === employeeEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === employeeEmail)) {
       issues.push(createIssue({ sheet: "OKRs", rowNumber: row._rowNumber, field: "employee_email", message: `employee_email no existe: ${employeeEmail}` }));
     }
-    if (ownerCode && !context.employees.some((item) => normalizeText(item.employee_code) === ownerCode) && !context.existingEmployees.some((item) => normalizeText(item.legajo) === ownerCode)) {
-      issues.push(createIssue({ sheet: "OKRs", rowNumber: row._rowNumber, field: "owner_employee_code", message: `owner_employee_code no existe: ${ownerCode}` }));
+    if (ownerEmail && !context.employees.some((item) => normalizeEmail(item.work_email) === ownerEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === ownerEmail)) {
+      issues.push(createIssue({ sheet: "OKRs", rowNumber: row._rowNumber, field: "email_responsable", message: `email_responsable no existe: ${ownerEmail}` }));
     }
     if (status && !BULK_IMPORT_CATALOGS.status.includes(status)) {
       issues.push(createIssue({ sheet: "OKRs", rowNumber: row._rowNumber, field: "status", message: `status invalido: ${status}` }));
@@ -598,9 +593,6 @@ function validateEvaluationsRows(rows, issues, summaryBySheet, context) {
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Evaluaciones", issues);
     const employeeEmail = normalizeEmail(row.employee_email);
-    if (!normalizeText(row.evaluation_code)) {
-      issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "evaluation_code", message: "evaluation_code es obligatorio" }));
-    }
     if (!employeeEmail) {
       issues.push(createIssue({ sheet: "Evaluaciones", rowNumber: row._rowNumber, field: "employee_email", message: "employee_email es obligatorio" }));
     } else if (!context.employees.some((item) => normalizeEmail(item.work_email) === employeeEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === employeeEmail)) {
@@ -619,9 +611,6 @@ function validatePerformanceMeasurementsRows(rows, issues, summaryBySheet) {
   summaryBySheet.Mediciones_Desempeno.totalRows = rows.length;
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Mediciones_Desempeno", issues);
-    if (!normalizeText(row.evaluation_code)) {
-      issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "evaluation_code", message: "evaluation_code es obligatorio" }));
-    }
     if (!normalizeText(row.measurement_type)) {
       issues.push(createIssue({ sheet: "Mediciones_Desempeno", rowNumber: row._rowNumber, field: "measurement_type", message: "measurement_type es obligatorio" }));
     }
@@ -641,20 +630,16 @@ function validateDevelopmentPlansRows(rows, issues, summaryBySheet, context) {
   summaryBySheet.Planes_Desarrollo.totalRows = rows.length;
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Planes_Desarrollo", issues);
-    const employeeEmail = normalizeEmail(row.employee_email);
-    if (!normalizeText(row.plan_code)) {
-      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "plan_code", message: "plan_code es obligatorio" }));
-    }
-    if (!employeeEmail) {
+    if (!normalizeEmail(row.employee_email)) {
       issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "employee_email", message: "employee_email es obligatorio" }));
-    } else if (!context.employees.some((item) => normalizeEmail(item.work_email) === employeeEmail) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === employeeEmail)) {
-      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "employee_email", message: `employee_email no existe: ${employeeEmail}` }));
+    } else if (!context.employees.some((item) => normalizeEmail(item.work_email) === normalizeEmail(row.employee_email)) && !context.existingEmployees.some((item) => normalizeEmail(item.email) === normalizeEmail(row.employee_email))) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "employee_email", message: `employee_email no existe: ${row.employee_email}` }));
     }
     if (!normalizeText(row.title)) {
       issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "title", message: "title es obligatorio" }));
     }
-    if (normalizeText(row.due_date) && !parseDateValue(row.due_date)) {
-      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "due_date", message: "due_date no tiene una fecha valida" }));
+    if (normalizeText(row.status) && !BULK_IMPORT_CATALOGS.status.includes(normalizeText(row.status))) {
+      issues.push(createIssue({ sheet: "Planes_Desarrollo", rowNumber: row._rowNumber, field: "status", message: `status invalido: ${row.status}` }));
     }
   });
 }

@@ -411,7 +411,7 @@ export default function AppShell({
       { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
       { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
       { key: "roles", label: "Roles y accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "scope", "permisos"] },
-      { key: "settings", label: "Configuración", show: isSuperAdmin ? false : hasPermission("manage_settings"), keywords: ["configuracion", "configuración", "ajustes"] },
+      { key: "settings", label: "Configuración", show: isSuperAdmin, keywords: ["configuracion", "configuración", "ajustes"] },
       { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
     ],
     [hasPermission, isEmployee, isManager, isSuperAdmin]
@@ -432,9 +432,7 @@ export default function AppShell({
     groups.push({ label: "Comunicación", keys: ["novedades"] });
     groups.push({ label: "Operación", keys: ["carga-masiva"] });
     if (isSuperAdmin) {
-      groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "archivo-central"] });
-    } else {
-      groups.push({ label: "Configuración", keys: ["settings"] });
+      groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "settings", "archivo-central"] });
     }
 
     return groups
