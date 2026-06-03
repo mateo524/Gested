@@ -35,16 +35,16 @@ Check each item before promoting to production or after a major deployment.
 
 ## Backup & Recovery
 
-- [ ] Automated MongoDB Atlas snapshots configured and verified
-  - Cluster → Backup → verify snapshot exists and is recent (< 24h)
-- [ ] Backup retention policy understood:
-  - M10: 24h intervals, 1 day retention
-  - M20: 12h intervals, 2 days retention
-  - M30+: 6h intervals, 7+ days retention
-- [ ] PITR (Point-in-Time Recovery) enabled if plan supports it
-- [ ] Restore procedure tested: restore to temporary cluster and verify data integrity
+- [ ] Manual backup script configured and tested (`scripts/ops/backup-mongo.ps1`):
+  ```powershell
+  $env:MONGO_URI = "<uri>"
+  .\scripts\ops\backup-mongo.ps1 -NoZip
+  ```
+- [ ] Backup retention strategy defined (local + private cloud storage)
+- [ ] Restore procedure tested: `scripts/ops/restore-mongo-test.ps1` verificado contra `hrdb_restore_test`
 - [ ] INCIDENT_RUNBOOK.md reviewed and accessible to on-call team
 - [ ] File storage backups verified (S3 cross-region replication or Cloudinary backup)
+- [ ] Pre-demo backup checklist reviewed: `scripts/ops/README.md#checklist-pre-demo`
 
 ## Secrets Management
 

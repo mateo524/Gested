@@ -193,6 +193,21 @@ Resumen rapido:
 - No compartir credenciales por canales no seguros
 - Rotar password cada 90 dias
 
+### Manual Backups (MongoDB Atlas Free)
+
+See [scripts/ops/README.md](../scripts/ops/README.md) for full backup/restore scripts.
+
+Quick reference:
+
+```powershell
+# Backup
+$env:MONGO_URI = "mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/hrdb"
+.\scripts\ops\backup-mongo.ps1
+
+# Restore a test database
+.\scripts\ops\restore-mongo-test.ps1 -BackupPath "C:\Backups\Zentor\backup-YYYY-MM-DD-HH-mm-ss\hrdb"
+```
+
 ### Lo que NO hacer en backup/restore
 
 - NO restaurar directo sobre produccion sin verificar en cluster separado
