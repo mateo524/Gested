@@ -4,7 +4,7 @@ import { apiFetch } from "../lib/api";
 import AppLogo from "../components/brand/AppLogo";
 
 const defaultBranding = {
-  nombreVisible: "Performia",
+  nombreVisible: "ZENTOR",
   logoUrl: "",
   primaryColor: "#10b981",
 };
@@ -145,7 +145,7 @@ export default function LoginPage() {
                 Datos mejor organizados para tomar decisiones con más claridad
               </h1>
               <p className="mt-6 max-w-2xl text-base leading-7 text-[#AFC3CE] md:text-lg">
-                Performia concentra acceso, control, seguridad y operación diaria en una
+                ZENTOR concentra acceso, control, seguridad y operación diaria en una
                 experiencia más ordenada y profesional para gestionar información.
               </p>
 

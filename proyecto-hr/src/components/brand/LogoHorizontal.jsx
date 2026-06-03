@@ -8,7 +8,7 @@ export default function LogoHorizontal({ dark = false }) {
         className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}
         style={{ letterSpacing: "-0.02em" }}
       >
-        Performia
+        ZENTOR
       </span>
     </div>
   );

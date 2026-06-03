@@ -667,14 +667,14 @@ export default function AppShell({
                   </svg>
                   <input
                     className="w-full bg-transparent text-sm text-[#e8eef1] outline-none placeholder:text-[#7f99a8]"
-                    placeholder="Buscar en Performia"
+                    placeholder="Buscar en ZENTOR"
                     value={searchQuery}
                     onFocus={() => setSearchOpen(true)}
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                       setSearchOpen(true);
                     }}
-                    aria-label="Buscar en Performia"
+                    aria-label="Buscar en ZENTOR"
                   />
                 </div>
                 {searchOpen && searchQuery.trim() ? (

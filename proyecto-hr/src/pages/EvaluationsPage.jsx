@@ -33,7 +33,7 @@ function buildPrintableReport(data) {
         </style>
       </head>
       <body>
-        <h1>Performia</h1>
+        <h1>ZENTOR</h1>
         <p class="muted">Reporte individual de evaluación</p>
         <p class="muted">Generado: ${new Date(data.generatedAt).toLocaleString("es-AR")}</p>
 
