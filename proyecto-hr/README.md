@@ -36,3 +36,9 @@ Desde `backend/`:
 - `npm run test:security`
 
 Estos tests cubren regresiones de aislamiento multi-tenant y acceso por rol.
+
+## Documentación operativa
+
+- [Manual de operaciones](docs/OPERATIONS.md) — arquitectura, despliegue, tareas comunes y troubleshooting
+- [Checklist de producción](docs/PRODUCTION_CHECKLIST.md) — pasos pre-go-live: seguridad, monitoreo, backups
+- [Checklist de validación go-live](docs/GO_LIVE_VALIDATION_CHECKLIST.md) — matriz de perfiles, E2E funcional, importación
