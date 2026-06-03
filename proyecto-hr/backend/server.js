@@ -210,7 +210,7 @@ app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
 
 app.get("/health", (_req, res) => {
-  const payload = buildHealthStatus("performia-backend", {
+  const payload = buildHealthStatus("zentor-backend", {
     databaseReadyState: mongoose.connection?.readyState,
     nodeEnv: process.env.NODE_ENV || "development",
   });
