@@ -5,7 +5,7 @@ const AuthContext = createContext(null);
 const ACTIVE_COMPANY_KEY = "active_company_id";
 
 const defaultBranding = {
-  nombreVisible: "Performia",
+  nombreVisible: "ZENTOR",
   logoUrl: "",
   primaryColor: "#10b981",
   maxUploadSizeMb: 10,

@@ -449,7 +449,7 @@ export default function RolesPage() {
                 <p className="pf-section-title">Configuración &gt; Roles y accesos</p>
                 <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Roles y accesos</h1>
                 <p className="mt-3 text-sm leading-relaxed text-[#a5bcc8] md:text-base">
-                  Define roles base, scopes y permisos para controlar el acceso a la información y las acciones en Performia.
+                  Define roles base, scopes y permisos para controlar el acceso a la información y las acciones en ZENTOR.
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">

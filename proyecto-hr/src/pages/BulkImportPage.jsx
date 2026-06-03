@@ -477,7 +477,7 @@ export default function BulkImportPage() {
       const url = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
-      anchor.download = "Plantilla_Performia_Importacion.xlsx";
+      anchor.download = "Plantilla_ZENTOR_Importacion.xlsx";
       anchor.click();
       window.URL.revokeObjectURL(url);
       setFeedback("success", "Plantilla descargada.");
@@ -696,7 +696,7 @@ export default function BulkImportPage() {
       <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <SurfaceCard
           title="Plantilla oficial"
-          subtitle="Archivo base: Plantilla_Performia_Importacion.xlsx"
+          subtitle="Archivo base: Plantilla_ZENTOR_Importacion.xlsx"
           actions={
             <button
               type="button"

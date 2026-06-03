@@ -52,7 +52,7 @@ export default function ForcePasswordPage() {
           <h1 className="mt-4 text-4xl font-semibold text-slate-950">Actualiza tu contraseña</h1>
           <p className="mt-4 max-w-2xl text-slate-600">
             {user?.nombre}, este acceso fue creado con una contraseña temporal. Antes de seguir
-            trabajando en Performia, define una nueva clave personal.
+            trabajando en ZENTOR, define una nueva clave personal.
           </p>
 
           <form className="mt-8 space-y-4" onSubmit={handleSubmit}>
