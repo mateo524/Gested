@@ -1,13 +1,5 @@
-import LogoIcon from "./LogoIcon";
+import logoSrc from "../../assets/brand/zentor-logo-white.svg";
 
-export default function LogoMonochrome({ dark = false }) {
-  return (
-    <div className="flex items-center gap-2">
-      <LogoIcon size={28} dark={dark} monochrome />
-      <span className={`text-lg font-bold tracking-tight ${dark ? "text-white" : "text-slate-900"}`}>
-        ZENTOR
-      </span>
-    </div>
-  );
+export default function LogoMonochrome() {
+  return <img src={logoSrc} alt="ZENTOR" className="h-8 w-auto" />;
 }
-

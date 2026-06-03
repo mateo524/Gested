@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 500" width="100%" height="100%">
+    <!-- Isotipo: Estructura de red de nodos en forma de Z -->
+    <g id="Zentor-Isotype">
+        <!-- Líneas conectoras (Azul Navy Oscuro #0F172A) -->
+        <line x1="120" y1="130" x2="380" y2="130" stroke="#0F172A" stroke-width="16" stroke-linecap="round" />
+        <line x1="380" y1="130" x2="120" y2="370" stroke="#0F172A" stroke-width="18" stroke-linecap="round" />
+        <line x1="120" y1="370" x2="380" y2="370" stroke="#0F172A" stroke-width="16" stroke-linecap="round" />
+        <line x1="120" y1="130" x2="250" y2="250" stroke="#0F172A" stroke-width="10" stroke-linecap="round" opacity="0.6" />
+        <line x1="380" y1="370" x2="250" y2="250" stroke="#0F172A" stroke-width="10" stroke-linecap="round" opacity="0.6" />
+        
+        <!-- Nodos Internos Secundarios (Violeta #8B5CF6) -->
+        <circle cx="210" cy="210" r="16" fill="#8B5CF6" stroke="#0F172A" stroke-width="6" />
+        <circle cx="290" cy="290" r="16" fill="#8B5CF6" stroke="#0F172A" stroke-width="6" />
+        
+        <!-- Nodos Principales de Esquinas y Centro (Turquesa/Verde Agua #14B8A6) -->
+        <circle cx="120" cy="130" r="28" fill="#14B8A6" stroke="#0F172A" stroke-width="8" />
+        <circle cx="380" cy="130" r="28" fill="#14B8A6" stroke="#0F172A" stroke-width="8" />
+        <circle cx="250" cy="250" r="24" fill="#14B8A6" stroke="#0F172A" stroke-width="8" />
+        <circle cx="120" cy="370" r="28" fill="#14B8A6" stroke="#0F172A" stroke-width="8" />
+        <circle cx="380" cy="370" r="28" fill="#14B8A6" stroke="#0F172A" stroke-width="8" />
+    </g>
+    <!-- Texto tipográfico en mayúsculas (ZENTOR en #0F172A) -->
+    <text x="460" y="295" font-family="'Inter', 'Montserrat', 'Helvetica Neue', sans-serif" font-size="125" font-weight="800" letter-spacing="6" fill="#0F172A">ZENTOR</text>
+</svg>
