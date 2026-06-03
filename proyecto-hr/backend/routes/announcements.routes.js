@@ -469,7 +469,8 @@ router.delete("/:id", auth, attachTenantScope, async (req, res, next) => {
 
 router.post("/:id/read", auth, attachTenantScope, async (req, res, next) => {
   try {
-    const announcement = await Announcement.findById(req.params.id);
+    const { companyId } = await resolveTenantCompany(req);
+    const announcement = await Announcement.findOne({ _id: req.params.id, companyId });
     if (!announcement) {
       return res.status(404).json({ mensaje: "Novedad no encontrada" });
     }

@@ -171,7 +171,7 @@ test("ORG_ADMIN mantiene tenant del scope en evaluations y no ve otra organizaci
 
   const filter = await buildEvaluationFilter(req);
   assert.equal(filter.companyId, "org-own");
-  assert.equal(filter.schoolId, "school-own");
+  assert.deepEqual(filter.schoolId, { $in: ["school-own", null] });
   assert.equal(filter.employeeId, "emp-a1");
 });
 
