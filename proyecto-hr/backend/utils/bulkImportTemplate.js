@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 
-export const BULK_IMPORT_TEMPLATE_FILENAME = "Plantilla_Performia_Importacion.xlsx";
+export const BULK_IMPORT_TEMPLATE_FILENAME = "Plantilla_ZENTOR_Importacion.xlsx";
 
 export const BULK_IMPORT_CATALOGS = {
   roleKey: [
@@ -74,7 +74,7 @@ function addInstructionSheet(workbook) {
     {
       section: "Objetivo",
       detail:
-        "Completa esta plantilla oficial para preparar la importacion masiva unificada de Performia. Usa una fila por registro y respeta los encabezados.",
+        "Completa esta plantilla oficial para preparar la importacion masiva unificada de ZENTOR. Usa una fila por registro y respeta los encabezados.",
     },
     {
       section: "Seguridad",
@@ -295,13 +295,13 @@ function addCatalogsSheet(workbook) {
 
 export async function buildBulkImportTemplateBuffer() {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Performia";
-  workbook.lastModifiedBy = "Performia";
+  workbook.creator = "ZENTOR";
+  workbook.lastModifiedBy = "ZENTOR";
   workbook.created = new Date();
   workbook.modified = new Date();
   workbook.subject = "Plantilla oficial de importacion masiva";
   workbook.title = BULK_IMPORT_TEMPLATE_FILENAME;
-  workbook.company = "Performia";
+  workbook.company = "ZENTOR";
 
   addInstructionSheet(workbook);
   addOrganizationSheet(workbook);
