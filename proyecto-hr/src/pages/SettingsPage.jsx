@@ -8,7 +8,7 @@ const defaultSettings = {
   logoUrl: "",
   primaryColor: "#10b981",
   maxUploadSizeMb: 10,
-  defaultEmailDomain: "performia.app",
+  defaultEmailDomain: "zentor.app",
   defaultEmployeeRoleCode: "EMPLEADO",
   automations: {
     nightlyDataCheck: true,

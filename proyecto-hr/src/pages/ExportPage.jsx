@@ -131,7 +131,7 @@ export default function ExportPage() {
       setMessage(error.message);
     } finally {
       setIsUploading(false);
-      const input = document.getElementById("performia-import-file");
+      const input = document.getElementById("zentor-import-file");
       if (input) input.value = "";
     }
   };
@@ -255,7 +255,7 @@ export default function ExportPage() {
                 {form.file ? form.file.name : "Selecciona .xlsx o .xls"}
               </span>
               <input
-                id="performia-import-file"
+                id="zentor-import-file"
                 type="file"
                 accept=".xlsx,.xls"
                 className="mt-4 block w-full text-sm text-slate-500"
