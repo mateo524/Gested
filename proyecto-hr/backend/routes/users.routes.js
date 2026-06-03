@@ -28,7 +28,7 @@ import {
 } from "../utils/userEmployeeSync.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 function toBoolean(value, fallback = true) {
   if (typeof value === "boolean") return value;

@@ -17,7 +17,7 @@ import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
 import { isForbiddenPlatformRoleInput, mapRoleInputToLegacyRoleCode } from "../utils/legacyRoleMapping.js";
 
 const router = express.Router();
-const upload = multer({ storage: multer.memoryStorage() });
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 async function parseUploadedRows(file) {
   if (!file) return [];

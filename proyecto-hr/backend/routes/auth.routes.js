@@ -2,6 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
+import rateLimit from "express-rate-limit";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
@@ -46,6 +47,26 @@ function clearAttempts(key) {
   loginAttempts.delete(key);
   loginLocks.delete(key);
 }
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    mensaje: "Demasiados intentos de inicio de sesión. Intenta nuevamente más tarde.",
+  },
+});
+
+const passwordChangeLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    mensaje: "Demasiadas solicitudes. Intenta nuevamente más tarde.",
+  },
+});
 
 function createRouteError(status, message) {
   const error = new Error(message);
@@ -187,7 +208,7 @@ function buildResetUrl(rawToken) {
   return `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 }
 
-router.post("/login", async (req, res) => {
+router.post("/login", loginLimiter, async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
     const password = req.body.password?.trim();
@@ -252,7 +273,7 @@ router.post("/login", async (req, res) => {
 
     res.json({ mensaje: "Login correcto", token, user: safeUser });
   } catch (error) {
-    res.status(500).json({ mensaje: "Error en login", error: error.message });
+    res.status(500).json({ mensaje: "Error en login" });
   }
 });
 
@@ -361,8 +382,8 @@ async function handleChangeOwnPassword(req, res) {
   }
 }
 
-router.put("/me/password", auth, handleChangeOwnPassword);
-router.post("/change-password", auth, handleChangeOwnPassword);
+router.put("/me/password", auth, passwordChangeLimiter, handleChangeOwnPassword);
+router.post("/change-password", auth, passwordChangeLimiter, handleChangeOwnPassword);
 
 router.post("/forgot-password", async (req, res) => {
   const email = req.body.email?.trim().toLowerCase();

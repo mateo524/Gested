@@ -4,6 +4,8 @@ import mongoose from "mongoose";
 import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
 
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
@@ -41,8 +43,12 @@ function buildAllowedOrigins() {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
+  const fromCorsOrigins = String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
   const fromSingle = String(process.env.FRONTEND_URL || "").trim();
-  const allowed = new Set(fromList);
+  const allowed = new Set([...fromList, ...fromCorsOrigins]);
   if (fromSingle) allowed.add(fromSingle);
 
   if (process.env.NODE_ENV !== "production") {
@@ -91,7 +97,7 @@ function assertRuntimeConfig() {
   }
 
   if (process.env.NODE_ENV === "production" && process.env.JWT_SECRET.length < 32) {
-    console.warn("WARNING: JWT_SECRET debería tener al menos 32 caracteres en producción.");
+    throw new Error("JWT_SECRET debe tener al menos 32 caracteres en producción.");
   }
 }
 
@@ -103,8 +109,22 @@ app.use(
     level: 6,
   })
 );
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    mensaje: "Demasiadas solicitudes. Intenta nuevamente en unos minutos.",
+  },
+  skip: (req) => req.path === "/health" && req.method === "GET",
+});
+
+app.use(generalLimiter);
+app.use(mongoSanitize());
 
 app.use((req, res, next) => {
   const method = req.method.toUpperCase();
@@ -160,8 +180,16 @@ app.get("/", (req, res) => {
 });
 
 app.use((err, _req, res, _next) => {
-  console.error("Unhandled error:", err);
   const status = err.status || err.statusCode || 500;
+
+  if (status >= 500) {
+    console.error("Unhandled error:", err);
+  }
+
+  if (status >= 500 && process.env.NODE_ENV === "production") {
+    return res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+
   res.status(status).json({
     mensaje: err.mensaje || err.message || "Error interno del servidor",
     ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
