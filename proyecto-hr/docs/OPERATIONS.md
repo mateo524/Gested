@@ -1,4 +1,6 @@
-# Performia — Operations Manual
+# ZENTOR — Operations Manual
+
+> Last updated: 2026-06-03
 
 ## Architecture Overview
 
@@ -38,6 +40,7 @@ flowchart LR
 | `MONGO_URI` | Yes | — | MongoDB Atlas connection string |
 | `JWT_SECRET` | Yes | — | Signing key (min 32 chars for production) |
 | `PORT` | No | `3000` | Express listen port |
+| `NODE_ENV` | No | `development` | Set to `production` in production |
 | `FRONTEND_URL` | No | — | Single allowed CORS origin |
 | `FRONTEND_ORIGINS` / `CORS_ORIGINS` | No | — | Comma-separated CORS origins |
 | `ALLOW_VERCEL_PREVIEWS` | No | `true` | Allow `*.vercel.app` CORS |
@@ -90,6 +93,115 @@ After running `scripts/seed-pilot.mjs`:
 
 Additional seed data lives in `scripts/seed-demo.mjs` (richer dataset for full demos).
 
+## Monitoring
+
+### Health Endpoint
+
+```
+GET /health
+```
+
+Ejemplo de respuesta exitosa:
+```json
+{
+  "ok": true,
+  "service": "zentor-backend",
+  "status": "ok",
+  "env": "production",
+  "timestamp": "2026-06-03T21:00:00.000Z",
+  "uptimeSeconds": 3600,
+  "version": "1.0.0",
+  "database": {
+    "ok": true,
+    "state": "connected"
+  }
+}
+```
+
+- **200** = todo ok
+- **503** = base de datos no conectada (aplicacion degradada)
+- **Sin respuesta o timeout** = backend caido
+
+### Monitoreo Externo Recomendado
+
+Se recomienda **UptimeRobot** (plan gratuito suficiente) o **Better Stack**:
+
+| Servicio | Plan gratis | Frecuencia | Alertas |
+|----------|-------------|------------|---------|
+| [UptimeRobot](https://uptimerobot.com) | 50 monitores, 5 min intervalo | Cada 5 min | Email, Slack, SMS |
+| [Better Stack](https://betterstack.com) | 3 monitores, 3 min intervalo | Cada 3 min | Email, Slack, Webhook |
+| [Healthchecks.io](https://healthchecks.io) | 20 checks, ilimitado | Push desde el backend | Email, Slack, Webhook |
+
+**Configuracion sugerida:**
+
+```
+URL: https://gested-1-backend.onrender.com/health
+Intervalo: 5 minutos
+Timeout: 30 segundos
+Alertas: Email + Slack (canal #monitoreo)
+Considerar caida cuando:
+  - HTTP status != 200
+  - Timeout > 30s
+  - Respuesta no contiene "ok": true
+```
+
+### Logs
+
+- **Render:** Dashboard → Service → Logs tab (streaming or historical, retention ~2 semanas)
+- **Vercel:** Dashboard → Project → Functions → Logs
+- **MongoDB Atlas:** Cluster → Monitoring → Logs
+
+## Backup & Recovery (MongoDB Atlas)
+
+### Backup Automatico de Atlas
+
+MongoDB Atlas M10+ incluye snapshots automaticos:
+
+1. Ir a [cloud.mongodb.com](https://cloud.mongodb.com) → Cluster → Backup
+2. Verificar frecuencia configurada:
+   - M10: cada 24h, retencion 1 dia
+   - M20: cada 12h, retencion 2 dias
+   - M30+: cada 6h, retencion 7+ dias
+3. Activar **PITR (Point-in-Time Recovery)** si el plan lo permite:
+   - Backup → Point in Time Restore → Enable
+   - Permite restaurar a cualquier minuto dentro de la ventana de retencion
+
+### Backup Manual (mongodump)
+
+Para backup adicional fuera de Atlas:
+
+```bash
+# Respetar .gitignore y no committear volcados
+mongodump --uri="<MONGO_URI>" --out=./backups/$(date +%Y%m%d_%H%M%S)
+```
+
+### Restore
+
+Ver [INCIDENT_RUNBOOK.md](./INCIDENT_RUNBOOK.md#8-restore-desde-backup) para procedimiento detallado.
+
+Resumen rapido:
+1. Atlas Dashboard → Backup → seleccionar snapshot
+2. Preferir "Restore to new cluster" (nunca directo a prod sin verificar)
+3. Verificar datos en cluster temporal
+4. Si todo ok, repeat con "Restore to current cluster"
+5. Actualizar MONGO_URI si cambio el cluster
+
+### Usuario de Base de Datos
+
+- Crear usuario dedicado para la app (no usar usuario admin de Atlas)
+- Permisos minimos: `readWrite` en la base de datos de la aplicacion
+- No compartir credenciales por canales no seguros
+- Rotar password cada 90 dias
+
+### Lo que NO hacer en backup/restore
+
+- NO restaurar directo sobre produccion sin verificar en cluster separado
+- NO asumir que el snapshot mas reciente es correcto (pudo tomarse durante corrupcion)
+- NO compartir MONGO_URI por Slack/email/otros canales no seguros
+- NO hacer restore mientras la app esta siendo usada activamente
+- NO olvidar actualizar la URI si se migra a otro cluster
+- NO committear volcados de base de datos al repositorio
+
 ## Common Operational Tasks
 
 ### Seed / Reset Demo Data
@@ -120,16 +232,11 @@ SMOKE_API_URL=https://gested-1-backend.onrender.com \
   node scripts/smokeTestPostDeploy.js
 ```
 
-### View Logs
-
-- **Render:** Dashboard → Service → Logs tab (streaming or historical)
-- **Vercel:** Dashboard → Project → Functions → Logs
-- **MongoDB Atlas:** Cluster → Monitoring → Logs
-
 ### Rollback Deployment
 
 - **Vercel:** Dashboard → Project → Deployments → ⋯ → Promote to Production (previous deployment)
 - **Render:** Dashboard → Service → Manual Deploy → Deploy last successful deploy
+- **Git tag:** Ver [INCIDENT_RUNBOOK.md#9-rollback-por-tag](./INCIDENT_RUNBOOK.md#9-rollback-por-tag)
 
 ## Troubleshooting
 
