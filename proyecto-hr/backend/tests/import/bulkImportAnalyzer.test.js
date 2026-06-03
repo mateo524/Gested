@@ -22,28 +22,28 @@ async function buildWorkbookBuffer(mutator) {
   organization.addRow(["ORG1", "Demo", "active"]);
 
   const departments = workbook.addWorksheet("Departamentos");
-  departments.addRow(["department_code", "department_name", "status"]);
+  departments.addRow(["departamento", "department_name", "status"]);
   departments.addRow(["DEP-RRHH", "RRHH", "active"]);
 
   const employees = workbook.addWorksheet("Empleados");
   employees.addRow([
-    "employee_code",
+    "legajo",
     "first_name",
     "last_name",
     "work_email",
     "job_title",
-    "department_code",
+    "departamento",
     "employment_status",
     "active",
   ]);
   employees.addRow(["EMP-1", "Ana", "Lopez", "ana@demo.local", "Analista", "DEP-RRHH", "active", "yes"]);
 
   const users = workbook.addWorksheet("Usuarios_y_Roles");
-  users.addRow(["employee_code", "work_email", "role_key", "scope", "status", "can_login"]);
+  users.addRow(["legajo", "work_email", "role_key", "scope", "status", "can_login"]);
   users.addRow(["EMP-1", "ana@demo.local", "HR", "ORGANIZATION", "active", "yes"]);
 
   const managers = workbook.addWorksheet("Managers");
-  managers.addRow(["employee_code", "manager_email", "relationship_type", "primary_manager", "status"]);
+  managers.addRow(["legajo", "email_jefe", "relationship_type", "primary_manager", "status"]);
   managers.addRow(["EMP-1", "ana@demo.local", "direct", "yes", "active"]);
 
   const kpis = workbook.addWorksheet("KPIs");
@@ -259,7 +259,7 @@ test("analyze bulk import rechaza empleado sin email", async () => {
   }
 });
 
-test("analyze bulk import detecta employee_code duplicado", async () => {
+test("analyze bulk import detecta legajo duplicado", async () => {
   const restores = [
     patchCollection(Employee, []),
     patchCollection(User, []),
@@ -280,6 +280,7 @@ test("analyze bulk import detecta employee_code duplicado", async () => {
         "yes",
       ]);
     });
+
     const analysis = await analyzeBulkImportWorkbook({
       buffer,
       companyId: "company1",
@@ -287,7 +288,7 @@ test("analyze bulk import detecta employee_code duplicado", async () => {
     });
 
     assert.equal(
-      analysis.errors.some((item) => item.field === "employee_code" && item.message.includes("duplicado")),
+      analysis.errors.some((item) => item.field === "legajo" && item.message.includes("duplicado")),
       true
     );
   } finally {
@@ -295,7 +296,7 @@ test("analyze bulk import detecta employee_code duplicado", async () => {
   }
 });
 
-test("analyze bulk import detecta manager_email inexistente", async () => {
+test("analyze bulk import detecta email_jefe inexistente", async () => {
   const restores = [
     patchCollection(Employee, []),
     patchCollection(User, []),
@@ -314,7 +315,7 @@ test("analyze bulk import detecta manager_email inexistente", async () => {
     });
 
     assert.equal(
-      analysis.errors.some((item) => item.field === "manager_email" && item.message.includes("no existe")),
+      analysis.errors.some((item) => item.field === "email_jefe" && item.message.includes("no existe")),
       true
     );
   } finally {
