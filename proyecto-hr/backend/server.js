@@ -5,7 +5,6 @@ import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
-import mongoSanitize from "express-mongo-sanitize";
 
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
@@ -124,7 +123,51 @@ const generalLimiter = rateLimit({
 });
 
 app.use(generalLimiter);
-app.use(mongoSanitize());
+
+function isObject(val) {
+  return typeof val === "object" && val !== null;
+}
+
+function sanitizeObject(obj) {
+  if (!isObject(obj)) return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeObject);
+
+  const sanitized = {};
+  for (const key of Object.keys(obj)) {
+    const clean = key.replace(/^\$/, "").replace(/\./g, "");
+    if (clean !== key) {
+      sanitized[clean] = sanitizeObject(obj[key]);
+    } else {
+      sanitized[key] = sanitizeObject(obj[key]);
+    }
+  }
+  return sanitized;
+}
+
+function safeAssign(obj, prop, value) {
+  try {
+    obj[prop] = value;
+  } catch {
+    Object.defineProperty(obj, prop, {
+      value,
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
+app.use((req, _res, next) => {
+  if (req.body && isObject(req.body)) {
+    safeAssign(req, "body", sanitizeObject(req.body));
+  }
+  if (req.params && isObject(req.params)) {
+    safeAssign(req, "params", sanitizeObject(req.params));
+  }
+  if (req.query && isObject(req.query)) {
+    safeAssign(req, "query", sanitizeObject(req.query));
+  }
+  next();
+});
 
 app.use((req, res, next) => {
   const method = req.method.toUpperCase();
