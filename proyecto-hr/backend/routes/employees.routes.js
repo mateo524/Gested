@@ -102,7 +102,10 @@ router.get(
     filter.$or = [{ nombre: regex }, { apellido: regex }, { email: regex }, { cargo: regex }];
   }
 
-  const employees = await Employee.find(filter).sort({ apellido: 1, nombre: 1 }).lean();
+  const employees = await Employee.find(filter)
+    .select("-__v")
+    .sort({ apellido: 1, nombre: 1 })
+    .lean();
   res.json(employees);
 });
 
@@ -117,7 +120,9 @@ router.get(
     PERMISSIONS.VIEW_REPORTS
   ),
   async (req, res) => {
-    const employee = await Employee.findOne(buildScopedFilter(req, { _id: req.params.id })).lean();
+    const employee = await Employee.findOne(buildScopedFilter(req, { _id: req.params.id }))
+      .select("-__v")
+      .lean();
     if (!employee) {
       return res.status(404).json({ mensaje: "Empleado no encontrado" });
     }
@@ -268,9 +273,11 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     detalle: `Se creo el empleado ${employee.apellido}, ${employee.nombre}`,
   });
 
+  const { __v, ...safeEmployee } = employee.toObject ? employee.toObject() : employee;
+
   res.status(201).json({
     mensaje: "Empleado creado",
-    employee,
+    employee: safeEmployee,
     user:
       userLinkResult?.user
         ? {
@@ -338,7 +345,8 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
     detalle: `Se actualizo el empleado ${employee.apellido}, ${employee.nombre}`,
   });
 
-  res.json({ mensaje: "Empleado actualizado", employee });
+  const { __v: _vu, ...safeUpdated } = employee.toObject ? employee.toObject() : employee;
+  res.json({ mensaje: "Empleado actualizado", employee: safeUpdated });
 });
 
 router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
@@ -348,9 +356,20 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
     return res.status(404).json({ mensaje: "Empleado no encontrado" });
   }
 
-  await Employee.updateMany({ managerId: employee._id }, { $set: { managerId: null } });
-  await DevelopmentPlan.deleteMany({ employeeId: employee._id });
-  await Evaluation.deleteMany({ employeeId: employee._id });
+  await Employee.updateMany(
+    { managerId: employee._id, companyId: employee.companyId },
+    { $set: { managerId: null } }
+  );
+  await DevelopmentPlan.deleteMany({
+    employeeId: employee._id,
+    companyId: employee.companyId,
+    schoolId: employee.schoolId,
+  });
+  await Evaluation.deleteMany({
+    employeeId: employee._id,
+    companyId: employee.companyId,
+    schoolId: employee.schoolId,
+  });
   await Employee.deleteOne({ _id: employee._id });
 
   await logAudit({

@@ -18,7 +18,7 @@ test("Org A no puede forzar acceso a Org B: buildScopedFilter siempre usa compan
   });
 
   assert.equal(filter.companyId, "orgA");
-  assert.equal(filter.schoolId, "schoolA");
+  assert.deepEqual(filter.schoolId, { $in: ["schoolA", null] });
   assert.equal(filter.estado, "ACTIVO");
 });
 

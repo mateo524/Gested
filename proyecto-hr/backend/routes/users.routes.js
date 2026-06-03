@@ -189,7 +189,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   }
 
   const normalizedEmail = normalizeEmail(email);
-  const existingUser = await User.findOne({ email: normalizedEmail });
+  const existingUser = await User.findOne({ email: normalizedEmail, companyId });
   if (existingUser) {
     return res.status(409).json({ mensaje: "Ya existe un usuario con ese email" });
   }
@@ -520,22 +520,24 @@ router.post("/bulk", auth, permit("manage_users"), async (req, res) => {
 
   let temporaryPasswords = [];
 
+  const userIds_ = users.map((user) => user._id);
+
   if (action === "activate") {
-    await User.updateMany({ _id: { $in: users.map((user) => user._id) } }, { activo: true });
+    await User.updateMany({ _id: { $in: userIds_ }, companyId }, { activo: true });
   } else if (action === "deactivate") {
     const ownId = String(req.user.userId);
     if (users.some((user) => String(user._id) === ownId)) {
       return res.status(400).json({ mensaje: "No puedes desactivar tu propio usuario" });
     }
 
-    await User.updateMany({ _id: { $in: users.map((user) => user._id) } }, { activo: false });
+    await User.updateMany({ _id: { $in: userIds_ }, companyId }, { activo: false });
   } else if (action === "delete") {
     const ownId = String(req.user.userId);
     if (users.some((user) => String(user._id) === ownId)) {
       return res.status(400).json({ mensaje: "No puedes eliminar tu propio usuario" });
     }
 
-    await User.deleteMany({ _id: { $in: users.map((user) => user._id) } });
+    await User.deleteMany({ _id: { $in: userIds_ }, companyId });
   } else if (action === "reset_password") {
     temporaryPasswords = await Promise.all(
       users.map(async (user) => {
@@ -635,14 +637,16 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     update.mustChangePassword = false;
   }
 
-  const updatedUser = await User.findByIdAndUpdate(req.params.id, update, {
-    new: true,
-  })
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: req.params.id, companyId },
+    update,
+    { new: true }
+  )
     .select("-passwordHash")
     .populate("roleId", "nombre permisos");
 
   if (roleChanged && assignmentSyncPlan) {
-    const rawUser = await User.findById(req.params.id);
+    const rawUser = await User.findOne({ _id: req.params.id, companyId });
     await syncPrimaryRoleAssignmentForUser({
       user: rawUser,
       companyId: rawUser.companyId,
