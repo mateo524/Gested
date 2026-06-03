@@ -12,7 +12,7 @@ test("la plantilla oficial incluye todas las solapas requeridas", async () => {
   const workbook = new ExcelJS.Workbook();
   await workbook.xlsx.load(buffer);
 
-  assert.equal(BULK_IMPORT_TEMPLATE_FILENAME, "Plantilla_Performia_Importacion.xlsx");
+  assert.equal(BULK_IMPORT_TEMPLATE_FILENAME, "Plantilla_ZENTOR_Importacion.xlsx");
   assert.deepEqual(workbook.worksheets.map((sheet) => sheet.name), [
     "Instrucciones",
     "Organización",
