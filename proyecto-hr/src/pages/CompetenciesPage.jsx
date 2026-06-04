@@ -26,7 +26,7 @@ function formatAudience(form, employees) {
     return form.audienceDepartmentCodes.length ? `Área ${form.audienceDepartmentCodes.join(", ")}` : "Área / departamento";
   }
   if (form.audienceType === "employees") {
-    return `${form.audienceEmployeeIds.length} empleados`;
+    return `${form.audienceEmployeeIds.length} ${form.audienceEmployeeIds.length === 1 ? "empleado" : "empleados"}`;
   }
   if (form.audienceType === "singleEmployee") {
     const employee = employees.find((item) => String(item._id) === String(form.audienceEmployeeIds[0] || ""));
