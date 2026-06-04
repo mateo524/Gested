@@ -284,6 +284,9 @@ export default function EvaluationsPage() {
                 </option>
               ))}
             </select>
+            <label className="mb-1 block text-xs text-[#9fb6c4]">
+              <span title="Período de evaluación activo. Un ciclo agrupa evaluaciones, metas y fechas bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted">Ciclo o período</span>
+            </label>
             <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.cycleId} onChange={(event) => setForm({ ...form, cycleId: event.target.value })}>
               <option value="">Seleccioná ciclo o período</option>
               {cycles.map((cycle) => (

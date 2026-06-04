@@ -160,9 +160,9 @@ export default function EvaluationCyclesPage() {
     <div className="space-y-5 overflow-x-hidden">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Ciclos</h3>
+        <h3 className="mt-3 text-3xl font-bold text-white">Ciclos de evaluación</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Definí el ciclo, el período y las fechas clave para ordenar evaluaciones y seguimiento.
+          Un <span title="Período de tiempo en el que se realizan evaluaciones de desempeño. Agrupa evaluaciones, metas y seguimiento bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted text-[#c5d5de]">ciclo</span> define el período y las fechas clave para ordenar evaluaciones y seguimiento.
         </p>
       </section>
 

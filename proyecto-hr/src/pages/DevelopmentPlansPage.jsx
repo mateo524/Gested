@@ -463,12 +463,12 @@ export default function DevelopmentPlansPage() {
                       </div>
                       <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${
                         suggestion.severity === "high"
-                          ? "border-rose-400/30 bg-rose-500/15 text-rose-100"
+                          ? "border-rose-300/30 bg-rose-500/10 text-rose-100"
                           : suggestion.severity === "medium"
-                            ? "border-amber-400/30 bg-amber-500/15 text-amber-100"
-                            : "border-slate-400/20 bg-[#1e293b] text-[#d2dbe2]"
+                            ? "border-amber-300/30 bg-amber-500/10 text-amber-100"
+                            : "border-white/10 bg-[#122530] text-[#d6e2e8]"
                       }`}>
-                        Prioridad {severityBadge(suggestion.severity)}
+                        {severityBadge(suggestion.severity)}
                       </span>
                     </div>
 
