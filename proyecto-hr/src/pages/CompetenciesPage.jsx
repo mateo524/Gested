@@ -203,7 +203,7 @@ export default function CompetenciesPage() {
         <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Modelo de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Competencias</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Definí competencias transversales, docentes o personalizadas. La organización se toma automáticamente desde tu tenant activo.
+          Una <span title="Criterio o habilidad que se evalúa durante un ciclo de desempeño. Puede ser transversal (para toda la org), docente o personalizada." className="cursor-help underline decoration-dotted text-[#c5d5de]">competencia</span> es un criterio o habilidad que se mide en cada evaluación. Podés definirlas transversales, docentes o personalizadas.
         </p>
       </section>
 
@@ -345,7 +345,9 @@ export default function CompetenciesPage() {
                 </div>
               ) : null}
 
-              <p className="text-xs text-[#7f99a8]">Alcance actual: {formatAudience(form, employees)}.</p>
+              <p className="text-xs text-[#7f99a8]">
+                <span title="Define a quiénes aplica esta competencia: toda la organización, un área específica o empleados puntuales." className="cursor-help underline decoration-dotted">Alcance actual</span>: {formatAudience(form, employees)}.
+              </p>
             </div>
 
             <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">

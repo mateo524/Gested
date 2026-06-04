@@ -62,7 +62,7 @@ function ActionBadge({ priority }) {
 }
 
 function EmptyState({ text }) {
-  return <div className="rounded-2xl border border-dashed border-white/10 bg-[#0f1f28] px-4 py-6 text-sm text-[#8ea5b3]">{text}</div>;
+  return <div className="rounded-2xl border border-dashed border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#8ea5b3]">{text}</div>;
 }
 
 export default function DashboardPage() {
@@ -396,7 +396,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <section className="pf-surface pf-surface-pad">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="max-w-3xl">
