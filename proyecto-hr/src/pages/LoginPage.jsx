@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import AppLogo from "../components/brand/AppLogo";
 
-const MARKETING_SITE_URL = "https://landing-proyect.vercel.app";
+const MARKETING_SITE_URL = "https://project-3f34a.vercel.app/";
 
 const defaultBranding = {
   nombreVisible: "ZENTOR",
