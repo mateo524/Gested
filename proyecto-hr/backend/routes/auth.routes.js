@@ -272,7 +272,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     });
 
     res.json({ mensaje: "Login correcto", token, user: safeUser });
-  } catch (error) {
+  } catch {
     res.status(500).json({ mensaje: "Error en login" });
   }
 });
