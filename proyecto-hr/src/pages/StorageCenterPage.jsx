@@ -164,14 +164,14 @@ export default function StorageCenterPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Supervision central</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-emerald-500">Supervisión central</p>
         <h3 className="mt-3 text-3xl font-bold text-slate-950">Archivo central de empresas</h3>
         <p className="mt-3 max-w-3xl text-slate-500">
-          Desde aca el superadmin puede revisar todo lo que se subio a la app, separado por empresa
-          y tipo de archivo, con acceso rapido a la fuente y una vista previa de contenido.
+          Desde acá el superadmin puede revisar todo lo que se subió a la app, separado por empresa
+          y tipo de archivo, con acceso rápido a la fuente y una vista previa de contenido.
         </p>
         <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-          Acceso: solo superadmin. Los usuarios de colegio/empresa no ven este modulo.
+          Acceso: solo superadmin. Los usuarios de colegio/empresa no ven este módulo.
         </div>
       </section>
 

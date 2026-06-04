@@ -68,7 +68,7 @@ export default function SettingsPage() {
       setSettings((prev) => ({ ...prev, ...(data.settings || {}) }));
       await refreshBranding();
       setMessageType("success");
-      setMessage("Configuracion actualizada.");
+      setMessage("Configuración actualizada.");
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -112,10 +112,10 @@ export default function SettingsPage() {
           <h3 className="text-xl font-semibold text-white">Automatizaciones</h3>
           <div className="mt-4 grid gap-3 text-sm text-[#c5d5de]">
             {[
-              ["nightlyDataCheck", "Control nocturno de calidad de datos"],
-              ["autoCreateUsersFromImport", "Crear usuarios automaticamente desde importaciones"],
+              ["nightlyDataCheck", "Verificar calidad de datos automáticamente cada noche"],
+              ["autoCreateUsersFromImport", "Crear usuarios automáticamente desde importaciones"],
               ["autoAssignDefaultRole", "Asignar rol por defecto si falta en una fila"],
-              ["notifyOnImportErrors", "Notificar errores de importacion"],
+              ["notifyOnImportErrors", "Notificar errores de importación"],
             ].map(([key, label]) => (
               <label key={key} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-[#0f1f28] px-3 py-2">
                 <span>{label}</span>
@@ -161,7 +161,7 @@ export default function SettingsPage() {
             <LoadingState
               compact
               title="Cargando estado de seguridad"
-              description="Estamos revisando politicas e intentos recientes."
+              description="Estamos revisando políticas e intentos recientes."
             />
           </div>
         ) : null}
@@ -170,7 +170,7 @@ export default function SettingsPage() {
             <ErrorState
               compact
               title="No pudimos cargar el estado de seguridad"
-              description="Reintenta para revisar politicas, logins recientes y bloqueos."
+              description="Reintenta para revisar políticas, logins recientes y bloqueos."
               actionLabel="Reintentar"
               onAction={() => {
                 setMessage("");
@@ -192,7 +192,7 @@ export default function SettingsPage() {
         {securityStatusState === "ready" && securityStatus ? (
           <div className="mt-4 space-y-2 text-sm text-[#c5d5de]">
             <p>
-              Politica activa: {securityStatus.policy.maxAttempts} intentos en {securityStatus.policy.windowMinutes} min,
+              Política activa: {securityStatus.policy.maxAttempts} intentos en {securityStatus.policy.windowMinutes} min,
               bloqueo por {securityStatus.policy.lockMinutes} min.
             </p>
             <p>Logins fallidos recientes: {securityStatus.recentFailedLogins?.length || 0}</p>

@@ -482,7 +482,7 @@ export default function DashboardPage() {
                 )}
               />
             ) : (
-              <EmptyState text="No hay acciones urgentes por ahora." />
+              <EmptyState text="Sin acciones pendientes por ahora. Todo está en orden." />
             )}
           </div>
         </SurfaceCard>
@@ -500,7 +500,7 @@ export default function DashboardPage() {
                 </article>
               ))
             ) : (
-              <EmptyState text="No hay alertas operativas para mostrar." />
+              <EmptyState text="Sin alertas activas. ZENTOR verifica automáticamente la calidad de los datos." />
             )}
           </div>
         </SurfaceCard>
@@ -522,7 +522,7 @@ export default function DashboardPage() {
                 )}
               />
             ) : (
-              <EmptyState text="No hay próximos hitos con fecha visible todavía." />
+              <EmptyState text="Sin hitos próximos. Aparecerán cuando haya ciclos activos con fechas configuradas." />
             )}
           </div>
         </SurfaceCard>
@@ -537,7 +537,13 @@ export default function DashboardPage() {
                 className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-left transition hover:border-blue-400/30 hover:bg-[#132530]"
               >
                 <p className="text-sm font-semibold text-white">{item.label}</p>
-                <p className="mt-1 text-sm text-[#8ea5b3]">Abrir módulo</p>
+                <p className="mt-1 text-sm text-[#8ea5b3]">
+                {item.view === "empleados" ? "Gestión de personas" :
+                 item.view === "carga-masiva" ? "Importar desde Excel" :
+                 item.view === "reporte-ejecutivo" ? "Ver resumen ejecutivo" :
+                 item.view === "evaluaciones" ? "Ver ciclos y resultados" :
+                 item.view === "metricas" ? "KPIs y objetivos" : "Ir al módulo"}
+              </p>
               </button>
             ))}
           </div>
@@ -578,7 +584,7 @@ export default function DashboardPage() {
                 )}
               />
             ) : (
-              <EmptyState text="Todavía no hay objetivos o indicadores visibles para este alcance." />
+              <EmptyState text="Sin objetivos o indicadores cargados. Creá competencias e indicadores para empezar a medir." />
             )}
           </div>
         </SurfaceCard>

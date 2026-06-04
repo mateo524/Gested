@@ -392,7 +392,7 @@ export default function EvaluationsPage() {
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => loadEvaluationDetail(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
-                      Ver proceso
+                      Ver detalle
                     </button>
                     <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
                       Ver reporte individual
@@ -427,7 +427,7 @@ export default function EvaluationsPage() {
           {loadingDetail ? (
             <LoadingState compact title="Cargando detalle" description="Estamos trayendo mediciones, comentarios y resultado final." />
           ) : !selectedEvaluation ? (
-            <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá «Ver proceso» en la lista para abrir una vista más útil del desempeño." />
+            <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá «Ver detalle» en la lista para abrir mediciones, comentarios y el resultado final." />
           ) : (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">

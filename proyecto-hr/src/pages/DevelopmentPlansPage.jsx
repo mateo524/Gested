@@ -516,11 +516,11 @@ export default function DevelopmentPlansPage() {
               ) : (
                 <EmptyState
                   compact
-                  title={hasSuggestions ? "No hay sugerencias para este filtro" : "No hay sugerencias por ahora"}
+                  title={hasSuggestions ? "Sin sugerencias para este filtro" : "Todavía no hay sugerencias"}
                   description={
                     hasSuggestions
                       ? "Cambiá el filtro o limpiá la búsqueda para ver otras sugerencias disponibles."
-                      : "No hay sugerencias por ahora. Aparecerán cuando existan evaluaciones, KPIs/OKRs o planes con señales para revisar."
+                      : "Aparecerán automáticamente cuando haya evaluaciones, KPIs/OKRs o planes con señales para revisar."
                   }
                 />
               )}

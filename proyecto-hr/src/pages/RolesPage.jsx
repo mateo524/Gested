@@ -70,14 +70,14 @@ const ROLE_ICONS = {
 };
 
 const MATRIX_COLUMNS = [
-  { key: "ORG_OWNER", label: "ORG_OWNER" },
-  { key: "ORG_ADMIN", label: "ORG_ADMIN" },
-  { key: "HR", label: "HR" },
-  { key: "MANAGER", label: "MANAGER" },
-  { key: "COORDINADOR", label: "Coordinador Academico" },
-  { key: "EMPLOYEE", label: "EMPLOYEE" },
-  { key: "VIEWER", label: "VIEWER" },
-  { key: "AUDITOR", label: "AUDITOR" },
+  { key: "ORG_OWNER", label: "Director / Dueño" },
+  { key: "ORG_ADMIN", label: "Admin organización" },
+  { key: "HR", label: "RRHH" },
+  { key: "MANAGER", label: "Jefatura" },
+  { key: "COORDINADOR", label: "Coordinador académico" },
+  { key: "EMPLOYEE", label: "Empleado" },
+  { key: "VIEWER", label: "Lector" },
+  { key: "AUDITOR", label: "Auditor" },
 ];
 
 const MATRIX_ROWS = [
@@ -130,15 +130,7 @@ function getUserEmail(userRef) {
 }
 
 function getScopeLabel(scope) {
-  return scope === "ORGANIZATION"
-    ? "ORGANIZATION"
-    : scope === "DEPARTMENT"
-      ? "DEPARTMENT"
-      : scope === "TEAM"
-        ? "TEAM"
-        : scope === "SELF"
-          ? "SELF"
-          : scope;
+  return SCOPE_LABELS[scope] || scope;
 }
 
 function buildScopeDescription(item) {

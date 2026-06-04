@@ -220,7 +220,9 @@ export default function EmployeesPage() {
             <div>
               <label className="mb-1 block text-xs text-[#9fb6c4]">Correo institucional</label>
               <input className="pf-input" placeholder="Ej: nombre@colegio.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-              <p className="mt-1 text-xs text-[#7f99a8]">Si completás email, también se crea un usuario con acceso a la plataforma.</p>
+              <div className="mt-2 rounded-xl border border-[#14B8A6]/30 bg-[#14B8A6]/10 px-3 py-2 text-xs text-[#7de8dc]">
+                Si completás el email, se crea automáticamente un usuario con acceso a la plataforma.
+              </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
