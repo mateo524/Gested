@@ -29,3 +29,4 @@ backend/.env.*
 *.sln
 *.sw?
 .vercel
+.claude/
