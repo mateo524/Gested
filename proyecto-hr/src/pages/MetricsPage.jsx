@@ -282,6 +282,7 @@ function EvaluationEditor({
   cycleOptions,
   saving,
   canDelete,
+  fieldErrors = {},
   onFieldChange,
   onScoreChange,
   onCommentChange,
@@ -337,7 +338,7 @@ function EvaluationEditor({
           <div>
             <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo / período</label>
             <select
-              className="pf-select"
+              className={`w-full rounded-2xl border px-4 py-3 text-white outline-none transition ${fieldErrors.cycleId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0E1A20]"}`}
               value={form.cycleId}
               onChange={(event) => onFieldChange("cycleId", event.target.value)}
             >
@@ -351,6 +352,7 @@ function EvaluationEditor({
                 <option value="">No hay ciclos disponibles</option>
               )}
             </select>
+            {fieldErrors.cycleId ? <p className="mt-1 text-xs text-rose-300">Seleccioná un ciclo antes de guardar.</p> : null}
           </div>
           <div>
             <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Estado</label>
@@ -517,6 +519,7 @@ export default function MetricsPage() {
   const [detailError, setDetailError] = useState("");
   const [detailLoading, setDetailLoading] = useState(false);
   const [editor, setEditor] = useState({ open: false, mode: "create", type: "AUTOEVALUACION" });
+  const [editorFieldErrors, setEditorFieldErrors] = useState({});
   const [editorForm, setEditorForm] = useState(emptyEditor);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
@@ -850,9 +853,11 @@ export default function MetricsPage() {
   async function handleSaveEditor(event) {
     event.preventDefault();
     if (!editorForm.employeeId || !editorForm.cycleId) {
-      setMessage({ type: "warning", text: "Seleccioná empleado y ciclo antes de guardar la evaluación." });
+      setEditorFieldErrors({ cycleId: !editorForm.cycleId });
+      setMessage({ type: "warning", text: "Completá los campos marcados antes de guardar." });
       return;
     }
+    setEditorFieldErrors({});
 
     try {
       setSaving(true);
@@ -1466,6 +1471,7 @@ export default function MetricsPage() {
             cycleOptions={cycles}
             saving={saving}
             canDelete={editor.mode === "edit" && Boolean(editorForm.id)}
+            fieldErrors={editorFieldErrors}
             onFieldChange={(field, value) => {
               if (field === "cycleId") {
                 const cycle = cycles.find((c) => String(c._id) === String(value)) || null;
@@ -1473,6 +1479,7 @@ export default function MetricsPage() {
               } else {
                 setEditorForm((current) => ({ ...current, [field]: value }));
               }
+              if (editorFieldErrors[field]) setEditorFieldErrors((prev) => ({ ...prev, [field]: false }));
             }}
             onScoreChange={updateEditorScore}
             onCommentChange={updateEditorComment}

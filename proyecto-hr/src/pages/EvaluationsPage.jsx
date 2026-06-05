@@ -101,6 +101,7 @@ export default function EvaluationsPage() {
   const [selectedScores, setSelectedScores] = useState([]);
   const [loadingDetail, setLoadingDetail] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [fieldErrors, setFieldErrors] = useState({});
   const [scores, setScores] = useState([]);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
@@ -203,10 +204,12 @@ export default function EvaluationsPage() {
   async function handleSubmit(event) {
     event.preventDefault();
     if (!form.employeeId || !form.cycleId) {
+      setFieldErrors({ employeeId: !form.employeeId, cycleId: !form.cycleId });
       setMessageType("warning");
-      setMessage("Seleccioná empleado y período para guardar la evaluación.");
+      setMessage("Completá los campos marcados antes de guardar.");
       return;
     }
+    setFieldErrors({});
     try {
       setIsSubmitting(true);
       setMessage("");
@@ -290,25 +293,45 @@ export default function EvaluationsPage() {
           </div>
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Datos del evaluado</p>
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
-              <option value="">Seleccioná empleado</option>
-              {employees.map((employee) => (
-                <option key={employee._id} value={employee._id}>
-                  {employee.apellido}, {employee.nombre}
-                </option>
-              ))}
-            </select>
-            <label className="mb-1 block text-xs text-[#9fb6c4]">
-              <span title="Período de evaluación activo. Un ciclo agrupa evaluaciones, metas y fechas bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted">Ciclo o período</span>
-            </label>
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.cycleId} onChange={(event) => setForm({ ...form, cycleId: event.target.value })}>
-              <option value="">Seleccioná ciclo o período</option>
-              {cycles.map((cycle) => (
-                <option key={cycle._id} value={cycle._id}>
-                  {cycle.periodo} {cycle.anio} - {cycle.etapa}
-                </option>
-              ))}
-            </select>
+            <div>
+              <select
+                className={`w-full rounded-2xl border px-4 py-3 text-white transition ${fieldErrors.employeeId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0f1f28]"}`}
+                value={form.employeeId}
+                onChange={(event) => {
+                  setForm({ ...form, employeeId: event.target.value });
+                  if (fieldErrors.employeeId) setFieldErrors((prev) => ({ ...prev, employeeId: false }));
+                }}
+              >
+                <option value="">Seleccioná empleado</option>
+                {employees.map((employee) => (
+                  <option key={employee._id} value={employee._id}>
+                    {employee.apellido}, {employee.nombre}
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.employeeId ? <p className="mt-1 text-xs text-rose-300">Seleccioná un empleado.</p> : null}
+            </div>
+            <div>
+              <label className="mb-1 block text-xs text-[#9fb6c4]">
+                <span title="Período de evaluación activo. Un ciclo agrupa evaluaciones, metas y fechas bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted">Ciclo o período</span>
+              </label>
+              <select
+                className={`w-full rounded-2xl border px-4 py-3 text-white transition ${fieldErrors.cycleId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0f1f28]"}`}
+                value={form.cycleId}
+                onChange={(event) => {
+                  setForm({ ...form, cycleId: event.target.value });
+                  if (fieldErrors.cycleId) setFieldErrors((prev) => ({ ...prev, cycleId: false }));
+                }}
+              >
+                <option value="">Seleccioná ciclo o período</option>
+                {cycles.map((cycle) => (
+                  <option key={cycle._id} value={cycle._id}>
+                    {cycle.periodo} {cycle.anio} - {cycle.etapa}
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.cycleId ? <p className="mt-1 text-xs text-rose-300">Seleccioná un ciclo o período.</p> : null}
+            </div>
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Cómo se evaluará</p>
             <div className="grid gap-4 md:grid-cols-2">
