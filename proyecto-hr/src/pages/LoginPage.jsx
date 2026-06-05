@@ -20,6 +20,10 @@ export default function LoginPage() {
   const [message, setMessage] = useState("");
   const [portalBranding] = useState(defaultBranding);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [touched, setTouched] = useState({});
+
+  const emailValid = !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+  const passwordOk = form.password.length >= 6;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -140,20 +144,34 @@ export default function LoginPage() {
 
           {mode === "login" && (
             <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
-              <input
-                type="email"
-                placeholder="Correo electrónico"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className={inputClass}
-              />
-              <input
-                type="password"
-                placeholder="Contraseña"
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className={inputClass}
-              />
+              <div>
+                <input
+                  type="email"
+                  placeholder="Correo electrónico"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  onBlur={() => setTouched((t) => ({ ...t, email: true }))}
+                  className={`${inputClass} ${touched.email && !emailValid ? "border-rose-400 focus:border-rose-400" : ""}`}
+                  autoComplete="email"
+                />
+                {touched.email && !emailValid ? (
+                  <p className="mt-1.5 px-1 text-xs text-rose-300">Ingresá un correo válido.</p>
+                ) : null}
+              </div>
+              <div>
+                <input
+                  type="password"
+                  placeholder="Contraseña"
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  onBlur={() => setTouched((t) => ({ ...t, password: true }))}
+                  className={`${inputClass} ${touched.password && !passwordOk ? "border-rose-400 focus:border-rose-400" : ""}`}
+                  autoComplete="current-password"
+                />
+                {touched.password && !passwordOk ? (
+                  <p className="mt-1.5 px-1 text-xs text-rose-300">La contraseña necesita al menos 6 caracteres.</p>
+                ) : null}
+              </div>
               <button
                 type="submit"
                 disabled={isSubmitting}
