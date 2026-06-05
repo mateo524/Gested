@@ -34,7 +34,7 @@ function SurfaceCard({ title, subtitle, children, actions }) {
   );
 }
 
-function StatCard({ label, value, hint, accent = "teal" }) {
+function StatCard({ label, value, hint, accent = "teal", onClick }) {
   const accentClass =
     accent === "green"
       ? "from-emerald-500/10 to-[#0c1920] border-emerald-400/15 shadow-[0_4px_20px_rgba(34,197,94,0.07)]"
@@ -42,12 +42,20 @@ function StatCard({ label, value, hint, accent = "teal" }) {
         ? "from-amber-500/10 to-[#0c1920] border-amber-300/15 shadow-[0_4px_20px_rgba(251,191,36,0.07)]"
         : "from-[#14b8a6]/10 to-[#0c1920] border-[#14b8a6]/20 shadow-[0_4px_20px_rgba(20,184,166,0.09)]";
 
+  const Tag = onClick ? "button" : "article";
   return (
-    <article className={`rounded-2xl border bg-gradient-to-br p-4 ${accentClass}`}>
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`w-full rounded-2xl border bg-gradient-to-br p-4 text-left ${accentClass} ${onClick ? "transition hover:ring-1 hover:ring-white/20 hover:brightness-110 cursor-pointer" : ""}`}
+    >
       <p className="text-[11px] text-[#7a98a8] uppercase tracking-[.1em] font-medium">{label}</p>
       <p className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</p>
       <p className="mt-1 text-[11px] text-[#7a98a8]">{hint}</p>
-    </article>
+      {onClick ? (
+        <p className="mt-2 text-[10px] text-[#14b8a6] font-medium">Ver →</p>
+      ) : null}
+    </Tag>
   );
 }
 
@@ -433,24 +441,28 @@ export default function DashboardPage() {
           value: summary.superAdmin.totalCompanies || 0,
           hint: `${summary.superAdmin.activeCompanies || 0} activas`,
           accent: "blue",
+          goTo: "organizaciones",
         },
         {
           label: "Empleados visibles",
           value: summary.cards?.[0]?.value || 0,
           hint: "Dentro de la organización activa",
           accent: "green",
+          goTo: "empleados",
         },
         {
           label: "Evaluaciones pendientes",
           value: summary.educational?.pendingEvaluations || 0,
           hint: `${summary.educational?.evaluationsTotal || 0} registradas`,
           accent: "amber",
+          goTo: "evaluaciones",
         },
         {
           label: "Ciclos activos",
           value: summary.cards?.[2]?.value || 0,
           hint: "Estado actual del período",
           accent: "blue",
+          goTo: "ciclos",
         }
       );
       return cards;
@@ -462,24 +474,28 @@ export default function DashboardPage() {
         value: isEmpleado ? summary.cards?.[3]?.value || "0.00" : summary.cards?.[0]?.value || 0,
         hint: isEmpleado ? summary.cards?.[3]?.hint || "Sin datos" : `${summary.educational?.activeUsers || 0} usuarios activos`,
         accent: "blue",
+        goTo: isEmpleado ? "planes" : "empleados",
       },
       {
         label: "Evaluaciones pendientes",
         value: summary.educational?.pendingEvaluations || 0,
         hint: `${summary.educational?.evaluationsTotal || 0} evaluaciones visibles`,
         accent: "amber",
+        goTo: "evaluaciones",
       },
       {
         label: "Ciclos activos",
         value: summary.cards?.[2]?.value || 0,
         hint: "Seguimiento del período actual",
         accent: "blue",
+        goTo: "ciclos",
       },
       {
         label: "Planes de desarrollo",
         value: training.length || 0,
         hint: training.length ? "Focos abiertos de seguimiento" : "Todavía sin planes visibles",
         accent: "green",
+        goTo: "planes",
       }
     );
 
@@ -592,7 +608,14 @@ export default function DashboardPage() {
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (
-          <StatCard key={card.label} label={card.label} value={card.value} hint={card.hint} accent={card.accent} />
+          <StatCard
+            key={card.label}
+            label={card.label}
+            value={card.value}
+            hint={card.hint}
+            accent={card.accent}
+            onClick={card.goTo ? () => setView(card.goTo) : undefined}
+          />
         ))}
       </section>
 

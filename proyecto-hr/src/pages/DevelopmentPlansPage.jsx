@@ -567,7 +567,18 @@ export default function DevelopmentPlansPage() {
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-          <div className="flex flex-wrap gap-3">
+          <div className="grid gap-3 md:grid-cols-3">
+            <div className="relative">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7f99a8]">
+                <circle cx="6.5" cy="6.5" r="4.5" /><path d="M11 11l3 3" />
+              </svg>
+              <input
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] py-3 pl-8 pr-4 text-sm text-white outline-none transition focus:border-[#14b8a6] placeholder:text-[#7f99a8]"
+                placeholder="Buscar plan..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
             <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={filters.employeeId} onChange={(event) => setFilters({ ...filters, employeeId: event.target.value })}>
               <option value="">Todos los empleados</option>
               {employees.map((employee) => (

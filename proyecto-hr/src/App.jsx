@@ -88,7 +88,7 @@ function AppContent() {
   const [view, setView] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
-  const [language, setLanguage] = useState("es");
+  const [language, setLanguage] = useState(() => localStorage.getItem("performia_language") || "es");
 
   // Keep backend awake every 5 min — prevents Render cold starts (15 min sleep threshold).
   useEffect(() => {
@@ -172,10 +172,7 @@ function AppContent() {
   }, [theme]);
 
   useEffect(() => {
-    localStorage.setItem("performia_language", "es");
-    if (language !== "es") {
-      setLanguage("es");
-    }
+    localStorage.setItem("performia_language", language);
   }, [language]);
 
   const t = useMemo(

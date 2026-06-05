@@ -171,37 +171,38 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
   );
 }
 
-function LanguageMenu({ setLanguage, t }) {
+function LanguageMenu({ language, setLanguage, t }) {
   const [open, setOpen] = useState(false);
   const containerRef = useRef(null);
   useClickOutside(containerRef, () => setOpen(false), open);
+  const current = language === "en" ? "EN" : "ES";
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
-        className="rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm text-white transition hover:bg-[#172c39]"
+        className="rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#172c39]"
         aria-label={t("common.language", "Idioma")}
       >
-        ES
+        {current}
       </button>
       {open ? (
         <div className="absolute right-0 z-30 mt-3 w-44 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
-          <button
-            type="button"
-            onClick={() => {
-              setLanguage("es");
-              setOpen(false);
-            }}
-            className="flex w-full items-center justify-between rounded-2xl bg-[#122f55] px-3 py-2 text-left text-sm text-white"
-          >
-            <span>{t("common.spanish", "Español")}</span>
-            <span className="h-2 w-2 rounded-full bg-[#14b8a6]" />
-          </button>
-          <div className="mt-2 rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-2 text-left text-xs text-[#8ea5b3]">
-            English próximamente
-          </div>
+          {[
+            { code: "es", label: "Español" },
+            { code: "en", label: "English (US)" },
+          ].map((lang) => (
+            <button
+              key={lang.code}
+              type="button"
+              onClick={() => { setLanguage(lang.code); setOpen(false); }}
+              className={`flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/5 ${language === lang.code ? "bg-[#122f55]" : ""}`}
+            >
+              <span>{lang.label}</span>
+              {language === lang.code ? <span className="h-2 w-2 rounded-full bg-[#14b8a6]" /> : null}
+            </button>
+          ))}
         </div>
       ) : null}
     </div>
@@ -774,23 +775,6 @@ export default function AppShell({
                   t={t}
                 />
                 <LanguageMenu language={language} setLanguage={setLanguage} t={t} />
-                <button
-                  type="button"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#9fb6c4] transition hover:bg-[#172c39] hover:text-white"
-                  title={theme === "dark" ? t("topbar.light", "Cambiar a modo claro") : t("topbar.dark", "Cambiar a modo oscuro")}
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                    {theme === "dark" ? (
-                      <path d="M21 12.8A9 9 0 0 1 11.2 3 7 7 0 1 0 21 12.8z" />
-                    ) : (
-                      <>
-                        <circle cx="12" cy="12" r="4" />
-                        <path d="M12 2v2.5M12 19.5V22M4.93 4.93l1.77 1.77M17.3 17.3l1.77 1.77M2 12h2.5M19.5 12H22M4.93 19.07l1.77-1.77M17.3 6.7l1.77-1.77" />
-                      </>
-                    )}
-                  </svg>
-                </button>
                 <button
                   type="button"
                   onClick={() => setView("perfil")}
