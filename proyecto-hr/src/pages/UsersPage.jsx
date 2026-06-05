@@ -294,11 +294,20 @@ export default function UsersPage() {
           </div>
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
-            <input className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.nombre ? "border-rose-400/70" : "border-white/15"}`} placeholder="Nombre completo" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
-            {fieldErrors.nombre ? <p className="text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
-            <input className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.email ? "border-rose-400/70" : "border-white/15"}`} placeholder="Email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
-            {fieldErrors.email ? <p className="text-xs text-rose-300">{fieldErrors.email}</p> : null}
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" type="password" placeholder={editingId ? "Nueva password (opcional)" : "Password inicial (opcional)"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+            <label className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">Nombre completo</span>
+              <input aria-label="Nombre completo" className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.nombre ? "border-rose-400/70" : "border-white/15"}`} placeholder="Ej: Ana Pérez" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+              {fieldErrors.nombre ? <p className="mt-1 text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">Email de acceso</span>
+              <input aria-label="Email de acceso" className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.email ? "border-rose-400/70" : "border-white/15"}`} placeholder="usuario@organizacion.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+              {fieldErrors.email ? <p className="mt-1 text-xs text-rose-300">{fieldErrors.email}</p> : null}
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">{editingId ? "Nueva contraseña (opcional)" : "Contraseña inicial (opcional)"}</span>
+              <input aria-label="Contraseña" className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" type="password" placeholder={editingId ? "Dejar vacío para no cambiar" : "Se genera automáticamente si está vacío"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+            </label>
             <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.roleId ? "border-rose-400/70" : "border-white/15"}`} value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
               <option value="">Selecciona un rol</option>
               {availableRoles.map((role) => (

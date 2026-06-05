@@ -333,9 +333,9 @@ export default function EducationalExportsPage() {
           Este flujo queda disponible para casos especiales, históricos o de soporte. Para el uso diario conviene trabajar desde la plantilla oficial y el flujo unificado.
         </p>
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">1. Subir archivo</span>
-          <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>2. Validar y corregir</span>
-          <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#22c55e]/40 bg-[#123224] text-[#8be6ac]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>3. Confirmar lote</span>
+          <span className="rounded-full border border-[#14b8a6]/40 bg-[#0d1e22] px-3 py-1 text-xs text-[#14b8a6]">1. Subir archivo</span>
+          <span className={`rounded-full px-3 py-1 text-xs ${importPreview ? "border border-[#14b8a6]/40 bg-[#0d1e22] text-[#14b8a6]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>2. Validar y corregir</span>
+          <span className={`rounded-full px-3 py-1 text-xs ${importResult ? "border border-[#14b8a6]/40 bg-[#0d1e22] text-[#14b8a6]" : "border border-white/20 bg-[#0f1f28] text-[#c5d5de]"}`}>3. Confirmar lote</span>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" className="rounded-xl border border-white/20 px-3 py-2 text-xs font-semibold text-[#c5d5de]" onClick={() => downloadTemplate("employees")}>
