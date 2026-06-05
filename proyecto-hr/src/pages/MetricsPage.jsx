@@ -160,7 +160,7 @@ function ScoreButtons({ value, disabled, onChange }) {
           onClick={() => onChange(level)}
           className={`flex h-9 w-9 items-center justify-center rounded-2xl border text-sm font-semibold transition ${
             value === level
-              ? "border-[#4f7cff] bg-[#1e3a8a] text-white shadow-[0_8px_20px_rgba(30,58,138,0.28)]"
+              ? "border-[#4f7cff] bg-[#14b8a6] text-[#0f172a] shadow-[0_8px_20px_rgba(20,184,166,0.28)]"
               : "border-white/10 bg-[#122530] text-[#d4e1e8] hover:bg-[#17313f]"
           } disabled:cursor-not-allowed disabled:opacity-60`}
         >
@@ -396,7 +396,7 @@ function EvaluationEditor({
           <button
             type="submit"
             disabled={saving}
-            className="rounded-2xl bg-[#1e3a8a] px-5 py-3 text-sm font-semibold text-white disabled:cursor-wait disabled:opacity-60"
+            className="rounded-2xl bg-[#14b8a6] px-5 py-3 text-sm font-semibold text-[#0f172a] disabled:cursor-wait disabled:opacity-60"
           >
             {saving ? "Guardando..." : "Guardar"}
           </button>
@@ -925,7 +925,7 @@ export default function MetricsPage() {
               <button
                 type="button"
                 onClick={() => openEditor("JEFATURA", managerDetail)}
-                className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white"
+                className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a]"
               >
                 {managerDetail ? "Editar evaluación del jefe" : "Crear evaluación del jefe"}
               </button>
@@ -960,7 +960,7 @@ export default function MetricsPage() {
               onClick={() => setActiveTab(tab.key)}
               className={`rounded-2xl px-4 py-2.5 text-sm transition ${
                 activeTab === tab.key
-                  ? "bg-[#1e3a8a] text-white"
+                  ? "bg-[#14b8a6] text-[#0f172a]"
                   : "border border-white/10 bg-[#122530] text-[#afc3ce]"
               }`}
             >

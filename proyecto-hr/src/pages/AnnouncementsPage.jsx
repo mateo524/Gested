@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -418,7 +418,7 @@ export default function AnnouncementsPage() {
             type="button"
             onClick={() => setFilter("all")}
             className={`rounded-2xl px-4 py-2.5 text-sm transition ${
-              filter === "all" ? "bg-[#1e3a8a] text-white" : "border border-white/10 bg-[#12222d] text-[#c7d5dc]"
+              filter === "all" ? "bg-[#14b8a6] text-[#0f172a]" : "border border-white/10 bg-[#12222d] text-[#c7d5dc]"
             }`}
           >
             Todas
@@ -427,7 +427,7 @@ export default function AnnouncementsPage() {
             type="button"
             onClick={() => setFilter("unread")}
             className={`rounded-2xl px-4 py-2.5 text-sm transition ${
-              filter === "unread" ? "bg-[#1e3a8a] text-white" : "border border-white/10 bg-[#12222d] text-[#c7d5dc]"
+              filter === "unread" ? "bg-[#14b8a6] text-[#0f172a]" : "border border-white/10 bg-[#12222d] text-[#c7d5dc]"
             }`}
           >
             No vistas
@@ -444,7 +444,7 @@ export default function AnnouncementsPage() {
             <button
               type="button"
               onClick={startCreate}
-              className="rounded-2xl bg-[#1e3a8a] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#2a4db8]"
+              className="rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-medium text-[#0f172a] transition hover:bg-[#0d9488]"
             >
               Nueva novedad
             </button>
@@ -608,7 +608,7 @@ export default function AnnouncementsPage() {
               <button
                 type="submit"
                 disabled={isSaving}
-                className="rounded-2xl bg-[#1e3a8a] px-6 py-3 font-semibold text-white transition hover:bg-[#2a4db8] disabled:cursor-not-allowed disabled:opacity-60"
+                className="rounded-2xl bg-[#14b8a6] px-6 py-3 font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {isSaving ? "Guardando..." : editingId ? "Guardar cambios" : "Publicar novedad"}
               </button>

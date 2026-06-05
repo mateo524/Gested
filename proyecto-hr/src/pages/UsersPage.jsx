@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -305,7 +305,7 @@ export default function UsersPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white disabled:cursor-wait disabled:opacity-70"
+              className="w-full rounded-2xl bg-[#14b8a6] py-3 font-semibold text-[#0f172a] disabled:cursor-wait disabled:opacity-70"
             >
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear usuario"}
             </button>

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+﻿import { useRef } from "react";
 import useClickOutside from "../hooks/useClickOutside";
 
 export default function ConfirmDialog({
@@ -36,7 +36,7 @@ export default function ConfirmDialog({
         <div className="flex items-start gap-4">
           <div
             className={`mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${
-              destructive ? "bg-rose-500/15 text-rose-100" : "bg-[#1e3a8a]/20 text-[#dbe7ff]"
+              destructive ? "bg-rose-500/15 text-rose-100" : "bg-[#14b8a6]/20 text-[#ccfbf1]"
             }`}
           >
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -78,8 +78,8 @@ export default function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`rounded-2xl px-4 py-2.5 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-60 ${
-              destructive ? "bg-rose-600 hover:bg-rose-500" : "bg-[#1e3a8a] hover:bg-[#2a4db8]"
+            className={`rounded-2xl px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+              destructive ? "bg-rose-600 hover:bg-rose-500 text-white" : "bg-[#14b8a6] hover:bg-[#0d9488] text-[#0f172a]"
             }`}
           >
             {loading ? "Procesando..." : confirmLabel}

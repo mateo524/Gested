@@ -1,8 +1,8 @@
-export const designTokens = {
+﻿export const designTokens = {
   colors: {
-    primary: "#1e3a8a",
-    primaryDark: "#172554",
-    primaryLight: "#dbeafe",
+    primary: "#14b8a6",
+    primaryDark: "#0d9488",
+    primaryLight: "#ccfbf1",
     accent: "#22c55e",
     accentLight: "#dcfce7",
     slate: "#0f172a",
