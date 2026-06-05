@@ -59,6 +59,198 @@ function pct(value, total) {
   return Math.min(100, Math.max(0, Math.round((Number(value) / total) * 100)));
 }
 
+function escHtml(str) {
+  return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function buildPdfDocument({ orgName, execSummaryLines, execSignals, overview, priorityEmployees, topPerformers, overviewActions, evaluationCoverage }) {
+  const date = new Date().toLocaleDateString("es-AR", { dateStyle: "long" });
+  const avg = overview?.summary?.averageScore || 0;
+  const pending = overview?.summary?.evaluationsPending || 0;
+  const total = overview?.summary?.employeesTotal || 0;
+  const active = overview?.summary?.evaluationsTotal || 0;
+  const activePlans = overview?.development?.active || 0;
+  const kpisAtRisk = safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0);
+
+  const toneCard = (tone) =>
+    tone === "success" ? "card-success" : tone === "warning" ? "card-warning" : tone === "danger" ? "card-danger" : "card-default";
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Ejecutivo — ZENTOR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', Arial, sans-serif; color: #0f172a; background: #fff; font-size: 10.5pt; line-height: 1.55; }
+    @page { size: A4; margin: 18mm 20mm; }
+
+    /* Header */
+    .hdr { display: flex; justify-content: space-between; align-items: flex-start; padding-bottom: 14px; border-bottom: 2.5px solid #14b8a6; margin-bottom: 18px; }
+    .hdr-brand .logo { font-size: 21pt; font-weight: 800; letter-spacing: -1px; color: #0f172a; }
+    .hdr-brand .logo span { color: #14b8a6; }
+    .hdr-brand .sub { font-size: 8.5pt; color: #64748b; margin-top: 2px; }
+    .hdr-meta { text-align: right; }
+    .hdr-meta p { font-size: 8.5pt; color: #475569; margin-top: 2px; }
+    .hdr-meta strong { color: #0f172a; }
+
+    /* Section */
+    .sec { margin-bottom: 18px; break-inside: avoid; }
+    .sec-title { font-size: 7.5pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: #64748b; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #f1f5f9; }
+
+    /* Summary */
+    .summary p { font-size: 10.5pt; color: #334155; margin-bottom: 5px; line-height: 1.65; }
+
+    /* Grid */
+    .g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; }
+    .g5 { display: grid; grid-template-columns: repeat(5,1fr); gap: 8px; }
+    .g2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; }
+
+    /* Metric cards */
+    .mc { border: 1px solid #e2e8f0; border-radius: 9px; padding: 11px 12px; }
+    .mc-label { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #94a3b8; }
+    .mc-value { font-size: 18pt; font-weight: 800; color: #0f172a; margin: 4px 0 2px; line-height: 1; }
+    .mc-hint { font-size: 7.5pt; color: #64748b; }
+    .card-success { border-color: #bbf7d0; background: #f0fdf4; }
+    .card-success .mc-value { color: #15803d; }
+    .card-warning { border-color: #fde68a; background: #fffbeb; }
+    .card-warning .mc-value { color: #b45309; }
+    .card-danger { border-color: #fecaca; background: #fef2f2; }
+    .card-danger .mc-value { color: #b91c1c; }
+    .card-default { border-color: #e2e8f0; background: #f8fafc; }
+
+    /* Progress bar */
+    .pb { height: 4px; border-radius: 3px; background: #e2e8f0; margin-top: 7px; overflow: hidden; }
+    .pb-fill { height: 100%; border-radius: 3px; }
+    .pb-green { background: #22c55e; }
+    .pb-amber { background: #f59e0b; }
+    .pb-red { background: #ef4444; }
+
+    /* People rows */
+    .person { display: flex; align-items: center; justify-content: space-between; padding: 7px 11px; border: 1px solid #f1f5f9; border-radius: 8px; margin-bottom: 5px; background: #f8fafc; }
+    .person-name { font-weight: 600; font-size: 9.5pt; }
+    .person-sub { font-size: 7.5pt; color: #64748b; margin-top: 1px; }
+    .badge { font-size: 9pt; font-weight: 700; padding: 2px 10px; border-radius: 99px; white-space: nowrap; }
+    .badge-low { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .badge-high { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-mid { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+
+    /* Actions */
+    .action { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f1f5f9; }
+    .action:last-child { border-bottom: none; }
+    .pri { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; padding: 2px 7px; border-radius: 99px; white-space: nowrap; margin-top: 2px; flex-shrink: 0; }
+    .pri-high { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+    .pri-med { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+    .pri-low { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .action-desc { font-size: 9.5pt; color: #334155; }
+    .action-emp { font-size: 7.5pt; color: #64748b; margin-top: 1px; }
+
+    /* Divider */
+    hr { border: none; border-top: 1px solid #f1f5f9; margin: 14px 0; }
+
+    /* Footer */
+    .ftr { margin-top: 22px; padding-top: 12px; border-top: 1.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+    .ftr p { font-size: 7.5pt; color: #94a3b8; }
+    .ftr strong { color: #14b8a6; }
+
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+
+  <div class="hdr">
+    <div class="hdr-brand">
+      <div class="logo">ZEN<span>TOR</span></div>
+      <div class="sub">Reporte Ejecutivo de Desempeño</div>
+    </div>
+    <div class="hdr-meta">
+      ${orgName ? `<p><strong>Organización:</strong> ${escHtml(orgName)}</p>` : ""}
+      <p><strong>Generado:</strong> ${date}</p>
+    </div>
+  </div>
+
+  ${execSummaryLines.length ? `
+  <div class="sec">
+    <p class="sec-title">Resumen ejecutivo</p>
+    <div class="summary">${execSummaryLines.map(l => `<p>${escHtml(l)}</p>`).join("")}</div>
+  </div>` : ""}
+
+  <div class="sec">
+    <p class="sec-title">Indicadores clave del período</p>
+    <div class="g4">
+      ${execSignals.map(s => `
+      <div class="mc ${toneCard(s.tone)}">
+        <p class="mc-label">${escHtml(s.label)}</p>
+        <p class="mc-value">${escHtml(String(s.value))}</p>
+        <p class="mc-hint">${escHtml(s.hint)}</p>
+      </div>`).join("")}
+    </div>
+  </div>
+
+  <div class="sec">
+    <p class="sec-title">Métricas del período</p>
+    <div class="g5">
+      <div class="mc card-default"><p class="mc-label">Personas</p><p class="mc-value">${total}</p><p class="mc-hint">Dentro del alcance</p></div>
+      <div class="mc ${avg >= 4 ? "card-success" : avg >= 3 ? "card-warning" : "card-danger"}"><p class="mc-label">Desempeño</p><p class="mc-value">${avg.toFixed(2)}</p><p class="mc-hint">Promedio / 5.0</p><div class="pb"><div class="pb-fill ${avg >= 4 ? "pb-green" : avg >= 3 ? "pb-amber" : "pb-red"}" style="width:${Math.min(100, (avg/5)*100)}%"></div></div></div>
+      <div class="mc ${pending === 0 ? "card-success" : "card-warning"}"><p class="mc-label">Ev. pendientes</p><p class="mc-value">${pending}</p><p class="mc-hint">${evaluationCoverage.pct}% completadas</p><div class="pb"><div class="pb-fill ${evaluationCoverage.pct >= 80 ? "pb-green" : evaluationCoverage.pct >= 50 ? "pb-amber" : "pb-red"}" style="width:${evaluationCoverage.pct}%"></div></div></div>
+      <div class="mc ${kpisAtRisk === 0 ? "card-success" : "card-danger"}"><p class="mc-label">Obj. en riesgo</p><p class="mc-value">${kpisAtRisk}</p><p class="mc-hint">KPIs + OKRs</p></div>
+      <div class="mc card-default"><p class="mc-label">Planes activos</p><p class="mc-value">${activePlans}</p><p class="mc-hint">De desarrollo</p></div>
+    </div>
+  </div>
+
+  ${priorityEmployees.length ? `
+  <div class="sec" style="break-before:auto">
+    <p class="sec-title">Personas que requieren atención (${priorityEmployees.length})</p>
+    ${priorityEmployees.slice(0, 8).map(e => {
+      const score = e.averageScore || 0;
+      const cls = score < 2.5 ? "badge-low" : score < 3.5 ? "badge-mid" : "badge-high";
+      return `<div class="person">
+        <div>
+          <p class="person-name">${escHtml([e.apellido, e.nombre].filter(Boolean).join(", "))}</p>
+          <p class="person-sub">${escHtml([e.cargo, e.area].filter(Boolean).join(" · "))}</p>
+        </div>
+        <span class="badge ${cls}">${score > 0 ? score.toFixed(1) : "—"}</span>
+      </div>`;
+    }).join("")}
+  </div>` : ""}
+
+  ${topPerformers.length ? `
+  <div class="sec">
+    <p class="sec-title">Top desempeños</p>
+    ${topPerformers.map(e => `
+    <div class="person">
+      <div>
+        <p class="person-name">${escHtml([e.apellido, e.nombre].filter(Boolean).join(", "))}</p>
+        <p class="person-sub">${escHtml([e.cargo, e.area].filter(Boolean).join(" · "))}</p>
+      </div>
+      <span class="badge badge-high">${e.averageScore ? e.averageScore.toFixed(1) : "—"}</span>
+    </div>`).join("")}
+  </div>` : ""}
+
+  ${overviewActions.length ? `
+  <div class="sec">
+    <p class="sec-title">Acciones recomendadas</p>
+    ${overviewActions.slice(0, 8).map(a => `
+    <div class="action">
+      <span class="pri ${a.severity === "high" ? "pri-high" : a.severity === "medium" ? "pri-med" : "pri-low"}">${a.severity === "high" ? "Alta" : a.severity === "medium" ? "Media" : "Baja"}</span>
+      <div>
+        <p class="action-desc">${escHtml(a.description || a.title || "")}</p>
+        ${a.employeeName ? `<p class="action-emp">${escHtml(a.employeeName)}</p>` : ""}
+      </div>
+    </div>`).join("")}
+  </div>` : ""}
+
+  <div class="ftr">
+    <p>Generado por <strong>ZENTOR</strong> · Plataforma de gestión del desempeño</p>
+    <p>${date}</p>
+  </div>
+
+  <script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+}
+
 function safeNum(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -471,6 +663,26 @@ export default function ExecutiveReportPage() {
 
   const actionPrioritySummary = useMemo(() => buildGeneralActionSummary(overviewActions), [overviewActions]);
 
+  function handlePrintPDF() {
+    if (!overview) return;
+    const orgName = user?.companyName || "";
+    const html = buildPdfDocument({
+      orgName,
+      execSummaryLines,
+      execSignals,
+      overview,
+      priorityEmployees,
+      topPerformers,
+      overviewActions,
+      evaluationCoverage,
+    });
+    const win = window.open("", "_blank", "width=900,height=700");
+    if (!win) return;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }
+
   const evaluationChart = useMemo(
     () => [
       {
@@ -798,15 +1010,14 @@ export default function ExecutiveReportPage() {
               actions={
                 <button
                   type="button"
-                  onClick={() => window.print()}
-                  className="inline-flex items-center gap-2 rounded-2xl border border-white/15 px-4 py-2.5 text-sm text-[#c5d5de] transition hover:bg-white/5 no-print"
+                  onClick={handlePrintPDF}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488]"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 text-[#7a9aaa]">
-                    <path d="M6 9V2h12v7" />
-                    <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-                    <path d="M6 14h12v8H6z" />
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
+                    <path d="M12 4v10M8 10l4 4 4-4" />
+                    <path d="M4 20h16" />
                   </svg>
-                  Imprimir / PDF
+                  Exportar PDF
                 </button>
               }
             >
