@@ -195,6 +195,8 @@ export default function DashboardPage() {
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadSlow, setLoadSlow] = useState(false);
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
   const greeting = useGreeting();
 
@@ -213,27 +215,43 @@ export default function DashboardPage() {
 
     const cacheKey = getDashboardCacheKey(user, activeCompanyId);
     const cachedSummary = sessionStorage.getItem(cacheKey);
+    let hasCached = false;
     if (cachedSummary) {
       try {
         setSummary(JSON.parse(cachedSummary));
+        hasCached = true;
+        setIsLoading(false);
       } catch {
         sessionStorage.removeItem(cacheKey);
       }
     }
 
+    // Show "slow loading" hint after 7s only if there's no cached data
+    let slowTimer;
+    if (!hasCached) {
+      slowTimer = setTimeout(() => setLoadSlow(true), 7000);
+    }
+
     const controller = new AbortController();
-    apiFetch("/dashboard/summary", { token, timeoutMs: 20000, signal: controller.signal })
+    apiFetch("/dashboard/summary", { token, timeoutMs: 25000, signal: controller.signal })
       .then((summaryData) => {
         setSummary(summaryData);
         sessionStorage.setItem(cacheKey, JSON.stringify(summaryData));
         setMessage("");
+        setIsLoading(false);
+        setLoadSlow(false);
       })
       .catch((error) => {
         if (controller.signal.aborted) return;
         setMessage(error.message);
+        setIsLoading(false);
+        setLoadSlow(false);
       });
 
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      clearTimeout(slowTimer);
+    };
   }, [token, activeCompanyId, user]);
 
   const training = useMemo(() => summary?.decisionInsights?.trainingRecommendations || [], [summary]);
@@ -513,12 +531,38 @@ export default function DashboardPage() {
     }
   }
 
-  if (message) {
-    return <p className="pf-alert-error">{message}</p>;
+  if (isLoading && !summary) {
+    return (
+      <div className="space-y-4">
+        <DashboardSkeleton />
+        {loadSlow ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-amber-300/20 bg-amber-500/8 px-4 py-3 text-sm text-amber-200">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 animate-spin">
+              <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="10" />
+            </svg>
+            El servidor está iniciando — el primer acceso del día puede tardar hasta 30 segundos.
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
-  if (!summary) {
-    return <DashboardSkeleton />;
+  if (!summary && message) {
+    return (
+      <div className="space-y-4">
+        <DashboardSkeleton />
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-rose-300/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-200">
+          <span>{message}</span>
+          <button
+            type="button"
+            onClick={() => { setMessage(""); setIsLoading(true); setLoadSlow(false); }}
+            className="shrink-0 rounded-xl border border-rose-300/30 px-3 py-1.5 text-xs font-semibold transition hover:bg-rose-500/15"
+          >
+            Reintentar
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

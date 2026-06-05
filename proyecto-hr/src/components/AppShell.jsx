@@ -208,16 +208,18 @@ function LanguageMenu({ setLanguage, t }) {
   );
 }
 
-function SearchResultItem({ item, onSelect }) {
+function SearchResultItem({ item, onSelect, focused }) {
   return (
     <button
       type="button"
       onClick={() => onSelect(item)}
-      className="flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-3 text-left transition hover:bg-white/5"
+      className={`flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition ${
+        focused ? "bg-[#14b8a6]/10 ring-1 ring-[#14b8a6]/30" : "hover:bg-white/5"
+      }`}
     >
       <div className="min-w-0">
-        <p className="truncate text-sm font-semibold text-white">{item.label}</p>
-        <p className="mt-1 text-xs text-[#8ea5b3]">{item.detail}</p>
+        <p className={`truncate text-sm font-semibold ${focused ? "text-[#14b8a6]" : "text-white"}`}>{item.label}</p>
+        <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.detail}</p>
       </div>
       <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
         {item.group}
@@ -392,33 +394,47 @@ export default function AppShell({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [searchFocusedIdx, setSearchFocusedIdx] = useState(-1);
   const [backendDown, setBackendDown] = useState(false);
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
 
-  // Cmd+K / Ctrl+K → focus search
+  // Cmd+K / Ctrl+K → focus search + arrow key navigation
   useEffect(() => {
     function onKey(e) {
       if ((e.metaKey || e.ctrlKey) && e.key === "k") {
         e.preventDefault();
         setSearchOpen(true);
+        setSearchFocusedIdx(-1);
         searchRef.current?.querySelector("input")?.focus();
       }
       if (e.key === "Escape") {
         setSearchOpen(false);
+        setSearchFocusedIdx(-1);
         setMobileMenuOpen(false);
+      }
+      if (!searchOpen) return;
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSearchFocusedIdx((i) => i + 1);
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSearchFocusedIdx((i) => Math.max(-1, i - 1));
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [searchOpen]);
 
   // Backend health check — show banner if unreachable
   useEffect(() => {
     let cancelled = false;
     async function check() {
       try {
-        const res = await fetch(`${apiUrl}/health`, { signal: AbortSignal.timeout(8000) });
+        const ctrl = new AbortController();
+        const t = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(`${apiUrl}/health`, { signal: ctrl.signal }).finally(() => clearTimeout(t));
         if (!cancelled) setBackendDown(!res.ok);
       } catch {
         if (!cancelled) setBackendDown(true);
@@ -533,6 +549,7 @@ export default function AppShell({
     setView(item.viewKey);
     setSearchQuery("");
     setSearchOpen(false);
+    setSearchFocusedIdx(-1);
   }
 
   function handleOpenAnnouncement(item) {
@@ -709,10 +726,20 @@ export default function AppShell({
                     className="w-full bg-transparent text-sm text-[#e8eef1] outline-none placeholder:text-[#7f99a8]"
                     placeholder="Buscar… (Ctrl+K)"
                     value={searchQuery}
-                    onFocus={() => setSearchOpen(true)}
+                    onFocus={() => { setSearchOpen(true); setSearchFocusedIdx(-1); }}
                     onChange={(event) => {
                       setSearchQuery(event.target.value);
                       setSearchOpen(true);
+                      setSearchFocusedIdx(-1);
+                    }}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && searchResults[searchFocusedIdx]) {
+                        event.preventDefault();
+                        handleSearchSelect(searchResults[searchFocusedIdx]);
+                      } else if (event.key === "Enter" && searchResults.length === 1) {
+                        event.preventDefault();
+                        handleSearchSelect(searchResults[0]);
+                      }
                     }}
                     aria-label="Buscar en ZENTOR"
                   />
@@ -720,8 +747,13 @@ export default function AppShell({
                 {searchOpen && searchQuery.trim() ? (
                   <div className="absolute inset-x-0 z-30 mt-2 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_32px_rgba(2,8,23,0.35)]">
                     {searchResults.length ? (
-                      searchResults.map((item) => (
-                        <SearchResultItem key={item.viewKey} item={item} onSelect={handleSearchSelect} />
+                      searchResults.map((item, idx) => (
+                        <SearchResultItem
+                          key={item.viewKey}
+                          item={item}
+                          onSelect={handleSearchSelect}
+                          focused={searchFocusedIdx === idx}
+                        />
                       ))
                     ) : (
                       <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-4 text-sm text-[#8ea5b3]">
