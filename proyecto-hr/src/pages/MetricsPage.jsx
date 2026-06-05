@@ -948,38 +948,33 @@ export default function MetricsPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <section className="pf-surface pf-surface-pad">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-4xl">
-            <p className="pf-section-title">Desempeño</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Mediciones de desempeño</h1>
-            <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Las mediciones de desempeño combinan metas, competencias, autoevaluaciones y evidencias para construir el resumen evaluativo.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {canCreateAuto ? (
-              <button
-                type="button"
-                onClick={() => openEditor("AUTOEVALUACION", autoDetail)}
-                className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
-              >
-                {autoDetail ? "Editar autoevaluación" : "Crear autoevaluación"}
-              </button>
-            ) : null}
-            {canSeeManagerSection && canCreateManager ? (
-              <button
-                type="button"
-                onClick={() => openEditor("JEFATURA", managerDetail)}
-                className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a]"
-              >
-                {managerDetail ? "Editar evaluación del jefe" : "Crear evaluación del jefe"}
-              </button>
-            ) : null}
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Desempeño</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Mediciones de desempeño</h2>
         </div>
-      </section>
+        <div className="flex flex-wrap gap-2">
+          {canCreateAuto ? (
+            <button
+              type="button"
+              onClick={() => openEditor("AUTOEVALUACION", autoDetail)}
+              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white"
+            >
+              {autoDetail ? "Editar autoevaluación" : "Crear autoevaluación"}
+            </button>
+          ) : null}
+          {canSeeManagerSection && canCreateManager ? (
+            <button
+              type="button"
+              onClick={() => openEditor("JEFATURA", managerDetail)}
+              className="rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a]"
+            >
+              {managerDetail ? "Editar evaluación del jefe" : "Crear evaluación del jefe"}
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {message.text ? (
         <div
@@ -995,35 +990,10 @@ export default function MetricsPage() {
         </div>
       ) : null}
 
-      <SurfaceCard
-        title="Vista"
-        subtitle="Menos ruido, más claridad: primero desempeño por persona y después objetivos complementarios."
-      >
-        <div className="flex flex-wrap gap-2">
-          {TABS.filter((tab) => canSeeManagerSection || tab.key !== "manager").map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-2xl px-4 py-2.5 text-sm transition ${
-                activeTab === tab.key
-                  ? "bg-[#14b8a6] text-[#0f172a]"
-                  : "border border-white/10 bg-[#122530] text-[#afc3ce]"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
-        </div>
-      </SurfaceCard>
-
-      <SurfaceCard
-        title="Persona evaluada"
-        subtitle="Elegí una persona para revisar su desempeño, autoevaluaciones y evaluación del evaluador."
-      >
-        <div className="relative">
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
+        <div className="relative min-w-[180px] flex-1">
           <select
-            className="pf-select"
+            className="pf-select w-full"
             value={selectedEmployeeId}
             disabled={!visibleEmployees.length}
             onChange={(event) => setSelectedEmployeeId(event.target.value)}
@@ -1034,12 +1004,27 @@ export default function MetricsPage() {
               </option>
             ))}
           </select>
-          <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[#7f99a8] text-sm">▼</span>
           {!visibleEmployees.length ? (
-            <p className="mt-2 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
+            <p className="mt-1 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
           ) : null}
         </div>
-      </SurfaceCard>
+        <div className="flex flex-wrap gap-2">
+          {TABS.filter((tab) => canSeeManagerSection || tab.key !== "manager").map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-2xl px-3 py-2 text-sm transition ${
+                activeTab === tab.key
+                  ? "bg-[#14b8a6] text-[#0f172a]"
+                  : "border border-white/10 bg-[#122530] text-[#afc3ce]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div ref={detailRef}>
         <EvaluationHeader
@@ -1491,35 +1476,6 @@ export default function MetricsPage() {
           />
         </div>
       ) : null}
-
-      <SurfaceCard
-        title="Compatibilidad con KPIs / OKRs"
-        subtitle="Los objetivos existentes siguen funcionando, pero ahora quedan como apoyo del proceso de evaluación y no como vista principal."
-        actions={
-          <button
-            type="button"
-            onClick={() => setView("evaluaciones")}
-            className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-white"
-          >
-            Ir a Evaluaciones
-          </button>
-        }
-      >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-            <p className="text-sm font-semibold text-white">Qué mide Evaluaciones</p>
-            <p className="mt-2 text-sm text-[#9fb6c4]">
-              Desempeño por competencias, autoevaluación, evaluación superior, evidencias y resumen final.
-            </p>
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-            <p className="text-sm font-semibold text-white">Qué conservan KPIs / OKRs</p>
-            <p className="mt-2 text-sm text-[#9fb6c4]">
-              Completa y revisa el contenido evaluativo: autoevaluación, evaluación del evaluador, descriptores, evidencias y resumen final.
-            </p>
-          </div>
-        </div>
-      </SurfaceCard>
 
       <ConfirmDialog
         open={Boolean(confirmDeleteId)}

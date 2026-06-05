@@ -585,33 +585,27 @@ export default function AppShell({
             )}
           </div>
 
-          <div className="border-t border-white/10 px-3 py-4">
+          <div className="border-t border-white/10 px-3 py-2.5">
             {!sidebarCollapsed ? (
               <button
                 type="button"
                 onClick={() => setView("perfil")}
-                className="w-full rounded-3xl border border-white/10 bg-[#101d25] p-4 text-left transition hover:bg-[#13232d]"
+                className="flex w-full items-center gap-2.5 rounded-2xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]"
               >
-                <div className="flex items-center gap-3">
-                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={displayName} className="h-12 w-12 rounded-2xl object-cover" />
-                  ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#14b8a6] text-sm font-semibold text-[#0f172a]">
-                      {userInitials}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-                    <p className="mt-1 truncate text-xs text-[#14b8a6]">
-                      {user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}
-                    </p>
+                {user?.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={displayName} className="h-8 w-8 shrink-0 rounded-xl object-cover" />
+                ) : (
+                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#14b8a6] text-xs font-semibold text-[#0f172a]">
+                    {userInitials}
                   </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-semibold text-white">{displayName}</p>
+                  <p className="truncate text-[11px] text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
                 </div>
-                <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[#14b8a6]">
-                  {user?.roleKey || user?.roleCode || "ROL"}
-                </p>
-                <p className="mt-2 text-xs text-[#7c97a6]">{organizationLabel}</p>
-                <p className="mt-3 text-xs font-medium text-[#c7d5dc]">Mi perfil</p>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0 text-[#7c97a6]">
+                  <path d="M6 3l5 5-5 5" />
+                </svg>
               </button>
             ) : (
               <div className="flex justify-center">

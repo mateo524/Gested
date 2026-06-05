@@ -275,27 +275,15 @@ export default function EvaluationsPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Seguimiento de desempeño</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Gestión de evaluaciones</h3>
-        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Una evaluación mide desempeño durante un ciclo. El contexto define a quién se evalúa, con qué criterios y en qué período.
-        </p>
-      </section>
-
-      <SurfaceCard title="Cómo se construye una evaluación" subtitle="Tomamos como referencia el flujo real de desempeño del formulario 2024.">
-        <div className="grid gap-3 md:grid-cols-6">
-          {["Ciclo", "Metas / competencias", "Autoevaluación", "Evaluación superior", "Evidencias", "Resumen"].map((step, index) => (
-            <article key={step} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Paso {index + 1}</p>
-              <p className="mt-2 text-sm font-semibold text-white">{step}</p>
-            </article>
-          ))}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Evaluaciones</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Gestión de evaluaciones</h2>
         </div>
-      </SurfaceCard>
+      </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <section id="new-eval-form" className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>
           {(() => {

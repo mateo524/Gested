@@ -330,61 +330,28 @@ export default function DevelopmentPlansPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Seguimiento profesional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Desarrollo</h3>
-        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Desarrollo es el seguimiento de las acciones de mejora de las personas y equipos. Acá ves qué planes están activos,
-          vencidos o completados.
-        </p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">
-            Seguimiento por persona y estado
-          </span>
-          <button
-            type="button"
-            onClick={() =>
-              loadPlans().catch((error) => {
-                setMessageType("error");
-                setMessage(error.message);
-              })
-            }
-            className="rounded-full border border-white/15 bg-[#122530] px-3 py-1 text-xs font-medium text-white"
-          >
-            Actualizar planes
-          </button>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Seguimiento profesional</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Planes de desarrollo</h2>
         </div>
-      </section>
+        <button
+          type="button"
+          onClick={() =>
+            loadPlans().catch((error) => {
+              setMessageType("error");
+              setMessage(error.message);
+            })
+          }
+          className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2 text-sm font-medium text-white"
+        >
+          Actualizar
+        </button>
+      </div>
 
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
-        <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-          <div>
-            <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Para que sirven los planes</p>
-            <h4 className="mt-2 text-xl font-semibold text-white">Convertir una necesidad detectada en acciones concretas</h4>
-            <p className="mt-3 text-sm leading-relaxed text-[#9fb6c4]">
-              Los planes de desarrollo convierten una evaluación o necesidad detectada en acciones concretas de mejora, con
-              responsable, fecha objetivo y seguimiento.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {[
-              ["Plan", "La mejora o brecha a trabajar."],
-              ["Responsable", "Quien acompana o hace seguimiento."],
-              ["Acción", "La acción concreta de mejora."],
-              ["Próximo paso", "La fecha y el estado del siguiente seguimiento."],
-            ].map(([title, text]) => (
-              <article key={title} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="mt-2 text-sm text-[#9fb6c4]">{text}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="space-y-6">
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="space-y-4">
           <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
