@@ -43,10 +43,10 @@ function StatCard({ label, value, hint, accent = "blue" }) {
         : "from-[#14b8a6]/10 to-transparent border-[#14b8a6]/20";
 
   return (
-    <article className={`rounded-3xl border bg-gradient-to-br p-5 ${accentClass}`}>
-      <p className="text-sm text-[#8ea5b3]">{label}</p>
-      <p className="mt-3 text-3xl font-semibold tracking-tight text-white">{value}</p>
-      <p className="mt-2 text-sm text-[#a8bdc8]">{hint}</p>
+    <article className={`rounded-2xl border bg-gradient-to-br p-4 ${accentClass}`}>
+      <p className="text-xs text-[#8ea5b3] uppercase tracking-[.08em] font-medium">{label}</p>
+      <p className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</p>
+      <p className="mt-1 text-xs text-[#8ea5b3]">{hint}</p>
     </article>
   );
 }
@@ -522,58 +522,37 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <section className="pf-surface pf-surface-pad">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <p className="pf-section-title">Inicio</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">
-              {greeting}{user?.nombre ? `, ${user.nombre}` : ""}
-            </h1>
-            <p className="mt-1 text-base text-[#7a9aaa]">
-              {user?.isSuperAdmin
-                ? "Vista general de plataforma"
-                : isEmpleado
-                  ? "Tu espacio personal"
-                  : isJefe
-                    ? "Vista de tu equipo"
-                    : "Vista general de la organización"}
-            </p>
-            <p className="mt-2 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Una vista 360 para ver personas, evaluaciones, desarrollo y próximos pasos.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setView("reporte-ejecutivo")}
-              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
-            >
-              Abrir reporte ejecutivo
-            </button>
-            <button
-              type="button"
-              onClick={downloadDecisionReport}
-              disabled={isDownloadingReport}
-              className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:opacity-60"
-            >
-              {isDownloadingReport ? "Descargando..." : "Descargar resumen"}
-            </button>
-          </div>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            {greeting}{user?.nombre ? `, ${user.nombre}` : ""}
+          </h1>
+          <p className="mt-0.5 text-sm text-[#7a9aaa]">
+            {user?.isSuperAdmin ? "Vista general de plataforma" : isEmpleado ? "Tu espacio personal" : isJefe ? "Vista de tu equipo" : "Vista general de la organización"}
+          </p>
         </div>
-      </section>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => setView("reporte-ejecutivo")} className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white">
+            Reporte ejecutivo
+          </button>
+          <button type="button" onClick={downloadDecisionReport} disabled={isDownloadingReport} className="rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] disabled:opacity-60">
+            {isDownloadingReport ? "Descargando..." : "Descargar resumen"}
+          </button>
+        </div>
+      </div>
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <DemoTourCard setView={setView} /> : null}
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (
           <StatCard key={card.label} label={card.label} value={card.value} hint={card.hint} accent={card.accent} />
         ))}
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
         <SurfaceCard
           title="Acciones de hoy"
           subtitle="Tareas concretas según tu rol y el estado actual de la organización."
@@ -637,89 +616,6 @@ export default function DashboardPage() {
         </SurfaceCard>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-2">
-        <SurfaceCard title="Próximos hitos" subtitle="Fechas, cierres o puntos de seguimiento visibles desde los datos actuales.">
-          <div className="space-y-3">
-            {upcomingMilestones.length ? (
-              <CollapsibleList
-                items={upcomingMilestones}
-                initialCount={3}
-                className="space-y-3"
-                renderItem={(item) => (
-                <div key={item.title} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-                  <p className="text-sm font-semibold text-white">{item.title}</p>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{item.detail}</p>
-                </div>
-                )}
-              />
-            ) : (
-              <EmptyState text="Sin hitos próximos. Aparecerán cuando haya ciclos activos con fechas configuradas." />
-            )}
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard title="Accesos rápidos" subtitle="Atajos a los módulos más usados para avanzar sin dar vueltas.">
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            {quickLinks.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                onClick={() => setView(item.view)}
-                className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-left transition hover:border-blue-400/30 hover:bg-[#132530]"
-              >
-                <p className="text-sm font-semibold text-white">{item.label}</p>
-                <p className="mt-1 text-sm text-[#8ea5b3]">
-                {item.view === "empleados" ? "Gestión de personas" :
-                 item.view === "carga-masiva" ? "Importar desde Excel" :
-                 item.view === "reporte-ejecutivo" ? "Ver resumen ejecutivo" :
-                 item.view === "evaluaciones" ? "Ver ciclos y resultados" :
-                 item.view === "metricas" ? "KPIs y objetivos" : "Ir al módulo"}
-              </p>
-              </button>
-            ))}
-          </div>
-        </SurfaceCard>
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
-        <SurfaceCard title="Resumen del desempeño" subtitle="Se apoya en datos visibles del alcance actual.">
-          <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm text-[#8ea5b3]">Promedio general</p>
-              <p className="mt-2 text-2xl font-semibold text-white">{summary.cards?.[3]?.value || "0.00"}</p>
-              <p className="mt-2 text-sm text-[#9fb6c4]">{summary.cards?.[3]?.hint || "Sin datos visibles"}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm text-[#8ea5b3]">Indicadores configurados</p>
-              <p className="mt-2 text-2xl font-semibold text-white">{summary.educational?.metricsTotal || 0}</p>
-              <p className="mt-2 text-sm text-[#9fb6c4]">Mide objetivos e indicadores visibles en tu alcance.</p>
-            </div>
-          </div>
-        </SurfaceCard>
-
-        <SurfaceCard title="Objetivos / indicadores" subtitle="Mostramos solo datos reales que hoy ya existen.">
-          <div className="space-y-3">
-            {training.length ? (
-              <CollapsibleList
-                items={training}
-                initialCount={3}
-                className="space-y-3"
-                renderItem={(item) => (
-                <div key={item.competencia} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-white">{item.competencia}</p>
-                    <ActionBadge priority={item.priority} />
-                  </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{item.action}</p>
-                </div>
-                )}
-              />
-            ) : (
-              <EmptyState text="Sin objetivos o indicadores cargados. Creá competencias e indicadores para empezar a medir." />
-            )}
-          </div>
-        </SurfaceCard>
-      </section>
     </div>
   );
 }

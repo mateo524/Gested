@@ -511,10 +511,10 @@ export default function AppShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#091319] text-[#E8EEF1]">
-      <div className="flex min-h-screen">
+    <div className="h-screen overflow-hidden bg-[#091319] text-[#E8EEF1]">
+      <div className="flex h-full">
         <aside
-          className={`hidden border-r border-white/10 bg-[#0c171d] transition-all lg:flex lg:flex-col ${
+          className={`hidden h-screen shrink-0 border-r border-white/10 bg-[#0c171d] transition-all lg:flex lg:flex-col ${
             sidebarCollapsed ? "w-[92px]" : "w-[288px]"
           }`}
         >
@@ -632,7 +632,7 @@ export default function AppShell({
           </div>
         </aside>
 
-        <div className="flex min-h-screen min-w-0 flex-1 flex-col">
+        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#091319]/95 backdrop-blur">
             <div className="grid gap-4 px-4 py-4 md:grid-cols-[240px_minmax(0,1fr)_auto] md:px-6">
               <div className="flex min-w-0 items-center gap-3">
@@ -746,7 +746,7 @@ export default function AppShell({
             </div>
           </header>
 
-          <main className="flex-1 px-4 py-5 md:px-6">
+          <main className="flex-1 overflow-y-auto px-4 py-5 md:px-6">
             <div className="mx-auto w-full max-w-[1440px]">
               {tokenNearExpiry ? (
                 <div className="mb-5 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
