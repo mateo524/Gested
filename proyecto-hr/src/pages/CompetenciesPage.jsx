@@ -200,7 +200,7 @@ export default function CompetenciesPage() {
   return (
     <div className="space-y-5 overflow-x-hidden">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Modelo de desempeño</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Modelo de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Competencias</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Una <span title="Criterio o habilidad que se evalúa durante un ciclo de desempeño. Puede ser transversal (para toda la org), docente o personalizada." className="cursor-help underline decoration-dotted text-[#c5d5de]">competencia</span> es un criterio o habilidad que se mide en cada evaluación. Podés definirlas transversales, docentes o personalizadas.
@@ -445,7 +445,7 @@ export default function CompetenciesPage() {
                       )}
                     </p>
                     <div className="mt-3 flex gap-2">
-                      <button type="button" onClick={() => handleEdit(competency)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                      <button type="button" onClick={() => handleEdit(competency)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                         Editar
                       </button>
                       <button type="button" onClick={() => setConfirmState({ open: true, competency })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">

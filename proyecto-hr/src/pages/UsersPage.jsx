@@ -340,7 +340,7 @@ export default function UsersPage() {
               <span className="text-sm text-[#9fb6c4]">{selectedIds.length} seleccionados</span>
             </div>
             <div className="mt-3 flex flex-wrap gap-3">
-              <button type="button" onClick={() => runBulkAction("activate")} className="rounded-xl border border-[#22c55e]/40 px-4 py-2 text-sm text-[#8be6ac]">Activar</button>
+              <button type="button" onClick={() => runBulkAction("activate")} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">Activar</button>
               <button type="button" onClick={() => runBulkAction("deactivate")} className="rounded-xl border border-amber-300/40 px-4 py-2 text-sm text-amber-200">Desactivar</button>
               <button type="button" onClick={() => runBulkAction("reset_password")} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">Resetear password</button>
               <button type="button" onClick={() => runBulkAction("delete")} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">Eliminar</button>
@@ -409,7 +409,7 @@ export default function UsersPage() {
                         </div>
                       </label>
                       <div className="flex gap-2">
-                        <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-[#22c55e]/40 px-3 py-1.5 text-xs text-[#8be6ac]">Editar</button>
+                        <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[#c5d5de] transition hover:bg-white/5">Editar</button>
                         <button type="button" onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
                       </div>
                     </div>

@@ -62,7 +62,7 @@ export default function RecordsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Lectura de base</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Lectura de base</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Registros importados</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Esta vista permite revisar los datos ya procesados, filtrar por rol, fuente o término de

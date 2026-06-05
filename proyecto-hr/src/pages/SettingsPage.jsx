@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { ErrorState, LoadingState } from "../components/AppStates";
@@ -78,7 +78,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Control de organización</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Control de organización</p>
         <h3 className="mt-3 text-3xl font-bold text-white">
           Configuración de {activeCompany?.nombre || "la organización"}
         </h3>
