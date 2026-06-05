@@ -171,7 +171,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!token || sessionHydrating) return;
 
-    apiFetch("/auth/me", { token })
+    apiFetch("/auth/me", { token, timeoutMs: 30000 })
       .then(async (nextUser) => {
         localStorage.setItem("user", JSON.stringify(nextUser));
         setUser(nextUser);
@@ -179,8 +179,16 @@ export function AuthProvider({ children }) {
           await hydrateSessionData(token, nextUser);
         }
       })
-      .catch(() => logout());
-  }, [hydrateSessionData, logout, sessionHydrating, token, user]);
+      .catch((error) => {
+        // Only force-logout on explicit 401 (invalid/expired token).
+        // Network errors and timeouts keep the cached session alive —
+        // the user shouldn't be logged out just because Render is warming up.
+        if (error?.status === 401) {
+          logout();
+        }
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, sessionHydrating]); // intentionally omit user to avoid re-running on every user update
 
   useEffect(() => {
     const root = document.documentElement;
