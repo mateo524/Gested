@@ -282,45 +282,53 @@ export default function EvaluationCyclesPage() {
                 </button>
               </div>
             ) : null}
-            {isLoading ? <p className="pf-alert-info">Cargando ciclos...</p> : null}
             {!isLoading && visibleCycles.length
               ? <CollapsibleList
                   items={visibleCycles}
                   initialCount={3}
                   buttonLabelMore={`Ver más (${visibleCycles.length - 3})`}
-                  renderItem={(cycle) => (
-                    <article key={cycle._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                  renderItem={(cycle) => {
+                    const now = new Date();
+                    const end = cycle.fechaFin ? new Date(cycle.fechaFin) : null;
+                    const start = cycle.fechaInicio ? new Date(cycle.fechaInicio) : null;
+                    const isActive = start && end && now >= start && now <= end;
+                    const isExpired = end && now > end;
+                    const estadoLabel = isActive ? "Activo" : isExpired ? "Cerrado" : "Programado";
+                    const estadoCls = isActive
+                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                      : isExpired
+                        ? "border-white/10 bg-[#0c1e28] text-[#6a8a9a]"
+                        : "border-amber-300/25 bg-amber-500/8 text-amber-300";
+                    return (
+                    <article key={cycle._id} className={`rounded-2xl border p-4 ${isActive ? "border-[#14b8a6]/15 bg-[#0d1e22]" : "border-white/10 bg-[#0f1f28]"}`}>
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-lg font-semibold text-white">
-                          {cycle.periodo} {cycle.anio}
-                        </p>
-                        <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
-                          {formatStage(cycle.etapa)}
-                        </span>
-                        <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">
-                          {cycle.estado}
-                        </span>
+                        <p className="font-semibold text-white">{cycle.periodo} {cycle.anio}</p>
+                        <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${estadoCls}`}>{estadoLabel}</span>
+                        <span className="rounded-full border border-white/10 bg-[#0c1e28] px-2.5 py-0.5 text-xs text-[#8fa9b7]">{formatStage(cycle.etapa)}</span>
                       </div>
-                      <p className="mt-2 text-sm text-[#9fb6c4]">
-                        {cycle.fechaInicio ? new Date(cycle.fechaInicio).toLocaleDateString("es-AR") : "-"} al{" "}
-                        {cycle.fechaFin ? new Date(cycle.fechaFin).toLocaleDateString("es-AR") : "-"}
+                      <p className="mt-2 text-sm text-[#8fa9b7]">
+                        {start ? start.toLocaleDateString("es-AR", { dateStyle: "medium" }) : "—"}
+                        {" → "}
+                        {end ? end.toLocaleDateString("es-AR", { dateStyle: "medium" }) : "—"}
                       </p>
                       <div className="mt-3 flex gap-2">
                         <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                           Editar
                         </button>
-                        <button type="button" onClick={() => setConfirmState({ open: true, cycle })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                        <button type="button" onClick={() => setConfirmState({ open: true, cycle })} className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20">
                           Eliminar
                         </button>
                       </div>
                     </article>
-                  )}
+                    );
+                  }}
                 />
               : null}
             {!isLoading && !visibleCycles.length ? (
-              <p className="pf-alert-warning">
-                {searchQuery ? "No encontramos ciclos para la búsqueda actual." : "Todavía no hay ciclos definidos."}
-              </p>
+              <div className="rounded-2xl border border-dashed border-white/10 bg-[#0c1e28] px-5 py-6 text-center">
+                <p className="text-sm font-semibold text-white">{searchQuery ? "Sin ciclos para la búsqueda actual" : "Todavía no hay ciclos definidos"}</p>
+                <p className="mt-1 text-xs text-[#7a9aaa]">{searchQuery ? "Limpiá la búsqueda para ver todos." : "Creá el primer ciclo para empezar a organizar evaluaciones."}</p>
+              </div>
             ) : null}
           </div>
         </section>

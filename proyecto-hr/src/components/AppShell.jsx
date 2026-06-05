@@ -196,7 +196,7 @@ function LanguageMenu({ setLanguage, t }) {
             className="flex w-full items-center justify-between rounded-2xl bg-[#122f55] px-3 py-2 text-left text-sm text-white"
           >
             <span>{t("common.spanish", "Español")}</span>
-            <span className="h-2 w-2 rounded-full bg-[#7ea3ff]" />
+            <span className="h-2 w-2 rounded-full bg-[#14b8a6]" />
           </button>
           <div className="mt-2 rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-2 text-left text-xs text-[#8ea5b3]">
             English próximamente
@@ -602,12 +602,12 @@ export default function AppShell({
                   )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-                    <p className="mt-1 truncate text-xs text-[#7ea3ff]">
+                    <p className="mt-1 truncate text-xs text-[#14b8a6]">
                       {user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}
                     </p>
                   </div>
                 </div>
-                <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[#7ea3ff]">
+                <p className="mt-3 text-xs uppercase tracking-[0.14em] text-[#14b8a6]">
                   {user?.roleKey || user?.roleCode || "ROL"}
                 </p>
                 <p className="mt-2 text-xs text-[#7c97a6]">{organizationLabel}</p>
@@ -733,7 +733,7 @@ export default function AppShell({
                   )}
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-                    <p className="truncate text-xs text-[#7ea3ff]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
+                    <p className="truncate text-xs text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
                   </div>
                 </button>
                 <button

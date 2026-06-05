@@ -276,6 +276,14 @@ function AppContent() {
           {view === "usuarios" && <UsersPage />}
           {view === "roles" && <RolesPage />}
           {view === "settings" && <SettingsPage />}
+          {!["dashboard","novedades","perfil","organizaciones","empleados","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","usuarios","roles","settings"].includes(view) && (
+            <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28] text-3xl">🧭</div>
+              <p className="text-lg font-semibold text-white">Vista no encontrada</p>
+              <p className="text-sm text-[#7a9aaa]">La sección <code className="rounded bg-white/8 px-1.5 py-0.5 text-xs text-[#14b8a6]">{view}</code> no existe.</p>
+              <button type="button" onClick={() => {}} className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a]" onClick={() => window.location.reload()}>Volver al inicio</button>
+            </div>
+          )}
         </Suspense>
         </ErrorBoundary>
       </AppShell>
