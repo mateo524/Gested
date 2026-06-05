@@ -195,7 +195,7 @@ Resumen rapido:
 
 ### Manual Backups (MongoDB Atlas Free)
 
-See [scripts/ops/README.md](../scripts/ops/README.md) for full backup/restore scripts.
+See [scripts/ops/README.md](../scripts/ops/README.md) for full backup/restore scripts and GCS upload procedure.
 
 Quick reference:
 
@@ -204,9 +204,17 @@ Quick reference:
 $env:MONGO_URI = "mongodb+srv://<usuario>:<password>@<cluster>.mongodb.net/hrdb"
 .\scripts\ops\backup-mongo.ps1
 
+# Upload latest backup ZIP to Google Cloud Storage
+.\scripts\ops\upload-backup-gcs.ps1
+
+# Dry run (no upload)
+.\scripts\ops\upload-backup-gcs.ps1 -DryRun
+
 # Restore a test database
 .\scripts\ops\restore-mongo-test.ps1 -BackupPath "C:\Backups\Zentor\backup-YYYY-MM-DD-HH-mm-ss\hrdb"
 ```
+
+GCS bucket: `gs://zentor-backups-zentor-cloud-credits-guardrail` (us-central1, lifecycle 60 días).
 
 ### Lo que NO hacer en backup/restore
 

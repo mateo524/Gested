@@ -140,3 +140,84 @@ mongosh "$env:MONGO_URI" --eval "use hrdb_restore_test; db.getCollectionNames()"
 - [ ] Restore probado en `hrdb_restore_test` si hay cambios de esquema
 - [ ] Health backend OK: `curl https://gested-1-backend.onrender.com/health`
 - [ ] Backup listado en `scripts/ops/README.md` como referencia
+
+---
+
+## Upload a Google Cloud Storage
+
+### Prerrequisitos
+
+1. **Google Cloud SDK instalado** — [Instalar gcloud](https://cloud.google.com/sdk/docs/install-sdk)
+2. **Autenticado localmente:**
+   ```powershell
+   gcloud auth login
+   gcloud config set project zentor-cloud-credits-guardrail
+   ```
+3. **Bucket ya creado** — `gs://zentor-backups-zentor-cloud-credits-guardrail` (us-central1, STANDARD)
+4. No se requiere service account key — se usa la sesión local de gcloud.
+
+### Script
+
+```
+scripts/ops/upload-backup-gcs.ps1
+```
+
+### Uso — último ZIP automático
+
+```powershell
+.\scripts\ops\upload-backup-gcs.ps1
+```
+
+Detecta el ZIP más reciente en `C:\Backups\Zentor\` y lo sube a:
+```
+gs://zentor-backups-zentor-cloud-credits-guardrail/hrdb/YYYY-MM-DD/<filename>.zip
+```
+
+### Uso — ZIP explícito
+
+```powershell
+.\scripts\ops\upload-backup-gcs.ps1 -BackupZipPath "C:\Backups\Zentor\backup-2026-06-05.zip"
+```
+
+### DryRun — sin subir nada
+
+```powershell
+.\scripts\ops\upload-backup-gcs.ps1 -DryRun
+```
+
+Muestra cuenta activa, bucket destino, objeto destino y el comando que se ejecutaría — sin subir.
+
+### Parámetros
+
+| Parámetro | Default | Descripción |
+|-----------|---------|-------------|
+| `-BackupZipPath` | Último ZIP en `C:\Backups\Zentor` | Ruta a un ZIP específico |
+| `-BucketName` | `zentor-backups-zentor-cloud-credits-guardrail` | Bucket destino |
+| `-Prefix` | `hrdb` | Carpeta dentro del bucket |
+| `-ProjectId` | `zentor-cloud-credits-guardrail` | Proyecto GCP |
+| `-DryRun` | — | Solo muestra, no sube |
+
+### Seguridad
+
+- **No service account key** — el script usa `gcloud auth login` local.
+- **No secretos en repo** — no se guarda MONGO_URI ni ninguna credencial en el script.
+- **Bucket privado** — `public_access_prevention: enforced`, `uniform_bucket_level_access: true`.
+- **No borra el ZIP local** — el backup queda en `C:\Backups\Zentor` después de subir.
+
+### Lifecycle automático
+
+Los objetos en GCS se eliminan automáticamente después de **60 días** (lifecycle configurado en el bucket). No requiere limpieza manual.
+
+### Costos estimados
+
+- ~50 MB/día × 60 días = ~3 GB activos
+- STANDARD storage: ~$0.02/GB/mes → **~$0.06/mes** con crédito GCP activo
+- Prácticamente gratuito para este volumen
+
+### Restore desde GCS
+
+```powershell
+gcloud storage cp "gs://zentor-backups-zentor-cloud-credits-guardrail/hrdb/2026-06-05/backup-2026-06-05.zip" "C:\Backups\Zentor\" --project=zentor-cloud-credits-guardrail
+```
+
+Luego restaurar con `restore-mongo-test.ps1` como de costumbre.
