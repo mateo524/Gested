@@ -118,12 +118,12 @@ function SurfaceCard({ title, subtitle, actions, children }) {
     <section className="pf-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          {subtitle ? <p className="mt-1 text-sm text-[#93acbb]">{subtitle}</p> : null}
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          {subtitle ? <p className="mt-0.5 text-xs text-[#7a98a8]">{subtitle}</p> : null}
         </div>
         {actions}
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }

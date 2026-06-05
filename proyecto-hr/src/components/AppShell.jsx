@@ -537,24 +537,24 @@ export default function AppShell({
             {!sidebarCollapsed ? <p className="mt-3 text-sm text-[#7c97a6]">{contextualSubtitle}</p> : null}
           </div>
 
-          <div className="flex-1 overflow-y-auto px-3 py-4">
+          <div className="flex-1 overflow-y-auto px-3 py-3">
             {!sidebarCollapsed ? (
-              <nav className="space-y-5">
+              <nav className="space-y-4">
                 {navGroups.map((group) => (
                   <div key={group.label}>
-                    <p className="px-3 pb-1 text-[11px] uppercase tracking-[0.14em] text-[#7f99a8] font-semibold">
+                    <p className="px-3 pb-1.5 text-[10px] uppercase tracking-[0.18em] text-[#5e7d8e] font-semibold">
                       {group.label}
                     </p>
-                    <div className="space-y-1">
+                    <div className="space-y-0.5">
                       {group.items.map((item) => (
                         <button
                           key={item.key}
                           type="button"
                           onClick={() => setView(item.key)}
-                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
+                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition ${
                             view === item.key
-                              ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_10px_24px_rgba(20,184,166,0.28)]"
-                              : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
+                              ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_6px_20px_rgba(20,184,166,0.30),inset_0_1px_0_rgba(255,255,255,0.25)]"
+                              : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"
                           }`}
                         >
                           <AppIcon name={item.key} active={view === item.key} />
@@ -627,7 +627,7 @@ export default function AppShell({
         </aside>
 
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="sticky top-0 z-20 border-b border-white/10 bg-[#091319]/95 backdrop-blur">
+          <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-[#091319]/95 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md">
             <div className="grid gap-4 px-4 py-4 md:grid-cols-[240px_minmax(0,1fr)_auto] md:px-6">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="lg:hidden">

@@ -81,7 +81,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [role='button']:focus-visible {
-  outline: 2px solid rgba(96, 165, 250, 0.9);
+  outline: 2px solid rgba(20, 184, 166, 0.7);
   outline-offset: 2px;
 }
 
@@ -106,15 +106,19 @@ select optgroup {
 
 @layer components {
   .pf-surface {
-    @apply rounded-[2rem] border border-white/10 bg-gradient-to-b from-[#142734] to-[#11222d] text-[#E8EEF1] shadow-[0_12px_32px_rgba(2,8,23,0.28)];
+    @apply rounded-[2rem] border border-white/[0.08] bg-gradient-to-b from-[#162e3e] to-[#0d1f2a] text-[#E8EEF1] shadow-[0_16px_48px_rgba(2,8,23,0.5),inset_0_1px_0_rgba(255,255,255,0.07)];
   }
 
   .pf-card {
-    @apply rounded-2xl border border-white/10 bg-[#132530] text-[#E8EEF1] shadow-[0_8px_24px_rgba(2,8,23,0.22)];
+    @apply rounded-2xl border border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028] text-[#E8EEF1] shadow-[0_8px_28px_rgba(2,8,23,0.4),inset_0_1px_0_rgba(255,255,255,0.05)];
   }
 
   .pf-card-muted {
-    @apply rounded-2xl border border-white/10 bg-[#0f1f28] text-[#d3e0e7];
+    @apply rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] text-[#d3e0e7];
+  }
+
+  .pf-card-inner {
+    @apply rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] shadow-[0_2px_12px_rgba(2,8,23,0.3)];
   }
 
   .pf-section-title {

@@ -24,29 +24,29 @@ function SurfaceCard({ title, subtitle, children, actions }) {
     <section className="pf-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          {subtitle ? <p className="mt-1 text-sm text-[#93acbb]">{subtitle}</p> : null}
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          {subtitle ? <p className="mt-0.5 text-xs text-[#7a98a8]">{subtitle}</p> : null}
         </div>
         {actions}
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
 
-function StatCard({ label, value, hint, accent = "blue" }) {
+function StatCard({ label, value, hint, accent = "teal" }) {
   const accentClass =
     accent === "green"
-      ? "from-emerald-500/12 to-transparent border-emerald-400/15"
+      ? "from-emerald-500/10 to-[#0c1920] border-emerald-400/15 shadow-[0_4px_20px_rgba(34,197,94,0.07)]"
       : accent === "amber"
-        ? "from-amber-500/12 to-transparent border-amber-300/15"
-        : "from-[#14b8a6]/10 to-transparent border-[#14b8a6]/20";
+        ? "from-amber-500/10 to-[#0c1920] border-amber-300/15 shadow-[0_4px_20px_rgba(251,191,36,0.07)]"
+        : "from-[#14b8a6]/10 to-[#0c1920] border-[#14b8a6]/20 shadow-[0_4px_20px_rgba(20,184,166,0.09)]";
 
   return (
     <article className={`rounded-2xl border bg-gradient-to-br p-4 ${accentClass}`}>
-      <p className="text-xs text-[#8ea5b3] uppercase tracking-[.08em] font-medium">{label}</p>
+      <p className="text-[11px] text-[#7a98a8] uppercase tracking-[.1em] font-medium">{label}</p>
       <p className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</p>
-      <p className="mt-1 text-xs text-[#8ea5b3]">{hint}</p>
+      <p className="mt-1 text-[11px] text-[#7a98a8]">{hint}</p>
     </article>
   );
 }
