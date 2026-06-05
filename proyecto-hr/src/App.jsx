@@ -3,9 +3,11 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
 import { resolveUiText } from "./lib/uiCopy";
+import { apiUrl } from "./lib/api";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 const loadDashboardPage = () => import("./pages/DashboardPage");
 const loadOrganizationsPage = () => import("./pages/OrganizationsPage");
@@ -45,8 +47,37 @@ const ProfilePage = lazy(loadProfilePage);
 
 function ViewLoader() {
   return (
-    <div className="pf-card p-8 text-[#A9BFCA]">
-      Cargando módulo...
+    <div className="space-y-4 p-1">
+      <div className="pf-surface p-6">
+        <div className="space-y-3">
+          <div className="skeleton h-3 w-20" />
+          <div className="skeleton h-8 w-56" />
+          <div className="skeleton h-4 w-80" />
+        </div>
+        <div className="mt-5 flex gap-3">
+          <div className="skeleton h-10 w-32" />
+          <div className="skeleton h-10 w-28" />
+        </div>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="rounded-3xl border border-white/8 bg-[#0c1e28] p-5 space-y-3">
+            <div className="skeleton h-3 w-20" />
+            <div className="skeleton h-7 w-14" />
+            <div className="skeleton h-3 w-28" />
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="pf-card p-5 space-y-3">
+            <div className="skeleton h-5 w-36" />
+            {[...Array(3)].map((_, j) => (
+              <div key={j} className="skeleton h-14 w-full" />
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -57,6 +88,12 @@ function AppContent() {
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
   const [language, setLanguage] = useState("es");
+
+  // Silent backend wake-up: ping /health as soon as the app loads so that
+  // by the time the user logs in, Render is already awake.
+  useEffect(() => {
+    fetch(`${apiUrl}/health`, { method: "GET" }).catch(() => {});
+  }, []);
 
   const availableViews = useMemo(
     () =>
@@ -220,6 +257,7 @@ function AppContent() {
         setLanguage={setLanguage}
         t={t}
       >
+        <ErrorBoundary>
         <Suspense fallback={<ViewLoader />}>
           {view === "dashboard" && <DashboardPage />}
           {view === "novedades" && <AnnouncementsPage />}
@@ -239,6 +277,7 @@ function AppContent() {
           {view === "roles" && <RolesPage />}
           {view === "settings" && <SettingsPage />}
         </Suspense>
+        </ErrorBoundary>
       </AppShell>
     </ViewProvider>
   );

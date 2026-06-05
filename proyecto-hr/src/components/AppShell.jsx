@@ -54,7 +54,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
           <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
         </svg>
         {unreadCount ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-[#2563eb] px-1.5 text-[11px] font-semibold text-white">
+          <span className="absolute -right-1 -top-1 rounded-full bg-[#14b8a6] px-1.5 text-[11px] font-semibold text-white">
             {unreadCount}
           </span>
         ) : null}
@@ -117,7 +117,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-medium text-white">{item.title || item.titulo}</p>
                         {!item.isRead ? (
-                          <span className="rounded-full bg-[#2563eb] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
+                          <span className="rounded-full bg-[#14b8a6] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
                             Nueva
                           </span>
                         ) : null}
