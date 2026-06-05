@@ -187,14 +187,6 @@ export default function LoginPage() {
               >
                 Olvidé mi contraseña
               </button>
-              <button
-                type="button"
-                disabled
-                className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#7A9AAA]"
-                title="Próximo paso recomendado: login con Google Workspace"
-              >
-                Iniciar con Google (próximamente)
-              </button>
             </form>
           )}
 
@@ -260,14 +252,10 @@ export default function LoginPage() {
           )}
 
           {message ? (
-            <p className="mt-5 rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-sm text-[#E8EEF1]">
+            <div className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${message.toLowerCase().includes("error") || message.toLowerCase().includes("incorrecto") || message.toLowerCase().includes("no se pudo") ? "border-rose-300/30 bg-rose-500/10 text-rose-200" : "border-white/15 bg-[#0E1A20] text-[#E8EEF1]"}`}>
               {message}
-            </p>
-          ) : (
-            <p className="mt-5 text-sm text-[#7A9AAA]">
-              Si el servidor estaba inactivo, el primer ingreso puede tardar algunos segundos.
-            </p>
-          )}
+            </div>
+          ) : null}
         </div>
 
         {/* Link a landing separada */}

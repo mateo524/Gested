@@ -33,6 +33,8 @@ function matchesQuery(item, query) {
   return haystack.includes(normalized);
 }
 
+const TYPE_LABELS = { info: "Info", warning: "Atención", success: "Logro", update: "Actualización" };
+
 function typePillClass(type) {
   if (type === "warning") return "bg-amber-500/15 text-amber-200 border-amber-400/30";
   if (type === "success") return "bg-emerald-500/15 text-emerald-200 border-emerald-400/30";
@@ -71,8 +73,8 @@ function AnnouncementCard({
   return (
     <article
       id={`announcement-${item._id}`}
-      className={`rounded-[1.75rem] border p-5 ${
-        unread ? "border-[#4f7cff]/25 bg-[#12243b]" : "border-white/10 bg-[#0f1f28]"
+      className={`rounded-[1.75rem] border p-5 transition ${
+        unread ? "border-[#14b8a6]/25 bg-[#0d1e22]" : "border-white/10 bg-[#0f1f28]"
       }`}
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -85,14 +87,14 @@ function AnnouncementCard({
               </span>
             ) : null}
             {unread ? (
-              <span className="rounded-full bg-[#2563eb] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white">
+              <span className="rounded-full border border-[#14b8a6]/40 bg-[#14b8a6]/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#14b8a6]">
                 Nueva
               </span>
             ) : null}
           </div>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#8ea5b3]">
-            <span className={`rounded-full border px-3 py-1 font-semibold uppercase tracking-[0.12em] ${typePillClass(item.type)}`}>
-              {item.type}
+            <span className={`rounded-full border px-3 py-1 font-semibold ${typePillClass(item.type)}`}>
+              {TYPE_LABELS[item.type] || item.type}
             </span>
             <span>{formatDate(item.createdAt)}</span>
             <span>{audienceLabel(item, employees)}</span>
