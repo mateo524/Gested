@@ -171,7 +171,7 @@ function ScoreButtons({ value, disabled, onChange }) {
           onClick={() => onChange(level)}
           className={`flex h-9 w-9 items-center justify-center rounded-2xl border text-sm font-semibold transition ${
             value === level
-              ? "border-[#4f7cff] bg-[#14b8a6] text-[#0f172a] shadow-[0_8px_20px_rgba(20,184,166,0.28)]"
+              ? "border-[#14b8a6]/60 bg-[#14b8a6] text-[#0f172a] shadow-[0_8px_20px_rgba(20,184,166,0.28)]"
               : "border-white/10 bg-[#122530] text-[#d4e1e8] hover:bg-[#17313f]"
           } disabled:cursor-not-allowed disabled:opacity-60`}
         >
