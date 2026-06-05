@@ -452,6 +452,36 @@ function hasMeaningfulText(value) {
   return Boolean(normalizeText(value));
 }
 
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-2xl border border-white/15 bg-[#0b1d27] px-4 py-3 shadow-[0_16px_40px_rgba(2,8,23,0.5)] backdrop-blur-sm">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#7a9aaa]">{label}</p>
+      {payload.map((entry) => (
+        <div key={entry.dataKey} className="flex items-center gap-2 py-0.5 text-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.fill }} />
+          <span className="text-[#a8bec9]">{entry.name}:</span>
+          <span className="ml-auto pl-4 font-semibold text-white">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ChartLegend({ payload }) {
+  if (!payload?.length) return null;
+  return (
+    <div className="mt-3 flex flex-wrap justify-center gap-5">
+      {payload.map((entry) => (
+        <div key={entry.value} className="flex items-center gap-1.5 text-xs text-[#8fa9b7]">
+          <span className="h-2 w-4 rounded-full" style={{ background: entry.color }} />
+          {entry.value}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function MetricsPage() {
   const { token, user, hasPermission } = useAuth();
   const { setView } = useView();
@@ -1346,18 +1376,28 @@ export default function MetricsPage() {
 
       {activeTab === "visual" ? (
         <div className="space-y-5">
-          <SurfaceCard title="Comparación por habilidad" subtitle="Barras simples para leer rápido autoevaluación versus evaluación del jefe.">
+          <SurfaceCard title="Comparación por habilidad" subtitle="Autoevaluación vs. evaluación del jefe por descriptor.">
             {comparisonRows.length ? (
-              <div className="h-[320px] w-full">
+              <div className="h-[340px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={comparisonRows}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#284152" />
-                    <XAxis dataKey="name" stroke="#9fb6c4" tickLine={false} axisLine={false} />
-                    <YAxis domain={[0, 5]} stroke="#9fb6c4" tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="auto" name="Autoevaluación" fill="#60a5fa" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="jefe" name="Jefatura" fill="#34d399" radius={[8, 8, 0, 0]} />
+                  <BarChart data={comparisonRows} barCategoryGap="28%" barGap={4}>
+                    <defs>
+                      <linearGradient id="gradTeal" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#14b8a6" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#0d9488" stopOpacity={0.6} />
+                      </linearGradient>
+                      <linearGradient id="gradPurple" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#a78bfa" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.6} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                    <XAxis dataKey="name" stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
+                    <YAxis domain={[0, 5]} stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={28} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 8 }} />
+                    <Legend content={<ChartLegend />} />
+                    <Bar dataKey="auto" name="Autoevaluación" fill="url(#gradTeal)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="jefe" name="Jefatura" fill="url(#gradPurple)" radius={[6, 6, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1366,18 +1406,28 @@ export default function MetricsPage() {
             )}
           </SurfaceCard>
 
-          <SurfaceCard title="Distribución de niveles" subtitle="Lectura simple de cuántos descriptores quedaron en cada nivel 1–5.">
+          <SurfaceCard title="Distribución de niveles" subtitle="Cantidad de descriptores por nivel 1–5.">
             {distributionRows.some((item) => item.auto || item.jefe) ? (
-              <div className="h-[320px] w-full">
+              <div className="h-[340px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={distributionRows}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#284152" />
-                    <XAxis dataKey="level" stroke="#9fb6c4" tickLine={false} axisLine={false} />
-                    <YAxis stroke="#9fb6c4" tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="auto" name="Autoevaluación" fill="#818cf8" radius={[8, 8, 0, 0]} />
-                    <Bar dataKey="jefe" name="Jefatura" fill="#f59e0b" radius={[8, 8, 0, 0]} />
+                  <BarChart data={distributionRows} barCategoryGap="28%" barGap={4}>
+                    <defs>
+                      <linearGradient id="gradSky" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#38bdf8" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#0284c7" stopOpacity={0.6} />
+                      </linearGradient>
+                      <linearGradient id="gradAmber" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#fbbf24" stopOpacity={1} />
+                        <stop offset="100%" stopColor="#d97706" stopOpacity={0.6} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                    <XAxis dataKey="level" stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 8 }} />
+                    <Legend content={<ChartLegend />} />
+                    <Bar dataKey="auto" name="Autoevaluación" fill="url(#gradSky)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="jefe" name="Jefatura" fill="url(#gradAmber)" radius={[6, 6, 0, 0]} maxBarSize={40} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

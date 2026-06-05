@@ -100,17 +100,26 @@ function ActionBadge({ severity }) {
 
 function ProgressBar({ value, max = 100, tone, label, showPct }) {
   const pctVal = max > 0 ? Math.min(100, Math.max(0, (Number(value) / max) * 100)) : 0;
-  const color = tone || (pctVal >= 80 ? "bg-emerald-400" : pctVal >= 50 ? "bg-amber-400" : "bg-rose-400");
+  const gradient = tone
+    ? null
+    : pctVal >= 80
+      ? "from-emerald-400 to-teal-500"
+      : pctVal >= 50
+        ? "from-amber-400 to-orange-500"
+        : "from-rose-400 to-rose-600";
   return (
     <div>
       {label ? (
-        <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+        <div className="mb-1.5 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
           <span>{label}</span>
-          {showPct ? <span>{pctVal}%</span> : null}
+          {showPct ? <span className="font-semibold text-white">{Math.round(pctVal)}%</span> : null}
         </div>
       ) : null}
-      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-        <div className={`h-full rounded-full ${color}`} style={{ width: `${pctVal}%` }} />
+      <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
+        <div
+          className={`h-full rounded-full transition-all duration-700 ease-out ${tone || `bg-gradient-to-r ${gradient}`}`}
+          style={{ width: `${pctVal}%` }}
+        />
       </div>
     </div>
   );
@@ -119,20 +128,23 @@ function ProgressBar({ value, max = 100, tone, label, showPct }) {
 function MiniBarChart({ title, items, emptyText = "Sin datos para mostrar." }) {
   const maxValue = Math.max(...items.map((item) => Number(item.value || 0)), 0);
   return (
-    <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
+    <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
       <p className="text-sm font-semibold text-white">{title}</p>
-      <div className="mt-4 space-y-3">
+      <div className="mt-4 space-y-4">
         {items.some((item) => Number(item.value || 0) > 0) ? (
           items.map((item) => {
-            const width = maxValue > 0 ? Math.max(6, Math.round((Number(item.value || 0) / maxValue) * 100)) : 0;
+            const pct = maxValue > 0 ? Math.max(4, Math.round((Number(item.value || 0) / maxValue) * 100)) : 0;
             return (
               <div key={item.label}>
-                <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
-                  <span>{item.label}</span>
-                  <span className="font-semibold text-white">{item.value}</span>
+                <div className="mb-1.5 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+                  <span className="truncate">{item.label}</span>
+                  <span className="shrink-0 font-semibold tabular-nums text-white">{item.value}</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div className={`h-full rounded-full ${item.tone || "bg-sky-400"}`} style={{ width: `${width}%` }} />
+                <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className={`h-full rounded-full transition-all duration-700 ease-out ${item.tone || "bg-gradient-to-r from-[#14b8a6] to-[#38bdf8]"}`}
+                    style={{ width: `${pct}%` }}
+                  />
                 </div>
               </div>
             );
@@ -145,30 +157,41 @@ function MiniBarChart({ title, items, emptyText = "Sin datos para mostrar." }) {
   );
 }
 
-function MiniDonut({ value, total, label, color = "stroke-emerald-400", size = 56 }) {
+function MiniDonut({ value, total, label, gradientId, colorStart = "#14b8a6", colorEnd = "#38bdf8", size = 72 }) {
   const safeTotal = Math.max(1, total);
   const pctVal = Math.min(100, Math.max(0, (value / safeTotal) * 100));
-  const radius = 22;
+  const radius = 20;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (pctVal / 100) * circumference;
+  const gId = gradientId || `donutGrad-${label}`;
   return (
-    <div className="flex flex-col items-center gap-1">
-      <svg width={size} height={size} viewBox="0 0 48 48" className="-rotate-90">
-        <circle cx="24" cy="24" r={radius} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="4" />
-        <circle
-          cx="24"
-          cy="24"
-          r={radius}
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="4"
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          className={color}
-        />
-      </svg>
-      <span className="text-xs text-[#9fb6c4]">{label}</span>
+    <div className="flex flex-col items-center gap-1.5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} viewBox="0 0 48 48" className="-rotate-90">
+          <defs>
+            <linearGradient id={gId} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor={colorStart} />
+              <stop offset="100%" stopColor={colorEnd} />
+            </linearGradient>
+          </defs>
+          <circle cx="24" cy="24" r={radius} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="4.5" />
+          <circle
+            cx="24"
+            cy="24"
+            r={radius}
+            fill="none"
+            stroke={`url(#${gId})`}
+            strokeWidth="4.5"
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-xs font-semibold text-white">{Math.round(pctVal)}%</span>
+        </div>
+      </div>
+      <span className="text-center text-xs leading-tight text-[#9fb6c4]">{label}</span>
     </div>
   );
 }
@@ -861,9 +884,9 @@ export default function ExecutiveReportPage() {
               {Number(overview.development?.total) > 0 ? (
                 <>
                   <div className="mt-4 flex items-center justify-around">
-                    <MiniDonut value={overview.development?.completed || 0} total={overview.development?.total} label="Completados" color="stroke-emerald-400" />
-                    <MiniDonut value={overview.development?.active || 0} total={overview.development?.total} label="Activos" color="stroke-sky-400" />
-                    <MiniDonut value={overview.development?.overdue || 0} total={overview.development?.total} label="Vencidos" color="stroke-rose-400" />
+                    <MiniDonut value={overview.development?.completed || 0} total={overview.development?.total} label="Completados" gradientId="donut-completed" colorStart="#14b8a6" colorEnd="#34d399" />
+                    <MiniDonut value={overview.development?.active || 0} total={overview.development?.total} label="Activos" gradientId="donut-active" colorStart="#38bdf8" colorEnd="#818cf8" />
+                    <MiniDonut value={overview.development?.overdue || 0} total={overview.development?.total} label="Vencidos" gradientId="donut-overdue" colorStart="#fb7185" colorEnd="#f43f5e" />
                   </div>
                   <div className="mt-4 text-center text-sm text-[#9fb6c4]">
                     {overview.development?.total} planes en total
