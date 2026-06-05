@@ -43,6 +43,17 @@ const EVALUATION_TYPES = {
   FINAL: "Cierre final",
 };
 
+const ESTADO_LABELS = {
+  BORRADOR: "Borrador",
+  ENVIADA: "Enviada",
+  REVISADA: "Revisada",
+  CERRADA: "Cerrada",
+};
+
+function labelEstado(v) {
+  return ESTADO_LABELS[v] || v || "-";
+}
+
 const emptyEditor = {
   id: "",
   employeeId: "",
@@ -1028,7 +1039,7 @@ export default function MetricsPage() {
         <EvaluationHeader
           employee={selectedEmployee}
           cycle={cycleOptionsForEmployee.find((item) => String(item._id) === String(selectedCycleId)) || null}
-          status={managerDetail?.estado || autoDetail?.estado || "-"}
+          status={labelEstado(managerDetail?.estado || autoDetail?.estado)}
           tipo={managerDetail?.tipo || autoDetail?.tipo || ""}
           score={currentManagerAverage ?? currentAutoAverage}
           selfOnly={!canSeeManagerSection}
@@ -1123,8 +1134,8 @@ export default function MetricsPage() {
                   ))}
                 </select>
               </div>
-              <SummaryCard label="Autoevaluación" value={autoDetail ? autoDetail.estado : "Sin carga"} hint={autoDetail ? formatDate(autoDetail.updatedAt) : "No registrada"} />
-              <SummaryCard label="Jefatura" value={managerDetail ? managerDetail.estado : "Sin carga"} hint={managerDetail ? formatDate(managerDetail.updatedAt) : "No registrada"} />
+              <SummaryCard label="Autoevaluación" value={autoDetail ? labelEstado(autoDetail.estado) : "Sin carga"} hint={autoDetail ? formatDate(autoDetail.updatedAt) : "No registrada"} />
+              <SummaryCard label="Jefatura" value={managerDetail ? labelEstado(managerDetail.estado) : "Sin carga"} hint={managerDetail ? formatDate(managerDetail.updatedAt) : "No registrada"} />
             </div>
           </SurfaceCard>
 

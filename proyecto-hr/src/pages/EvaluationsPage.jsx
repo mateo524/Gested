@@ -5,6 +5,20 @@ import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import CollapsibleList from "../components/CollapsibleList";
 
+const TIPO_LABELS = {
+  AUTOEVALUACION: "Autoevaluación",
+  JEFATURA: "Jefatura",
+  FINAL: "Cierre final",
+};
+const ESTADO_LABELS = {
+  BORRADOR: "Borrador",
+  ENVIADA: "Enviada",
+  REVISADA: "Revisada",
+  CERRADA: "Cerrada",
+};
+const labelTipo = (v) => TIPO_LABELS[v] || v || "-";
+const labelEstado = (v) => ESTADO_LABELS[v] || v || "-";
+
 const emptyForm = {
   employeeId: "",
   cycleId: "",
@@ -388,8 +402,8 @@ export default function EvaluationsPage() {
                 <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
-                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{evaluation.tipo}</span>
-                    <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{evaluation.estado}</span>
+                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{labelTipo(evaluation.tipo)}</span>
+                    <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{labelEstado(evaluation.estado)}</span>
                   </div>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} — Resultado final: {evaluation.resultadoFinal}</p>
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
@@ -425,7 +439,7 @@ export default function EvaluationsPage() {
         <SurfaceCard
           title={selectedEvaluation ? "Detalle de evaluación" : "Detalle de evaluación"}
           subtitle={selectedEvaluation ? "Acercamos la lectura al formulario real: datos del evaluado, mediciones, resumen y comentarios." : "Seleccioná una evaluación para ver datos del evaluado, mediciones, evidencias y resumen evaluativo."}
-          actions={selectedEvaluation ? <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">{selectedEvaluation.estado}</span> : null}
+          actions={selectedEvaluation ? <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">{labelEstado(selectedEvaluation.estado)}</span> : null}
         >
           {loadingDetail ? (
             <LoadingState compact title="Cargando detalle" description="Estamos trayendo mediciones, comentarios y resultado final." />

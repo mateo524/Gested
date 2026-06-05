@@ -604,7 +604,7 @@ export default function ExecutiveReportPage() {
               ) : null}
               {overview?.summary?.employeesTotal > 0 ? (
                 <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
-                  {overview.summary.employeesTotal} personas
+                  {overview.summary.employeesTotal.toLocaleString("es-AR")} personas
                 </span>
               ) : null}
             </div>
@@ -720,32 +720,32 @@ export default function ExecutiveReportPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <StatCard
               label="Personas visibles"
-              value={overview.summary?.employeesTotal || 0}
+              value={(overview.summary?.employeesTotal || 0).toLocaleString("es-AR")}
               hint="Dentro del alcance actual"
             />
             <StatCard
               label="Desempeño promedio"
-              value={overview.summary?.averageScore || 0}
+              value={(overview.summary?.averageScore || 0).toFixed(2)}
               hint="Sobre 5.0"
               tone={overview.summary?.averageScore >= 4 ? "success" : overview.summary?.averageScore >= 3 ? "warning" : "danger"}
             />
             <StatCard
               label="Evaluaciones pendientes"
-              value={overview.summary?.evaluationsPending || 0}
+              value={(overview.summary?.evaluationsPending || 0).toLocaleString("es-AR")}
               hint={overview.summary?.evaluationsTotal > 0 ? `${evaluationCoverage.pct}% completadas` : "Sin datos"}
               tone={overview.summary?.evaluationsPending > 0 ? "warning" : "success"}
               progress={evaluationCoverage.pct}
             />
             <StatCard
               label="KPIs/OKRs en riesgo"
-              value={safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0)}
-              hint={`${safeNum(overview?.kpis?.total, 0)} KPIs · ${safeNum(overview?.okrs?.total, 0)} OKRs`}
+              value={(safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0)).toLocaleString("es-AR")}
+              hint={`${safeNum(overview?.kpis?.total, 0).toLocaleString("es-AR")} KPIs · ${safeNum(overview?.okrs?.total, 0).toLocaleString("es-AR")} OKRs`}
               tone={safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0) > 0 ? "danger" : "default"}
             />
             <StatCard
               label="Planes activos"
-              value={overview.development?.active || 0}
-              hint={`${overview.development?.overdue || 0} vencidos · ${overview.development?.completed || 0} completados`}
+              value={(overview.development?.active || 0).toLocaleString("es-AR")}
+              hint={`${(overview.development?.overdue || 0).toLocaleString("es-AR")} vencidos · ${(overview.development?.completed || 0).toLocaleString("es-AR")} completados`}
               tone={overview.development?.overdue > 0 ? "warning" : "default"}
             />
           </div>
