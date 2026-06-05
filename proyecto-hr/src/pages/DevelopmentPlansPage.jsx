@@ -576,7 +576,7 @@ export default function DevelopmentPlansPage() {
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definición del plan</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Fortalezas (separadas por coma)" value={form.fortalezas} onChange={(event) => setForm({ ...form, fortalezas: event.target.value })} />
             <textarea className={`min-h-24 max-h-48 w-full resize-y rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.aspectoDesarrollar ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
-            <textarea className="min-h-20 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cómo se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
+            <textarea className="min-h-20 max-h-36 w-full resize-y rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cómo se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Seguimiento</p>
             <div className="grid gap-4 md:grid-cols-2">
@@ -640,44 +640,88 @@ export default function DevelopmentPlansPage() {
                 items={visiblePlans}
                 initialCount={3}
                 className="space-y-4"
-                renderItem={(plan) => (
-                  <article key={plan._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-lg font-semibold text-white">{plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
-                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">
-                      {plan.estado === "CERRADO"
-                        ? "Completado"
-                        : plan.fechaSeguimiento && new Date(plan.fechaSeguimiento) < new Date()
-                          ? "Vencido"
-                          : plan.estado === "EN_CURSO"
-                            ? "Activo"
-                            : "Sin seguimiento"}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-sm text-[#c5d5de]">{plan.aspectoDesarrollar}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Responsable: {plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Acción / métrica: {plan.medicion || "-"}</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">Próximo paso: {plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR") : "-"}</p>
-                  {canManagePlans ? (
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleEditPlan(plan)}
-                        className="rounded-2xl border border-white/15 px-4 py-2 text-sm font-medium text-white"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmState({ open: true, plan })}
-                        className="rounded-2xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
-                      >
-                        Eliminar
-                      </button>
+                renderItem={(plan) => {
+                  const now = new Date();
+                  const dueDate = plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento) : null;
+                  const isOverdue = dueDate && dueDate < now && plan.estado !== "CERRADO";
+                  const daysLeft = dueDate ? Math.ceil((dueDate - now) / 86400000) : null;
+
+                  const statusLabel = plan.estado === "CERRADO" ? "Completado"
+                    : isOverdue ? "Vencido"
+                    : plan.estado === "EN_CURSO" ? "Activo"
+                    : "Pendiente";
+                  const statusCls = plan.estado === "CERRADO"
+                    ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300"
+                    : isOverdue
+                      ? "border-rose-400/30 bg-rose-500/10 text-rose-300"
+                      : plan.estado === "EN_CURSO"
+                        ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : "border-amber-300/25 bg-amber-500/8 text-amber-300";
+                  const cardBorder = plan.estado === "CERRADO"
+                    ? "border-emerald-400/15 bg-[#0d2320]"
+                    : isOverdue
+                      ? "border-rose-400/15 bg-[#1f0e10]"
+                      : plan.estado === "EN_CURSO"
+                        ? "border-[#14b8a6]/15 bg-[#0d1e22]"
+                        : "border-white/10 bg-[#0f1f28]";
+
+                  const dateLine = !dueDate ? null
+                    : isOverdue ? `Venció el ${dueDate.toLocaleDateString("es-AR", { dateStyle: "medium" })}`
+                    : daysLeft <= 7 ? `Vence en ${daysLeft} ${daysLeft === 1 ? "día" : "días"}`
+                    : dueDate.toLocaleDateString("es-AR", { dateStyle: "medium" });
+                  const dateCls = !dueDate ? ""
+                    : isOverdue ? "text-rose-300"
+                    : daysLeft <= 7 ? "text-amber-300"
+                    : "text-[#14b8a6]";
+
+                  return (
+                  <article key={plan._id} className={`rounded-2xl border p-5 ${cardBorder}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-semibold text-white">{plan.employeeId?.apellido}, {plan.employeeId?.nombre}</p>
+                          <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${statusCls}`}>{statusLabel}</span>
+                        </div>
+                        <p className="mt-2 text-sm font-medium text-[#c5d5de] leading-snug">{plan.aspectoDesarrollar}</p>
+                      </div>
+                      {dateLine ? (
+                        <div className="flex shrink-0 items-center gap-1.5">
+                          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className={`h-3.5 w-3.5 ${dateCls}`}>
+                            <circle cx="8" cy="8" r="7" /><path d="M8 5v3l2 2" />
+                          </svg>
+                          <span className={`text-xs font-semibold ${dateCls}`}>{dateLine}</span>
+                        </div>
+                      ) : null}
                     </div>
-                  ) : null}
+
+                    <div className="mt-3 space-y-1.5">
+                      {plan.medicion ? (
+                        <div className="flex items-start gap-2 text-xs text-[#8fa9b7]">
+                          <span className="mt-0.5 shrink-0 text-[#14b8a6]">▸</span>
+                          <span>{plan.medicion}</span>
+                        </div>
+                      ) : null}
+                      {plan.fortalezas ? (
+                        <div className="flex items-start gap-2 text-xs text-[#7a9aaa]">
+                          <span className="mt-0.5 shrink-0">✦</span>
+                          <span className="line-clamp-2">{plan.fortalezas}</span>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {canManagePlans ? (
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => handleEditPlan(plan)} className="rounded-xl border border-white/15 px-4 py-2 text-sm font-medium text-[#c5d5de] transition hover:bg-white/5">
+                          Editar
+                        </button>
+                        <button type="button" onClick={() => setConfirmState({ open: true, plan })} className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20">
+                          Eliminar
+                        </button>
+                      </div>
+                    ) : null}
                   </article>
-                )}
+                  );
+                }}
               />
             ) : (
               !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (

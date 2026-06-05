@@ -40,7 +40,7 @@ function StatCard({ label, value, hint, accent = "blue" }) {
       ? "from-emerald-500/12 to-transparent border-emerald-400/15"
       : accent === "amber"
         ? "from-amber-500/12 to-transparent border-amber-300/15"
-        : "from-blue-500/12 to-transparent border-blue-400/15";
+        : "from-[#14b8a6]/10 to-transparent border-[#14b8a6]/20";
 
   return (
     <article className={`rounded-3xl border bg-gradient-to-br p-5 ${accentClass}`}>
