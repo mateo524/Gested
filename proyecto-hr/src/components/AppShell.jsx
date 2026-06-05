@@ -908,14 +908,16 @@ export default function AppShell({
       {/* Floating contact CTA — visible to non-superadmin users */}
       {!isSuperAdmin ? (
         <a
-          href="mailto:contacto@zentor.app?subject=Consulta desde la plataforma"
+          href="https://calendly.com/zentorhq/demo-zentor"
+          target="_blank"
+          rel="noopener noreferrer"
           className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition hover:bg-[#0d9488] hover:shadow-[0_12px_32px_rgba(20,184,166,0.4)] no-underline"
         >
           <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-            <rect x="1.5" y="3.5" width="13" height="9" rx="1.5" />
-            <path d="M1.5 5.5l6.5 4.5 6.5-4.5" />
+            <rect x="2" y="2" width="12" height="12" rx="6" />
+            <path d="M8 5v3.5l2 2" />
           </svg>
-          Contactar
+          Agendar demo
         </a>
       ) : null}
     </div>
