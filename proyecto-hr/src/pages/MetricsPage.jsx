@@ -216,7 +216,7 @@ function MetricDescriptorCard({
                   : "border-white/10 bg-[#122530]"
               }`}
             >
-              <div className="grid gap-4 xl:grid-cols-[1.2fr_0.5fr_0.9fr]">
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_0.5fr_0.9fr]">
                 <div>
                   <p className="text-sm font-semibold text-white">{descriptor.name}</p>
                   <p className="mt-1 text-sm text-[#9fb6c4]">{descriptor.description || "Sin descriptor ampliado."}</p>
@@ -250,7 +250,7 @@ function MetricDescriptorCard({
 
 function EvaluationHeader({ employee, cycle, status, tipo, score, selfOnly }) {
   return (
-    <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[1.2fr_0.8fr]">
       <div className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
         <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">Evaluado</p>
         <h3 className="mt-2 text-2xl font-semibold text-white">{buildEmployeeLabel(employee) || "Sin empleado seleccionado"}</h3>

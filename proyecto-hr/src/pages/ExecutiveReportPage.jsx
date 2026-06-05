@@ -912,7 +912,7 @@ export default function ExecutiveReportPage() {
           </div>
 
           {/* Progress charts */}
-          <div className="grid gap-5 xl:grid-cols-2">
+          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
             <MiniBarChart title="Estado de evaluaciones" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
 
             <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
@@ -1001,7 +1001,7 @@ export default function ExecutiveReportPage() {
           {/* Department distribution */}
           <SurfaceCard title="Distribución por departamento / equipo" subtitle="Cómo se reparte el seguimiento entre áreas visibles.">
             {overview?.departments?.length ? (
-              <div className="grid gap-3 xl:grid-cols-2">
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
                 {overview.departments.map((item) => {
                   const deptEmployeeCount = item.employees || item.count || 0;
                   const maxEmployeeCount = Math.max(...overview.departments.map((d) => d.employees || d.count || 0), 1);
@@ -1048,7 +1048,7 @@ export default function ExecutiveReportPage() {
               <CollapsibleList
                 items={employees}
                 initialCount={5}
-                className="grid gap-3 xl:grid-cols-2"
+                className="grid gap-3 md:grid-cols-2 xl:grid-cols-2"
                 renderItem={(employee) => (
                   <article
                     key={employee._id}
@@ -1216,7 +1216,7 @@ export default function ExecutiveReportPage() {
                     </div>
 
                     {/* Charts: Competency + Auto vs Manager */}
-                    <div className="grid gap-5 xl:grid-cols-2">
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
                       <MiniBarChart
                         title="Desempeño por competencia"
                         items={individualMetricSignalChart}
@@ -1230,7 +1230,7 @@ export default function ExecutiveReportPage() {
                     </div>
 
                     {/* KPI / OKR cards */}
-                    <div className="grid gap-5 xl:grid-cols-2">
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
                       <SurfaceCard title="KPIs asignados" subtitle="Indicadores medibles y avance contra metas.">
                         {detail.kpis?.items?.length ? (
                           <div className="grid gap-3">
@@ -1265,7 +1265,7 @@ export default function ExecutiveReportPage() {
                     </div>
 
                     {/* Evaluations + Development plans */}
-                    <div className="grid gap-5 xl:grid-cols-2">
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
                       <SurfaceCard title="Evaluaciones" subtitle="Autoevaluación, evaluación superior y cierre final cuando existan.">
                         {detail.evaluations?.length ? (
                           <CollapsibleList
