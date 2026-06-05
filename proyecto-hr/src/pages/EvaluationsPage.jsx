@@ -322,9 +322,8 @@ export default function EvaluationsPage() {
               {fieldErrors.employeeId ? <p className="mt-1 text-xs text-rose-300">Seleccioná un empleado.</p> : null}
             </div>
             <div>
-              <label className="mb-1 block text-xs text-[#9fb6c4]">
-                <span title="Período de evaluación activo. Un ciclo agrupa evaluaciones, metas y fechas bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted">Ciclo o período</span>
-              </label>
+              <label className="mb-0.5 block text-xs text-[#9fb6c4]">Ciclo o período</label>
+              <p className="mb-1.5 text-xs text-[#5e7d8c]">Agrupa evaluaciones, metas y fechas bajo un mismo período.</p>
               <select
                 className={`w-full rounded-2xl border px-4 py-3 text-white transition ${fieldErrors.cycleId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0f1f28]"}`}
                 value={form.cycleId}
