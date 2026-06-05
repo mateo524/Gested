@@ -36,7 +36,7 @@ function StateIcon({ tone = "neutral" }) {
 function StatePanel({ tone = "neutral", title, description, actionLabel, onAction, compact = false }) {
   const isAction = actionLabel && onAction;
   return (
-    <div className={`rounded-3xl border border-white/10 bg-[#0c1e28] ${compact ? "px-4 py-4" : "px-6 py-6"}`}>
+    <div className={`rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#122433] to-[#0c1920] shadow-[0_4px_20px_rgba(2,8,23,0.3)] ${compact ? "px-4 py-4" : "px-6 py-6"}`}>
       <div className={`flex ${compact ? "items-center gap-3" : "items-start gap-5"}`}>
         <StateIcon tone={tone} />
         <div className="min-w-0 flex-1">

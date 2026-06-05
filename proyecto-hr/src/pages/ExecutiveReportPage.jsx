@@ -69,12 +69,12 @@ function SurfaceCard({ title, subtitle, actions, children }) {
     <section className="pf-card p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold text-white">{title}</h3>
-          {subtitle ? <p className="mt-1 text-sm text-[#93acbb]">{subtitle}</p> : null}
+          <h3 className="text-sm font-semibold text-white">{title}</h3>
+          {subtitle ? <p className="mt-0.5 text-xs text-[#7a98a8]">{subtitle}</p> : null}
         </div>
         {actions}
       </div>
-      <div className="mt-5">{children}</div>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
@@ -82,14 +82,14 @@ function SurfaceCard({ title, subtitle, actions, children }) {
 function StatCard({ label, value, hint, tone = "default", progress, compact }) {
   const toneClass =
     tone === "success"
-      ? "border-emerald-300/20 bg-emerald-500/10"
+      ? "border-emerald-300/20 bg-gradient-to-br from-emerald-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(34,197,94,0.08)]"
       : tone === "warning"
-        ? "border-amber-300/20 bg-amber-500/10"
+        ? "border-amber-300/20 bg-gradient-to-br from-amber-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(251,191,36,0.08)]"
         : tone === "danger"
-          ? "border-rose-300/20 bg-rose-500/10"
-          : "border-white/10 bg-[#0f1f28]";
+          ? "border-rose-300/20 bg-gradient-to-br from-rose-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(239,68,68,0.08)]"
+          : "border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028]";
   return (
-    <article className={`rounded-3xl border p-4 ${toneClass} ${compact ? "p-3" : ""}`}>
+    <article className={`rounded-2xl border p-4 ${toneClass} ${compact ? "p-3" : ""}`}>
       <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">{label}</p>
       <p className={`font-semibold text-white ${compact ? "mt-1 text-xl" : "mt-2 text-2xl"}`}>{value}</p>
       {hint ? <p className="mt-2 text-sm text-[#9ab0bc]">{hint}</p> : null}
@@ -822,10 +822,10 @@ export default function ExecutiveReportPage() {
               <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
                 {execSignals.map((signal) => {
                   const toneClass =
-                    signal.tone === "success" ? "border-emerald-300/20 bg-emerald-500/10"
-                    : signal.tone === "warning" ? "border-amber-300/20 bg-amber-500/10"
-                    : signal.tone === "danger" ? "border-rose-300/20 bg-rose-500/10"
-                    : "border-white/10 bg-[#0f1f28]";
+                    signal.tone === "success" ? "border-emerald-300/20 bg-gradient-to-br from-emerald-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(34,197,94,0.08)]"
+                    : signal.tone === "warning" ? "border-amber-300/20 bg-gradient-to-br from-amber-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(251,191,36,0.08)]"
+                    : signal.tone === "danger" ? "border-rose-300/20 bg-gradient-to-br from-rose-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(239,68,68,0.08)]"
+                    : "border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028]";
                   return (
                     <div key={signal.label} className={`rounded-2xl border p-4 ${toneClass}`}>
                       <p className="text-xs uppercase tracking-[0.12em] text-[#7f99a8]">{signal.label}</p>
