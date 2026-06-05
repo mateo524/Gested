@@ -206,6 +206,18 @@ select optgroup {
   }
 }
 
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #14242e 25%, #1e3340 50%, #14242e 75%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 0.75rem;
+}
+
 @media print {
   .no-print { display: none !important; }
 
