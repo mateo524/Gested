@@ -4,6 +4,7 @@ import {
   BarChart,
   CartesianGrid,
   Legend,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -1396,10 +1397,12 @@ export default function MetricsPage() {
                     <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="name" stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
                     <YAxis domain={[0, 5]} stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={28} />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 8 }} />
+                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)", radius: 8 }} />
                     <Legend content={<ChartLegend />} />
-                    <Bar dataKey="auto" name="Autoevaluación" fill="url(#gradTeal)" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                    <Bar dataKey="jefe" name="Jefatura" fill="url(#gradPurple)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    {currentAutoAverage ? <ReferenceLine y={currentAutoAverage} stroke="#14b8a6" strokeDasharray="4 2" strokeWidth={1.2} label={{ value: currentAutoAverage ? String.fromCharCode(8596) + " " + currentAutoAverage.toFixed(1) : "", position: "insideTopRight", fill: "#14b8a6", fontSize: 10 }} /> : null}
+                    {currentManagerAverage ? <ReferenceLine y={currentManagerAverage} stroke="#a78bfa" strokeDasharray="4 2" strokeWidth={1.2} label={{ value: currentManagerAverage ? String.fromCharCode(8596) + " " + currentManagerAverage.toFixed(1) : "", position: "insideBottomRight", fill: "#a78bfa", fontSize: 10 }} /> : null}
+                    <Bar dataKey="auto" name="Autoevaluación" fill="url(#gradTeal)" radius={[6, 6, 0, 0]} maxBarSize={40} animationDuration={500} activeBar={{ fill: "#14b8a6", fillOpacity: 1, stroke: "rgba(255,255,255,0.2)", strokeWidth: 1 }} />
+                    <Bar dataKey="jefe" name="Jefatura" fill="url(#gradPurple)" radius={[6, 6, 0, 0]} maxBarSize={40} animationDuration={600} activeBar={{ fill: "#a78bfa", fillOpacity: 1, stroke: "rgba(255,255,255,0.2)", strokeWidth: 1 }} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -1428,8 +1431,8 @@ export default function MetricsPage() {
                     <YAxis stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
                     <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 8 }} />
                     <Legend content={<ChartLegend />} />
-                    <Bar dataKey="auto" name="Autoevaluación" fill="url(#gradSky)" radius={[6, 6, 0, 0]} maxBarSize={40} />
-                    <Bar dataKey="jefe" name="Jefatura" fill="url(#gradAmber)" radius={[6, 6, 0, 0]} maxBarSize={40} />
+                    <Bar dataKey="auto" name="Autoevaluación" fill="url(#gradSky)" radius={[6, 6, 0, 0]} maxBarSize={40} animationDuration={500} activeBar={{ fill: "#38bdf8", fillOpacity: 1 }} />
+                    <Bar dataKey="jefe" name="Jefatura" fill="url(#gradAmber)" radius={[6, 6, 0, 0]} maxBarSize={40} animationDuration={600} activeBar={{ fill: "#fbbf24", fillOpacity: 1 }} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>

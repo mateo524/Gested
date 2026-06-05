@@ -3,11 +3,13 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from "recharts";
+import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -271,31 +273,45 @@ function SurfaceCard({ title, subtitle, actions, children }) {
   );
 }
 
-function StatCard({ label, value, hint, tone = "default", progress, compact }) {
+function StatCard({ label, value, hint, tone = "default", progress, compact, onClick }) {
+  const animated = useCountUp(typeof value === "number" ? value : Number(value));
+  const display = Number.isFinite(Number(value)) ? animated : value;
+  const [barWidth, setBarWidth] = useState(0);
+
+  useEffect(() => {
+    if (progress === undefined) return;
+    const t = setTimeout(() => setBarWidth(Math.min(100, Math.max(0, progress))), 80);
+    return () => clearTimeout(t);
+  }, [progress]);
+
   const toneClass =
     tone === "success"
       ? "border-emerald-300/20 bg-gradient-to-br from-emerald-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(34,197,94,0.08)]"
       : tone === "warning"
         ? "border-amber-300/20 bg-gradient-to-br from-amber-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(251,191,36,0.08)]"
         : tone === "danger"
-          ? "border-rose-300/20 bg-gradient-to-br from-rose-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(239,68,68,0.08)]"
+          ? "border-rose-300/20 bg-gradient-to-br from-rose-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(239,68,68,0.08)] alert-pulse"
           : "border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028]";
+
+  const Tag = onClick ? "button" : "article";
   return (
-    <article className={`rounded-2xl border p-4 ${toneClass} ${compact ? "p-3" : ""}`}>
+    <Tag
+      type={onClick ? "button" : undefined}
+      onClick={onClick}
+      className={`card-lift rounded-2xl border p-4 text-left w-full ${toneClass} ${compact ? "!p-3" : ""} ${onClick ? "cursor-pointer" : ""}`}
+    >
       <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">{label}</p>
-      <p className={`font-semibold text-white ${compact ? "mt-1 text-xl" : "mt-2 text-2xl"}`}>{value}</p>
-      {hint ? <p className="mt-2 text-sm text-[#9ab0bc]">{hint}</p> : null}
+      <p className={`stat-num font-semibold text-white ${compact ? "mt-1 text-xl" : "mt-2 text-2xl"}`}>{display}</p>
+      {hint ? <p className="mt-1.5 text-xs text-[#9ab0bc]">{hint}</p> : null}
       {progress !== undefined ? (
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10">
           <div
-            className={`h-full rounded-full transition-all ${
-              progress >= 80 ? "bg-emerald-400" : progress >= 50 ? "bg-amber-400" : "bg-rose-400"
-            }`}
-            style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+            className={`h-full rounded-full ${progress >= 80 ? "bg-emerald-400" : progress >= 50 ? "bg-amber-400" : "bg-rose-400"}`}
+            style={{ width: `${barWidth}%`, transition: "width 800ms cubic-bezier(0.4,0,0.2,1)" }}
           />
         </div>
       ) : null}
-    </article>
+    </Tag>
   );
 }
 
@@ -342,25 +358,38 @@ function ProgressBar({ value, max = 100, tone, label, showPct }) {
   );
 }
 
-function MiniBarChart({ title, items, emptyText = "Sin datos para mostrar." }) {
+function MiniBarChart({ title, items, emptyText = "Sin datos para mostrar.", onBarClick }) {
   const maxValue = Math.max(...items.map((item) => Number(item.value || 0)), 0);
+  const [mounted, setMounted] = useState(false);
+  const [hovered, setHovered] = useState(null);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 60); return () => clearTimeout(t); }, []);
+
   return (
     <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
       <p className="text-sm font-semibold text-white">{title}</p>
-      <div className="mt-4 space-y-4">
+      <div className="mt-4 space-y-3">
         {items.some((item) => Number(item.value || 0) > 0) ? (
           items.map((item) => {
             const pct = maxValue > 0 ? Math.max(4, Math.round((Number(item.value || 0) / maxValue) * 100)) : 0;
+            const isHov = hovered === item.label;
             return (
-              <div key={item.label}>
-                <div className="mb-1.5 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
+              <div
+                key={item.label}
+                role={onBarClick ? "button" : undefined}
+                tabIndex={onBarClick ? 0 : undefined}
+                onClick={() => onBarClick?.(item)}
+                onMouseEnter={() => setHovered(item.label)}
+                onMouseLeave={() => setHovered(null)}
+                className={onBarClick ? "cursor-pointer" : ""}
+              >
+                <div className={`mb-1.5 flex items-center justify-between gap-3 text-xs transition-colors ${isHov ? "text-white" : "text-[#9fb6c4]"}`}>
                   <span className="truncate">{item.label}</span>
-                  <span className="shrink-0 font-semibold tabular-nums text-white">{item.value}</span>
+                  <span className={`shrink-0 font-bold tabular-nums transition-colors ${isHov ? "text-[#14b8a6]" : "text-white"}`}>{item.value}</span>
                 </div>
-                <div className="h-2.5 overflow-hidden rounded-full bg-white/8">
+                <div className="h-2 overflow-hidden rounded-full bg-white/8">
                   <div
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${item.tone || "bg-gradient-to-r from-[#14b8a6] to-[#38bdf8]"}`}
-                    style={{ width: `${pct}%` }}
+                    className={`h-full rounded-full ${item.tone || "bg-gradient-to-r from-[#14b8a6] to-[#38bdf8]"}`}
+                    style={{ width: mounted ? `${pct}%` : "0%", transition: "width 700ms cubic-bezier(0.4,0,0.2,1)" }}
                   />
                 </div>
               </div>
@@ -379,7 +408,9 @@ function MiniDonut({ value, total, label, gradientId, colorStart = "#14b8a6", co
   const pctVal = Math.min(100, Math.max(0, (value / safeTotal) * 100));
   const radius = 20;
   const circumference = 2 * Math.PI * radius;
-  const offset = circumference - (pctVal / 100) * circumference;
+  const [animPct, setAnimPct] = useState(0);
+  useEffect(() => { const t = setTimeout(() => setAnimPct(pctVal), 80); return () => clearTimeout(t); }, [pctVal]);
+  const offset = circumference - (animPct / 100) * circumference;
   const gId = gradientId || `donutGrad-${label}`;
   return (
     <div className="flex flex-col items-center gap-1.5">
@@ -402,6 +433,7 @@ function MiniDonut({ value, total, label, gradientId, colorStart = "#14b8a6", co
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 900ms cubic-bezier(0.4,0,0.2,1)" }}
           />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
@@ -1234,8 +1266,8 @@ export default function ExecutiveReportPage() {
                       <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
                       <YAxis tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
                       <Tooltip content={<ExecChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 6 }} />
-                      <Bar dataKey="kpi" name="KPIs" fill="url(#gradKpi)" radius={[5, 5, 0, 0]} maxBarSize={38} />
-                      <Bar dataKey="okr" name="OKRs" fill="url(#gradOkr)" radius={[5, 5, 0, 0]} maxBarSize={38} />
+                      <Bar dataKey="kpi" name="KPIs" fill="url(#gradKpi)" radius={[5, 5, 0, 0]} maxBarSize={38} animationDuration={500} activeBar={{ fill: "#14b8a6", fillOpacity: 0.9 }} />
+                      <Bar dataKey="okr" name="OKRs" fill="url(#gradOkr)" radius={[5, 5, 0, 0]} maxBarSize={38} animationDuration={600} activeBar={{ fill: "#a78bfa", fillOpacity: 0.9 }} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>

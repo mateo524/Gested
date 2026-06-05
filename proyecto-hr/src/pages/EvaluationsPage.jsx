@@ -435,7 +435,7 @@ export default function EvaluationsPage() {
                 initialCount={3}
                 className="space-y-4"
                 renderItem={(evaluation) => (
-                <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article key={evaluation._id} className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
@@ -500,21 +500,21 @@ export default function EvaluationsPage() {
           ) : (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Evaluado</p>
                   <p className="mt-2 text-base font-semibold text-white">
                     {selectedEvaluation.employeeId?.apellido}, {selectedEvaluation.employeeId?.nombre}
                   </p>
                 </article>
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Cargo</p>
                   <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.employeeId?.cargo || "-"}</p>
                 </article>
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Área</p>
                   <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.employeeId?.area || "-"}</p>
                 </article>
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                   <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo</p>
                   <p className="mt-2 text-base font-semibold text-white">{selectedEvaluation.cycleId?.periodo} {selectedEvaluation.cycleId?.anio}</p>
                 </article>
@@ -550,15 +550,15 @@ export default function EvaluationsPage() {
                 <div className="space-y-4">
                   <SurfaceCard title="Resumen evaluativo" subtitle="Mostramos lo disponible hoy sin inventar promedios que no existan.">
                     <div className="grid gap-3">
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                         <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Resultado final</p>
                         <p className="mt-2 text-2xl font-semibold text-white">{selectedEvaluation.resultadoFinal ?? "-"}</p>
                       </article>
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                         <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Comentarios de la evaluación</p>
                         <p className="mt-2 text-sm text-[#9fb6c4]">{selectedEvaluation.comentariosGenerales || "Sin comentarios generales."}</p>
                       </article>
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <article className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                         <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Evidencias</p>
                         <p className="mt-2 text-sm text-[#9fb6c4]">
                           {Array.isArray(selectedEvaluation.evidenciaUrls) && selectedEvaluation.evidenciaUrls.length

@@ -1,4 +1,5 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
@@ -35,6 +36,9 @@ function SurfaceCard({ title, subtitle, children, actions }) {
 }
 
 function StatCard({ label, value, hint, accent = "teal", onClick }) {
+  const animated = useCountUp(typeof value === "number" ? value : Number(value));
+  const display = Number.isFinite(Number(value)) ? animated : value;
+
   const accentClass =
     accent === "green"
       ? "from-emerald-500/10 to-[#0c1920] border-emerald-400/15 shadow-[0_4px_20px_rgba(34,197,94,0.07)]"
@@ -47,13 +51,13 @@ function StatCard({ label, value, hint, accent = "teal", onClick }) {
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`w-full rounded-2xl border bg-gradient-to-br p-4 text-left ${accentClass} ${onClick ? "transition hover:ring-1 hover:ring-white/20 hover:brightness-110 cursor-pointer" : ""}`}
+      className={`card-lift w-full rounded-2xl border bg-gradient-to-br p-4 text-left ${accentClass} ${onClick ? "cursor-pointer ring-inset hover:ring-1 hover:ring-white/15" : ""}`}
     >
       <p className="text-[11px] text-[#7a98a8] uppercase tracking-[.1em] font-medium">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-white">{value}</p>
+      <p className="stat-num mt-2 text-2xl font-bold tracking-tight text-white">{display}</p>
       <p className="mt-1 text-[11px] text-[#7a98a8]">{hint}</p>
       {onClick ? (
-        <p className="mt-2 text-[10px] text-[#14b8a6] font-medium">Ver →</p>
+        <p className="mt-2 text-[10px] text-[#14b8a6] font-medium tracking-wide">Ver →</p>
       ) : null}
     </Tag>
   );
@@ -174,7 +178,7 @@ function DemoTourCard({ setView }) {
               key={step.num}
               type="button"
               onClick={() => setView(step.view)}
-              className="group flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0c1e28] p-4 text-left transition hover:border-[#8B5CF6]/30 hover:bg-[#8B5CF6]/5"
+              className="card-lift group flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0c1e28] p-4 text-left hover:border-[#8B5CF6]/30 hover:bg-[#8B5CF6]/5"
             >
               <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#8B5CF6]/25 bg-[#8B5CF6]/10 text-xs font-bold text-[#8B5CF6]">
                 {step.num}
