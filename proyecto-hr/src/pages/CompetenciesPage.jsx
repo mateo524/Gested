@@ -227,7 +227,7 @@ export default function CompetenciesPage() {
               onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
             />
             <textarea
-              className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              className="min-h-24 max-h-48 w-full resize-y rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
               placeholder="Descriptores visibles para esta competencia"
               value={form.metadata.descriptores}
               onChange={(e) => updateMetadata("descriptores", e.target.value)}

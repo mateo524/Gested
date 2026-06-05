@@ -1050,7 +1050,14 @@ export default function ExecutiveReportPage() {
                 initialCount={5}
                 className="grid gap-3 xl:grid-cols-2"
                 renderItem={(employee) => (
-                  <article key={employee._id} className={`rounded-3xl border p-4 ${employee.needsAttention ? "border-amber-300/20 bg-amber-500/5" : "border-white/10 bg-[#0f1f28]"}`}>
+                  <article
+                    key={employee._id}
+                    className={`cursor-pointer rounded-3xl border p-4 transition hover:brightness-110 ${employee.needsAttention ? "border-amber-300/20 bg-amber-500/5" : "border-white/10 bg-[#0f1f28]"}`}
+                    onClick={() => focusEmployeeDetail(employee._id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter") focusEmployeeDetail(employee._id); }}
+                  >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -1062,9 +1069,8 @@ export default function ExecutiveReportPage() {
                             <span className="shrink-0 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-medium text-rose-200">Sin manager</span>
                           )}
                         </div>
-                        <p className="mt-1 text-sm text-[#8FA9B7] truncate">
-                          {employee.cargo || "Sin cargo"} {employee.area ? `· ${employee.area}` : ""}
-                        </p>
+                        <p className="text-xs text-[#8FA9B7] truncate">{employee.cargo || "Sin cargo"}</p>
+                        <p className="text-xs text-[#6a8a9a] truncate">{employee.area || "Sin área"}</p>
                       </div>
                       <div className="flex flex-wrap gap-2 text-xs shrink-0">
                         <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
@@ -1087,15 +1093,6 @@ export default function ExecutiveReportPage() {
                         <span className="text-xs font-semibold text-white">{employee.averageScore.toFixed(1)}</span>
                       </div>
                     ) : null}
-                    <div className="mt-3 flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => focusEmployeeDetail(employee._id)}
-                        className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
-                      >
-                        Ver detalle
-                      </button>
-                    </div>
                   </article>
                 )}
               />
@@ -1161,16 +1158,16 @@ export default function ExecutiveReportPage() {
                     <button
                       type="button"
                       onClick={() => setView("evaluaciones")}
-                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
+                      className="rounded-2xl bg-[#14b8a6] px-3 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]"
                     >
-                      Ir a Evaluaciones
+                      Evaluaciones
                     </button>
                     <button
                       type="button"
                       onClick={() => setView("planes")}
-                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
+                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5"
                     >
-                      Ir a Desarrollo
+                      Desarrollo
                     </button>
                   </div>
                 }

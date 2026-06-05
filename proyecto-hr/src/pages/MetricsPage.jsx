@@ -306,7 +306,7 @@ function EvaluationEditor({
             <button
               type="button"
               onClick={onDelete}
-              className="rounded-2xl border border-rose-300/30 px-4 py-2 text-sm text-rose-200"
+              className="rounded-2xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
             >
               Eliminar
             </button>
@@ -327,12 +327,13 @@ function EvaluationEditor({
         </div>
 
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <div className="rounded-2xl border border-emerald-300/20 bg-[#122530] px-4 py-3">
+          <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 opacity-80">
             <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Empleado</label>
             <input
-              className="w-full bg-transparent text-sm text-white outline-none"
+              className="w-full cursor-not-allowed bg-transparent text-sm text-white outline-none"
               value={buildEmployeeLabel(form.employee) || "-"}
               readOnly
+              tabIndex={-1}
             />
           </div>
           <div>
@@ -398,7 +399,7 @@ function EvaluationEditor({
         <div>
           <label className="mb-1 block text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Observaciones</label>
           <textarea
-            className="min-h-24 w-full rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-white outline-none placeholder:text-[#7f99a8]"
+            className="min-h-24 max-h-48 w-full resize-y rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-white outline-none placeholder:text-[#7f99a8]"
             placeholder="Observación general, contexto o siguiente paso."
             value={form.comentariosGenerales}
             onChange={(event) => onFieldChange("comentariosGenerales", event.target.value)}
