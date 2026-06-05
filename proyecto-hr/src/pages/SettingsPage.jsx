@@ -76,18 +76,17 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Control de organización</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">
-          Configuración de {activeCompany?.nombre || "la organización"}
-        </h3>
-        <p className="mt-3 text-[#9fb6c4]">
-          Ajusta marca visual, reglas de carga y automatizaciones operativas.
-        </p>
-      </section>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Control de organización</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">
+            Configuración de {activeCompany?.nombre || "la organización"}
+          </h2>
+        </div>
+      </div>
 
-      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <section className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h3 className="text-xl font-semibold text-white">Identidad y reglas</h3>
           <div className="mt-6 grid gap-4">

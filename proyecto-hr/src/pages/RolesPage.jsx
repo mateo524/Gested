@@ -434,34 +434,22 @@ export default function RolesPage() {
           </div>
         </aside>
 
-        <div className="space-y-5">
-          <section className="pf-surface pf-surface-pad">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div className="max-w-3xl">
-                <p className="pf-section-title">Configuración &gt; Roles y accesos</p>
-                <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Roles y accesos</h1>
-                <p className="mt-3 text-sm leading-relaxed text-[#a5bcc8] md:text-base">
-                  Define roles base, scopes y permisos para controlar el acceso a la información y las acciones en ZENTOR.
-                </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
-                    Lugar principal para permisos y scopes
-                  </span>
-                  <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
-                    Gobierno de acceso
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveTab("matrix")}
-                className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
-              >
-                Ver guía
-              </button>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Configuración</p>
+              <h2 className="mt-1 text-xl font-semibold text-white">Roles y accesos</h2>
             </div>
+            <button
+              type="button"
+              onClick={() => setActiveTab("matrix")}
+              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white"
+            >
+              Ver guía
+            </button>
+          </div>
 
-            <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-3">
               <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                 <p className="text-sm text-[#8fa8b6]">Roles base</p>
                 <p className="mt-2 text-2xl font-semibold text-white">{summary.rolesCount}</p>
@@ -475,7 +463,6 @@ export default function RolesPage() {
                 <p className="mt-2 text-2xl font-semibold text-white">{summary.customExampleUsers}</p>
               </div>
             </div>
-          </section>
 
           <section className="pf-card p-5">
             <div className="flex items-end justify-between gap-4">
