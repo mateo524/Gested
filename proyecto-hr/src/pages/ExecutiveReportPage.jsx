@@ -574,6 +574,80 @@ export default function ExecutiveReportPage() {
     [detail?.metricSignals]
   );
 
+  const execSummaryLines = useMemo(() => {
+    if (!overview) return [];
+    const avg = overview.summary?.averageScore || 0;
+    const total = overview.summary?.employeesTotal || 0;
+    const pending = overview.summary?.evaluationsPending || 0;
+    const coverage = evaluationCoverage.pct;
+    const atRisk = safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0);
+    const overdue = overview.development?.overdue || 0;
+    const needsAttention = priorityEmployees.length;
+    const lines = [];
+
+    if (avg >= 4) {
+      lines.push(`El equipo muestra un desempeño sólido: promedio de ${avg.toFixed(2)} sobre 5.${total > 0 ? ` Hay ${total.toLocaleString("es-AR")} personas en el alcance actual.` : ""}`);
+    } else if (avg >= 3) {
+      lines.push(`El desempeño promedio del equipo es ${avg.toFixed(2)} sobre 5${total > 0 ? ` en ${total.toLocaleString("es-AR")} personas` : ""}, con espacio de mejora identificado.`);
+    } else if (avg > 0) {
+      lines.push(`El promedio de desempeño es ${avg.toFixed(2)} sobre 5. Se recomienda revisar los planes de acción en las áreas con menor puntaje.`);
+    } else if (total > 0) {
+      lines.push(`Hay ${total.toLocaleString("es-AR")} personas en el alcance. Todavía no hay suficientes datos de desempeño para calcular un promedio.`);
+    }
+
+    if (pending > 0 && evaluationCoverage.total > 0) {
+      lines.push(`Cobertura de evaluaciones: ${coverage}% completada. Quedan ${pending.toLocaleString("es-AR")} evaluaciones sin cerrar en este período.`);
+    } else if (coverage >= 80 && evaluationCoverage.total > 0) {
+      lines.push(`La cobertura de evaluaciones está en ${coverage}%, indicando seguimiento activo del ciclo.`);
+    }
+
+    const alerts = [];
+    if (needsAttention > 0) alerts.push(`${needsAttention} ${needsAttention === 1 ? "persona requiere" : "personas requieren"} atención prioritaria`);
+    if (atRisk > 0) alerts.push(`${atRisk} KPI/OKR en riesgo`);
+    if (overdue > 0) alerts.push(`${overdue} ${overdue === 1 ? "plan con seguimiento vencido" : "planes con seguimiento vencido"}`);
+    if (alerts.length) {
+      lines.push(`Puntos de seguimiento: ${alerts.join(" · ")}.`);
+    } else if (avg >= 4 && coverage >= 80) {
+      lines.push("No se detectan alertas críticas en el alcance actual.");
+    }
+
+    return lines;
+  }, [overview, evaluationCoverage, priorityEmployees]);
+
+  const execSignals = useMemo(() => {
+    if (!overview) return [];
+    const avg = overview.summary?.averageScore || 0;
+    const coverage = evaluationCoverage.pct;
+    const atRiskTotal = safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0);
+    const alertCount = priorityEmployees.length + atRiskTotal + (overview.development?.overdue || 0);
+    return [
+      {
+        label: "Promedio de equipo",
+        value: avg > 0 ? avg.toFixed(2) : "—",
+        hint: "Escala 1 – 5",
+        tone: avg >= 4 ? "success" : avg >= 3 ? "warning" : avg > 0 ? "danger" : "default",
+      },
+      {
+        label: "Cobertura evaluaciones",
+        value: `${coverage}%`,
+        hint: `${evaluationCoverage.completed} de ${evaluationCoverage.total} completadas`,
+        tone: coverage >= 80 ? "success" : coverage >= 50 ? "warning" : "danger",
+      },
+      {
+        label: "Alertas activas",
+        value: alertCount.toLocaleString("es-AR"),
+        hint: `${priorityEmployees.length} personas · ${atRiskTotal} obj. en riesgo`,
+        tone: alertCount === 0 ? "success" : alertCount <= 3 ? "warning" : "danger",
+      },
+      {
+        label: "Planes en curso",
+        value: (overview.development?.active || 0).toLocaleString("es-AR"),
+        hint: `${(overview.development?.overdue || 0).toLocaleString("es-AR")} vencidos`,
+        tone: (overview.development?.overdue || 0) > 0 ? "warning" : "default",
+      },
+    ];
+  }, [overview, evaluationCoverage, priorityEmployees]);
+
   if (!canViewExecutive || isEmployee) {
     return (
       <div className="space-y-5">
@@ -716,6 +790,54 @@ export default function ExecutiveReportPage() {
         <EmptyPanel text="No pudimos cargar el reporte en este momento." />
       ) : activeTab === "general" ? (
         <div className="min-h-[36rem] space-y-5">
+          {/* Executive summary */}
+          {overview ? (
+            <SurfaceCard
+              title="Resumen ejecutivo"
+              subtitle={`Síntesis generada a partir de los datos del período visible.`}
+              actions={
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-2 rounded-2xl border border-white/15 px-4 py-2.5 text-sm text-[#c5d5de] transition hover:bg-white/5 no-print"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 text-[#7a9aaa]">
+                    <path d="M6 9V2h12v7" />
+                    <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+                    <path d="M6 14h12v8H6z" />
+                  </svg>
+                  Imprimir / PDF
+                </button>
+              }
+            >
+              <div className="space-y-2">
+                {execSummaryLines.length ? (
+                  execSummaryLines.map((line, i) => (
+                    <p key={i} className="text-sm leading-relaxed text-[#c5d5de]">{line}</p>
+                  ))
+                ) : (
+                  <p className="text-sm text-[#8fa9b7]">Actualizá el reporte para ver el resumen ejecutivo.</p>
+                )}
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+                {execSignals.map((signal) => {
+                  const toneClass =
+                    signal.tone === "success" ? "border-emerald-300/20 bg-emerald-500/10"
+                    : signal.tone === "warning" ? "border-amber-300/20 bg-amber-500/10"
+                    : signal.tone === "danger" ? "border-rose-300/20 bg-rose-500/10"
+                    : "border-white/10 bg-[#0f1f28]";
+                  return (
+                    <div key={signal.label} className={`rounded-2xl border p-4 ${toneClass}`}>
+                      <p className="text-xs uppercase tracking-[0.12em] text-[#7f99a8]">{signal.label}</p>
+                      <p className="mt-2 text-2xl font-semibold text-white">{signal.value}</p>
+                      <p className="mt-1 text-xs text-[#9fb6c4]">{signal.hint}</p>
+                    </div>
+                  );
+                })}
+              </div>
+            </SurfaceCard>
+          ) : null}
+
           {/* Top stat cards */}
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <StatCard

@@ -205,3 +205,53 @@ select optgroup {
     color: #e8eef1 !important;
   }
 }
+
+@media print {
+  .no-print { display: none !important; }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 12pt;
+  }
+
+  #root > * > aside,
+  #root > * > nav,
+  [data-sidebar],
+  [data-topbar] {
+    display: none !important;
+  }
+
+  .pf-surface,
+  .pf-card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+    color: #0f172a !important;
+    break-inside: avoid;
+  }
+
+  .text-white,
+  [class*="text-\[#"] {
+    color: #0f172a !important;
+  }
+
+  [class*="bg-\[#"],
+  [class*="bg-emerald"],
+  [class*="bg-amber"],
+  [class*="bg-rose"],
+  [class*="bg-sky"] {
+    background-color: #f8fafc !important;
+  }
+
+  [class*="border-white"],
+  [class*="border-emerald"],
+  [class*="border-amber"],
+  [class*="border-rose"] {
+    border-color: #cbd5e1 !important;
+  }
+
+  h1, h2, h3, h4 { color: #0f172a !important; }
+
+  a { color: #0d9488 !important; }
+}
