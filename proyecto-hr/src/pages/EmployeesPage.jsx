@@ -1,4 +1,4 @@
-import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
@@ -192,7 +192,7 @@ export default function EmployeesPage() {
   return (
     <div className="space-y-6">
       <section className="pf-card p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Talento institucional</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Talento institucional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Empleados y docentes</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Carga y actualiza personas de tu organización. Esto impacta evaluaciones, reportes y decisiones.

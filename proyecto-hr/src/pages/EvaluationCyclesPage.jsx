@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -159,7 +159,7 @@ export default function EvaluationCyclesPage() {
   return (
     <div className="space-y-5 overflow-x-hidden">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Calendario institucional</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Calendario institucional</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Ciclos de evaluación</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Un <span title="Período de tiempo en el que se realizan evaluaciones de desempeño. Agrupa evaluaciones, metas y seguimiento bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted text-[#c5d5de]">ciclo</span> define el período y las fechas clave para ordenar evaluaciones y seguimiento.
@@ -306,7 +306,7 @@ export default function EvaluationCyclesPage() {
                         {cycle.fechaFin ? new Date(cycle.fechaFin).toLocaleDateString("es-AR") : "-"}
                       </p>
                       <div className="mt-3 flex gap-2">
-                        <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                        <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                           Editar
                         </button>
                         <button type="button" onClick={() => setConfirmState({ open: true, cycle })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">

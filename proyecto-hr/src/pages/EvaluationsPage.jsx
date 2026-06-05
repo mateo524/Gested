@@ -277,7 +277,7 @@ export default function EvaluationsPage() {
   return (
     <div className="space-y-5">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Seguimiento de desempeño</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Seguimiento de desempeño</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Gestión de evaluaciones</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
           Una evaluación mide desempeño durante un ciclo. El contexto define a quién se evalúa, con qué criterios y en qué período.
