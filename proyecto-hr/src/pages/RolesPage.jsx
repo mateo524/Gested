@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -409,7 +409,7 @@ export default function RolesPage() {
                 onClick={() => setView(item.key)}
                 className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm transition ${
                   item.active
-                    ? "bg-[#1e3a8a] text-white"
+                    ? "bg-[#14b8a6] text-[#0f172a]"
                     : "text-[#a9bfca] hover:bg-white/5 hover:text-white"
                 }`}
               >
@@ -992,7 +992,7 @@ export default function RolesPage() {
                       <button
                         type="submit"
                         disabled={submitting || loading}
-                        className="flex-1 rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                        className="flex-1 rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:opacity-60"
                       >
                         {submitting ? "Guardando..." : editingId ? "Guardar cambios" : "Asignar rol"}
                       </button>

@@ -1,10 +1,10 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+﻿@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 @import "tailwindcss";
 
 :root {
-  --primary: #1e3a8a;
-  --primary-dark: #172554;
-  --primary-light: #dbeafe;
+  --primary: #14b8a6;
+  --primary-dark: #0d9488;
+  --primary-light: #ccfbf1;
   --accent: #22c55e;
   --accent-light: #dcfce7;
   --slate: #0f172a;
@@ -162,7 +162,7 @@ select optgroup {
   }
 
   .pf-button-primary {
-    @apply rounded-2xl bg-[#1e3a8a] px-4 py-3 font-semibold text-white transition hover:bg-[#1a3278] disabled:cursor-not-allowed disabled:opacity-60;
+    @apply rounded-2xl bg-[#14b8a6] px-4 py-3 font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:cursor-not-allowed disabled:opacity-60;
   }
 
   .pf-button-secondary {

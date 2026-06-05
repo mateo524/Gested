@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+﻿import { useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
@@ -84,7 +84,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                   onViewAll?.();
                   setOpen(false);
                 }}
-                className="rounded-2xl bg-[#1e3a8a] px-3 py-1.5 text-xs font-medium text-white transition hover:bg-[#2a4db8]"
+                className="rounded-2xl bg-[#14b8a6] px-3 py-1.5 text-xs font-medium text-[#0f172a] transition hover:bg-[#0d9488]"
               >
                 Ver todas
               </button>
@@ -553,7 +553,7 @@ export default function AppShell({
                           onClick={() => setView(item.key)}
                           className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-medium transition ${
                             view === item.key
-                              ? "bg-[#1e3a8a] text-white shadow-[0_10px_24px_rgba(30,58,138,0.28)]"
+                              ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_10px_24px_rgba(20,184,166,0.28)]"
                               : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
                           }`}
                         >
@@ -574,7 +574,7 @@ export default function AppShell({
                     onClick={() => setView(item.key)}
                     className={`flex w-full items-center justify-center rounded-2xl px-0 py-3 text-sm font-medium transition ${
                       view === item.key
-                        ? "bg-[#1e3a8a] text-white"
+                        ? "bg-[#14b8a6] text-[#0f172a]"
                         : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
                     }`}
                   >
@@ -596,7 +596,7 @@ export default function AppShell({
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt={displayName} className="h-12 w-12 rounded-2xl object-cover" />
                   ) : (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#1e3a8a] text-sm font-semibold text-white">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#14b8a6] text-sm font-semibold text-[#0f172a]">
                       {userInitials}
                     </div>
                   )}
@@ -727,7 +727,7 @@ export default function AppShell({
                   {user?.avatarUrl ? (
                     <img src={user.avatarUrl} alt={displayName} className="h-10 w-10 rounded-2xl object-cover" />
                   ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#1e3a8a] text-sm font-semibold text-white">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#14b8a6] text-sm font-semibold text-[#0f172a]">
                       {userInitials}
                     </div>
                   )}

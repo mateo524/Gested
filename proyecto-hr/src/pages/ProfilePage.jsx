@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+﻿import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -149,7 +149,7 @@ export default function ProfilePage() {
             {profileForm.avatarUrl ? (
               <img src={profileForm.avatarUrl} alt={displayName} className="h-20 w-20 rounded-3xl object-cover" />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[#1e3a8a] text-2xl font-semibold text-white">
+              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[#14b8a6] text-2xl font-semibold text-[#0f172a]">
                 {initials}
               </div>
             )}
@@ -243,7 +243,7 @@ export default function ProfilePage() {
             <button
               type="submit"
               disabled={savingProfile}
-              className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {savingProfile ? "Guardando..." : "Guardar cambios"}
             </button>

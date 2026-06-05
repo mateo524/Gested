@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
@@ -426,7 +426,7 @@ export default function DashboardPage() {
               type="button"
               onClick={downloadDecisionReport}
               disabled={isDownloadingReport}
-              className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+              className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:opacity-60"
             >
               {isDownloadingReport ? "Descargando..." : "Descargar resumen"}
             </button>

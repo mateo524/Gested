@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
@@ -137,7 +137,7 @@ export default function RecordsPage() {
             <button
               type="button"
               onClick={exportFilteredRecords}
-              className="rounded-2xl bg-[#1e3a8a] px-4 py-2 text-sm font-semibold text-white"
+              className="rounded-2xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a]"
             >
               Exportar vista filtrada
             </button>

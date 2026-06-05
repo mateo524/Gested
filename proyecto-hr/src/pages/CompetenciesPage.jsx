@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -350,7 +350,7 @@ export default function CompetenciesPage() {
               </p>
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#14b8a6] py-3 font-semibold text-[#0f172a]">
               {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear competencia"}
             </button>
             {editingId ? (

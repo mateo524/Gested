@@ -46,7 +46,7 @@ const ProfilePage = lazy(loadProfilePage);
 function ViewLoader() {
   return (
     <div className="pf-card p-8 text-[#A9BFCA]">
-      Cargando modulo...
+      Cargando módulo...
     </div>
   );
 }

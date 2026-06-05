@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
@@ -150,7 +150,7 @@ function StepCard({ step, status }) {
     status === "completed"
       ? "bg-emerald-500 text-white"
       : status === "active"
-        ? "bg-[#1e3a8a] text-white"
+        ? "bg-[#14b8a6] text-[#0f172a]"
         : status === "error"
           ? "bg-rose-500 text-white"
           : "bg-[#132530] text-[#a8bdc8]";
@@ -781,7 +781,7 @@ export default function BulkImportPage() {
                 type="button"
                 onClick={handleAnalyze}
                 disabled={!canManageImport || !file || isAnalyzing}
-                className="w-full rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                className="w-full rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:opacity-60"
               >
                 {isAnalyzing ? "Validando archivo..." : "Validar archivo"}
               </button>
@@ -856,7 +856,7 @@ export default function BulkImportPage() {
                   type="button"
                   onClick={handleConfirm}
                   disabled={!canManageImport || isReadOnly || isConfirming || !analyzeResponse?.previewToken || blockingErrors > 0}
-                  className="rounded-2xl bg-[#1e3a8a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
+                  className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:opacity-60"
                 >
                   {isConfirming ? "Confirmando importación..." : "Confirmar importación"}
                 </button>
@@ -883,7 +883,7 @@ export default function BulkImportPage() {
                   onClick={() => setSelectedTab(tab.key)}
                   className={`rounded-2xl px-4 py-2.5 text-sm transition ${
                     selectedTab === tab.key
-                      ? "bg-[#1e3a8a] text-white"
+                      ? "bg-[#14b8a6] text-[#0f172a]"
                       : "border border-white/10 bg-[#122530] text-[#a8bdc8]"
                   }`}
                 >

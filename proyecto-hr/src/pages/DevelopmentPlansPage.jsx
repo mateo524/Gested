@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
@@ -419,7 +419,7 @@ export default function DevelopmentPlansPage() {
                       onClick={() => setSuggestionFilter(item.key)}
                       className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                         active
-                          ? "bg-[#1e3a8a] text-white"
+                          ? "bg-[#14b8a6] text-[#0f172a]"
                           : "border border-white/15 bg-[#122530] text-[#c5d5de]"
                       }`}
                     >
@@ -477,7 +477,7 @@ export default function DevelopmentPlansPage() {
                         <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Motivo</p>
                         <p className="mt-2 text-sm leading-relaxed text-[#d6e1e7]">{suggestion.reason}</p>
                         <p className="mt-3 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Acción sugerida</p>
-                        <div className="mt-2 rounded-2xl border border-[#1e3a8a]/35 bg-[#132847] px-4 py-3 text-sm font-medium text-[#dbe7ff]">
+                        <div className="mt-2 rounded-2xl border border-[#14b8a6]/35 bg-[#0c2826] px-4 py-3 text-sm font-medium text-[#dbe7ff]">
                           {suggestion.suggestedAction}
                         </div>
                       </div>
@@ -498,7 +498,7 @@ export default function DevelopmentPlansPage() {
                         type="button"
                         onClick={() => handleSuggestionCreate(suggestion)}
                         disabled={!suggestion.canCreatePlan}
-                        className="rounded-2xl bg-[#1e3a8a] px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+                        className="rounded-2xl bg-[#14b8a6] px-4 py-2 text-sm font-medium text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Crear plan
                       </button>
@@ -549,7 +549,7 @@ export default function DevelopmentPlansPage() {
             </button>
           </div>
           {prefilledFromSuggestion ? (
-            <div className="mt-4 rounded-2xl border border-[#1e3a8a]/35 bg-[#132847] px-4 py-3 text-sm text-[#dce7ff]">
+            <div className="mt-4 rounded-2xl border border-[#14b8a6]/35 bg-[#0c2826] px-4 py-3 text-sm text-[#dce7ff]">
               Revisá y ajustá el plan antes de guardarlo.
             </div>
           ) : null}
@@ -588,7 +588,7 @@ export default function DevelopmentPlansPage() {
               </select>
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#1e3a8a] py-3 font-semibold text-white">
+            <button type="submit" disabled={isSubmitting} className="w-full rounded-2xl bg-[#14b8a6] py-3 font-semibold text-[#0f172a]">
               {isSubmitting ? "Guardando..." : editingPlanId ? "Guardar cambios" : "Crear plan"}
             </button>
           </form>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
@@ -239,7 +239,7 @@ export default function StorageCenterPage() {
             <button
               type="submit"
               disabled={isUploading}
-              className="rounded-2xl bg-[#1e3a8a] px-5 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-[#14b8a6] px-5 py-3 font-semibold text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isUploading ? "Guardando..." : "Guardar en archivo central"}
             </button>
@@ -340,7 +340,7 @@ export default function StorageCenterPage() {
                 <button
                   type="button"
                   onClick={() => openDetail(file._id)}
-                  className="mt-4 rounded-2xl bg-[#1e3a8a] px-4 py-2 text-sm font-medium text-white"
+                  className="mt-4 rounded-2xl bg-[#14b8a6] px-4 py-2 text-sm font-medium text-[#0f172a]"
                 >
                   Ver detalle
                 </button>
