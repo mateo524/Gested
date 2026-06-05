@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
@@ -29,6 +30,7 @@ const suggestionFilters = [
 
 export default function DevelopmentPlansPage() {
   const { token, user, hasPermission } = useAuth();
+  const { addToast } = useToast();
   const { searchQuery } = useView();
   const [plans, setPlans] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
@@ -227,6 +229,7 @@ export default function DevelopmentPlansPage() {
       setEditingPlanId("");
       setMessageType("success");
       setMessage(editingPlanId ? "Plan de desarrollo actualizado." : "Plan de desarrollo creado.");
+      addToast({ message: editingPlanId ? "Plan actualizado." : "Plan creado.", type: "success" });
       await Promise.all([loadPlans(), loadSuggestions()]);
     } catch (error) {
       setMessageType("error");
@@ -299,6 +302,7 @@ export default function DevelopmentPlansPage() {
       }
       setMessageType("success");
       setMessage("Plan de desarrollo eliminado.");
+      addToast({ message: "Plan eliminado.", type: "success" });
       await Promise.all([loadPlans(), loadSuggestions()]);
     } catch (error) {
       setMessageType("error");

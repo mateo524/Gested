@@ -1,23 +1,15 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { apiFetch } from "../lib/api";
 
 function splitUserName(user) {
   const rawName = String(user?.nombre || "").trim();
   const rawLastName = String(user?.apellido || "").trim();
-  if (rawLastName) {
-    return { nombre: rawName, apellido: rawLastName };
-  }
-
+  if (rawLastName) return { nombre: rawName, apellido: rawLastName };
   const parts = rawName.split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) {
-    return { nombre: rawName, apellido: "" };
-  }
-
-  return {
-    nombre: parts[0],
-    apellido: parts.slice(1).join(" "),
-  };
+  if (parts.length <= 1) return { nombre: rawName, apellido: "" };
+  return { nombre: parts[0], apellido: parts.slice(1).join(" ") };
 }
 
 function getDisplayName(user) {
@@ -26,33 +18,21 @@ function getDisplayName(user) {
 
 function getInitials(user) {
   const parts = getDisplayName(user).split(/\s+/).filter(Boolean);
-  return parts
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() || "")
-    .join("") || "U";
+  return parts.slice(0, 2).map((p) => p[0]?.toUpperCase() || "").join("") || "U";
 }
 
-const emptyPasswordForm = {
-  currentPassword: "",
-  newPassword: "",
-  confirmPassword: "",
-};
+const emptyPasswordForm = { currentPassword: "", newPassword: "", confirmPassword: "" };
 
 export default function ProfilePage() {
   const { token, user, activeCompany, updateSession } = useAuth();
+  const { addToast } = useToast();
   const [profileForm, setProfileForm] = useState(() => {
-    const next = splitUserName(user);
-    return {
-      nombre: next.nombre,
-      apellido: next.apellido,
-      avatarUrl: user?.avatarUrl || "",
-    };
+    const n = splitUserName(user);
+    return { nombre: n.nombre, apellido: n.apellido, avatarUrl: user?.avatarUrl || "" };
   });
   const [passwordForm, setPasswordForm] = useState(emptyPasswordForm);
-  const [profileMessage, setProfileMessage] = useState("");
-  const [profileMessageType, setProfileMessageType] = useState("info");
-  const [passwordMessage, setPasswordMessage] = useState("");
-  const [passwordMessageType, setPasswordMessageType] = useState("info");
+  const [profileError, setProfileError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
 
@@ -69,14 +49,12 @@ export default function ProfilePage() {
   async function handleProfileSubmit(event) {
     event.preventDefault();
     if (!profileForm.nombre.trim()) {
-      setProfileMessageType("warning");
-      setProfileMessage("El nombre es obligatorio.");
+      setProfileError("El nombre es obligatorio.");
       return;
     }
-
     try {
       setSavingProfile(true);
-      setProfileMessage("");
+      setProfileError("");
       const data = await apiFetch("/auth/me/profile", {
         method: "PUT",
         token,
@@ -84,11 +62,9 @@ export default function ProfilePage() {
         body: JSON.stringify(profileForm),
       });
       await updateSession({ token: data.token, user: data.user });
-      setProfileMessageType("success");
-      setProfileMessage(data.mensaje || "Perfil actualizado.");
+      addToast({ message: data.mensaje || "Perfil actualizado.", type: "success" });
     } catch (error) {
-      setProfileMessageType("error");
-      setProfileMessage(error.message);
+      setProfileError(error.message);
     } finally {
       setSavingProfile(false);
     }
@@ -97,24 +73,20 @@ export default function ProfilePage() {
   async function handlePasswordSubmit(event) {
     event.preventDefault();
     if (!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
-      setPasswordMessageType("warning");
-      setPasswordMessage("Completa la contraseña actual, la nueva y la confirmación.");
+      setPasswordError("Completá los tres campos de contraseña.");
       return;
     }
     if (passwordForm.newPassword.length < 6) {
-      setPasswordMessageType("warning");
-      setPasswordMessage("La nueva contraseña debe tener al menos 6 caracteres.");
+      setPasswordError("La nueva contraseña necesita al menos 6 caracteres.");
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordMessageType("warning");
-      setPasswordMessage("La confirmación de la nueva contraseña no coincide.");
+      setPasswordError("La confirmación no coincide con la nueva contraseña.");
       return;
     }
-
     try {
       setSavingPassword(true);
-      setPasswordMessage("");
+      setPasswordError("");
       const data = await apiFetch("/auth/me/password", {
         method: "PUT",
         token,
@@ -123,187 +95,166 @@ export default function ProfilePage() {
       });
       await updateSession({ token: data.token, user: data.user });
       setPasswordForm(emptyPasswordForm);
-      setPasswordMessageType("success");
-      setPasswordMessage(data.mensaje || "Contraseña actualizada.");
+      addToast({ message: data.mensaje || "Contraseña actualizada.", type: "success" });
     } catch (error) {
-      setPasswordMessageType("error");
-      setPasswordMessage(error.message);
+      setPasswordError(error.message);
     } finally {
       setSavingPassword(false);
     }
   }
 
   return (
-    <div className="space-y-5">
-      <section className="pf-surface pf-surface-pad">
-        <p className="pf-section-title">Mi perfil</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Configuración personal</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-          Revisá tus datos básicos, tu alcance actual y cómo se muestra tu rol dentro de la organización.
-        </p>
-      </section>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Cuenta</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Mi perfil</h2>
+        </div>
+      </div>
 
-      <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-        <article className="pf-card p-6">
+      <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        {/* Identity card */}
+        <div className="pf-card p-6">
           <div className="flex items-center gap-4">
             {profileForm.avatarUrl ? (
-              <img src={profileForm.avatarUrl} alt={displayName} className="h-20 w-20 rounded-3xl object-cover" />
+              <img src={profileForm.avatarUrl} alt={displayName} className="h-16 w-16 rounded-2xl object-cover ring-2 ring-[#14b8a6]/30" />
             ) : (
-              <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-[#14b8a6] text-2xl font-semibold text-[#0f172a]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-[#14b8a6] to-[#0d9488] text-xl font-semibold text-[#0f172a] shadow-[0_8px_20px_rgba(20,184,166,0.3)]">
                 {initials}
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-2xl font-semibold text-white">{displayName}</p>
-              <p className="mt-1 text-sm text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || "Sin rol visible"}</p>
-              <p className="mt-2 text-sm text-[#97adba]">{organizationLabel}</p>
+              <p className="text-lg font-semibold text-white">{displayName}</p>
+              <p className="mt-0.5 text-sm text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || "Sin rol"}</p>
+              <p className="mt-0.5 text-xs text-[#7a98a8]">{user?.email}</p>
             </div>
           </div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Rol</p>
-              <p className="mt-2 text-sm font-semibold text-white">{user?.roleLabel || user?.roleName || "Sin rol asignado"}</p>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-[#5e7d8e]">Rol</p>
+              <p className="mt-1.5 text-sm font-semibold text-white">{user?.roleLabel || user?.roleName || "Sin rol asignado"}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Alcance</p>
-              <p className="mt-2 text-sm font-semibold text-white">{user?.scope || user?.roleScope || "Global"}</p>
+            <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-[#5e7d8e]">Alcance</p>
+              <p className="mt-1.5 text-sm font-semibold text-white">{user?.scope || user?.roleScope || "Global"}</p>
             </div>
-            <div className="col-span-full rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Organización activa</p>
-              <p className="mt-2 text-sm font-semibold text-white">{organizationLabel}</p>
+            <div className="col-span-full rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] p-3">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-[#5e7d8e]">Organización activa</p>
+              <p className="mt-1.5 text-sm font-semibold text-white">{organizationLabel}</p>
             </div>
           </div>
-        </article>
+        </div>
 
+        {/* Profile form */}
         <form onSubmit={handleProfileSubmit} className="pf-card p-6">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-semibold text-white">Datos básicos</h2>
-              <p className="mt-2 text-sm text-[#9fb6c4]">Podés actualizar tu nombre, apellido y la URL de tu avatar.</p>
-            </div>
-          </div>
+          <h3 className="text-sm font-semibold text-white">Datos básicos</h3>
+          <p className="mt-0.5 text-xs text-[#7a98a8]">Nombre, apellido y avatar URL.</p>
 
-          <div className="mt-5 grid gap-4 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <label className="block">
-              <span className="mb-2 block text-sm text-[#c5d5de]">Nombre</span>
+              <span className="mb-1.5 block text-xs text-[#9fb6c4]">Nombre</span>
               <input
-                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white outline-none transition focus:border-[#14b8a6]"
                 value={profileForm.nombre}
-                onChange={(event) => setProfileForm((current) => ({ ...current, nombre: event.target.value }))}
+                onChange={(e) => setProfileForm((c) => ({ ...c, nombre: e.target.value }))}
                 placeholder="Ej: Ana"
               />
             </label>
             <label className="block">
-              <span className="mb-2 block text-sm text-[#c5d5de]">Apellido</span>
+              <span className="mb-1.5 block text-xs text-[#9fb6c4]">Apellido</span>
               <input
-                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white outline-none transition focus:border-[#14b8a6]"
                 value={profileForm.apellido}
-                onChange={(event) => setProfileForm((current) => ({ ...current, apellido: event.target.value }))}
+                onChange={(e) => setProfileForm((c) => ({ ...c, apellido: e.target.value }))}
                 placeholder="Ej: Pérez"
               />
             </label>
             <label className="block md:col-span-2">
-              <span className="mb-2 block text-sm text-[#c5d5de]">Email</span>
+              <span className="mb-1.5 block text-xs text-[#9fb6c4]">Email</span>
               <input
-                className="w-full rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-[#8fa9b7]"
+                className="w-full rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-[#7a98a8] cursor-not-allowed"
                 value={user?.email || ""}
                 readOnly
               />
-              <p className="mt-2 text-xs text-[#7f99a8]">El email queda en solo lectura en esta etapa.</p>
             </label>
             <label className="block md:col-span-2">
-              <span className="mb-2 block text-sm text-[#c5d5de]">Avatar por URL</span>
+              <span className="mb-1.5 block text-xs text-[#9fb6c4]">Avatar (URL)</span>
               <input
-                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white outline-none transition focus:border-[#14b8a6]"
                 value={profileForm.avatarUrl}
-                onChange={(event) => setProfileForm((current) => ({ ...current, avatarUrl: event.target.value }))}
+                onChange={(e) => setProfileForm((c) => ({ ...c, avatarUrl: e.target.value }))}
                 placeholder="https://..."
               />
             </label>
           </div>
 
-          {profileMessage ? (
-            <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
-              profileMessageType === "success"
-                ? "border border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
-                : profileMessageType === "error"
-                  ? "border border-rose-300/30 bg-rose-500/10 text-rose-100"
-                  : "border border-amber-300/30 bg-amber-500/10 text-amber-100"
-            }`}>
-              {profileMessage}
-            </div>
+          {profileError ? (
+            <p className="mt-3 rounded-2xl border border-rose-300/30 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">{profileError}</p>
           ) : null}
 
-          <div className="mt-5 flex justify-end">
+          <div className="mt-4 flex justify-end">
             <button
               type="submit"
               disabled={savingProfile}
-              className="rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {savingProfile ? "Guardando..." : "Guardar cambios"}
             </button>
           </div>
         </form>
-      </section>
+      </div>
 
-      <section className="pf-card p-6">
-        <h2 className="text-xl font-semibold text-white">Contraseña</h2>
-        <p className="mt-2 text-sm text-[#9fb6c4]">Actualizá tu contraseña sin cambiar el rol, el scope ni la organización activa.</p>
+      {/* Password section */}
+      <div className="pf-card p-6">
+        <h3 className="text-sm font-semibold text-white">Contraseña</h3>
+        <p className="mt-0.5 text-xs text-[#7a98a8]">Mínimo 6 caracteres. El rol y la organización no cambian.</p>
 
-        <form onSubmit={handlePasswordSubmit} className="mt-5 grid gap-4 lg:grid-cols-3">
+        <form onSubmit={handlePasswordSubmit} className="mt-4 grid gap-3 lg:grid-cols-3">
           <label className="block">
-            <span className="mb-2 block text-sm text-[#c5d5de]">Contraseña actual</span>
+            <span className="mb-1.5 block text-xs text-[#9fb6c4]">Contraseña actual</span>
             <input
               type="password"
-              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white outline-none transition focus:border-[#14b8a6]"
               value={passwordForm.currentPassword}
-              onChange={(event) => setPasswordForm((current) => ({ ...current, currentPassword: event.target.value }))}
+              onChange={(e) => setPasswordForm((c) => ({ ...c, currentPassword: e.target.value }))}
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-sm text-[#c5d5de]">Nueva contraseña</span>
+            <span className="mb-1.5 block text-xs text-[#9fb6c4]">Nueva contraseña</span>
             <input
               type="password"
-              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white outline-none transition focus:border-[#14b8a6]"
               value={passwordForm.newPassword}
-              onChange={(event) => setPasswordForm((current) => ({ ...current, newPassword: event.target.value }))}
+              onChange={(e) => setPasswordForm((c) => ({ ...c, newPassword: e.target.value }))}
             />
           </label>
           <label className="block">
-            <span className="mb-2 block text-sm text-[#c5d5de]">Confirmación</span>
+            <span className="mb-1.5 block text-xs text-[#9fb6c4]">Confirmación</span>
             <input
               type="password"
-              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white outline-none transition focus:border-[#14b8a6]"
               value={passwordForm.confirmPassword}
-              onChange={(event) => setPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))}
+              onChange={(e) => setPasswordForm((c) => ({ ...c, confirmPassword: e.target.value }))}
             />
           </label>
 
-          <div className="lg:col-span-3 flex items-center justify-between gap-3">
-            <p className="text-xs text-[#7f99a8]">La nueva contraseña debe tener al menos 6 caracteres.</p>
+          <div className="flex items-center justify-between gap-3 lg:col-span-3">
+            {passwordError ? (
+              <p className="text-sm text-rose-300">{passwordError}</p>
+            ) : (
+              <span />
+            )}
             <button
               type="submit"
               disabled={savingPassword}
-              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-2xl border border-white/15 bg-[#122530] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[#172f3c] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {savingPassword ? "Actualizando..." : "Actualizar contraseña"}
             </button>
           </div>
         </form>
-
-        {passwordMessage ? (
-          <div className={`mt-4 rounded-2xl px-4 py-3 text-sm ${
-            passwordMessageType === "success"
-              ? "border border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
-              : passwordMessageType === "error"
-                ? "border border-rose-300/30 bg-rose-500/10 text-rose-100"
-                : "border border-amber-300/30 bg-amber-500/10 text-amber-100"
-          }`}>
-            {passwordMessage}
-          </div>
-        ) : null}
-      </section>
+      </div>
     </div>
   );
 }

@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import ConfirmDialog from "../components/ConfirmDialog";
@@ -21,6 +22,7 @@ function formatStage(value) {
 
 export default function EvaluationCyclesPage() {
   const { token } = useAuth();
+  const { addToast } = useToast();
   const { searchQuery, setSearchQuery } = useView();
   const [cycles, setCycles] = useState([]);
   const [form, setForm] = useState(emptyForm);
@@ -93,11 +95,8 @@ export default function EvaluationCyclesPage() {
       const hadSearch = Boolean(String(searchQuery || "").trim());
       if (hadSearch) setSearchQuery("");
       setMessageType("success");
-      setMessage(
-        `${isEditing ? "Ciclo actualizado." : "Ciclo creado."}${
-          hadSearch ? " Limpiamos la búsqueda activa para mostrarlo en la lista." : ""
-        }`
-      );
+      setMessage(`${isEditing ? "Ciclo actualizado." : "Ciclo creado."}${hadSearch ? " Limpiamos la búsqueda activa para mostrarlo en la lista." : ""}`);
+      addToast({ message: isEditing ? "Ciclo actualizado." : "Ciclo creado.", type: "success" });
       await loadData();
       window.requestAnimationFrame(() => {
         listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -147,6 +146,7 @@ export default function EvaluationCyclesPage() {
       setConfirmState({ open: false, cycle: null });
       setMessageType("success");
       setMessage("Ciclo eliminado.");
+      addToast({ message: "Ciclo eliminado.", type: "success" });
       await loadData();
     } catch (error) {
       setMessageType("error");

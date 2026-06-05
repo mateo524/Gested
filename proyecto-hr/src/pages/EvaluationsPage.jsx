@@ -1,5 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
@@ -91,6 +92,7 @@ function SurfaceCard({ title, subtitle, children, actions }) {
 
 export default function EvaluationsPage() {
   const { token, user } = useAuth();
+  const { addToast } = useToast();
   const { searchQuery, setSearchQuery } = useView();
   const detailRef = useRef(null);
   const [employees, setEmployees] = useState([]);
@@ -239,6 +241,7 @@ export default function EvaluationsPage() {
       setScores(metrics.map((metric) => defaultScore(metric._id)));
       setMessageType("success");
       setMessage("Evaluación creada.");
+      addToast({ message: "Evaluación creada.", type: "success" });
       await loadEvaluations();
       window.requestAnimationFrame(() => {
         document.getElementById("evaluations-list-section")?.scrollIntoView({ behavior: "smooth", block: "start" });

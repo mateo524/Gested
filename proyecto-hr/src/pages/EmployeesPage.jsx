@@ -1,5 +1,6 @@
 ﻿import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { apiFetch } from "../lib/api";
 import { useView } from "../context/ViewContext";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
@@ -27,6 +28,7 @@ function formatDate(value) {
 
 export default function EmployeesPage() {
   const { token } = useAuth();
+  const { addToast } = useToast();
   const { setView, searchQuery } = useView();
   const [employees, setEmployees] = useState([]);
   const [schools, setSchools] = useState([]);
@@ -128,6 +130,7 @@ export default function EmployeesPage() {
       setFieldErrors({});
       setMessageType("success");
       setMessage(isEditing ? "Empleado actualizado correctamente." : "Empleado creado correctamente.");
+      addToast({ message: isEditing ? "Empleado actualizado." : "Empleado creado.", type: "success" });
       if (!isEditing && data?.temporaryPassword) {
         setTemporaryPassword(data.temporaryPassword);
       }
@@ -180,6 +183,7 @@ export default function EmployeesPage() {
       setConfirmState({ open: false, employee: null });
       setMessageType("success");
       setMessage("Empleado eliminado.");
+      addToast({ message: "Empleado eliminado.", type: "success" });
       await loadBase();
     } catch (error) {
       setMessageType("error");
@@ -402,8 +406,8 @@ export default function EmployeesPage() {
         </section>
       </div>
 
-      {message ? (
-        <p className={messageType === "error" ? "pf-alert-error" : messageType === "success" ? "pf-alert-success" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>
+      {message && messageType !== "success" ? (
+        <p className={messageType === "error" ? "pf-alert-error" : messageType === "warning" ? "pf-alert-warning" : "pf-alert-info"}>
           {messageType === "error" ? "No se pudo guardar. " : ""}
           {message}
         </p>
