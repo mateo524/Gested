@@ -286,11 +286,21 @@ export default function EvaluationsPage() {
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[#22c55e]/40 bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">Paso 1: Evaluado y ciclo</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 2: Tipo y estado</span>
-            <span className="rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]">Paso 3: Puntajes</span>
-          </div>
+          {(() => {
+            const s1 = !!(form.employeeId && form.cycleId);
+            const s3 = s1 && scores.some((s) => s.nivel > 0);
+            const pill = (done, label) =>
+              done
+                ? `rounded-full border border-[#14b8a6]/40 bg-[#0d2826] px-3 py-1 text-xs text-[#14b8a6]`
+                : `rounded-full border border-white/20 bg-[#0f1f28] px-3 py-1 text-xs text-[#c5d5de]`;
+            return (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <span className={pill(s1, "Paso 1")}>{s1 ? "✓ " : ""}Paso 1: Evaluado y ciclo</span>
+                <span className={pill(s1, "Paso 2")}>{s1 ? "✓ " : ""}Paso 2: Tipo y estado</span>
+                <span className={pill(s3, "Paso 3")}>{s3 ? "✓ " : ""}Paso 3: Puntajes</span>
+              </div>
+            );
+          })()}
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Datos del evaluado</p>
             <div>
@@ -347,7 +357,7 @@ export default function EvaluationsPage() {
                 <option value="CERRADA">Cerrada</option>
               </select>
             </div>
-            <textarea className="min-h-24 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Comentarios generales" value={form.comentariosGenerales} onChange={(event) => setForm({ ...form, comentariosGenerales: event.target.value })} />
+            <textarea className="min-h-24 max-h-48 w-full resize-y rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Comentarios generales" value={form.comentariosGenerales} onChange={(event) => setForm({ ...form, comentariosGenerales: event.target.value })} />
 
             <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-sm font-semibold text-[#c5d5de]">Contenido evaluativo asociado</p>
@@ -431,11 +441,12 @@ export default function EvaluationsPage() {
                   <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} — Resultado final: {evaluation.resultadoFinal}</p>
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => loadEvaluationDetail(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
+                    <button type="button" onClick={() => loadEvaluationDetail(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de] hover:border-white/40 transition">
                       Ver detalle
                     </button>
-                    <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">
-                      Ver reporte individual
+                    <button type="button" onClick={() => downloadIndividualReport(evaluation._id)} className="inline-flex items-center gap-1.5 rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/5 px-4 py-2 text-sm text-[#14b8a6] hover:bg-[#14b8a6]/10 transition">
+                      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5"><path d="M8 2v8M5 7l3 3 3-3"/><path d="M3 13h10"/></svg>
+                      Reporte
                     </button>
                   </div>
                 </article>

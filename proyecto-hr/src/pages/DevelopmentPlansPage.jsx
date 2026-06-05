@@ -575,7 +575,7 @@ export default function DevelopmentPlansPage() {
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definición del plan</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Fortalezas (separadas por coma)" value={form.fortalezas} onChange={(event) => setForm({ ...form, fortalezas: event.target.value })} />
-            <textarea className={`min-h-24 w-full rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.aspectoDesarrollar ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
+            <textarea className={`min-h-24 max-h-48 w-full resize-y rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.aspectoDesarrollar ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
             <textarea className="min-h-20 w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cómo se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Seguimiento</p>
@@ -670,7 +670,7 @@ export default function DevelopmentPlansPage() {
                       <button
                         type="button"
                         onClick={() => setConfirmState({ open: true, plan })}
-                        className="rounded-2xl border border-rose-300/30 px-4 py-2 text-sm font-medium text-rose-100"
+                        className="rounded-2xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
                       >
                         Eliminar
                       </button>
