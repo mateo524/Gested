@@ -1,66 +1,57 @@
 function StateIcon({ tone = "neutral" }) {
-  const className =
+  const cls =
     tone === "success"
-      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
+      ? "border-emerald-400/25 bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 text-emerald-300"
       : tone === "warning"
-        ? "border-amber-300/20 bg-amber-500/10 text-amber-100"
+        ? "border-amber-300/25 bg-gradient-to-br from-amber-500/20 to-amber-600/10 text-amber-300"
         : tone === "error"
-          ? "border-rose-300/20 bg-rose-500/10 text-rose-100"
-          : "border-white/10 bg-[#122530] text-[#d7e5ec]";
-
+          ? "border-rose-300/25 bg-gradient-to-br from-rose-500/20 to-rose-600/10 text-rose-300"
+          : "border-white/10 bg-gradient-to-br from-white/8 to-white/4 text-[#8fb0c2]";
   return (
-    <span className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${className}`}>
+    <span className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border ${cls}`}>
       {tone === "success" ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-6 w-6">
           <path d="M5 13l4 4L19 7" />
         </svg>
       ) : tone === "warning" ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-          <path d="M12 9v4" />
-          <path d="M12 17h.01" />
-          <path d="M10.3 3.7L1.9 18a2 2 0 0 0 1.7 3h16.8a2 2 0 0 0 1.7-3L13.7 3.7a2 2 0 0 0-3.4 0z" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-6 w-6">
+          <path d="M12 8v5M12 16h.01" />
+          <path d="M10.3 3.7L1.9 18a2 2 0 001.7 3h16.8a2 2 0 001.7-3L13.7 3.7a2 2 0 00-3.4 0z" />
         </svg>
       ) : tone === "error" ? (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-          <path d="M6 6l12 12M18 6L6 18" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-6 w-6">
           <circle cx="12" cy="12" r="9" />
+          <path d="M9 9l6 6M15 9l-6 6" />
         </svg>
       ) : (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-          <path d="M4 12h16" />
-          <path d="M12 4v16" />
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-6 w-6">
+          <circle cx="11" cy="11" r="7" />
+          <path d="M16.5 16.5l4 4" />
         </svg>
       )}
     </span>
   );
 }
 
-function StatePanel({
-  tone = "neutral",
-  title,
-  description,
-  actionLabel,
-  onAction,
-  compact = false,
-}) {
+function StatePanel({ tone = "neutral", title, description, actionLabel, onAction, compact = false }) {
+  const isAction = actionLabel && onAction;
   return (
-    <div
-      className={`rounded-3xl border border-white/10 bg-[#0f1f28] ${
-        compact ? "px-4 py-4" : "px-5 py-6"
-      }`}
-    >
-      <div className={`flex ${compact ? "items-center gap-3" : "items-start gap-4"}`}>
+    <div className={`rounded-3xl border border-white/10 bg-[#0c1e28] ${compact ? "px-4 py-4" : "px-6 py-6"}`}>
+      <div className={`flex ${compact ? "items-center gap-3" : "items-start gap-5"}`}>
         <StateIcon tone={tone} />
         <div className="min-w-0 flex-1">
-          <h4 className="text-base font-semibold text-white">{title}</h4>
-          <p className="mt-1 text-sm leading-relaxed text-[#9fb6c4]">{description}</p>
-          {actionLabel && onAction ? (
+          <h4 className={`font-semibold text-white ${compact ? "text-sm" : "text-base"}`}>{title}</h4>
+          <p className="mt-1 text-sm leading-relaxed text-[#8fa9b7]">{description}</p>
+          {isAction ? (
             <button
               type="button"
               onClick={onAction}
-              className="mt-4 rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white transition hover:bg-[#17313f]"
+              className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]"
             >
               {actionLabel}
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                <path d="M3 8h10M9 4l4 4-4 4" />
+              </svg>
             </button>
           ) : null}
         </div>
@@ -116,7 +107,7 @@ export function ErrorState({
 }
 
 export function PermissionState({
-  title = "No tienes acceso a esta sección",
+  title = "No tenés acceso a esta sección",
   description = "Tu rol actual no tiene permisos para ver esta información.",
   actionLabel,
   onAction,

@@ -284,7 +284,7 @@ export default function EvaluationsPage() {
       </SurfaceCard>
 
       <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
+        <section id="new-eval-form" className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">Nueva evaluación</h4>
           {(() => {
             const s1 = !!(form.employeeId && form.cycleId);
@@ -455,12 +455,14 @@ export default function EvaluationsPage() {
               !isLoadingBase && !isLoadingEvaluations && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tienes evaluaciones cargadas" : "Todavía no hay evaluaciones registradas"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tenés evaluaciones cargadas" : "Todavía no hay evaluaciones registradas"}
                   description={
                     user?.roleCode === "EMPLEADO"
                       ? "Cuando te asignen un ciclo o una autoevaluación, la vas a ver acá."
                       : "Creá la primera evaluación para empezar a seguir resultados por persona."
                   }
+                  actionLabel={user?.roleCode !== "EMPLEADO" ? "Nueva evaluación" : undefined}
+                  onAction={user?.roleCode !== "EMPLEADO" ? () => document.getElementById("new-eval-form")?.scrollIntoView({ behavior: "smooth", block: "start" }) : undefined}
                 />
               ) : null
             )}

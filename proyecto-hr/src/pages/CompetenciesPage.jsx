@@ -208,7 +208,7 @@ export default function CompetenciesPage() {
       </section>
 
       <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
-        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
+        <section id="new-competency-form" className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar competencia" : "Nueva competencia"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
             Cargá nombre, definición, descriptores y a quién aplica. Las competencias están disponibles para toda la organización activa.
@@ -457,7 +457,13 @@ export default function CompetenciesPage() {
                 />
               : null}
             {!isLoading && messageType !== "error" && !competencies.length ? (
-              <EmptyState compact title="Todavía no hay competencias cargadas" description="Creá la primera competencia para ordenar evaluaciones, mediciones y desarrollo." />
+              <EmptyState
+                compact
+                title="Todavía no hay competencias cargadas"
+                description="Creá la primera competencia para ordenar evaluaciones, mediciones y desarrollo."
+                actionLabel="Nueva competencia"
+                onAction={() => document.getElementById("new-competency-form")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              />
             ) : null}
           </div>
         </section>
