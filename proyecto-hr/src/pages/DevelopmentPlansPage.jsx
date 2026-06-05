@@ -683,7 +683,7 @@ export default function DevelopmentPlansPage() {
               !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
                 <EmptyState
                   compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tienes planes asociados" : "No hay planes todavía"}
+                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tenés planes asociados" : "No hay planes todavía"}
                   description={
                     user?.roleCode === "EMPLEADO"
                       ? "Cuando te asignen un plan, lo vas a ver acá con su próximo seguimiento."
@@ -691,6 +691,8 @@ export default function DevelopmentPlansPage() {
                         ? "No encontramos planes para la búsqueda actual."
                         : "Podés crear uno desde una evaluación o cargarlo manualmente."
                   }
+                  actionLabel={user?.roleCode !== "EMPLEADO" && !searchQuery ? "Crear plan" : undefined}
+                  onAction={user?.roleCode !== "EMPLEADO" && !searchQuery ? () => planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) : undefined}
                 />
               ) : null
             )}
