@@ -30,13 +30,16 @@ export default function CollapsibleList({
     <div className={className}>
       {visibleItems.map((item, index) => renderItem(item, index))}
       {hiddenCount > 0 ? (
-        <div className="mt-4 flex justify-start">
+        <div className="mt-3 flex justify-start">
           <button
             type="button"
             onClick={() => setExpanded((current) => !current)}
-            className="rounded-2xl border border-white/12 bg-white/5 px-3 py-2 text-xs font-medium text-[#d5e2e9] transition hover:bg-white/10"
+            className="inline-flex items-center gap-1.5 rounded-2xl border border-white/[0.1] bg-white/[0.04] px-3 py-2 text-xs font-medium text-[#b8cdd8] transition hover:bg-white/[0.08] hover:text-white"
           >
             {expanded ? buttonLabelLess : buttonLabelMore || `Ver más (${hiddenCount})`}
+            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className={`h-3 w-3 shrink-0 transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}>
+              <path d="M2 4l4 4 4-4" />
+            </svg>
           </button>
         </div>
       ) : null}

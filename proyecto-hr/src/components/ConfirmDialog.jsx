@@ -28,7 +28,7 @@ export default function ConfirmDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020617]/70 px-4 backdrop-blur-sm">
       <div
         ref={panelRef}
-        className="w-full max-w-md rounded-[1.75rem] border border-white/10 bg-[#122530] p-6 shadow-[0_30px_80px_rgba(2,8,23,0.45)]"
+        className="w-full max-w-md rounded-[1.75rem] border border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028] p-6 shadow-[0_32px_90px_rgba(2,8,23,0.6),inset_0_1px_0_rgba(255,255,255,0.06)]"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-dialog-title"

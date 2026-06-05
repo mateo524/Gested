@@ -126,7 +126,11 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen bg-[#060f14]">
       {/* Left panel — value prop */}
-      <div className="hidden flex-col justify-between border-r border-white/5 bg-gradient-to-br from-[#0d1e28] to-[#06101a] p-12 lg:flex lg:w-[45%] xl:w-[40%]">
+      <div className="relative hidden flex-col justify-between border-r border-white/[0.06] bg-gradient-to-br from-[#0d1e28] to-[#06101a] p-12 lg:flex lg:w-[45%] xl:w-[40%]">
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-[#14b8a6]/10 blur-[90px]" />
+          <div className="absolute -left-10 bottom-24 h-56 w-56 rounded-full bg-[#14b8a6]/6 blur-[70px]" />
+        </div>
         <AppLogo variant="dark" />
         <div>
           <h2 className="text-4xl font-bold leading-tight text-white">
@@ -161,7 +165,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card */}
-        <div className="rounded-[1.75rem] border border-white/10 bg-[#1A2C38] p-8 shadow-[0_20px_60px_rgba(2,8,23,0.35)]">
+        <div className="rounded-[1.75rem] border border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028] p-8 shadow-[0_24px_72px_rgba(2,8,23,0.55),inset_0_1px_0_rgba(255,255,255,0.06)]">
           <p className="text-xs uppercase tracking-[0.28em] text-[#7A9AAA]">Ingreso seguro</p>
           <h1 className="mt-3 text-2xl font-semibold leading-tight text-white">
             {mode === "forgot"
@@ -211,8 +215,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
-                style={{ backgroundColor: accent }}
+                className="w-full rounded-[1.25rem] bg-[#14b8a6] py-3.5 font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.28)] transition hover:bg-[#0d9488] disabled:cursor-wait disabled:opacity-70"
               >
                 {isSubmitting ? "Ingresando..." : "Iniciar sesión"}
               </button>
@@ -238,8 +241,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
-                style={{ backgroundColor: accent }}
+                className="w-full rounded-[1.25rem] bg-[#14b8a6] py-3.5 font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.28)] transition hover:bg-[#0d9488] disabled:cursor-wait disabled:opacity-70"
               >
                 {isSubmitting ? "Enviando..." : "Enviar enlace o token"}
               </button>
@@ -272,8 +274,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full rounded-[1.25rem] py-3.5 font-semibold text-white transition disabled:cursor-wait disabled:opacity-70"
-                style={{ backgroundColor: accent }}
+                className="w-full rounded-[1.25rem] bg-[#14b8a6] py-3.5 font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.28)] transition hover:bg-[#0d9488] disabled:cursor-wait disabled:opacity-70"
               >
                 {isSubmitting ? "Actualizando..." : "Restablecer contraseña"}
               </button>
