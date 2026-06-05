@@ -157,16 +157,15 @@ export default function EvaluationCyclesPage() {
   }
 
   return (
-    <div className="space-y-5 overflow-x-hidden">
-      <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6 md:p-7">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Calendario institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Ciclos de evaluación</h3>
-        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Un <span title="Período de tiempo en el que se realizan evaluaciones de desempeño. Agrupa evaluaciones, metas y seguimiento bajo un mismo contexto temporal." className="cursor-help underline decoration-dotted text-[#c5d5de]">ciclo</span> define el período y las fechas clave para ordenar evaluaciones y seguimiento.
-        </p>
-      </section>
+    <div className="space-y-4 overflow-x-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Calendario</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Ciclos de evaluación</h2>
+        </div>
+      </div>
 
-      <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
         <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">

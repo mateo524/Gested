@@ -190,16 +190,15 @@ export default function EmployeesPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="pf-card p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Talento institucional</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Empleados y docentes</h3>
-        <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Carga y actualiza personas de tu organización. Esto impacta evaluaciones, reportes y decisiones.
-        </p>
-      </section>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Talento</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Personas</h2>
+        </div>
+      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <div className="grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
         <section className="pf-card p-6">
           <h4 className="text-xl font-semibold text-white">{editingId ? "Editar empleado" : "Nuevo empleado"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">Completa los datos mínimos y guarda. Luego puedes editar cuando quieras.</p>

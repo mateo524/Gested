@@ -628,60 +628,38 @@ export default function BulkImportPage() {
   }
 
   return (
-    <div className="space-y-5">
-      <section className="pf-surface pf-surface-pad">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="max-w-3xl">
-            <p className="pf-section-title">Datos / Importación</p>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">Importación</h1>
-            <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Importá personas, roles, managers, KPIs y OKRs desde la plantilla oficial.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <span className="rounded-full border border-emerald-300/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-100">
-                Flujo principal recomendado
-              </span>
-              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs font-medium text-[#d6e2e8]">
-                Para altas y actualizaciones institucionales
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleDownloadTemplate}
-              disabled={isDownloadingTemplate || !canManageImport}
-              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white disabled:opacity-60"
-            >
-              {isDownloadingTemplate ? "Descargando..." : "Descargar plantilla"}
-            </button>
-            {showHistory ? (
-              <button
-                type="button"
-                onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
-                className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-sm font-medium text-white"
-              >
-                Ver historial
-              </button>
-            ) : null}
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              className="cursor-not-allowed rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm font-semibold text-[#718693] opacity-75"
-              title="Guia disponible proximamente"
-            >
-              Ver guia
-            </button>
-          </div>
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Datos</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Importación</h2>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            disabled={isDownloadingTemplate || !canManageImport}
+            className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white disabled:opacity-60"
+          >
+            {isDownloadingTemplate ? "Descargando..." : "Descargar plantilla"}
+          </button>
+          {showHistory ? (
+            <button
+              type="button"
+              onClick={() => historyRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white"
+            >
+              Ver historial
+            </button>
+          ) : null}
+        </div>
+      </div>
 
-        {isReadOnly ? (
-          <div className="mt-5 rounded-2xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
-            Tu acceso en esta pantalla es solo lectura. Puedes revisar historial y resultados.
-          </div>
-        ) : null}
-      </section>
+      {isReadOnly ? (
+        <div className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
+          Tu acceso en esta pantalla es solo lectura. Puedes revisar historial y resultados.
+        </div>
+      ) : null}
 
       {renderMessage()}
 
