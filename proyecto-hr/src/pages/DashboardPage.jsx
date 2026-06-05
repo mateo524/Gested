@@ -65,6 +65,124 @@ function EmptyState({ text }) {
   return <div className="rounded-2xl border border-dashed border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#8ea5b3]">{text}</div>;
 }
 
+function Bone({ className }) {
+  return <div className={`skeleton ${className}`} />;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-4">
+      <section className="pf-surface pf-surface-pad">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="space-y-3">
+            <Bone className="h-3 w-16" />
+            <Bone className="h-8 w-64 md:w-80" />
+            <Bone className="h-4 w-72 md:w-96" />
+            <Bone className="h-4 w-56" />
+          </div>
+          <div className="flex gap-3">
+            <Bone className="h-11 w-36" />
+            <Bone className="h-11 w-40" />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <article key={i} className="rounded-3xl border border-white/8 bg-[#0c1e28] p-5 space-y-3">
+            <Bone className="h-3 w-24" />
+            <Bone className="h-8 w-16" />
+            <Bone className="h-3 w-32" />
+          </article>
+        ))}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="pf-card p-5 md:p-6 space-y-4">
+            <div className="space-y-2">
+              <Bone className="h-5 w-40" />
+              <Bone className="h-3 w-56" />
+            </div>
+            {[...Array(3)].map((_, j) => (
+              <Bone key={j} className="h-16 w-full" />
+            ))}
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="pf-card p-5 md:p-6 space-y-4">
+            <Bone className="h-5 w-40" />
+            {[...Array(3)].map((_, j) => (
+              <Bone key={j} className="h-14 w-full" />
+            ))}
+          </div>
+        ))}
+      </section>
+    </div>
+  );
+}
+
+const DEMO_STEPS = [
+  { num: 1, label: "Importar personas", desc: "Cargá empleados con la plantilla Excel oficial.", view: "carga-masiva", icon: "M12 4v16M4 12h16" },
+  { num: 2, label: "Crear ciclo", desc: "Definí el período y las fechas del proceso de evaluación.", view: "ciclos", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+  { num: 3, label: "Lanzar evaluaciones", desc: "Iniciá autoevaluaciones y evaluaciones de jefatura.", view: "evaluaciones", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" },
+  { num: 4, label: "Ver métricas", desc: "Revisá KPIs, OKRs y resultados por persona.", view: "metricas", icon: "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" },
+  { num: 5, label: "Planes de desarrollo", desc: "Asigná acciones concretas basadas en los resultados.", view: "planes", icon: "M13 10V3L4 14h7v7l9-11h-7z" },
+  { num: 6, label: "Reporte ejecutivo", desc: "Presentá resultados y tendencias a dirección.", view: "reporte-ejecutivo", icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" },
+];
+
+function DemoTourCard({ setView }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="pf-card p-5 md:p-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#8B5CF6]/30 bg-[#8B5CF6]/10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-[#8B5CF6]">
+              <polygon points="5 3 19 12 5 21 5 3" />
+            </svg>
+          </span>
+          <div>
+            <h3 className="font-semibold text-white">Recorrido guiado</h3>
+            <p className="text-xs text-[#7a9aaa]">Flujo recomendado para una demo o piloto</p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="rounded-2xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5"
+        >
+          {open ? "Ocultar" : "Ver recorrido"}
+        </button>
+      </div>
+
+      {open ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {DEMO_STEPS.map((step) => (
+            <button
+              key={step.num}
+              type="button"
+              onClick={() => setView(step.view)}
+              className="group flex items-start gap-3 rounded-2xl border border-white/10 bg-[#0c1e28] p-4 text-left transition hover:border-[#8B5CF6]/30 hover:bg-[#8B5CF6]/5"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-[#8B5CF6]/25 bg-[#8B5CF6]/10 text-xs font-bold text-[#8B5CF6]">
+                {step.num}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-white group-hover:text-[#c4b5fd]">{step.label}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-[#7a9aaa]">{step.desc}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function DashboardPage() {
   const { token, activeCompanyId, user } = useAuth();
   const { setView } = useView();
@@ -392,7 +510,7 @@ export default function DashboardPage() {
   }
 
   if (!summary) {
-    return <p className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-5 text-sm text-[#9fb6c4]">Cargando panel principal...</p>;
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -435,6 +553,8 @@ export default function DashboardPage() {
       </section>
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
+
+      {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <DemoTourCard setView={setView} /> : null}
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (

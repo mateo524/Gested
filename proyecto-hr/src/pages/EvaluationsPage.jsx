@@ -127,6 +127,18 @@ export default function EvaluationsPage() {
     );
   }, [evaluations, searchQuery]);
 
+  const completionByEmployee = useMemo(() => {
+    const map = {};
+    for (const ev of evaluations) {
+      const id = ev.employeeId?._id || ev.employeeId;
+      if (!id) continue;
+      if (!map[id]) map[id] = { total: 0, closed: 0 };
+      map[id].total += 1;
+      if (ev.estado === "CERRADA") map[id].closed += 1;
+    }
+    return map;
+  }, [evaluations]);
+
   const loadBaseData = useCallback(async (signal) => {
     setIsLoadingBase(true);
     try {
@@ -432,10 +444,23 @@ export default function EvaluationsPage() {
                 className="space-y-4"
                 renderItem={(evaluation) => (
                 <article key={evaluation._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
-                    <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{labelTipo(evaluation.tipo)}</span>
-                    <span className="rounded-full bg-[#123224] px-3 py-1 text-xs text-[#8be6ac]">{labelEstado(evaluation.estado)}</span>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
+                      <span className="rounded-full bg-[#1e293b] px-3 py-1 text-xs text-[#b8c9d4]">{labelTipo(evaluation.tipo)}</span>
+                      <span className={`rounded-full px-3 py-1 text-xs font-medium ${evaluation.estado === "CERRADA" ? "bg-emerald-500/10 text-emerald-300" : evaluation.estado === "REVISADA" ? "bg-sky-500/10 text-sky-300" : evaluation.estado === "ENVIADA" ? "bg-amber-500/10 text-amber-300" : "bg-[#122530] text-[#8fa9b7]"}`}>{labelEstado(evaluation.estado)}</span>
+                    </div>
+                    {(() => {
+                      const id = evaluation.employeeId?._id || evaluation.employeeId;
+                      const stats = completionByEmployee[id];
+                      if (!stats || stats.total <= 1) return null;
+                      const allDone = stats.closed === stats.total;
+                      return (
+                        <span className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-semibold tabular-nums ${allDone ? "border-emerald-400/30 bg-emerald-500/10 text-emerald-300" : "border-amber-300/25 bg-amber-500/8 text-amber-300"}`}>
+                          {stats.closed}/{stats.total} cerradas
+                        </span>
+                      );
+                    })()}
                   </div>
                   <p className="mt-2 text-sm text-[#9fb6c4]">{evaluation.cycleId?.periodo} {evaluation.cycleId?.anio} — Resultado final: {evaluation.resultadoFinal}</p>
                   <p className="mt-3 text-sm text-[#c5d5de]">{evaluation.comentariosGenerales || "Sin comentarios"}</p>
