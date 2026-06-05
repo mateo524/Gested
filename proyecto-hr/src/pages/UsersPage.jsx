@@ -254,12 +254,22 @@ export default function UsersPage() {
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#22c55e]">Accesos de plataforma</p>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Accesos de plataforma</p>
         <h3 className="mt-3 text-3xl font-bold text-white">Usuarios y credenciales</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Gestiona credenciales de acceso. Los permisos, scopes y gobierno del rol se administran desde Roles y accesos.
+          Gestioná credenciales de acceso. Los permisos, scopes y gobierno del rol se administran desde Roles y accesos.
         </p>
-        <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#c5d5de]">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#14b8a6]">Persona / Empleado</p>
+            <p className="mt-1 text-sm text-[#c5d5de]">Alguien gestionado o evaluado dentro del sistema. Puede tener evaluaciones, planes y métricas, pero no necesariamente entra a la plataforma.</p>
+          </div>
+          <div className="rounded-2xl border border-[#8B5CF6]/20 bg-[#8B5CF6]/5 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-[#8B5CF6]">Usuario / Credencial</p>
+            <p className="mt-1 text-sm text-[#c5d5de]">Alguien que puede ingresar al sistema con email y contraseña. Tiene un rol asignado que define qué puede ver y hacer.</p>
+          </div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#9fb6c4]">
           En organizaciones grandes, el alcance define dónde puede operar el usuario: toda la organización, un área, un equipo o solo su información.
         </div>
         <div className="mt-4 flex flex-wrap gap-2">
