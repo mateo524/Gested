@@ -91,20 +91,38 @@ export default function SettingsPage() {
         <div className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
           <h3 className="text-xl font-semibold text-white">Identidad y reglas</h3>
           <div className="mt-6 grid gap-4">
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Nombre visible" value={settings.nombreVisible} onChange={(e) => setSettings({ ...settings, nombreVisible: e.target.value })} />
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="URL del logo" value={settings.logoUrl} onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })} />
-            <div className="grid gap-4 md:grid-cols-[1fr_auto]">
-              <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Color principal" value={settings.primaryColor} onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })} />
-              <div className="h-full min-h-14 w-14 rounded-2xl border border-white/10" style={{ backgroundColor: settings.primaryColor }} />
-            </div>
-            <input type="number" min="1" className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={settings.maxUploadSizeMb} onChange={(e) => setSettings({ ...settings, maxUploadSizeMb: Number(e.target.value) || 10 })} />
-            <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Dominio email por defecto" value={settings.defaultEmailDomain || ""} onChange={(e) => setSettings({ ...settings, defaultEmailDomain: e.target.value })} />
-            <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={settings.defaultEmployeeRoleCode || "EMPLEADO"} onChange={(e) => setSettings({ ...settings, defaultEmployeeRoleCode: e.target.value })}>
-              <option value="EMPLEADO">EMPLEADO</option>
-              <option value="JEFE">JEFE</option>
-              <option value="RRHH">RRHH</option>
-              <option value="ADMIN_COLEGIO">ADMIN_COLEGIO</option>
-            </select>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">Nombre visible de la organización</span>
+              <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Ej: Colegio San Martín" value={settings.nombreVisible} onChange={(e) => setSettings({ ...settings, nombreVisible: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">URL del logo</span>
+              <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="https://mi-org.com/logo.png" value={settings.logoUrl} onChange={(e) => setSettings({ ...settings, logoUrl: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">Color principal (hex)</span>
+              <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="#14b8a6" value={settings.primaryColor} onChange={(e) => setSettings({ ...settings, primaryColor: e.target.value })} />
+                <div className="h-12 w-12 rounded-2xl border border-white/10 shadow-inner" style={{ backgroundColor: settings.primaryColor }} />
+              </div>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">Tamaño máximo de archivos (MB)</span>
+              <input type="number" min="1" className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={settings.maxUploadSizeMb} onChange={(e) => setSettings({ ...settings, maxUploadSizeMb: Number(e.target.value) || 10 })} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">Dominio de email por defecto</span>
+              <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="mi-org.com" value={settings.defaultEmailDomain || ""} onChange={(e) => setSettings({ ...settings, defaultEmailDomain: e.target.value })} />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">Rol por defecto para nuevos empleados</span>
+              <select className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={settings.defaultEmployeeRoleCode || "EMPLEADO"} onChange={(e) => setSettings({ ...settings, defaultEmployeeRoleCode: e.target.value })}>
+                <option value="EMPLEADO">Empleado</option>
+                <option value="JEFE">Jefe / Manager</option>
+                <option value="RRHH">RRHH</option>
+                <option value="ADMIN_COLEGIO">Administrador de colegio</option>
+              </select>
+            </label>
           </div>
         </div>
 

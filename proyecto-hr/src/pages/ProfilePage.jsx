@@ -155,25 +155,21 @@ export default function ProfilePage() {
             )}
             <div className="min-w-0">
               <p className="text-2xl font-semibold text-white">{displayName}</p>
-              <p className="mt-1 text-sm text-[#7ea3ff]">{user?.roleLabel || user?.roleName || user?.roleKey || "Sin rol visible"}</p>
+              <p className="mt-1 text-sm text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || "Sin rol visible"}</p>
               <p className="mt-2 text-sm text-[#97adba]">{organizationLabel}</p>
             </div>
           </div>
 
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">roleLabel</p>
-              <p className="mt-2 text-sm font-semibold text-white">{user?.roleLabel || user?.roleName || "Sin rol visible"}</p>
+              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Rol</p>
+              <p className="mt-2 text-sm font-semibold text-white">{user?.roleLabel || user?.roleName || "Sin rol asignado"}</p>
             </div>
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">roleKey</p>
-              <p className="mt-2 text-sm font-semibold text-white">{user?.roleKey || user?.roleCode || "-"}</p>
+              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Alcance</p>
+              <p className="mt-2 text-sm font-semibold text-white">{user?.scope || user?.roleScope || "Global"}</p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Scope</p>
-              <p className="mt-2 text-sm font-semibold text-white">{user?.scope || user?.roleScope || "-"}</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+            <div className="col-span-full rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
               <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Organización activa</p>
               <p className="mt-2 text-sm font-semibold text-white">{organizationLabel}</p>
             </div>
