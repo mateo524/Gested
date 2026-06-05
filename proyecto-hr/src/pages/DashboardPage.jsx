@@ -183,12 +183,20 @@ function DemoTourCard({ setView }) {
   );
 }
 
+function useGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Buenos días";
+  if (h < 18) return "Buenas tardes";
+  return "Buenas noches";
+}
+
 export default function DashboardPage() {
   const { token, activeCompanyId, user } = useAuth();
   const { setView } = useView();
   const [summary, setSummary] = useState(null);
   const [message, setMessage] = useState("");
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const greeting = useGreeting();
 
   const isSuperOrDirector =
     user?.isSuperAdmin ||
@@ -520,16 +528,19 @@ export default function DashboardPage() {
           <div className="max-w-3xl">
             <p className="pf-section-title">Inicio</p>
             <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">
+              {greeting}{user?.nombre ? `, ${user.nombre}` : ""}
+            </h1>
+            <p className="mt-1 text-base text-[#7a9aaa]">
               {user?.isSuperAdmin
                 ? "Vista general de plataforma"
                 : isEmpleado
-                  ? "Tu espacio principal"
+                  ? "Tu espacio personal"
                   : isJefe
-                    ? "Vista general de tu equipo"
+                    ? "Vista de tu equipo"
                     : "Vista general de la organización"}
-            </h1>
-            <p className="mt-3 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
-              Una vista 360 simple para ver personas, evaluaciones, desarrollo y próximos pasos sin saturar la operación.
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[#a8bdc8] md:text-base">
+              Una vista 360 para ver personas, evaluaciones, desarrollo y próximos pasos.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

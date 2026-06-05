@@ -116,11 +116,47 @@ export default function LoginPage() {
     }
   };
 
+  const FEATURES = [
+    "Evaluaciones de desempeño estructuradas",
+    "Métricas, KPIs y OKRs por persona",
+    "Planes de desarrollo y seguimiento",
+    "Reporte ejecutivo en tiempo real",
+  ];
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-[#0E1A20] px-4 py-12">
+    <div className="flex min-h-screen bg-[#060f14]">
+      {/* Left panel — value prop */}
+      <div className="hidden flex-col justify-between border-r border-white/5 bg-gradient-to-br from-[#0d1e28] to-[#06101a] p-12 lg:flex lg:w-[45%] xl:w-[40%]">
+        <AppLogo variant="dark" />
+        <div>
+          <h2 className="text-4xl font-bold leading-tight text-white">
+            Gestión del<br />desempeño<br />
+            <span className="text-[#14b8a6]">que funciona.</span>
+          </h2>
+          <p className="mt-4 max-w-xs text-sm leading-relaxed text-[#7a9aaa]">
+            Evaluaciones, métricas, planes y reportes ejecutivos en una sola plataforma — sin complejidad innecesaria.
+          </p>
+          <div className="mt-8 space-y-3">
+            {FEATURES.map((f) => (
+              <div key={f} className="flex items-center gap-3 text-sm text-[#c5d5de]">
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-[#14b8a6]/40 bg-[#14b8a6]/10">
+                  <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3 text-[#14b8a6]">
+                    <path d="M2 6l2.5 2.5L10 3.5" />
+                  </svg>
+                </span>
+                {f}
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="text-xs text-[#3d5a6a]">© 2025 ZENTOR — Plataforma de talento institucional</p>
+      </div>
+
+      {/* Right panel — form */}
+      <div className="flex flex-1 flex-col items-center justify-center px-4 py-12 bg-[#0E1A20]">
       <div className="w-full max-w-md">
-        {/* Logo */}
-        <div className="mb-8 flex justify-center">
+        {/* Logo mobile only */}
+        <div className="mb-8 flex justify-center lg:hidden">
           <AppLogo variant="dark" />
         </div>
 
@@ -136,7 +172,7 @@ export default function LoginPage() {
           </h1>
           <p className="mt-2 text-sm leading-6 text-[#AFC3CE]">
             {mode === "login"
-              ? "Gestión del desempeño, control de accesos y operación interna."
+              ? "Accedé a tu panel de gestión institucional."
               : mode === "forgot"
                 ? "Ingresá tu correo y te enviamos un enlace de recuperación."
                 : "Ingresá el token de recuperación y tu nueva contraseña."}
@@ -270,6 +306,7 @@ export default function LoginPage() {
             Ver la landing →
           </a>
         </p>
+      </div>
       </div>
     </div>
   );
