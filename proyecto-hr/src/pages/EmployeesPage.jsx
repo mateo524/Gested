@@ -358,20 +358,26 @@ export default function EmployeesPage() {
                   const manager = employeesById.get(employee.managerId);
                   return (
                     <article key={employee._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <p className="text-base font-semibold text-white">
-                        {employee.apellido}, {employee.nombre}
-                      </p>
-                      <p className="mt-1 text-sm text-[#9fb6c4]">
-                        {employee.cargo || "-"} - {employee.area || "Sin área"} - {employee.tipoEmpleado || "-"}
-                      </p>
-                      <p className="mt-1 text-xs text-[#7f99a8]">
-                        Ingreso: {formatDate(employee.fechaIngreso)} - Jefe: {manager ? `${manager.apellido}, ${manager.nombre}` : "Sin jefe"}
-                      </p>
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#14b8a6]/15 text-sm font-bold text-[#14b8a6]">
+                          {(employee.nombre?.[0] || "").toUpperCase()}{(employee.apellido?.[0] || "").toUpperCase()}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-semibold text-white truncate">{employee.apellido}, {employee.nombre}</p>
+                          <p className="mt-0.5 text-xs text-[#9fb6c4] truncate">
+                            {[employee.cargo, employee.area, employee.tipoEmpleado].filter(Boolean).join(" · ") || "Sin cargo"}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[#6a8a9a]">
+                            {manager ? `Jefe: ${manager.apellido}, ${manager.nombre}` : "Sin jefe asignado"}
+                            {employee.fechaIngreso ? ` · Ingreso: ${formatDate(employee.fechaIngreso)}` : ""}
+                          </p>
+                        </div>
+                      </div>
                       <div className="mt-3 flex gap-2">
-                        <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-[#22c55e]/50 px-4 py-2 text-sm text-[#8be6ac]">
+                        <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                           Editar
                         </button>
-                        <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                        <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20">
                           Eliminar
                         </button>
                       </div>
