@@ -789,7 +789,7 @@ export default function ExecutiveReportPage() {
       ) : !overview ? (
         <EmptyPanel text="No pudimos cargar el reporte en este momento." />
       ) : activeTab === "general" ? (
-        <div className="min-h-[36rem] space-y-5">
+        <div className="space-y-3">
           {/* Executive summary */}
           {overview ? (
             <SurfaceCard
@@ -874,7 +874,7 @@ export default function ExecutiveReportPage() {
 
           {/* Coaching signals: priority people + top performers + dept pulse */}
           {priorityEmployees.length > 0 || topPerformers.length > 0 ? (
-            <div className="grid gap-5 xl:grid-cols-[1.3fr_0.7fr]">
+            <div className="grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
               {priorityEmployees.length > 0 ? (
                 <SurfaceCard title="Personas que necesitan atenci\u00f3n" subtitle="Ordenadas por puntaje m\u00e1s bajo. Estas personas se beneficiar\u00edan de una conversaci\u00f3n pronto.">
                   <div className="grid gap-2">
@@ -948,93 +948,40 @@ export default function ExecutiveReportPage() {
             </div>
           ) : null}
 
-          {/* Panorama + Actions */}
-          <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-            <SurfaceCard title="Panorama general" subtitle="Lectura rápida del estado actual del desempeño y el seguimiento.">
-              <div className="grid gap-3 md:grid-cols-3">
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Ciclo activo</p>
-                  <p className="mt-2 text-base font-semibold text-white">{overview.selectedCycle?.label || "Todos los ciclos visibles"}</p>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">Estado {overview.selectedCycle?.estado || "Sin filtro"}</p>
-                  {overview.summary?.cyclesTotal > 0 ? (
-                    <p className="mt-1 text-sm text-[#9fb6c4]">{overview.summary.cyclesTotal} ciclos en total</p>
-                  ) : null}
-                </article>
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Cobertura de evaluación</p>
-                  <p className="mt-2 text-base font-semibold text-white">{evaluationCoverage.total} registros</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <div className="flex-1 h-2 overflow-hidden rounded-full bg-white/10">
-                      <div
-                        className={`h-full rounded-full ${evaluationCoverage.pct >= 80 ? "bg-emerald-400" : evaluationCoverage.pct >= 50 ? "bg-amber-400" : "bg-rose-400"}`}
-                        style={{ width: `${Math.min(100, evaluationCoverage.pct)}%` }}
-                      />
+          {/* Acciones compactas */}
+          {overviewActions.length > 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-5 py-4">
+              <div className="flex items-center justify-between gap-4 mb-3">
+                <p className="text-sm font-semibold text-white">Acciones recomendadas</p>
+                <div className="flex gap-2">
+                  <span className="rounded-full border border-rose-300/30 bg-rose-500/10 px-2.5 py-0.5 text-xs font-semibold text-rose-200">Alta {actionPrioritySummary.high}</span>
+                  <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-200">Media {actionPrioritySummary.medium}</span>
+                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-[#c5d5de]">Baja {actionPrioritySummary.low}</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                {overviewActions.slice(0, 4).map((action, index) => {
+                  const destination = mapActionDestination(action);
+                  return (
+                    <div key={`${action.key || action.title}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-[#0c1e28] px-4 py-2.5">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <ActionBadge severity={action.severity} />
+                        <p className="text-sm text-white truncate">{action.title}</p>
+                      </div>
+                      {destination ? (
+                        <button type="button" onClick={() => setView(destination)} className="shrink-0 rounded-xl border border-white/15 px-3 py-1.5 text-xs text-[#c5d5de] hover:bg-white/5 transition">
+                          Ir
+                        </button>
+                      ) : null}
                     </div>
-                    <span className="text-sm font-semibold text-white">{evaluationCoverage.pct}%</span>
-                  </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{overview.summary?.completedEvaluations || 0} cerradas o revisadas</p>
-                </article>
-                <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Desarrollo</p>
-                  <p className="mt-2 text-base font-semibold text-white">{overview.development?.active || 0} planes activos</p>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{overview.development?.overdue || 0} con seguimiento vencido</p>
-                  <p className="mt-1 text-sm text-[#9fb6c4]">{overview.development?.completed || 0} completados</p>
-                </article>
+                  );
+                })}
               </div>
-            </SurfaceCard>
-
-            <SurfaceCard title="Acciones recomendadas" subtitle="Prioridades generales según los datos visibles hoy.">
-              <div className="grid gap-3 md:grid-cols-3">
-                <StatCard label="Alta" value={actionPrioritySummary.high} tone="danger" compact />
-                <StatCard label="Media" value={actionPrioritySummary.medium} tone="warning" compact />
-                <StatCard label="Baja" value={actionPrioritySummary.low} compact />
-              </div>
-              <div className="mt-4 space-y-3">
-                {overviewActions.length ? (
-                  <CollapsibleList
-                    items={overviewActions}
-                    initialCount={3}
-                    className="space-y-3"
-                    renderItem={(action, index) => {
-                    const destination = mapActionDestination(action);
-                    return (
-                      <article key={`${action.key || action.title}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
-                          <div className="max-w-3xl">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="font-semibold text-white">{action.title}</p>
-                              <ActionBadge severity={action.severity} />
-                            </div>
-                            <p className="mt-2 text-sm text-[#9fb6c4]">{action.description}</p>
-                          </div>
-                          {"count" in action ? (
-                            <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
-                              {action.count}
-                            </span>
-                          ) : null}
-                        </div>
-                        {destination ? (
-                          <button
-                            type="button"
-                            onClick={() => setView(destination)}
-                            className="mt-4 rounded-2xl border border-white/15 px-3 py-2 text-sm text-white"
-                          >
-                            Ir al módulo
-                          </button>
-                        ) : null}
-                      </article>
-                    );
-                    }}
-                  />
-                ) : (
-                  <EmptyPanel text="No hay acciones generales para destacar con los filtros actuales." />
-                )}
-              </div>
-            </SurfaceCard>
-          </div>
+            </div>
+          ) : null}
 
           {/* Progress charts */}
-          <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
             <MiniBarChart title="Estado de evaluaciones" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
 
             <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
@@ -1059,7 +1006,7 @@ export default function ExecutiveReportPage() {
               <p className="text-sm font-semibold text-white">KPIs y OKRs por estado</p>
               <p className="mt-0.5 text-xs text-[#7a9aaa]">Comparación directa entre objetivos y métricas clave.</p>
               {kpiOkrGrouped.some((r) => r.kpi > 0 || r.okr > 0) ? (
-                <div className="mt-4 h-[220px]">
+                <div className="mt-4 h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={kpiOkrGrouped} barCategoryGap="30%" barGap={4}>
                       <defs>
@@ -1224,7 +1171,7 @@ export default function ExecutiveReportPage() {
           </SurfaceCard>
         </div>
       ) : (
-        <div className="min-h-[36rem] space-y-5">
+        <div className="space-y-3">
           <SurfaceCard title="Reporte individual" subtitle="Elegí una persona para ver su desempeño, sus evaluaciones, objetivos y desarrollo en un solo lugar.">
             <div className="grid gap-4 xl:grid-cols-[1.2fr_auto]">
               <label className="block">
@@ -1267,7 +1214,7 @@ export default function ExecutiveReportPage() {
           {!selectedEmployeeId ? (
             <EmptyPanel text="Elegí una persona para ver su reporte individual." />
           ) : (
-            <div ref={detailRef} className="min-h-[24rem] space-y-5">
+            <div ref={detailRef} className="space-y-3">
               <SurfaceCard
                 title="Detalle individual"
                 subtitle={
@@ -1338,7 +1285,7 @@ export default function ExecutiveReportPage() {
                     </div>
 
                     {/* Charts: Competency + Auto vs Manager */}
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
                       <MiniBarChart
                         title="Desempeño por competencia"
                         items={individualMetricSignalChart}
@@ -1352,7 +1299,7 @@ export default function ExecutiveReportPage() {
                     </div>
 
                     {/* KPI / OKR cards */}
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
                       <SurfaceCard title="KPIs asignados" subtitle="Indicadores medibles y avance contra metas.">
                         {detail.kpis?.items?.length ? (
                           <div className="grid gap-3">
@@ -1387,7 +1334,7 @@ export default function ExecutiveReportPage() {
                     </div>
 
                     {/* Evaluations + Development plans */}
-                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
                       <SurfaceCard title="Evaluaciones" subtitle="Autoevaluación, evaluación superior y cierre final cuando existan.">
                         {detail.evaluations?.length ? (
                           <CollapsibleList
