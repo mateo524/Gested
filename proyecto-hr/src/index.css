@@ -146,15 +146,15 @@ select optgroup {
   }
 
   .pf-input {
-    @apply w-full rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
+    @apply w-full rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#14b8a6];
   }
 
   .pf-select {
-    @apply w-full appearance-none rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
+    @apply w-full appearance-none rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#14b8a6];
   }
 
   .pf-textarea {
-    @apply w-full min-h-24 resize-y rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#28964D];
+    @apply w-full min-h-24 resize-y rounded-2xl border border-white/15 bg-[#0E1A20] px-4 py-3 text-[#E8EEF1] placeholder:text-[#7A9AAA] outline-none transition focus:border-[#14b8a6];
   }
 
   .pf-button {

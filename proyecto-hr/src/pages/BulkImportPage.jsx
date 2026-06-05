@@ -736,7 +736,7 @@ export default function BulkImportPage() {
               handleFileChange(event.dataTransfer.files?.[0] || null);
             }}
             className={`rounded-[28px] border-2 border-dashed p-6 transition ${
-              dragActive ? "border-[#28964D] bg-[#123224]" : "border-white/15 bg-[#0f1f28]"
+              dragActive ? "border-[#14b8a6] bg-[#123224]" : "border-white/15 bg-[#0f1f28]"
             }`}
           >
             <div className="flex flex-col items-center text-center">

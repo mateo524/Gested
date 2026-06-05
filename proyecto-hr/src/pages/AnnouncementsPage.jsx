@@ -121,7 +121,7 @@ function AnnouncementCard({
             type="button"
             onClick={() => onMarkRead(item)}
             disabled={busyId === item._id}
-            className="rounded-2xl border border-[#4f7cff]/30 bg-[#173150] px-4 py-2 text-sm font-medium text-[#dce7ff] transition hover:bg-[#1d3c61] disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded-2xl border border-[#14b8a6]/30 bg-[#0d2826] px-4 py-2 text-sm font-medium text-[#ccfbf1] transition hover:bg-[#0f302c] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busyId === item._id ? "Marcando..." : "Marcar como vista"}
           </button>
