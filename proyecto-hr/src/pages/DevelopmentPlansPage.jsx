@@ -549,13 +549,13 @@ export default function DevelopmentPlansPage() {
             </button>
           </div>
           {prefilledFromSuggestion ? (
-            <div className="mt-4 rounded-2xl border border-[#14b8a6]/35 bg-[#0c2826] px-4 py-3 text-sm text-[#dce7ff]">
+            <div className="mt-4 rounded-2xl border border-[#14b8a6]/35 bg-[#0c2826] px-4 py-3 text-sm text-[#ccfbf1]">
               Revisá y ajustá el plan antes de guardarlo.
             </div>
           ) : null}
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">1. Relación base</p>
-            <select className={`w-full rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.employeeId ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
+            <select className={`w-full rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.employeeId ? "border-[#14b8a6] bg-[#0d2826]" : "border-white/15 bg-[#0f1f28]"}`} value={form.employeeId} onChange={(event) => setForm({ ...form, employeeId: event.target.value })}>
               <option value="">Selecciona empleado</option>
               {employees.map((employee) => (
                 <option key={employee._id} value={employee._id}>
@@ -575,7 +575,7 @@ export default function DevelopmentPlansPage() {
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">2. Definición del plan</p>
             <input className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Fortalezas (separadas por coma)" value={form.fortalezas} onChange={(event) => setForm({ ...form, fortalezas: event.target.value })} />
-            <textarea className={`min-h-24 max-h-48 w-full resize-y rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.aspectoDesarrollar ? "border-[#4f7cff] bg-[#10233A]" : "border-white/15 bg-[#0f1f28]"}`} placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
+            <textarea className={`min-h-24 max-h-48 w-full resize-y rounded-2xl border px-4 py-3 text-white ${prefilledFromSuggestion && form.aspectoDesarrollar ? "border-[#14b8a6] bg-[#0d2826]" : "border-white/15 bg-[#0f1f28]"}`} placeholder="Aspecto a desarrollar" value={form.aspectoDesarrollar} onChange={(event) => setForm({ ...form, aspectoDesarrollar: event.target.value })} />
             <textarea className="min-h-20 max-h-36 w-full resize-y rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Cómo se va a medir" value={form.medicion} onChange={(event) => setForm({ ...form, medicion: event.target.value })} />
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">3. Seguimiento</p>

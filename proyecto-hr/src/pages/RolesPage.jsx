@@ -563,7 +563,7 @@ export default function RolesPage() {
                   onClick={() => setActiveTab(tab.key)}
                   className={`rounded-t-2xl px-4 py-3 text-sm font-medium transition ${
                     activeTab === tab.key
-                      ? "border-b-2 border-[#2f64ff] text-[#7ea3ff]"
+                      ? "border-b-2 border-[#14b8a6] text-[#7ea3ff]"
                       : "text-[#9db2be] hover:text-white"
                   }`}
                 >

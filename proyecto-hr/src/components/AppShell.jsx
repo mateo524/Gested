@@ -109,7 +109,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                     }
                   }}
                   className={`block w-full rounded-2xl border px-3 py-3 text-left ${
-                    item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#4f7cff]/30 bg-[#12243b]"
+                    item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#14b8a6]/30 bg-[#0d1e22]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -148,7 +148,7 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
                           event.stopPropagation();
                           handleMarkRead(item);
                         }}
-                        className="rounded-2xl border border-[#4f7cff]/30 px-3 py-1.5 text-xs font-medium text-[#d8e4ff] transition hover:bg-[#173150] disabled:cursor-not-allowed disabled:opacity-60"
+                        className="rounded-2xl border border-[#14b8a6]/30 px-3 py-1.5 text-xs font-medium text-[#ccfbf1] transition hover:bg-[#0d2826] disabled:cursor-not-allowed disabled:opacity-60"
                       >
                         {busyId === item._id ? "Marcando..." : "Marcar como vista"}
                       </button>
