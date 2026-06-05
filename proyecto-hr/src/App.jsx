@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { Analytics } from "@vercel/analytics/react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
@@ -295,6 +296,7 @@ export default function App() {
   return (
     <AuthProvider>
       <AppContent />
+      <Analytics />
     </AuthProvider>
   );
 }

@@ -1,0 +1,56 @@
+# Vercel Web Analytics Integration
+
+Successfully installed and configured Vercel Web Analytics for this React + Vite project.
+
+## Changes Made
+
+### 1. Package Installation
+- **File**: `package.json`
+- **Change**: Added `@vercel/analytics` version `^2.0.1` to dependencies
+- **Lockfile**: `package-lock.json` updated with all required dependencies
+
+### 2. Analytics Component Integration
+- **File**: `src/App.jsx`
+- **Changes**:
+  - Added import statement: `import { Analytics } from "@vercel/analytics/react";`
+  - Added `<Analytics />` component inside the main App function's return statement, placed after `<AppContent />` within the `<AuthProvider>` wrapper
+
+## Implementation Details
+
+Following the official Vercel Analytics documentation (fetched from https://vercel.com/docs/analytics/quickstart), I implemented the React-specific integration pattern:
+
+1. Installed the package using npm (the project's package manager)
+2. Imported the Analytics component from `@vercel/analytics/react`
+3. Added the component to the root App component to track all page views across the application
+
+The Analytics component is placed at the root level, ensuring it captures analytics data for all views and routes within the application, including the complex multi-view structure (dashboard, organizations, employees, evaluations, development plans, etc.).
+
+## Verification
+
+✅ **Build**: Successfully built the application with no errors
+✅ **Linter**: Ran ESLint with no new errors introduced (pre-existing errors in other files remain unchanged)
+✅ **Dependencies**: package-lock.json properly updated with all transitive dependencies
+
+## Next Steps for User
+
+To complete the setup and start seeing analytics data:
+
+1. **Enable Analytics in Vercel Dashboard**: 
+   - Navigate to your project's Analytics section in the Vercel dashboard
+   - Click the "Enable" button to activate analytics
+
+2. **Deploy to Vercel**:
+   - Push these changes to your repository
+   - Deploy to Vercel (or run `vercel deploy`)
+
+3. **Verify Analytics**:
+   - Visit your deployed application
+   - Open browser DevTools > Network tab
+   - Look for a Fetch/XHR request to `/_vercel/insights/*` paths
+   - Analytics data will appear in your Vercel dashboard after deployment
+
+## Notes
+
+- The Analytics component is lightweight and won't impact application performance
+- Analytics tracking respects user privacy and complies with data protection regulations
+- Custom events can be added later using the `track()` function from `@vercel/analytics`
