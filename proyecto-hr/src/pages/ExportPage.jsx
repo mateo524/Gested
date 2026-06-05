@@ -4,6 +4,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -14,7 +15,37 @@ import {
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
-const chartColors = ["#10b981", "#0f172a", "#f59e0b", "#38bdf8", "#fb7185", "#8b5cf6"];
+const chartColors = ["#0d9488", "#8b5cf6", "#f59e0b", "#38bdf8", "#fb7185", "#10b981"];
+
+function ExportChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
+      {label ? <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p> : null}
+      {payload.map((entry) => (
+        <div key={entry.dataKey || entry.name} className="flex items-center gap-2 py-0.5 text-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.fill || entry.color }} />
+          <span className="text-slate-500">{entry.name}:</span>
+          <span className="ml-auto pl-4 font-semibold text-slate-800">{entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PieChartLegend({ payload }) {
+  if (!payload?.length) return null;
+  return (
+    <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
+      {payload.map((entry) => (
+        <div key={entry.value} className="flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="h-2 w-3 rounded-full" style={{ background: entry.color }} />
+          {entry.value}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function formatDate(value) {
   if (!value) return "Todavía sin cargas";
@@ -362,12 +393,18 @@ export default function ExportPage() {
           <div className="mt-6 h-80">
             {overview.roles.length ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={overview.roles}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                  <XAxis dataKey="label" stroke="#64748b" />
-                  <YAxis allowDecimals={false} stroke="#64748b" />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[12, 12, 0, 0]} fill="#10b981" />
+                <BarChart data={overview.roles} barCategoryGap="32%">
+                  <defs>
+                    <linearGradient id="gradExportBar" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#0d9488" stopOpacity={1} />
+                      <stop offset="100%" stopColor="#0d9488" stopOpacity={0.5} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} width={32} />
+                  <Tooltip content={<ExportChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)", radius: 8 }} />
+                  <Bar dataKey="value" name="Personas" radius={[10, 10, 0, 0]} fill="url(#gradExportBar)" maxBarSize={52} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -388,17 +425,26 @@ export default function ExportPage() {
             {overview.domains.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={overview.domains} dataKey="value" nameKey="label" innerRadius={65} outerRadius={110} paddingAngle={3}>
+                  <Pie
+                    data={overview.domains}
+                    dataKey="value"
+                    nameKey="label"
+                    innerRadius={70}
+                    outerRadius={112}
+                    paddingAngle={3}
+                    strokeWidth={0}
+                  >
                     {overview.domains.map((item, index) => (
-                      <Cell key={item.label} fill={chartColors[index % chartColors.length]} />
+                      <Cell key={item.label} fill={chartColors[index % chartColors.length]} opacity={0.92} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip content={<ExportChartTooltip />} />
+                  <Legend content={<PieChartLegend />} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
               <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
-                Cuando se importen registros con email, vas a ver la distribucion aca.
+                Cuando se importen registros con email, vas a ver la distribución acá.
               </div>
             )}
           </div>

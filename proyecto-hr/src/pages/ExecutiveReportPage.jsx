@@ -1,9 +1,34 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
 import CollapsibleList from "../components/CollapsibleList";
+
+function ExecChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-2xl border border-white/15 bg-[#0b1d27] px-4 py-3 shadow-[0_16px_40px_rgba(2,8,23,0.5)]">
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#7a9aaa]">{label}</p>
+      {payload.map((entry) => (
+        <div key={entry.dataKey} className="flex items-center gap-2 py-0.5 text-sm">
+          <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.fill }} />
+          <span className="text-[#a8bec9]">{entry.name}:</span>
+          <span className="ml-auto pl-4 font-semibold text-white">{typeof entry.value === "number" ? entry.value.toFixed(entry.value % 1 === 0 ? 0 : 2) : entry.value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const PRIMARY_TABS = [
   { key: "general", label: "Reporte general" },
@@ -487,6 +512,17 @@ export default function ExecutiveReportPage() {
     ];
   }, [overview]);
 
+  const kpiOkrGrouped = useMemo(() => {
+    const kpiS = overview?.kpis?.summaryByStatus || {};
+    const okrS = overview?.okrs?.summaryByStatus || {};
+    return [
+      { label: "Cumplidos", kpi: Number(kpiS.completed || 0), okr: Number(okrS.completed || 0) },
+      { label: "En curso", kpi: Number(kpiS.inProgress || 0), okr: Number(okrS.inProgress || 0) },
+      { label: "En riesgo", kpi: Number(kpiS.atRisk || 0), okr: Number(okrS.atRisk || 0) },
+      { label: "Sin datos", kpi: Number(kpiS.noData || 0), okr: Number(okrS.noData || 0) },
+    ];
+  }, [overview]);
+
   const evaluationCoverage = useMemo(() => {
     const total = Number(overview?.summary?.evaluationsTotal || 0);
     const completed = Number(overview?.summary?.completedEvaluations || 0);
@@ -897,58 +933,70 @@ export default function ExecutiveReportPage() {
               )}
             </article>
 
-            <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-white">KPIs agregados</p>
-              {kpiChart.some((item) => Number(item.value) > 0) ? (
-                <div className="mt-4 space-y-3">
-                  {kpiChart.map((item) => {
-                    const maxVal = Math.max(...kpiChart.map((i) => Number(i.value)), 0);
-                    const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
-                    const pctVal = maxVal > 0 ? Math.round((Number(item.value) / maxVal) * 100) : 0;
-                    return (
-                      <div key={item.label}>
-                        <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
-                          <span>{item.label}</span>
-                          <span className="font-semibold text-white">{item.value} <span className="font-normal text-[#7f99a8]">({pctVal}%)</span></span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                          <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
+            <article className="col-span-full rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
+              <p className="text-sm font-semibold text-white">KPIs y OKRs por estado</p>
+              <p className="mt-0.5 text-xs text-[#7a9aaa]">Comparación directa entre objetivos y métricas clave.</p>
+              {kpiOkrGrouped.some((r) => r.kpi > 0 || r.okr > 0) ? (
+                <div className="mt-4 h-[220px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={kpiOkrGrouped} barCategoryGap="30%" barGap={4}>
+                      <defs>
+                        <linearGradient id="gradKpi" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#14b8a6" stopOpacity={1} />
+                          <stop offset="100%" stopColor="#0d9488" stopOpacity={0.55} />
+                        </linearGradient>
+                        <linearGradient id="gradOkr" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#a78bfa" stopOpacity={1} />
+                          <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.55} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
+                      <YAxis tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
+                      <Tooltip content={<ExecChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 6 }} />
+                      <Bar dataKey="kpi" name="KPIs" fill="url(#gradKpi)" radius={[5, 5, 0, 0]} maxBarSize={38} />
+                      <Bar dataKey="okr" name="OKRs" fill="url(#gradOkr)" radius={[5, 5, 0, 0]} maxBarSize={38} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               ) : (
-                <p className="mt-4 text-sm text-[#8fa9b7]">No hay KPIs visibles.</p>
+                <p className="mt-4 text-sm text-[#8fa9b7]">No hay KPIs ni OKRs con datos visibles.</p>
               )}
-            </article>
-
-            <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-white">OKRs agregados</p>
-              {okrChart.some((item) => Number(item.value) > 0) ? (
-                <div className="mt-4 space-y-3">
-                  {okrChart.map((item) => {
-                    const maxVal = Math.max(...okrChart.map((i) => Number(i.value)), 0);
-                    const width = maxVal > 0 ? Math.max(4, Math.round((Number(item.value) / maxVal) * 100)) : 0;
-                    const pctVal = maxVal > 0 ? Math.round((Number(item.value) / maxVal) * 100) : 0;
-                    return (
-                      <div key={item.label}>
-                        <div className="mb-1 flex items-center justify-between gap-3 text-xs text-[#9fb6c4]">
-                          <span>{item.label}</span>
-                          <span className="font-semibold text-white">{item.value} <span className="font-normal text-[#7f99a8]">({pctVal}%)</span></span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                          <div className={`h-full rounded-full ${item.tone}`} style={{ width: `${width}%` }} />
-                        </div>
-                      </div>
-                    );
-                  })}
+              <div className="mt-3 flex gap-5">
+                <div className="flex items-center gap-1.5 text-xs text-[#8fa9b7]">
+                  <span className="h-2 w-4 rounded-full bg-gradient-to-r from-[#14b8a6] to-[#0d9488]" />
+                  KPIs
                 </div>
-              ) : (
-                <p className="mt-4 text-sm text-[#8fa9b7]">No hay OKRs visibles.</p>
-              )}
+                <div className="flex items-center gap-1.5 text-xs text-[#8fa9b7]">
+                  <span className="h-2 w-4 rounded-full bg-gradient-to-r from-[#a78bfa] to-[#7c3aed]" />
+                  OKRs
+                </div>
+              </div>
             </article>
           </div>
+
+          {/* Department average score chart */}
+          {departmentScores.length > 0 && departmentScores.some((d) => d.averageScore > 0) ? (
+            <SurfaceCard title="Puntaje promedio por área" subtitle="Ordenado de menor a mayor. Escala 0–5.">
+              <div style={{ height: Math.max(180, departmentScores.length * 44) }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={departmentScores} layout="vertical" barCategoryGap="22%">
+                    <defs>
+                      <linearGradient id="gradDeptScore" x1="0" y1="0" x2="1" y2="0">
+                        <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.8} />
+                        <stop offset="100%" stopColor="#38bdf8" stopOpacity={1} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                    <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
+                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={100} />
+                    <Tooltip content={<ExecChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 4 }} />
+                    <Bar dataKey="averageScore" name="Puntaje promedio" fill="url(#gradDeptScore)" radius={[0, 5, 5, 0]} maxBarSize={26} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </SurfaceCard>
+          ) : null}
 
           {/* Department distribution */}
           <SurfaceCard title="Distribución por departamento / equipo" subtitle="Cómo se reparte el seguimiento entre áreas visibles.">
