@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
+import { ToastProvider } from "./context/ToastContext";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
 import { resolveUiText } from "./lib/uiCopy";
 import { apiUrl } from "./lib/api";
@@ -89,10 +90,12 @@ function AppContent() {
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
   const [language, setLanguage] = useState("es");
 
-  // Silent backend wake-up: ping /health as soon as the app loads so that
-  // by the time the user logs in, Render is already awake.
+  // Keep backend awake every 5 min — prevents Render cold starts (15 min sleep threshold).
   useEffect(() => {
-    fetch(`${apiUrl}/health`, { method: "GET" }).catch(() => {});
+    const ping = () => fetch(`${apiUrl}/health`, { method: "GET" }).catch(() => {});
+    ping();
+    const id = setInterval(ping, 5 * 60 * 1000);
+    return () => clearInterval(id);
   }, []);
 
   const availableViews = useMemo(
@@ -259,6 +262,7 @@ function AppContent() {
       >
         <ErrorBoundary>
         <Suspense fallback={<ViewLoader />}>
+          <div key={view} className="page-enter">
           {view === "dashboard" && <DashboardPage />}
           {view === "novedades" && <AnnouncementsPage />}
           {view === "perfil" && <ProfilePage />}
@@ -284,6 +288,7 @@ function AppContent() {
               <button type="button" onClick={() => {}} className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a]" onClick={() => window.location.reload()}>Volver al inicio</button>
             </div>
           )}
+          </div>
         </Suspense>
         </ErrorBoundary>
       </AppShell>
@@ -294,7 +299,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </AuthProvider>
   );
 }
