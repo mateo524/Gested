@@ -606,6 +606,21 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {quickLinks.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {quickLinks.map((link) => (
+            <button
+              key={link.view}
+              type="button"
+              onClick={() => setView(link.view)}
+              className="rounded-full border border-white/10 bg-[#122530] px-4 py-1.5 text-xs font-medium text-[#c5d5de] transition hover:bg-white/5 hover:text-white"
+            >
+              {link.label}
+            </button>
+          ))}
+        </div>
+      )}
+
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <DemoTourCard setView={setView} /> : null}

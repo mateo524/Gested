@@ -367,16 +367,38 @@ export default function EvaluationsPage() {
                 items={scores}
                 initialCount={3}
                 buttonLabelMore={`Ver más (${scores.length - 3})`}
-                renderItem={(score) => (
-                  <div key={score.metricId} className="grid gap-3 md:grid-cols-[1fr_0.22fr_1fr]">
-                    <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</div>
-                    <select className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" value={score.nivel} onChange={(event) => updateScore(score.metricId, "nivel", Number(event.target.value))}>
-                      {[1, 2, 3, 4, 5].map((nivel) => (
-                        <option key={nivel} value={nivel}>{nivel}</option>
+                renderItem={(score) => {
+                  const NIVEL_COLORS = ["", "bg-rose-500", "bg-amber-400", "bg-yellow-400", "bg-teal-400", "bg-emerald-400"];
+                  const NIVEL_LABELS = ["", "Insuficiente", "Básico", "Esperado", "Destacado", "Excelente"];
+                  return (
+                  <div key={score.metricId} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-white">{metricMap.get(score.metricId)?.nombre || "Indicador"}</p>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${score.nivel ? "bg-white/10 text-[#d6e2e8]" : "text-[#7a98a8]"}`}>
+                        {score.nivel ? NIVEL_LABELS[score.nivel] : "Sin calificar"}
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {[1,2,3,4,5].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          onClick={() => updateScore(score.metricId, "nivel", n)}
+                          className={`flex-1 h-8 rounded-xl border text-xs font-bold transition-all duration-150 ${
+                            score.nivel === n
+                              ? `${NIVEL_COLORS[n]} border-transparent text-white shadow-[0_0_8px_rgba(0,0,0,0.3)]`
+                              : score.nivel > n
+                                ? `${NIVEL_COLORS[score.nivel]} opacity-40 border-transparent text-white`
+                                : "border-white/10 bg-[#122530] text-[#7a98a8] hover:bg-white/5 hover:text-white"
+                          }`}
+                        >
+                          {n}
+                        </button>
                       ))}
-                    </select>
-                    <input className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white" placeholder="Comentario o evidencia breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
+                    </div>
+                    <input className="w-full rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm text-white placeholder:text-[#7a98a8] outline-none focus:border-[#14b8a6]" placeholder="Comentario o evidencia breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
                   </div>
+                )}}
                 )}
               />
             </div>
@@ -529,19 +551,24 @@ export default function EvaluationsPage() {
                         initialCount={3}
                         buttonLabelMore={`Ver más (${selectedScores.length - 3})`}
                         emptyState={<EmptyState compact title="No hay mediciones cargadas" description="Esta evaluación todavía no tiene metas o competencias detalladas." />}
-                        renderItem={(score) => (
-                          <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4">
+                        renderItem={(score) => {
+                          const N_COLORS = ["","bg-rose-500","bg-amber-400","bg-yellow-400","bg-teal-400","bg-emerald-400"];
+                          const N_LABELS = ["","Insuficiente","Básico","Esperado","Destacado","Excelente"];
+                          const n = score.nivel || 0;
+                          return (
+                          <article key={score._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 space-y-3">
                             <div className="flex flex-wrap items-center justify-between gap-3">
-                              <div>
-                                <p className="font-semibold text-white">{score.metricId?.nombre || "Indicador"}</p>
-                                <p className="mt-1 text-sm text-[#9fb6c4]">{score.comentario || "Sin comentario asociado."}</p>
-                              </div>
-                              <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d5e2e9]">
-                                Nivel {score.nivel}
-                              </span>
+                              <p className="font-semibold text-white">{score.metricId?.nombre || "Indicador"}</p>
+                              {n > 0 && <span className={`text-[11px] font-semibold px-2.5 py-1 rounded-full ${N_COLORS[n]} text-white`}>{N_LABELS[n]}</span>}
                             </div>
+                            <div className="flex gap-1">
+                              {[1,2,3,4,5].map((i) => (
+                                <div key={i} className={`h-1.5 flex-1 rounded-full transition-all ${i <= n ? N_COLORS[n] : "bg-white/10"}`} />
+                              ))}
+                            </div>
+                            {score.comentario && <p className="text-sm text-[#9fb6c4]">{score.comentario}</p>}
                           </article>
-                        )}
+                        );}}
                       />
                     </div>
                   </SurfaceCard>
