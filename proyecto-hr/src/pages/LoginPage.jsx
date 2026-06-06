@@ -25,6 +25,8 @@ export default function LoginPage() {
   const emailValid = !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
   const passwordOk = form.password.length >= 6;
 
+  const [isDemo, setIsDemo] = useState(false);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const urlToken = params.get("token");
@@ -32,6 +34,10 @@ export default function LoginPage() {
       setResetForm((prev) => ({ ...prev, token: urlToken }));
       setMode("reset");
       setMessage("Token detectado. Ingresá tu nueva contraseña para continuar.");
+    }
+    if (params.get("demo") === "1") {
+      setIsDemo(true);
+      setForm({ email: "admin@demo.com", password: "123456" });
     }
   }, []);
 
@@ -181,6 +187,12 @@ export default function LoginPage() {
                 ? "Ingresá tu correo y te enviamos un enlace de recuperación."
                 : "Ingresá el token de recuperación y tu nueva contraseña."}
           </p>
+
+          {mode === "login" && isDemo && (
+            <div className="mt-5 rounded-2xl border border-[#14b8a6]/30 bg-[#14b8a6]/10 px-4 py-3 text-sm text-[#14b8a6]">
+              <span className="font-semibold">Modo demo</span> — credenciales precargadas. Hacé clic en "Iniciar sesión" para explorar la plataforma.
+            </div>
+          )}
 
           {mode === "login" && (
             <form className="mt-7 space-y-4" onSubmit={handleSubmit}>
