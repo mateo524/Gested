@@ -398,8 +398,8 @@ export default function EvaluationsPage() {
                     </div>
                     <input className="w-full rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm text-white placeholder:text-[#7a98a8] outline-none focus:border-[#14b8a6]" placeholder="Comentario o evidencia breve" value={score.comentario} onChange={(event) => updateScore(score.metricId, "comentario", event.target.value)} />
                   </div>
-                )}}
-                )}
+                  );
+                }}
               />
             </div>
 
