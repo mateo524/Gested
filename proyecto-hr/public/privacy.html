@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de Privacidad — ZENTOR</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #060f14; color: #c5d5de; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; line-height: 1.7; }
+    .wrap { max-width: 760px; margin: 0 auto; padding: 64px 24px 96px; }
+    .logo { display: flex; align-items: center; gap: 10px; margin-bottom: 56px; text-decoration: none; }
+    .logo-icon { width: 36px; height: 36px; background: #14b8a6; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+    .logo-icon svg { width: 20px; height: 20px; fill: #0f172a; }
+    .logo-name { font-size: 20px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+    h1 { font-size: 32px; font-weight: 700; color: #fff; margin-bottom: 8px; letter-spacing: -0.5px; }
+    .meta { font-size: 14px; color: #7a98a8; margin-bottom: 48px; }
+    h2 { font-size: 18px; font-weight: 600; color: #fff; margin: 40px 0 12px; }
+    p { margin-bottom: 16px; font-size: 15px; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    li { margin-bottom: 8px; font-size: 15px; }
+    a { color: #14b8a6; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .divider { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 48px 0; }
+    .back { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: #7a98a8; text-decoration: none; margin-top: 48px; }
+    .back:hover { color: #14b8a6; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a href="https://gested-l6ej.vercel.app" class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 20 20"><path d="M10 2L3 6v8l7 4 7-4V6L10 2zm0 2.4l4.8 2.75L10 9.9 5.2 7.15 10 4.4zM4.5 8.35l5 2.85v5.4L4.5 13.8V8.35zm6.5 8.25v-5.4l5-2.85v5.45l-5 2.8z"/></svg>
+      </div>
+      <span class="logo-name">ZENTOR</span>
+    </a>
+
+    <h1>Política de Privacidad</h1>
+    <p class="meta">Última actualización: 6 de junio de 2026</p>
+
+    <p>En ZENTOR ("nosotros", "nuestro" o "la plataforma") nos comprometemos a proteger la privacidad de los datos de nuestros usuarios y de las organizaciones que utilizan nuestra plataforma de gestión del desempeño. Esta Política de Privacidad describe qué información recopilamos, cómo la usamos, y los derechos que tienen los usuarios sobre sus datos.</p>
+
+    <h2>1. Información que recopilamos</h2>
+    <p>Recopilamos información necesaria para brindar el servicio de gestión de desempeño:</p>
+    <ul>
+      <li><strong>Datos de cuenta:</strong> nombre, email, empresa y contraseña (almacenada con hash bcrypt).</li>
+      <li><strong>Datos de empleados:</strong> nombre, cargo, área y legajo, ingresados por administradores de la organización.</li>
+      <li><strong>Datos de evaluaciones:</strong> calificaciones, comentarios y planes de desarrollo, asociados a empleados dentro de cada organización.</li>
+      <li><strong>Datos de uso:</strong> logs de acceso, acciones dentro de la plataforma y auditorías internas (solo para administradores).</li>
+    </ul>
+
+    <h2>2. Cómo usamos la información</h2>
+    <ul>
+      <li>Proveer y mantener el servicio ZENTOR.</li>
+      <li>Generar reportes de desempeño para las organizaciones que lo soliciten.</li>
+      <li>Enviar notificaciones funcionales del servicio (no marketing sin consentimiento).</li>
+      <li>Mejorar la plataforma mediante análisis de uso agregado y anónimo.</li>
+    </ul>
+
+    <h2>3. Compartición de datos</h2>
+    <p>No vendemos ni compartimos datos personales con terceros, excepto:</p>
+    <ul>
+      <li><strong>Proveedores de infraestructura:</strong> MongoDB Atlas (base de datos), Render (backend), Vercel (frontend) y Cloudinary (almacenamiento de archivos), todos bajo acuerdos de confidencialidad.</li>
+      <li><strong>Requerimiento legal:</strong> cuando la ley argentina o un organismo competente lo exija.</li>
+    </ul>
+
+    <h2>4. Seguridad</h2>
+    <p>Implementamos medidas técnicas para proteger los datos: cifrado en tránsito (HTTPS/TLS), autenticación por JWT, hash de contraseñas con bcrypt, y control de acceso basado en roles (RBAC). Sin embargo, ningún sistema es 100% infalible.</p>
+
+    <h2>5. Retención de datos</h2>
+    <p>Los datos se conservan mientras la cuenta de la organización esté activa. Al cancelar el servicio, los datos pueden ser eliminados a pedido dentro de los 30 días hábiles.</p>
+
+    <h2>6. Derechos del usuario</h2>
+    <p>De acuerdo a la <strong>Ley 25.326 de Protección de Datos Personales de Argentina</strong>, los usuarios tienen derecho a:</p>
+    <ul>
+      <li>Acceder a sus datos personales almacenados.</li>
+      <li>Corregir datos incorrectos o incompletos.</li>
+      <li>Solicitar la eliminación de sus datos (derecho al olvido).</li>
+      <li>Oponerse al tratamiento de sus datos para fines comerciales.</li>
+    </ul>
+    <p>Para ejercer estos derechos, contactanos en <a href="mailto:zentorhq@gmail.com">zentorhq@gmail.com</a>.</p>
+
+    <h2>7. Cookies</h2>
+    <p>ZENTOR utiliza únicamente cookies técnicas necesarias para mantener la sesión del usuario. No usamos cookies de seguimiento ni de publicidad de terceros.</p>
+
+    <h2>8. Menores de edad</h2>
+    <p>El servicio no está dirigido a personas menores de 18 años. No recopilamos datos de menores de forma intencional.</p>
+
+    <h2>9. Cambios a esta política</h2>
+    <p>Podemos actualizar esta Política de Privacidad. Notificaremos los cambios significativos por email o mediante un aviso en la plataforma. El uso continuado del servicio implica la aceptación de la nueva política.</p>
+
+    <h2>10. Contacto</h2>
+    <p>Para consultas sobre esta política, escribinos a <a href="mailto:zentorhq@gmail.com">zentorhq@gmail.com</a>.</p>
+
+    <hr class="divider" />
+    <a href="https://gested-l6ej.vercel.app" class="back">← Volver a ZENTOR</a>
+  </div>
+</body>
+</html>

@@ -31,6 +31,7 @@ import supportRoutes from "./routes/support.routes.js";
 import bulkImportRoutes from "./routes/bulkImport.routes.js";
 import reportsRoutes from "./routes/reports.routes.js";
 import onboardingRoutes from "./routes/onboarding.routes.js";
+import linkedinRoutes from "./routes/linkedin.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { buildHealthStatus } from "./utils/health.js";
 
@@ -208,6 +209,7 @@ app.use("/support", supportRoutes);
 app.use("/bulk-import", bulkImportRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
+app.use("/api/linkedin", linkedinRoutes);
 
 app.get("/health", (_req, res) => {
   const payload = buildHealthStatus("zentor-backend", {
