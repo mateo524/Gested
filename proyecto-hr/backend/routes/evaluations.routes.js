@@ -99,8 +99,20 @@ async function validateEvaluationCreation(req) {
   }
 
   if (isEmployeeScope(req.scope)) {
-    if (String(employee._id) !== String(req.scope.employeeId) || req.body.tipo !== "AUTOEVALUACION") {
-      return { error: { status: 403, mensaje: "Solo puedes crear tu propia autoevaluacion" } };
+    if (req.body.tipo === "AUTOEVALUACION") {
+      if (String(employee._id) !== String(req.scope.employeeId)) {
+        return { error: { status: 403, mensaje: "Solo puedes crear tu propia autoevaluacion" } };
+      }
+    } else if (req.body.tipo === "EVALUACION_360") {
+      // The employee is evaluating their own manager — verify the target is their manager
+      const self = await Employee.findOne(
+        buildScopedFilter(req, { _id: req.scope.employeeId })
+      ).lean();
+      if (!self || !self.managerId || String(self.managerId) !== String(employee._id)) {
+        return { error: { status: 403, mensaje: "Solo puedes evaluar 360 a tu jefe directo" } };
+      }
+    } else {
+      return { error: { status: 403, mensaje: "Solo puedes crear tu propia autoevaluacion o una evaluacion 360 a tu jefe" } };
     }
   }
 
@@ -131,6 +143,34 @@ router.get(
       .lean();
 
     res.json(filterEvaluationsForScope(req, evaluations));
+  }
+);
+
+router.get(
+  "/my-managers",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EVALUATIONS,
+    PERMISSIONS.EVALUATE_TEAM,
+    PERMISSIONS.SELF_EVALUATE
+  ),
+  async (req, res) => {
+    if (!isEmployeeScope(req.scope) || !req.scope.employeeId) {
+      return res.json([]);
+    }
+    const self = await Employee.findOne(
+      buildScopedFilter(req, { _id: req.scope.employeeId })
+    ).lean();
+    if (!self || !self.managerId) {
+      return res.json([]);
+    }
+    const manager = await Employee.findOne(
+      buildScopedFilter(req, { _id: self.managerId })
+    )
+      .select("nombre apellido cargo area")
+      .lean();
+    return res.json(manager ? [manager] : []);
   }
 );
 

@@ -34,7 +34,7 @@ const EvaluationSchema = new mongoose.Schema(
     },
     tipo: {
       type: String,
-      enum: ["AUTOEVALUACION", "JEFATURA", "FINAL"],
+      enum: ["AUTOEVALUACION", "JEFATURA", "FINAL", "EVALUACION_360"],
       required: true,
     },
     estado: {

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ZENTOR — Estado del sistema</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: #060f14;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 16px;
+    }
+
+    /* ── Logo ── */
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 8px;
+    }
+    .logo-mark {
+      width: 40px;
+      height: 40px;
+      background: #14b8a6;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .logo-mark svg { width: 24px; height: 24px; fill: #060f14; }
+    .logo-text {
+      font-size: 1.75rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: #ffffff;
+    }
+    .logo-text span { color: #14b8a6; }
+
+    /* ── Heading ── */
+    h1 {
+      font-size: 1rem;
+      font-weight: 400;
+      color: #94a3b8;
+      margin-bottom: 40px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    /* ── Card ── */
+    .card {
+      width: 100%;
+      max-width: 560px;
+      background: #0d1f2b;
+      border: 1px solid #1e3a4a;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #1e3a4a;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-header-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .refresh-btn {
+      background: none;
+      border: 1px solid #1e3a4a;
+      border-radius: 8px;
+      color: #14b8a6;
+      cursor: pointer;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      transition: background 0.15s;
+    }
+    .refresh-btn:hover { background: #14b8a620; }
+
+    /* ── Service rows ── */
+    .service-row {
+      display: flex;
+      align-items: center;
+      padding: 18px 24px;
+      border-bottom: 1px solid #1e3a4a;
+      gap: 14px;
+    }
+    .service-row:last-child { border-bottom: none; }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+    .dot.green  { background: #22c55e; box-shadow: 0 0 6px #22c55e88; }
+    .dot.red    { background: #ef4444; box-shadow: 0 0 6px #ef444488; }
+    .dot.yellow { background: #eab308; box-shadow: 0 0 6px #eab30888; }
+    .dot.grey   { background: #475569; }
+
+    .service-info { flex: 1; }
+    .service-name {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    .service-detail {
+      font-size: 0.78rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+
+    .service-ts {
+      font-size: 0.72rem;
+      color: #475569;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 32px;
+      font-size: 0.75rem;
+      color: #334155;
+      text-align: center;
+    }
+    .footer a { color: #14b8a6; text-decoration: none; }
+  </style>
+</head>
+<body>
+
+  <!-- Logo -->
+  <div class="logo">
+    <div class="logo-mark">
+      <!-- Simple Z glyph -->
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 4h16l-13 16h13"/>
+      </svg>
+    </div>
+    <div class="logo-text">ZEN<span>TOR</span></div>
+  </div>
+
+  <h1>Estado del sistema</h1>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-header-title">Servicios</span>
+      <button class="refresh-btn" onclick="checkHealth()">Actualizar</button>
+    </div>
+
+    <!-- App row -->
+    <div class="service-row" id="row-app">
+      <div class="dot grey" id="dot-app"></div>
+      <div class="service-info">
+        <div class="service-name">App</div>
+        <div class="service-detail" id="detail-app">Comprobando…</div>
+      </div>
+      <div class="service-ts" id="ts-app">—</div>
+    </div>
+
+    <!-- Backend API row -->
+    <div class="service-row" id="row-api">
+      <div class="dot grey" id="dot-api"></div>
+      <div class="service-info">
+        <div class="service-name">Backend API</div>
+        <div class="service-detail" id="detail-api">Comprobando…</div>
+      </div>
+      <div class="service-ts" id="ts-api">—</div>
+    </div>
+
+    <!-- Database row -->
+    <div class="service-row" id="row-db">
+      <div class="dot grey" id="dot-db"></div>
+      <div class="service-info">
+        <div class="service-name">Base de datos</div>
+        <div class="service-detail" id="detail-db">Comprobando…</div>
+      </div>
+      <div class="service-ts" id="ts-db">—</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Actualización automática cada 30 s &nbsp;·&nbsp;
+    <a href="https://gested-1-backend.onrender.com/health" target="_blank" rel="noopener">/health</a>
+  </div>
+
+  <script>
+    const HEALTH_URL = 'https://gested-1-backend.onrender.com/health';
+
+    function fmtTime(d) {
+      return d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function setDot(id, color) {
+      const el = document.getElementById(id);
+      el.className = 'dot ' + color;
+    }
+
+    function setText(id, text) {
+      document.getElementById(id).textContent = text;
+    }
+
+    function setErrorState(now) {
+      const ts = fmtTime(now);
+      setDot('dot-app', 'yellow');
+      setText('detail-app', 'No se pudo contactar el backend');
+      setText('ts-app', ts);
+
+      setDot('dot-api', 'red');
+      setText('detail-api', 'Sin respuesta');
+      setText('ts-api', ts);
+
+      setDot('dot-db', 'grey');
+      setText('detail-db', 'Desconocido');
+      setText('ts-db', ts);
+    }
+
+    async function checkHealth() {
+      const now = new Date();
+      const ts  = fmtTime(now);
+
+      // App is reachable as long as this page loaded
+      setDot('dot-app', 'green');
+      setText('detail-app', 'Operativo');
+      setText('ts-app', ts);
+
+      let data;
+      try {
+        const res = await fetch(HEALTH_URL, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        data = await res.json();
+      } catch (err) {
+        setErrorState(now);
+        return;
+      }
+
+      // Backend API
+      const apiOk = data.ok === true;
+      setDot('dot-api', apiOk ? 'green' : 'red');
+      const versionLabel = data.version ? ` · v${data.version}` : '';
+      const envLabel     = data.env     ? ` · ${data.env}`      : '';
+      setText('detail-api', apiOk
+        ? `Operativo${versionLabel}${envLabel}`
+        : `Error — status: ${data.status || 'unknown'}`);
+      setText('ts-api', ts);
+
+      // Database
+      const db    = data.database || {};
+      const dbOk  = db.ok === true;
+      const state = db.state || 'unknown';
+
+      let dbColor  = 'grey';
+      let dbDetail = state;
+      if (state === 'connected') {
+        dbColor  = 'green';
+        dbDetail = 'Conectada';
+      } else if (state === 'connecting') {
+        dbColor  = 'yellow';
+        dbDetail = 'Conectando…';
+      } else if (state === 'disconnected') {
+        dbColor  = 'red';
+        dbDetail = 'Desconectada';
+      }
+
+      setDot('dot-db', dbColor);
+      setText('detail-db', dbDetail);
+      setText('ts-db', ts);
+    }
+
+    // Run immediately, then every 30 seconds
+    checkHealth();
+    setInterval(checkHealth, 30_000);
+  </script>
+</body>
+</html>

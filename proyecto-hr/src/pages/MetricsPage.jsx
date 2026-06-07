@@ -991,7 +991,7 @@ export default function MetricsPage() {
         </div>
       ) : null}
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3">
+      <div className="sticky top-0 z-10 bg-[#060f14] pb-3 pt-1 flex flex-wrap gap-3 items-center">
         <div className="relative min-w-[180px] flex-1">
           <select
             className="pf-select w-full"
@@ -1008,6 +1008,20 @@ export default function MetricsPage() {
           {!visibleEmployees.length ? (
             <p className="mt-1 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
           ) : null}
+        </div>
+        <div className="min-w-[160px]">
+          <select
+            className="pf-select w-full"
+            value={selectedCycleId}
+            onChange={(event) => setSelectedCycleId(event.target.value)}
+          >
+            <option value="">Todos los ciclos</option>
+            {cycleOptionsForEmployee.map((cycle) => (
+              <option key={cycle._id} value={cycle._id}>
+                {buildCycleLabel(cycle)}
+              </option>
+            ))}
+          </select>
         </div>
         <div className="flex flex-wrap gap-2">
           {TABS.filter((tab) => canSeeManagerSection || tab.key !== "manager").map((tab) => (

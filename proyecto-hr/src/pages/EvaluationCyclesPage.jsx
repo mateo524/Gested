@@ -34,6 +34,7 @@ export default function EvaluationCyclesPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmState, setConfirmState] = useState({ open: false, cycle: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [cloneMode, setCloneMode] = useState(false);
   const formRef = useRef(null);
   const listRef = useRef(null);
 
@@ -91,6 +92,7 @@ export default function EvaluationCyclesPage() {
       });
       setForm({ ...emptyForm, anio: new Date().getFullYear() });
       setEditingId("");
+      setCloneMode(false);
       setFieldErrors({});
       const hadSearch = Boolean(String(searchQuery || "").trim());
       if (hadSearch) setSearchQuery("");
@@ -128,10 +130,29 @@ export default function EvaluationCyclesPage() {
 
   function cancelEdit() {
     setEditingId("");
+    setCloneMode(false);
     setForm({ ...emptyForm, anio: new Date().getFullYear() });
     setMessageType("info");
     setMessage("Edición cancelada.");
     setFieldErrors({});
+  }
+
+  function handleClone(cycle) {
+    setEditingId("");
+    setCloneMode(true);
+    setForm({
+      anio: Number(cycle.anio || new Date().getFullYear()),
+      periodo: cycle.periodo || "",
+      etapa: cycle.etapa || "INICIO",
+      fechaInicio: "",
+      fechaFin: "",
+    });
+    setFieldErrors({});
+    setMessageType("info");
+    setMessage("");
+    window.requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   async function confirmDeleteCycle() {
@@ -167,10 +188,15 @@ export default function EvaluationCyclesPage() {
 
       <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
         <section ref={formRef} className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
-          <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : "Nuevo ciclo"}</h4>
+          <h4 className="text-xl font-semibold text-white">{editingId ? "Editar ciclo" : cloneMode ? "Clonar ciclo" : "Nuevo ciclo"}</h4>
           <p className="mt-2 text-sm text-[#9fb6c4]">
-            Completá período, etapa y rango de fechas.
+            {cloneMode ? "Completá las fechas para el nuevo ciclo." : "Completá período, etapa y rango de fechas."}
           </p>
+          {cloneMode ? (
+            <div className="mt-3 rounded-2xl border border-[#14b8a6]/30 bg-[#14b8a6]/8 px-4 py-3 text-sm text-[#14b8a6]">
+              Clonando ciclo — completá las fechas del nuevo período
+            </div>
+          ) : null}
 
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <div className="grid gap-4 md:grid-cols-2">
@@ -191,9 +217,16 @@ export default function EvaluationCyclesPage() {
                   }`}
                   placeholder="Ej: Anual 2026 o Segundo semestre"
                   value={form.periodo}
-                  onChange={(e) => setForm({ ...form, periodo: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, periodo: e.target.value });
+                    if (fieldErrors.periodo) setFieldErrors((prev) => ({ ...prev, periodo: "" }));
+                  }}
+                  onBlur={() => {
+                    if (!form.periodo?.trim()) setFieldErrors((prev) => ({ ...prev, periodo: "Este campo es obligatorio" }));
+                    else setFieldErrors((prev) => ({ ...prev, periodo: "" }));
+                  }}
                 />
-                {fieldErrors.periodo ? <p className="mt-1 text-xs text-rose-300">{fieldErrors.periodo}</p> : null}
+                {fieldErrors.periodo && <p className="mt-1 px-1 text-xs text-rose-300">{fieldErrors.periodo}</p>}
               </div>
             </div>
 
@@ -219,8 +252,16 @@ export default function EvaluationCyclesPage() {
                     fieldErrors.fechaInicio ? "border-rose-400/70" : "border-white/15"
                   }`}
                   value={form.fechaInicio}
-                  onChange={(e) => setForm({ ...form, fechaInicio: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, fechaInicio: e.target.value });
+                    if (fieldErrors.fechaInicio) setFieldErrors((prev) => ({ ...prev, fechaInicio: "" }));
+                  }}
+                  onBlur={() => {
+                    if (!form.fechaInicio) setFieldErrors((prev) => ({ ...prev, fechaInicio: "Este campo es obligatorio" }));
+                    else setFieldErrors((prev) => ({ ...prev, fechaInicio: "" }));
+                  }}
                 />
+                {fieldErrors.fechaInicio && <p className="mt-1 px-1 text-xs text-rose-300">{fieldErrors.fechaInicio}</p>}
               </div>
               <div>
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de cierre</label>
@@ -230,25 +271,30 @@ export default function EvaluationCyclesPage() {
                     fieldErrors.fechaFin ? "border-rose-400/70" : "border-white/15"
                   }`}
                   value={form.fechaFin}
-                  onChange={(e) => setForm({ ...form, fechaFin: e.target.value })}
+                  onChange={(e) => {
+                    setForm({ ...form, fechaFin: e.target.value });
+                    if (fieldErrors.fechaFin) setFieldErrors((prev) => ({ ...prev, fechaFin: "" }));
+                  }}
+                  onBlur={() => {
+                    if (!form.fechaFin) setFieldErrors((prev) => ({ ...prev, fechaFin: "Este campo es obligatorio" }));
+                    else setFieldErrors((prev) => ({ ...prev, fechaFin: "" }));
+                  }}
                 />
+                {fieldErrors.fechaFin && <p className="mt-1 px-1 text-xs text-rose-300">{fieldErrors.fechaFin}</p>}
               </div>
             </div>
-            {fieldErrors.fechaInicio || fieldErrors.fechaFin ? (
-              <p className="text-xs text-rose-300">{fieldErrors.fechaInicio || fieldErrors.fechaFin}</p>
-            ) : null}
 
             <button type="submit" disabled={isSubmitting} className="pf-button-primary w-full disabled:opacity-60">
-              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear ciclo"}
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : cloneMode ? "Crear ciclo clonado" : "Crear ciclo"}
             </button>
 
-            {editingId ? (
+            {editingId || cloneMode ? (
               <button
                 type="button"
                 onClick={cancelEdit}
                 className="w-full rounded-2xl border border-white/20 py-3 font-semibold text-[#c5d5de]"
               >
-                Cancelar edición
+                {cloneMode ? "Cancelar clonado" : "Cancelar edición"}
               </button>
             ) : null}
           </form>
@@ -318,6 +364,9 @@ export default function EvaluationCyclesPage() {
                       <div className="mt-3 flex gap-2">
                         <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                           Editar
+                        </button>
+                        <button type="button" onClick={() => handleClone(cycle)} className="rounded-xl border border-[#14b8a6]/30 px-4 py-2 text-sm text-[#14b8a6] transition hover:bg-[#14b8a6]/10">
+                          Clonar
                         </button>
                         <button type="button" onClick={() => setConfirmState({ open: true, cycle })} className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20">
                           Eliminar

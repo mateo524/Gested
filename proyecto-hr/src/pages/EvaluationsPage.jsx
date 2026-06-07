@@ -10,6 +10,7 @@ const TIPO_LABELS = {
   AUTOEVALUACION: "Autoevaluación",
   JEFATURA: "Jefatura",
   FINAL: "Cierre final",
+  EVALUACION_360: "360° — Evaluar a mi jefe",
 };
 const ESTADO_LABELS = {
   BORRADOR: "Borrador",
@@ -110,6 +111,17 @@ export default function EvaluationsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingBase, setIsLoadingBase] = useState(false);
   const [isLoadingEvaluations, setIsLoadingEvaluations] = useState(false);
+  const [newEvaluationId, setNewEvaluationId] = useState(null);
+  const [isEditingDetail, setIsEditingDetail] = useState(false);
+  const [detailEditForm, setDetailEditForm] = useState({ estado: "", comentariosGenerales: "" });
+  const [isSavingDetail, setIsSavingDetail] = useState(false);
+  const [myManager, setMyManager] = useState(null);
+  const [isLoadingManager, setIsLoadingManager] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+  const [showPdfPreview, setShowPdfPreview] = useState(false);
+  const [pdfHtml, setPdfHtml] = useState("");
+  const iframeRef = useRef(null);
 
   const metricMap = useMemo(() => new Map(metrics.map((metric) => [metric._id, metric])), [metrics]);
   const visibleEvaluations = useMemo(() => {
@@ -151,6 +163,10 @@ export default function EvaluationsPage() {
       ]);
       setEmployees(employeesData);
       setCycles(cyclesData);
+      const activeC = cyclesData.find((c) => c.estado === "Inicio" || c.estado === "Activo");
+      if (activeC) {
+        setForm((prev) => ({ ...prev, cycleId: activeC._id }));
+      }
       setMetrics(metricsData);
     } finally {
       setIsLoadingBase(false);
@@ -192,6 +208,31 @@ export default function EvaluationsPage() {
     setScores(metrics.map((metric) => defaultScore(metric._id)));
   }, [metrics]);
 
+  useEffect(() => {
+    if (form.tipo !== "EVALUACION_360") {
+      setMyManager(null);
+      // Clear the locked employeeId if switching away from 360
+      setForm((prev) => (prev.tipo !== "EVALUACION_360" ? prev : { ...prev, employeeId: "" }));
+      return;
+    }
+    let cancelled = false;
+    setIsLoadingManager(true);
+    apiFetch("/evaluations/my-managers", { token })
+      .then((managers) => {
+        if (cancelled) return;
+        const manager = managers[0] || null;
+        setMyManager(manager);
+        setForm((prev) => ({ ...prev, employeeId: manager ? manager._id : "" }));
+      })
+      .catch(() => {
+        if (!cancelled) setMyManager(null);
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingManager(false);
+      });
+    return () => { cancelled = true; };
+  }, [form.tipo, token]);
+
   function updateScore(metricId, field, value) {
     setScores((current) =>
       current.map((score) => (score.metricId === metricId ? { ...score, [field]: value } : score))
@@ -215,10 +256,38 @@ export default function EvaluationsPage() {
     }
   }
 
+  async function handleSaveDetailEdit() {
+    if (!selectedEvaluation?._id) return;
+    try {
+      setIsSavingDetail(true);
+      await apiFetch(`/evaluations/${selectedEvaluation._id}`, {
+        method: "PATCH",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          estado: detailEditForm.estado,
+          comentariosGenerales: detailEditForm.comentariosGenerales,
+        }),
+      });
+      await loadEvaluations();
+      await loadEvaluationDetail(selectedEvaluation._id);
+      setIsEditingDetail(false);
+      addToast({ message: "Evaluación actualizada.", type: "success" });
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setIsSavingDetail(false);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
-    if (!form.employeeId || !form.cycleId) {
-      setFieldErrors({ employeeId: !form.employeeId, cycleId: !form.cycleId });
+    const nextErrors = {};
+    if (!form.employeeId) nextErrors.employeeId = "Este campo es obligatorio";
+    if (!form.cycleId) nextErrors.cycleId = "Este campo es obligatorio";
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
       setMessageType("warning");
       setMessage("Completá los campos marcados antes de guardar.");
       return;
@@ -228,7 +297,7 @@ export default function EvaluationsPage() {
       setIsSubmitting(true);
       setMessage("");
       setMessageType("info");
-      await apiFetch("/evaluations", {
+      const created = await apiFetch("/evaluations", {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
@@ -243,6 +312,10 @@ export default function EvaluationsPage() {
       setMessage("Evaluación creada.");
       addToast({ message: "Evaluación creada.", type: "success" });
       await loadEvaluations();
+      if (created?._id) {
+        setNewEvaluationId(created._id);
+        setTimeout(() => setNewEvaluationId(null), 3000);
+      }
       window.requestAnimationFrame(() => {
         document.getElementById("evaluations-list-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
       });
@@ -260,20 +333,97 @@ export default function EvaluationsPage() {
       setMessageType("info");
       const data = await apiFetch(`/education-exports/evaluation-report/${evaluationId}`, { token });
       const printable = buildPrintableReport(data);
-      const popup = window.open("", "_blank", "width=900,height=800");
-      if (!popup) {
-        setMessageType("warning");
-        setMessage("Tu navegador bloqueó la ventana del reporte.");
-        return;
-      }
-      popup.document.open();
-      popup.document.write(printable);
-      popup.document.close();
-      popup.focus();
-      popup.print();
+      setPdfHtml(printable);
+      setShowPdfPreview(true);
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    }
+  }
+
+  async function handleBulkClose() {
+    if (!selectedIds.size) return;
+    setIsBulkLoading(true);
+    try {
+      const ids = [...selectedIds];
+      try {
+        await apiFetch('/evaluations/bulk', {
+          method: 'PATCH',
+          token,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids, estado: 'CERRADA' }),
+        });
+      } catch {
+        for (const id of ids) {
+          await apiFetch(`/evaluations/${id}`, {
+            method: 'PATCH',
+            token,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ estado: 'CERRADA' }),
+          });
+        }
+      }
+      setSelectedIds(new Set());
+      await loadEvaluations();
+      addToast({ message: `${ids.length} evaluación(es) cerradas.`, type: 'success' });
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
+    } finally {
+      setIsBulkLoading(false);
+    }
+  }
+
+  async function handleBulkDelete() {
+    if (!selectedIds.size) return;
+    const confirmed = window.confirm(
+      `¿Confirmás eliminar ${selectedIds.size} evaluación(es)? Esta acción no se puede deshacer.`
+    );
+    if (!confirmed) return;
+    setIsBulkLoading(true);
+    try {
+      const ids = [...selectedIds];
+      try {
+        await apiFetch('/evaluations/bulk', {
+          method: 'DELETE',
+          token,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids }),
+        });
+      } catch {
+        for (const id of ids) {
+          await apiFetch(`/evaluations/${id}`, { method: 'DELETE', token });
+        }
+      }
+      setSelectedIds(new Set());
+      if (selectedEvaluation && ids.includes(selectedEvaluation._id)) {
+        setSelectedEvaluation(null);
+        setSelectedScores([]);
+      }
+      await loadEvaluations();
+      addToast({ message: `${ids.length} evaluación(es) eliminadas.`, type: 'success' });
+    } catch (error) {
+      setMessageType('error');
+      setMessage(error.message);
+    } finally {
+      setIsBulkLoading(false);
+    }
+  }
+
+  function toggleSelectId(id) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedIds.size === visibleEvaluations.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(visibleEvaluations.map((e) => e._id)));
     }
   }
 
@@ -307,22 +457,41 @@ export default function EvaluationsPage() {
           <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
             <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Datos del evaluado</p>
             <div>
-              <select
-                className={`w-full rounded-2xl border px-4 py-3 text-white transition ${fieldErrors.employeeId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0f1f28]"}`}
-                value={form.employeeId}
-                onChange={(event) => {
-                  setForm({ ...form, employeeId: event.target.value });
-                  if (fieldErrors.employeeId) setFieldErrors((prev) => ({ ...prev, employeeId: false }));
-                }}
-              >
-                <option value="">Seleccioná empleado</option>
-                {employees.map((employee) => (
-                  <option key={employee._id} value={employee._id}>
-                    {employee.apellido}, {employee.nombre}
-                  </option>
-                ))}
-              </select>
-              {fieldErrors.employeeId ? <p className="mt-1 text-xs text-rose-300">Seleccioná un empleado.</p> : null}
+              {form.tipo === "EVALUACION_360" ? (
+                <div className={`w-full rounded-2xl border px-4 py-3 text-white transition ${fieldErrors.employeeId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0f1f28]"}`}>
+                  {isLoadingManager ? (
+                    <span className="text-[#7a98a8]">Buscando tu jefe directo...</span>
+                  ) : myManager ? (
+                    <div>
+                      <p className="font-semibold text-white">{myManager.apellido}, {myManager.nombre}</p>
+                      <p className="mt-0.5 text-xs text-[#14b8a6]">Evaluarás a tu jefe directo</p>
+                    </div>
+                  ) : (
+                    <span className="text-amber-300">No tenés un jefe directo asignado. Consultá con RRHH.</span>
+                  )}
+                </div>
+              ) : (
+                <select
+                  className={`w-full rounded-2xl border px-4 py-3 text-white transition ${fieldErrors.employeeId ? "border-rose-400 bg-rose-500/5" : "border-white/15 bg-[#0f1f28]"}`}
+                  value={form.employeeId}
+                  onChange={(event) => {
+                    setForm({ ...form, employeeId: event.target.value });
+                    if (fieldErrors.employeeId) setFieldErrors((prev) => ({ ...prev, employeeId: "" }));
+                  }}
+                  onBlur={() => {
+                    if (!form.employeeId) setFieldErrors((prev) => ({ ...prev, employeeId: "Este campo es obligatorio" }));
+                    else setFieldErrors((prev) => ({ ...prev, employeeId: "" }));
+                  }}
+                >
+                  <option value="">Seleccioná empleado</option>
+                  {employees.map((employee) => (
+                    <option key={employee._id} value={employee._id}>
+                      {employee.apellido}, {employee.nombre}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {fieldErrors.employeeId && <p className="mt-1 px-1 text-xs text-rose-300">{fieldErrors.employeeId}</p>}
             </div>
             <div>
               <label className="mb-0.5 block text-xs text-[#9fb6c4]">Ciclo o período</label>
@@ -332,7 +501,11 @@ export default function EvaluationsPage() {
                 value={form.cycleId}
                 onChange={(event) => {
                   setForm({ ...form, cycleId: event.target.value });
-                  if (fieldErrors.cycleId) setFieldErrors((prev) => ({ ...prev, cycleId: false }));
+                  if (fieldErrors.cycleId) setFieldErrors((prev) => ({ ...prev, cycleId: "" }));
+                }}
+                onBlur={() => {
+                  if (!form.cycleId) setFieldErrors((prev) => ({ ...prev, cycleId: "Este campo es obligatorio" }));
+                  else setFieldErrors((prev) => ({ ...prev, cycleId: "" }));
                 }}
               >
                 <option value="">Seleccioná ciclo o período</option>
@@ -342,15 +515,30 @@ export default function EvaluationsPage() {
                   </option>
                 ))}
               </select>
-              {fieldErrors.cycleId ? <p className="mt-1 text-xs text-rose-300">Seleccioná un ciclo o período.</p> : null}
+              {fieldErrors.cycleId && <p className="mt-1 px-1 text-xs text-rose-300">{fieldErrors.cycleId}</p>}
             </div>
 
             <p className="pt-1 text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Cómo se evaluará</p>
             <div className="grid gap-4 md:grid-cols-2">
-              <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.tipo} onChange={(event) => setForm({ ...form, tipo: event.target.value })}>
+              <select
+                className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                value={form.tipo}
+                onChange={(event) => {
+                  const newTipo = event.target.value;
+                  setForm((prev) => ({
+                    ...prev,
+                    tipo: newTipo,
+                    // Clear employeeId when leaving 360 so the user must pick again
+                    employeeId: newTipo === "EVALUACION_360" ? prev.employeeId : (prev.tipo === "EVALUACION_360" ? "" : prev.employeeId),
+                  }));
+                }}
+              >
                 <option value="AUTOEVALUACION">Autoevaluación</option>
                 <option value="JEFATURA">Evaluación de jefatura</option>
                 <option value="FINAL">Cierre / final</option>
+                {user?.roleCode === "EMPLEADO" && (
+                  <option value="EVALUACION_360">360° — Evaluar a mi jefe</option>
+                )}
               </select>
               <select className="rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" value={form.estado} onChange={(event) => setForm({ ...form, estado: event.target.value })}>
                 <option value="BORRADOR">Borrador</option>
@@ -411,6 +599,15 @@ export default function EvaluationsPage() {
 
         <section id="evaluations-list-section" className="rounded-[2rem] border border-white/10 bg-[#122530] p-5 md:p-6">
           <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-white/30 bg-[#0f1f28] accent-[#14b8a6]"
+                checked={visibleEvaluations.length > 0 && selectedIds.size === visibleEvaluations.length}
+                onChange={toggleSelectAll}
+              />
+              <span className="text-xs text-[#7f99a8]">Todas</span>
+            </label>
             <h4 className="text-sm font-semibold text-white">Evaluaciones asignadas</h4>
             <div className="relative flex-1 min-w-[160px]">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7f99a8]"><circle cx="6.5" cy="6.5" r="4.5" /><path d="M11 11l3 3" /></svg>
@@ -457,7 +654,15 @@ export default function EvaluationsPage() {
                 initialCount={3}
                 className="space-y-4"
                 renderItem={(evaluation) => (
-                <article key={evaluation._id} className="lift-item rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article key={evaluation._id} className={`lift-item rounded-2xl border bg-[#0f1f28] p-4 ${newEvaluationId === evaluation._id ? "border-[#14b8a6]/50 ring-2 ring-[#14b8a6]/50" : selectedIds.has(evaluation._id) ? "border-[#14b8a6]/40" : "border-white/10"}`}>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 h-4 w-4 shrink-0 rounded border-white/30 bg-[#0f1f28] accent-[#14b8a6]"
+                      checked={selectedIds.has(evaluation._id)}
+                      onChange={() => toggleSelectId(evaluation._id)}
+                    />
+                  <div className="flex-1 min-w-0">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-lg font-semibold text-white">{evaluation.employeeId?.apellido}, {evaluation.employeeId?.nombre}</p>
@@ -487,6 +692,8 @@ export default function EvaluationsPage() {
                       Reporte
                     </button>
                   </div>
+                  </div>
+                  </div>
                 </article>
                 )}
               />
@@ -506,6 +713,35 @@ export default function EvaluationsPage() {
               ) : null
             )}
           </div>
+
+          {selectedIds.size > 0 && (
+            <div className="sticky bottom-4 left-0 right-0 flex items-center gap-3 rounded-2xl border border-[#14b8a6]/30 bg-[#0c1e28] px-4 py-3 shadow-xl">
+              <span className="flex-1 text-sm font-semibold text-white">{selectedIds.size} seleccionada{selectedIds.size !== 1 ? "s" : ""}</span>
+              <button
+                type="button"
+                disabled={isBulkLoading}
+                onClick={handleBulkClose}
+                className="rounded-xl bg-[#14b8a6]/10 border border-[#14b8a6]/30 px-3 py-1.5 text-xs font-semibold text-[#14b8a6] hover:bg-[#14b8a6]/20 transition disabled:opacity-50"
+              >
+                Cerrar seleccionadas
+              </button>
+              <button
+                type="button"
+                disabled={isBulkLoading}
+                onClick={handleBulkDelete}
+                className="rounded-xl bg-rose-500/10 border border-rose-400/30 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 transition disabled:opacity-50"
+              >
+                Eliminar seleccionadas
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedIds(new Set())}
+                className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-[#c5d5de] hover:border-white/30 transition"
+              >
+                Deseleccionar todo
+              </button>
+            </div>
+          )}
         </section>
       </div>
 
@@ -513,12 +749,75 @@ export default function EvaluationsPage() {
         <SurfaceCard
           title={selectedEvaluation ? "Detalle de evaluación" : "Detalle de evaluación"}
           subtitle={selectedEvaluation ? "Acercamos la lectura al formulario real: datos del evaluado, mediciones, resumen y comentarios." : "Seleccioná una evaluación para ver datos del evaluado, mediciones, evidencias y resumen evaluativo."}
-          actions={selectedEvaluation ? <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">{labelEstado(selectedEvaluation.estado)}</span> : null}
+          actions={
+            selectedEvaluation ? (
+              <div className="flex items-center gap-2">
+                <span className="rounded-full border border-white/10 bg-[#0f1f28] px-3 py-1 text-xs text-[#d6e2e8]">{labelEstado(selectedEvaluation.estado)}</span>
+                {!isEditingDetail ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingDetail(true);
+                      setDetailEditForm({
+                        estado: selectedEvaluation.estado || "BORRADOR",
+                        comentariosGenerales: selectedEvaluation.comentariosGenerales || "",
+                      });
+                    }}
+                    className="rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/5 px-3 py-1.5 text-xs font-semibold text-[#14b8a6] transition hover:bg-[#14b8a6]/15"
+                  >
+                    Editar evaluación
+                  </button>
+                ) : null}
+              </div>
+            ) : null
+          }
         >
           {loadingDetail ? (
             <LoadingState compact title="Cargando detalle" description="Estamos trayendo mediciones, comentarios y resultado final." />
           ) : !selectedEvaluation ? (
             <EmptyState compact title="Todavía no elegiste una evaluación" description="Usá «Ver detalle» en la lista para abrir mediciones, comentarios y el resultado final." />
+          ) : isEditingDetail ? (
+            <div className="space-y-4">
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Estado</label>
+                <select
+                  className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                  value={detailEditForm.estado}
+                  onChange={(e) => setDetailEditForm((prev) => ({ ...prev, estado: e.target.value }))}
+                >
+                  <option value="BORRADOR">Borrador</option>
+                  <option value="ENVIADA">Enviada</option>
+                  <option value="REVISADA">Revisada</option>
+                  <option value="CERRADA">Cerrada</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs text-[#9fb6c4]">Comentarios generales</label>
+                <textarea
+                  className="min-h-28 max-h-48 w-full resize-y rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white placeholder:text-[#7a98a8]"
+                  placeholder="Comentarios sobre la evaluación"
+                  value={detailEditForm.comentariosGenerales}
+                  onChange={(e) => setDetailEditForm((prev) => ({ ...prev, comentariosGenerales: e.target.value }))}
+                />
+              </div>
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  disabled={isSavingDetail}
+                  onClick={handleSaveDetailEdit}
+                  className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 font-semibold text-[#0f172a] disabled:opacity-60"
+                >
+                  {isSavingDetail ? "Guardando..." : "Guardar cambios"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingDetail(false)}
+                  className="rounded-2xl border border-white/20 px-5 py-2.5 font-semibold text-[#c5d5de]"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
           ) : (
             <div className="space-y-5">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -617,6 +916,38 @@ export default function EvaluationsPage() {
           {message}
         </p>
       ) : null}
+
+      {showPdfPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70" onClick={(e) => { if (e.target === e.currentTarget) setShowPdfPreview(false); }}>
+          <div className="flex w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white" style={{ height: '80vh' }}>
+            <div className="flex shrink-0 items-center justify-between border-b border-gray-200 px-4 py-3">
+              <p className="text-sm font-semibold text-gray-800">Vista previa del reporte</p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => iframeRef.current?.contentWindow?.print()}
+                  className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0d9488] transition"
+                >
+                  Imprimir / Guardar PDF
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPdfPreview(false)}
+                  className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 transition"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+            <iframe
+              ref={iframeRef}
+              srcDoc={pdfHtml}
+              title="Vista previa del reporte"
+              className="flex-1 w-full"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

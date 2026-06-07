@@ -33,6 +33,7 @@ import reportsRoutes from "./routes/reports.routes.js";
 import onboardingRoutes from "./routes/onboarding.routes.js";
 import linkedinRoutes from "./routes/linkedin.routes.js";
 import notificationsRoutes from "./routes/notifications.routes.js";
+import calendlyRoutes from "./routes/calendly.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { buildHealthStatus } from "./utils/health.js";
 
@@ -212,6 +213,7 @@ app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/api/linkedin", linkedinRoutes);
 app.use("/notifications", notificationsRoutes);
+app.use("/webhooks", calendlyRoutes);
 
 app.get("/health", (_req, res) => {
   const payload = buildHealthStatus("zentor-backend", {

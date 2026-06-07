@@ -50,6 +50,7 @@ export default function DevelopmentPlansPage() {
   const [editingPlanId, setEditingPlanId] = useState("");
   const [confirmState, setConfirmState] = useState({ open: false, plan: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState("cards");
   const planFormRef = useRef(null);
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const baseCacheKey = `pf_plans_base_${roleScope}`;
@@ -443,6 +444,10 @@ export default function DevelopmentPlansPage() {
                       </span>
                     </div>
 
+                    <div className="mt-3 rounded-xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 px-3 py-2 text-xs text-[#14b8a6]">
+                      💡 {suggestion.razon || suggestion.reason || suggestion.motivacion || "Basado en evaluaciones recientes"}
+                    </div>
+
                     <div className="mt-4 grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
                       <div>
                         <p className="text-xs uppercase tracking-[0.16em] text-[#7f99a8]">Motivo</p>
@@ -567,6 +572,36 @@ export default function DevelopmentPlansPage() {
         </section>
 
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm uppercase tracking-[0.16em] text-[#7f99a8]">Mi equipo de un vistazo</p>
+              <h4 className="mt-1 text-xl font-semibold text-white">Planes activos</h4>
+            </div>
+            {new Set(visiblePlans.map((p) => String(p.employeeId?._id || p.employeeId))).size > 1 ? (
+              <button
+                type="button"
+                onClick={() => setViewMode((v) => v === "cards" ? "table" : "cards")}
+                className="flex items-center gap-2 rounded-2xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-xs font-medium text-[#c5d5de] transition hover:bg-white/5"
+                title={viewMode === "cards" ? "Cambiar a vista tabla" : "Cambiar a vista tarjetas"}
+              >
+                {viewMode === "cards" ? (
+                  <>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5">
+                      <rect x="1" y="2" width="14" height="3" rx="0.5" /><rect x="1" y="7" width="14" height="3" rx="0.5" /><rect x="1" y="12" width="14" height="3" rx="0.5" />
+                    </svg>
+                    Vista tabla
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5">
+                      <rect x="1" y="1" width="6" height="6" rx="1" /><rect x="9" y="1" width="6" height="6" rx="1" /><rect x="1" y="9" width="6" height="6" rx="1" /><rect x="9" y="9" width="6" height="6" rx="1" />
+                    </svg>
+                    Vista tarjetas
+                  </>
+                )}
+              </button>
+            ) : null}
+          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <div className="relative">
               <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#7f99a8]">
@@ -617,7 +652,58 @@ export default function DevelopmentPlansPage() {
                 }
               />
             ) : null}
-            {!isLoadingBase && !isLoadingPlans && visiblePlans.length ? (
+            {!isLoadingBase && !isLoadingPlans && visiblePlans.length && viewMode === "table" ? (
+              <div className="overflow-x-auto rounded-2xl border border-white/10">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-left text-xs uppercase tracking-[0.14em] text-[#7f99a8]">
+                      <th className="px-4 py-3 font-medium">Persona</th>
+                      <th className="px-4 py-3 font-medium">Plan activo</th>
+                      <th className="px-4 py-3 font-medium">Vencimiento</th>
+                      <th className="px-4 py-3 font-medium">Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visiblePlans.map((plan) => {
+                      const dueDate = plan.fechaSeguimiento ? new Date(plan.fechaSeguimiento) : null;
+                      const isOverdue = dueDate && dueDate < new Date() && plan.estado !== "CERRADO";
+                      const dueDateLabel = dueDate
+                        ? dueDate.toLocaleDateString("es-AR", { dateStyle: "medium" })
+                        : "—";
+                      const estadoLabel = plan.estado === "EN_CURSO" ? "En curso"
+                        : plan.estado === "CERRADO" ? "Cerrado"
+                        : "Pendiente";
+                      const estadoCls = plan.estado === "EN_CURSO"
+                        ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : plan.estado === "CERRADO"
+                          ? "border-white/15 bg-white/5 text-[#9fb6c4]"
+                          : isOverdue
+                            ? "border-rose-400/30 bg-rose-500/10 text-rose-300"
+                            : "border-amber-300/25 bg-amber-500/10 text-amber-300";
+                      return (
+                        <tr key={plan._id} className="border-b border-white/5 transition hover:bg-white/[0.02]">
+                          <td className="px-4 py-3 font-medium text-white">
+                            {plan.employeeId?.apellido}, {plan.employeeId?.nombre}
+                          </td>
+                          <td className="max-w-[200px] px-4 py-3 text-[#c5d5de]">
+                            <span className="line-clamp-2">{plan.aspectoDesarrollar || "—"}</span>
+                          </td>
+                          <td className={`px-4 py-3 ${isOverdue ? "text-rose-300" : "text-[#9fb6c4]"}`}>
+                            {dueDateLabel}
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full border px-2.5 py-0.5 text-xs font-semibold ${estadoCls}`}>
+                              {estadoLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : null}
+            {!isLoadingBase && !isLoadingPlans && visiblePlans.length && viewMode === "cards" ? (
               <CollapsibleList
                 items={visiblePlans}
                 initialCount={3}
@@ -705,23 +791,22 @@ export default function DevelopmentPlansPage() {
                   );
                 }}
               />
-            ) : (
-              !isLoadingBase && !isLoadingPlans && messageType !== "error" ? (
-                <EmptyState
-                  compact
-                  title={user?.roleCode === "EMPLEADO" ? "Todavía no tenés planes asociados" : "No hay planes todavía"}
-                  description={
-                    user?.roleCode === "EMPLEADO"
-                      ? "Cuando te asignen un plan, lo vas a ver acá con su próximo seguimiento."
-                      : searchQuery
-                        ? "No encontramos planes para la búsqueda actual."
-                        : "Podés crear uno desde una evaluación o cargarlo manualmente."
-                  }
-                  actionLabel={user?.roleCode !== "EMPLEADO" && !searchQuery ? "Crear plan" : undefined}
-                  onAction={user?.roleCode !== "EMPLEADO" && !searchQuery ? () => planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) : undefined}
-                />
-              ) : null
-            )}
+            ) : null}
+            {!isLoadingBase && !isLoadingPlans && !visiblePlans.length && messageType !== "error" ? (
+              <EmptyState
+                compact
+                title={user?.roleCode === "EMPLEADO" ? "Todavía no tenés planes asociados" : "No hay planes todavía"}
+                description={
+                  user?.roleCode === "EMPLEADO"
+                    ? "Cuando te asignen un plan, lo vas a ver acá con su próximo seguimiento."
+                    : searchQuery
+                      ? "No encontramos planes para la búsqueda actual."
+                      : "Podés crear uno desde una evaluación o cargarlo manualmente."
+                }
+                actionLabel={user?.roleCode !== "EMPLEADO" && !searchQuery ? "Crear plan" : undefined}
+                onAction={user?.roleCode !== "EMPLEADO" && !searchQuery ? () => planFormRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }) : undefined}
+              />
+            ) : null}
           </div>
         </section>
       </div>

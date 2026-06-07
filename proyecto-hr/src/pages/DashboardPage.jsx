@@ -51,13 +51,13 @@ function StatCard({ label, value, hint, accent = "teal", onClick }) {
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`card-lift w-full rounded-2xl border bg-gradient-to-br p-4 text-left ${accentClass} ${onClick ? "cursor-pointer ring-inset hover:ring-1 hover:ring-white/15" : ""}`}
+      className={`card-lift w-full rounded-2xl border bg-gradient-to-br p-4 text-left ${accentClass} ${onClick ? "group cursor-pointer ring-inset hover:ring-1 hover:ring-white/15 hover:scale-[1.01] transition-transform" : ""}`}
     >
       <p className="text-[11px] text-[#7a98a8] uppercase tracking-[.1em] font-medium">{label}</p>
       <p className="stat-num mt-2 text-2xl font-bold tracking-tight text-white">{display}</p>
       <p className="mt-1 text-[11px] text-[#7a98a8]">{hint}</p>
       {onClick ? (
-        <p className="mt-2 text-[10px] text-[#14b8a6] font-medium tracking-wide">Ver →</p>
+        <p className="mt-2 text-[10px] text-[#14b8a6] font-medium tracking-wide transition-colors group-hover:text-white">Ver →</p>
       ) : null}
     </Tag>
   );

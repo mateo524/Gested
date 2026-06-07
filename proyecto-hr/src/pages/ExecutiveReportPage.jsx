@@ -540,6 +540,7 @@ export default function ExecutiveReportPage() {
   const [error, setError] = useState("");
   const detailRef = useRef(null);
   const pendingDetailScrollRef = useRef(false);
+  const filterDebounceRef = useRef(null);
 
   const canViewExecutive =
     user?.isSuperAdmin ||
@@ -683,6 +684,15 @@ export default function ExecutiveReportPage() {
   function applyFilters() {
     setFilters({ ...draftFilters });
   }
+
+  useEffect(() => {
+    clearTimeout(filterDebounceRef.current);
+    filterDebounceRef.current = setTimeout(() => {
+      applyFilters();
+    }, 300);
+    return () => clearTimeout(filterDebounceRef.current);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftFilters.cycleId, draftFilters.department, draftFilters.employeeId]);
 
   const overviewActions = useMemo(() => {
     const severityOrder = { high: 0, medium: 1, low: 2 };
@@ -1014,14 +1024,15 @@ export default function ExecutiveReportPage() {
             </select>
           </label>
 
-          <div className="flex items-end">
-            <button
-              type="button"
-              onClick={applyFilters}
-              className="w-full rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a]"
-            >
-              Aplicar filtros
-            </button>
+          <div className="flex items-end pb-1">
+            {loadingOverview ? (
+              <span className="text-sm text-[#9fb6c4]">Cargando...</span>
+            ) : (
+              <span className="flex items-center gap-1.5 text-sm text-[#9fb6c4]">
+                <span className="h-2 w-2 rounded-full bg-emerald-400" />
+                Actualizado
+              </span>
+            )}
           </div>
         </div>
       </SurfaceCard>
