@@ -19,6 +19,7 @@ const CompanySettingSchema = new mongoose.Schema({
     autoAssignDefaultRole: { type: Boolean, default: true },
     notifyOnImportErrors: { type: Boolean, default: true },
   },
+  slackWebhookUrl: { type: String, default: "" },
   importProfiles: {
     type: mongoose.Schema.Types.Mixed,
     default: {},

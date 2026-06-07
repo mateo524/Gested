@@ -5,6 +5,7 @@ import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { logAudit } from "../utils/audit.js";
+import { notifyClientSlack } from "../utils/clientSlack.js";
 
 const router = express.Router();
 
@@ -50,6 +51,18 @@ router.put("/", auth, permit("manage_settings"), async (req, res) => {
   });
 
   res.json({ mensaje: "Parametros actualizados", settings });
+});
+
+router.post("/test-slack", auth, permit("manage_settings"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const settings = await CompanySetting.findOne({ companyId }).select("slackWebhookUrl").lean();
+
+  if (!settings?.slackWebhookUrl) {
+    return res.status(400).json({ mensaje: "No hay una Slack Webhook URL configurada para esta organización." });
+  }
+
+  await notifyClientSlack(companyId, "✅ *ZENTOR* — Conexión de Slack verificada correctamente. Las alertas de evaluaciones y ciclos llegarán aquí.");
+  res.json({ mensaje: "Mensaje de prueba enviado." });
 });
 
 export default router;

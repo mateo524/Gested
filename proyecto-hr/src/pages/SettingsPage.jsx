@@ -34,6 +34,13 @@ export default function SettingsPage() {
   const [messageType, setMessageType] = useState("info");
   const [securityStatusState, setSecurityStatusState] = useState("loading");
 
+  // Slack integration state
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
+  const [slackMessage, setSlackMessage] = useState("");
+  const [slackMessageType, setSlackMessageType] = useState("info");
+  const [savingSlack, setSavingSlack] = useState(false);
+  const [testingSlack, setTestingSlack] = useState(false);
+
   // Webhooks state
   const [webhooks, setWebhooks] = useState([]);
   const [webhooksState, setWebhooksState] = useState("loading"); // loading | ready | error
@@ -54,6 +61,7 @@ export default function SettingsPage() {
             ...data,
             automations: { ...prev.automations, ...(data.automations || {}) },
           }));
+          if (data.slackWebhookUrl) setSlackWebhookUrl(data.slackWebhookUrl);
         }
       })
       .catch((error) => {
@@ -164,6 +172,41 @@ export default function SettingsPage() {
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    }
+  }
+
+  async function saveSlack() {
+    try {
+      setSavingSlack(true);
+      setSlackMessage("");
+      await apiFetch("/settings", {
+        method: "PUT",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slackWebhookUrl }),
+      });
+      setSlackMessage("Webhook guardado correctamente.");
+      setSlackMessageType("success");
+    } catch (error) {
+      setSlackMessage(error.message);
+      setSlackMessageType("error");
+    } finally {
+      setSavingSlack(false);
+    }
+  }
+
+  async function testSlack() {
+    try {
+      setTestingSlack(true);
+      setSlackMessage("");
+      await apiFetch("/settings/test-slack", { method: "POST", token });
+      setSlackMessage("Mensaje de prueba enviado a tu workspace de Slack.");
+      setSlackMessageType("success");
+    } catch (error) {
+      setSlackMessage(error.message);
+      setSlackMessageType("error");
+    } finally {
+      setTestingSlack(false);
     }
   }
 
@@ -348,6 +391,63 @@ export default function SettingsPage() {
             {webhookMessage ? (
               <p className={`mt-3 ${webhookMessageType === "error" ? "pf-alert-error" : webhookMessageType === "success" ? "pf-alert-success" : "pf-alert-warning"}`}>
                 {webhookMessage}
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
+      {isAdmin && !user?.isSuperAdmin ? (
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h3 className="text-xl font-semibold text-white">Integraciones</h3>
+          <p className="mt-1 text-sm text-[#9fb6c4]">
+            Conectá ZENTOR con herramientas externas para recibir alertas en tiempo real.
+          </p>
+
+          <div className="mt-5 space-y-3">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">Slack Webhook URL</span>
+              <input
+                className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+                placeholder="https://hooks.slack.com/services/..."
+                value={slackWebhookUrl}
+                onChange={(e) => setSlackWebhookUrl(e.target.value)}
+              />
+              <p className="mt-1.5 text-xs text-[#6b8899]">
+                Pegá la URL de tu webhook de Slack para recibir alertas de evaluaciones vencidas y ciclos.{" "}
+                <a
+                  href="https://api.slack.com/apps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline text-[#14b8a6] hover:text-[#0d9488]"
+                >
+                  Creá uno en api.slack.com/apps
+                </a>
+              </p>
+            </label>
+
+            <div className="flex gap-3">
+              <button
+                type="button"
+                disabled={savingSlack}
+                onClick={saveSlack}
+                className="rounded-2xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:opacity-60"
+              >
+                {savingSlack ? "Guardando..." : "Guardar"}
+              </button>
+              <button
+                type="button"
+                disabled={testingSlack || !slackWebhookUrl}
+                onClick={testSlack}
+                className="rounded-2xl border border-white/15 px-6 py-2.5 text-sm font-semibold text-[#c5d5de] transition hover:bg-white/5 disabled:opacity-40"
+              >
+                {testingSlack ? "Enviando..." : "Probar"}
+              </button>
+            </div>
+
+            {slackMessage ? (
+              <p className={`mt-2 ${slackMessageType === "error" ? "pf-alert-error" : slackMessageType === "success" ? "pf-alert-success" : "pf-alert-warning"}`}>
+                {slackMessage}
               </p>
             ) : null}
           </div>

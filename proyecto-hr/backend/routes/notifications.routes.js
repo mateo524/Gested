@@ -7,6 +7,7 @@ import EvaluationCycle from "../models/EvaluationCycle.js";
 import Company from "../models/Company.js";
 import { sendEvaluationReminderEmail } from "../utils/mailer.js";
 import { slack } from "../utils/slackNotifier.js";
+import { notifyClientSlack, clientSlack } from "../utils/clientSlack.js";
 
 const router = express.Router();
 
@@ -65,7 +66,15 @@ router.post("/remind-pending", auth, requireSuperAdmin, async (req, res) => {
 
     if (sentForCycle > 0) {
       Company.findById(cycle.companyId).lean().then((co) => {
-        slack.overdueEvaluations(co?.nombre || String(cycle.companyId), sentForCycle).catch(() => {});
+        const companyName = co?.nombre || String(cycle.companyId);
+        slack.overdueEvaluations(companyName, sentForCycle).catch(() => {});
+        const closingDate = cycle.fechaCierre
+          ? new Date(cycle.fechaCierre).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" })
+          : null;
+        notifyClientSlack(
+          cycle.companyId,
+          clientSlack.evaluationsOverdue(companyName, sentForCycle, closingDate)
+        );
       }).catch(() => {});
     }
   }

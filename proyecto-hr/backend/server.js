@@ -132,6 +132,38 @@ const generalLimiter = rateLimit({
 
 app.use(generalLimiter);
 
+// Per-user rate limiter — applied only to authenticated routes
+// Stricter than IP limiter: prevents a single account from hammering the API
+const perUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  limit: 150,                  // 150 req per user per 15min (vs 300 by IP)
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use userId if authenticated, fall back to IP
+    const userId = req.user?._id || req.user?.userId;
+    return userId ? `user:${userId}` : req.ip;
+  },
+  message: { mensaje: "Demasiadas solicitudes desde esta cuenta. Intentá en unos minutos." },
+  skip: (req) => {
+    // Skip for unauthenticated routes and health check
+    if (req.path === "/health") return true;
+    if (req.path.startsWith("/auth/login")) return false; // apply to login (brute force)
+    return false;
+  },
+});
+
+app.use(perUserLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10, // only 10 login attempts per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: "Demasiados intentos de login. Esperá 15 minutos." },
+});
+app.use("/auth/login", authLimiter);
+
 function isObject(val) {
   return typeof val === "object" && val !== null;
 }
@@ -293,3 +325,5 @@ async function start() {
 }
 
 start();
+
+export { app };

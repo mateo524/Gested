@@ -10,6 +10,7 @@ import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
 import { slack } from "../utils/slackNotifier.js";
+import { notifyClientSlack, clientSlack } from "../utils/clientSlack.js";
 
 const router = express.Router();
 
@@ -129,14 +130,19 @@ router.post(
         estado: cycle.estado,
       });
       Company.findById(companyId).lean().then((co) => {
-        slack.cycleStarted(co?.nombre || String(companyId), cycle.periodo).catch(() => {});
+        const companyName = co?.nombre || String(companyId);
+        slack.cycleStarted(companyName, cycle.periodo).catch(() => {});
+        notifyClientSlack(companyId, clientSlack.cycleStarted(companyName, cycle.periodo));
       }).catch(() => {});
     }
 
     if (cycle.estado === "CERRADO") {
       Company.findById(companyId).lean().then(async (co) => {
+        const companyName = co?.nombre || String(companyId);
         const totalEvals = await Evaluation.countDocuments({ cycleId: cycle._id }).catch(() => 0);
-        slack.cycleClosed(co?.nombre || String(companyId), cycle.periodo, totalEvals).catch(() => {});
+        const closedEvals = await Evaluation.countDocuments({ cycleId: cycle._id, estado: "Cerrado" }).catch(() => 0);
+        slack.cycleClosed(companyName, cycle.periodo, totalEvals).catch(() => {});
+        notifyClientSlack(companyId, clientSlack.cycleClosed(companyName, cycle.periodo, totalEvals, closedEvals));
       }).catch(() => {});
     }
 
@@ -192,14 +198,19 @@ router.put(
         estado: cycle.estado,
       });
       Company.findById(cycle.companyId).lean().then((co) => {
-        slack.cycleStarted(co?.nombre || String(cycle.companyId), cycle.periodo).catch(() => {});
+        const companyName = co?.nombre || String(cycle.companyId);
+        slack.cycleStarted(companyName, cycle.periodo).catch(() => {});
+        notifyClientSlack(cycle.companyId, clientSlack.cycleStarted(companyName, cycle.periodo));
       }).catch(() => {});
     }
 
     if (cycle.estado === "CERRADO") {
       Company.findById(cycle.companyId).lean().then(async (co) => {
+        const companyName = co?.nombre || String(cycle.companyId);
         const totalEvals = await Evaluation.countDocuments({ cycleId: cycle._id }).catch(() => 0);
-        slack.cycleClosed(co?.nombre || String(cycle.companyId), cycle.periodo, totalEvals).catch(() => {});
+        const closedEvals = await Evaluation.countDocuments({ cycleId: cycle._id, estado: "Cerrado" }).catch(() => 0);
+        slack.cycleClosed(companyName, cycle.periodo, totalEvals).catch(() => {});
+        notifyClientSlack(cycle.companyId, clientSlack.cycleClosed(companyName, cycle.periodo, totalEvals, closedEvals));
       }).catch(() => {});
     }
 
