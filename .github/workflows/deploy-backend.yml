@@ -9,10 +9,15 @@ on:
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  PROJECT_ID: zentor-cloud-credits-guardrail
+  REGION: us-east1
+  SERVICE: zentor-backend
+  WIF_PROVIDER: projects/201875892373/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
+  WIF_SA: zentor-github-actions@zentor-cloud-credits-guardrail.iam.gserviceaccount.com
 
 jobs:
   build:
-    name: Build & validate
+    name: Build & test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,40 +39,44 @@ jobs:
     name: Deploy to Cloud Run
     runs-on: ubuntu-latest
     needs: build
-    # Only deploys when the DEPLOY_TO_CLOUD_RUN repo variable is set to 'true'
-    # Set it at: github.com/mateo524/Gested → Settings → Variables → Actions
     if: vars.DEPLOY_TO_CLOUD_RUN == 'true'
+    permissions:
+      contents: read
+      id-token: write   # Required for Workload Identity Federation
+
     steps:
       - uses: actions/checkout@v4
 
-      - id: auth
+      - name: Authenticate to Google Cloud (keyless)
         uses: google-github-actions/auth@v2
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SA }}
 
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Build and push Docker image
         run: |
           gcloud builds submit proyecto-hr/backend \
-            --tag gcr.io/${{ secrets.GCP_PROJECT_ID }}/zentor-backend \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }} \
+            --project ${{ env.PROJECT_ID }}
 
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy zentor-backend \
-            --image gcr.io/${{ secrets.GCP_PROJECT_ID }}/zentor-backend \
-            --region ${{ secrets.GCP_REGION || 'us-east1' }} \
+          gcloud run deploy ${{ env.SERVICE }} \
+            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
             --min-instances 0 \
             --max-instances 3 \
             --memory 512Mi \
             --set-env-vars="NODE_ENV=production" \
-            --project ${{ secrets.GCP_PROJECT_ID }}
+            --project ${{ env.PROJECT_ID }}
 
       - name: Print service URL
         run: |
-          gcloud run services describe zentor-backend \
-            --region ${{ secrets.GCP_REGION || 'us-east1' }} \
-            --format "value(status.url)"
+          URL=$(gcloud run services describe ${{ env.SERVICE }} \
+            --region ${{ env.REGION }} \
+            --format "value(status.url)")
+          echo "✅ Deployed: $URL"

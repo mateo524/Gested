@@ -1,0 +1,3691 @@
+{
+  "directed": false,
+  "multigraph": false,
+  "graph": {},
+  "nodes": [
+    {
+      "label": "AnnouncementsPage.jsx",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "announcementspage.jsx",
+      "id": "announcementspage"
+    },
+    {
+      "label": "EMPTY_FORM",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "empty_form",
+      "id": "announcementspage_empty_form"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L21",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "formatdate()",
+      "id": "announcementspage_formatdate"
+    },
+    {
+      "label": "matchesQuery()",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L29",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "matchesquery()",
+      "id": "announcementspage_matchesquery"
+    },
+    {
+      "label": "TYPE_LABELS",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L36",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "type_labels",
+      "id": "announcementspage_type_labels"
+    },
+    {
+      "label": "typePillClass()",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L38",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "typepillclass()",
+      "id": "announcementspage_typepillclass"
+    },
+    {
+      "label": "audienceLabel()",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L45",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "audiencelabel()",
+      "id": "announcementspage_audiencelabel"
+    },
+    {
+      "label": "AnnouncementCard()",
+      "file_type": "code",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L60",
+      "_origin": "ast",
+      "community": 6,
+      "norm_label": "announcementcard()",
+      "id": "announcementspage_announcementcard"
+    },
+    {
+      "label": "AuditPage.jsx",
+      "file_type": "code",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 11,
+      "norm_label": "auditpage.jsx",
+      "id": "auditpage"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L5",
+      "_origin": "ast",
+      "community": 11,
+      "norm_label": "formatdate()",
+      "id": "auditpage_formatdate"
+    },
+    {
+      "label": "emptyFilters",
+      "file_type": "code",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L12",
+      "_origin": "ast",
+      "community": 11,
+      "norm_label": "emptyfilters",
+      "id": "auditpage_emptyfilters"
+    },
+    {
+      "label": "AuditPage()",
+      "file_type": "code",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L21",
+      "_origin": "ast",
+      "community": 11,
+      "norm_label": "auditpage()",
+      "id": "auditpage_auditpage"
+    },
+    {
+      "label": "BulkImportPage.jsx",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "bulkimportpage.jsx",
+      "id": "bulkimportpage"
+    },
+    {
+      "label": "sheetLabels",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L7",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "sheetlabels",
+      "id": "bulkimportpage_sheetlabels"
+    },
+    {
+      "label": "previewTabs",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L35",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "previewtabs",
+      "id": "bulkimportpage_previewtabs"
+    },
+    {
+      "label": "stepDefinitions",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L48",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "stepdefinitions",
+      "id": "bulkimportpage_stepdefinitions"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L58",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "formatdate()",
+      "id": "bulkimportpage_formatdate"
+    },
+    {
+      "label": "formatFileSize()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L66",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "formatfilesize()",
+      "id": "bulkimportpage_formatfilesize"
+    },
+    {
+      "label": "buildIssueMap()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L73",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "buildissuemap()",
+      "id": "bulkimportpage_buildissuemap"
+    },
+    {
+      "label": "getNormalizedSheetName()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L86",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "getnormalizedsheetname()",
+      "id": "bulkimportpage_getnormalizedsheetname"
+    },
+    {
+      "label": "statusMeta()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L100",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "statusmeta()",
+      "id": "bulkimportpage_statusmeta"
+    },
+    {
+      "label": "getServerMessage()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L110",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "getservermessage()",
+      "id": "bulkimportpage_getservermessage"
+    },
+    {
+      "label": "isAnalyzeValidationError()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L114",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "isanalyzevalidationerror()",
+      "id": "bulkimportpage_isanalyzevalidationerror"
+    },
+    {
+      "label": "SurfaceCard()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L124",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "surfacecard()",
+      "id": "bulkimportpage_surfacecard"
+    },
+    {
+      "label": "StepCard()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L139",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "stepcard()",
+      "id": "bulkimportpage_stepcard"
+    },
+    {
+      "label": "StatCard()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L173",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "statcard()",
+      "id": "bulkimportpage_statcard"
+    },
+    {
+      "label": "SheetStatusCard()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L192",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "sheetstatuscard()",
+      "id": "bulkimportpage_sheetstatuscard"
+    },
+    {
+      "label": "PreviewCard()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L216",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "previewcard()",
+      "id": "bulkimportpage_previewcard"
+    },
+    {
+      "label": "JobResultCards()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L265",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "jobresultcards()",
+      "id": "bulkimportpage_jobresultcards"
+    },
+    {
+      "label": "EmptyState()",
+      "file_type": "code",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L1024",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "emptystate()",
+      "id": "bulkimportpage_emptystate"
+    },
+    {
+      "label": "CompaniesPage.jsx",
+      "file_type": "code",
+      "source_file": "CompaniesPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 9,
+      "norm_label": "companiespage.jsx",
+      "id": "companiespage"
+    },
+    {
+      "label": "emptyCompany",
+      "file_type": "code",
+      "source_file": "CompaniesPage.jsx",
+      "source_location": "L6",
+      "_origin": "ast",
+      "community": 9,
+      "norm_label": "emptycompany",
+      "id": "companiespage_emptycompany"
+    },
+    {
+      "label": "slugify()",
+      "file_type": "code",
+      "source_file": "CompaniesPage.jsx",
+      "source_location": "L17",
+      "_origin": "ast",
+      "community": 9,
+      "norm_label": "slugify()",
+      "id": "companiespage_slugify"
+    },
+    {
+      "label": "CompetenciesPage.jsx",
+      "file_type": "code",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "competenciespage.jsx",
+      "id": "competenciespage"
+    },
+    {
+      "label": "TEMPLATES",
+      "file_type": "code",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "templates",
+      "id": "competenciespage_templates"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L67",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "emptyform",
+      "id": "competenciespage_emptyform"
+    },
+    {
+      "label": "formatAudience()",
+      "file_type": "code",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L82",
+      "_origin": "ast",
+      "community": 2,
+      "norm_label": "formataudience()",
+      "id": "competenciespage_formataudience"
+    },
+    {
+      "label": "DashboardPage.jsx",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "dashboardpage.jsx",
+      "id": "dashboardpage"
+    },
+    {
+      "label": "getDashboardCacheKey()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L10",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "getdashboardcachekey()",
+      "id": "dashboardpage_getdashboardcachekey"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L16",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "formatdate()",
+      "id": "dashboardpage_formatdate"
+    },
+    {
+      "label": "SurfaceCard()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L23",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "surfacecard()",
+      "id": "dashboardpage_surfacecard"
+    },
+    {
+      "label": "StatCard()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L38",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "statcard()",
+      "id": "dashboardpage_statcard"
+    },
+    {
+      "label": "ActionBadge()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L66",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "actionbadge()",
+      "id": "dashboardpage_actionbadge"
+    },
+    {
+      "label": "EmptyState()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L76",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "emptystate()",
+      "id": "dashboardpage_emptystate"
+    },
+    {
+      "label": "Bone()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L80",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "bone()",
+      "id": "dashboardpage_bone"
+    },
+    {
+      "label": "DashboardSkeleton()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L84",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "dashboardskeleton()",
+      "id": "dashboardpage_dashboardskeleton"
+    },
+    {
+      "label": "DEMO_STEPS",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L140",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "demo_steps",
+      "id": "dashboardpage_demo_steps"
+    },
+    {
+      "label": "DemoTourCard()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L149",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "demotourcard()",
+      "id": "dashboardpage_demotourcard"
+    },
+    {
+      "label": "useGreeting()",
+      "file_type": "code",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L198",
+      "_origin": "ast",
+      "community": 4,
+      "norm_label": "usegreeting()",
+      "id": "dashboardpage_usegreeting"
+    },
+    {
+      "label": "DevelopmentPlansPage.jsx",
+      "file_type": "code",
+      "source_file": "DevelopmentPlansPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 13,
+      "norm_label": "developmentplanspage.jsx",
+      "id": "developmentplanspage"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "DevelopmentPlansPage.jsx",
+      "source_location": "L10",
+      "_origin": "ast",
+      "community": 13,
+      "norm_label": "emptyform",
+      "id": "developmentplanspage_emptyform"
+    },
+    {
+      "label": "suggestionFilters",
+      "file_type": "code",
+      "source_file": "DevelopmentPlansPage.jsx",
+      "source_location": "L20",
+      "_origin": "ast",
+      "community": 13,
+      "norm_label": "suggestionfilters",
+      "id": "developmentplanspage_suggestionfilters"
+    },
+    {
+      "label": "EducationalExportsPage.jsx",
+      "file_type": "code",
+      "source_file": "EducationalExportsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 14,
+      "norm_label": "educationalexportspage.jsx",
+      "id": "educationalexportspage"
+    },
+    {
+      "label": "datasetLabels",
+      "file_type": "code",
+      "source_file": "EducationalExportsPage.jsx",
+      "source_location": "L7",
+      "_origin": "ast",
+      "community": 14,
+      "norm_label": "datasetlabels",
+      "id": "educationalexportspage_datasetlabels"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "EducationalExportsPage.jsx",
+      "source_location": "L14",
+      "_origin": "ast",
+      "community": 14,
+      "norm_label": "formatdate()",
+      "id": "educationalexportspage_formatdate"
+    },
+    {
+      "label": "EmployeesPage.jsx",
+      "file_type": "code",
+      "source_file": "EmployeesPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 15,
+      "norm_label": "employeespage.jsx",
+      "id": "employeespage"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "EmployeesPage.jsx",
+      "source_location": "L10",
+      "_origin": "ast",
+      "community": 15,
+      "norm_label": "emptyform",
+      "id": "employeespage_emptyform"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "EmployeesPage.jsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "community": 15,
+      "norm_label": "formatdate()",
+      "id": "employeespage_formatdate"
+    },
+    {
+      "label": "EvaluationCyclesPage.jsx",
+      "file_type": "code",
+      "source_file": "EvaluationCyclesPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 16,
+      "norm_label": "evaluationcyclespage.jsx",
+      "id": "evaluationcyclespage"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "EvaluationCyclesPage.jsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "community": 16,
+      "norm_label": "emptyform",
+      "id": "evaluationcyclespage_emptyform"
+    },
+    {
+      "label": "formatStage()",
+      "file_type": "code",
+      "source_file": "EvaluationCyclesPage.jsx",
+      "source_location": "L17",
+      "_origin": "ast",
+      "community": 16,
+      "norm_label": "formatstage()",
+      "id": "evaluationcyclespage_formatstage"
+    },
+    {
+      "label": "EvaluationsPage.jsx",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "evaluationspage.jsx",
+      "id": "evaluationspage"
+    },
+    {
+      "label": "TIPO_LABELS",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "tipo_labels",
+      "id": "evaluationspage_tipo_labels"
+    },
+    {
+      "label": "ESTADO_LABELS",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L15",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "estado_labels",
+      "id": "evaluationspage_estado_labels"
+    },
+    {
+      "label": "labelTipo()",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L21",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "labeltipo()",
+      "id": "evaluationspage_labeltipo"
+    },
+    {
+      "label": "labelEstado()",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L22",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "labelestado()",
+      "id": "evaluationspage_labelestado"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "emptyform",
+      "id": "evaluationspage_emptyform"
+    },
+    {
+      "label": "defaultScore()",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L32",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "defaultscore()",
+      "id": "evaluationspage_defaultscore"
+    },
+    {
+      "label": "buildPrintableReport()",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L36",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "buildprintablereport()",
+      "id": "evaluationspage_buildprintablereport"
+    },
+    {
+      "label": "SurfaceCard()",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L79",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "surfacecard()",
+      "id": "evaluationspage_surfacecard"
+    },
+    {
+      "label": "EvaluationsPage()",
+      "file_type": "code",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L94",
+      "_origin": "ast",
+      "community": 5,
+      "norm_label": "evaluationspage()",
+      "id": "evaluationspage_evaluationspage"
+    },
+    {
+      "label": "ExecutiveReportPage.jsx",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "executivereportpage.jsx",
+      "id": "executivereportpage"
+    },
+    {
+      "label": "ExecChartTooltip()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L19",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "execcharttooltip()",
+      "id": "executivereportpage_execcharttooltip"
+    },
+    {
+      "label": "PRIMARY_TABS",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L35",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "primary_tabs",
+      "id": "executivereportpage_primary_tabs"
+    },
+    {
+      "label": "severityTone",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L40",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "severitytone",
+      "id": "executivereportpage_severitytone"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L46",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "formatdate()",
+      "id": "executivereportpage_formatdate"
+    },
+    {
+      "label": "average()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L53",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "average()",
+      "id": "executivereportpage_average"
+    },
+    {
+      "label": "pct()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L59",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "pct()",
+      "id": "executivereportpage_pct"
+    },
+    {
+      "label": "escHtml()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L64",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "eschtml()",
+      "id": "executivereportpage_eschtml"
+    },
+    {
+      "label": "buildPdfDocument()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L68",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "buildpdfdocument()",
+      "id": "executivereportpage_buildpdfdocument"
+    },
+    {
+      "label": "safeNum()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L256",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "safenum()",
+      "id": "executivereportpage_safenum"
+    },
+    {
+      "label": "SurfaceCard()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L261",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "surfacecard()",
+      "id": "executivereportpage_surfacecard"
+    },
+    {
+      "label": "StatCard()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L276",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "statcard()",
+      "id": "executivereportpage_statcard"
+    },
+    {
+      "label": "EmptyPanel()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L318",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "emptypanel()",
+      "id": "executivereportpage_emptypanel"
+    },
+    {
+      "label": "ActionBadge()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L326",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "actionbadge()",
+      "id": "executivereportpage_actionbadge"
+    },
+    {
+      "label": "ProgressBar()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L334",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "progressbar()",
+      "id": "executivereportpage_progressbar"
+    },
+    {
+      "label": "MiniBarChart()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L361",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "minibarchart()",
+      "id": "executivereportpage_minibarchart"
+    },
+    {
+      "label": "MiniDonut()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L406",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "minidonut()",
+      "id": "executivereportpage_minidonut"
+    },
+    {
+      "label": "mapActionDestination()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L448",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "mapactiondestination()",
+      "id": "executivereportpage_mapactiondestination"
+    },
+    {
+      "label": "buildGeneralActionSummary()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L457",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "buildgeneralactionsummary()",
+      "id": "executivereportpage_buildgeneralactionsummary"
+    },
+    {
+      "label": "buildEvaluationTypeChart()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L465",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "buildevaluationtypechart()",
+      "id": "executivereportpage_buildevaluationtypechart"
+    },
+    {
+      "label": "buildMetricSignalRows()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L476",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "buildmetricsignalrows()",
+      "id": "executivereportpage_buildmetricsignalrows"
+    },
+    {
+      "label": "KpiCard()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L489",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "kpicard()",
+      "id": "executivereportpage_kpicard"
+    },
+    {
+      "label": "OkrCard()",
+      "file_type": "code",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L509",
+      "_origin": "ast",
+      "community": 1,
+      "norm_label": "okrcard()",
+      "id": "executivereportpage_okrcard"
+    },
+    {
+      "label": "ExportPage.jsx",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "exportpage.jsx",
+      "id": "exportpage"
+    },
+    {
+      "label": "chartColors",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L18",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "chartcolors",
+      "id": "exportpage_chartcolors"
+    },
+    {
+      "label": "ExportChartTooltip()",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L20",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "exportcharttooltip()",
+      "id": "exportpage_exportcharttooltip"
+    },
+    {
+      "label": "PieChartLegend()",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L36",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "piechartlegend()",
+      "id": "exportpage_piechartlegend"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L50",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "formatdate()",
+      "id": "exportpage_formatdate"
+    },
+    {
+      "label": "SummaryCard()",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L59",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "summarycard()",
+      "id": "exportpage_summarycard"
+    },
+    {
+      "label": "ExportPage()",
+      "file_type": "code",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L69",
+      "_origin": "ast",
+      "community": 7,
+      "norm_label": "exportpage()",
+      "id": "exportpage_exportpage"
+    },
+    {
+      "label": "ForcePasswordPage.jsx",
+      "file_type": "code",
+      "source_file": "ForcePasswordPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 21,
+      "norm_label": "forcepasswordpage.jsx",
+      "id": "forcepasswordpage"
+    },
+    {
+      "label": "LoginPage.jsx",
+      "file_type": "code",
+      "source_file": "LoginPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 17,
+      "norm_label": "loginpage.jsx",
+      "id": "loginpage"
+    },
+    {
+      "label": "defaultBranding",
+      "file_type": "code",
+      "source_file": "LoginPage.jsx",
+      "source_location": "L8",
+      "_origin": "ast",
+      "community": 17,
+      "norm_label": "defaultbranding",
+      "id": "loginpage_defaultbranding"
+    },
+    {
+      "label": "LoginPage()",
+      "file_type": "code",
+      "source_file": "LoginPage.jsx",
+      "source_location": "L14",
+      "_origin": "ast",
+      "community": 17,
+      "norm_label": "loginpage()",
+      "id": "loginpage_loginpage"
+    },
+    {
+      "label": "MetricsPage.jsx",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "metricspage.jsx",
+      "id": "metricspage"
+    },
+    {
+      "label": "TABS",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L25",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "tabs",
+      "id": "metricspage_tabs"
+    },
+    {
+      "label": "STATUS_OPTIONS",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L34",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "status_options",
+      "id": "metricspage_status_options"
+    },
+    {
+      "label": "EVALUATION_TYPES",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L41",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "evaluation_types",
+      "id": "metricspage_evaluation_types"
+    },
+    {
+      "label": "ESTADO_LABELS",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L47",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "estado_labels",
+      "id": "metricspage_estado_labels"
+    },
+    {
+      "label": "labelEstado()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L54",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "labelestado()",
+      "id": "metricspage_labelestado"
+    },
+    {
+      "label": "emptyEditor",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L58",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "emptyeditor",
+      "id": "metricspage_emptyeditor"
+    },
+    {
+      "label": "normalizeText()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L69",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "normalizetext()",
+      "id": "metricspage_normalizetext"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L73",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "formatdate()",
+      "id": "metricspage_formatdate"
+    },
+    {
+      "label": "formatScore()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L80",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "formatscore()",
+      "id": "metricspage_formatscore"
+    },
+    {
+      "label": "average()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L86",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "average()",
+      "id": "metricspage_average"
+    },
+    {
+      "label": "clampLevel()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L92",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "clamplevel()",
+      "id": "metricspage_clamplevel"
+    },
+    {
+      "label": "buildCycleLabel()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L98",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "buildcyclelabel()",
+      "id": "metricspage_buildcyclelabel"
+    },
+    {
+      "label": "buildEmployeeLabel()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L102",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "buildemployeelabel()",
+      "id": "metricspage_buildemployeelabel"
+    },
+    {
+      "label": "mapDetailScores()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L106",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "mapdetailscores()",
+      "id": "metricspage_mapdetailscores"
+    },
+    {
+      "label": "SurfaceCard()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L117",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "surfacecard()",
+      "id": "metricspage_surfacecard"
+    },
+    {
+      "label": "SummaryCard()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L132",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "summarycard()",
+      "id": "metricspage_summarycard"
+    },
+    {
+      "label": "StatusPill()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L151",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "statuspill()",
+      "id": "metricspage_statuspill"
+    },
+    {
+      "label": "ScoreButtons()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L164",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "scorebuttons()",
+      "id": "metricspage_scorebuttons"
+    },
+    {
+      "label": "MetricDescriptorCard()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L186",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "metricdescriptorcard()",
+      "id": "metricspage_metricdescriptorcard"
+    },
+    {
+      "label": "EvaluationHeader()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L252",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "evaluationheader()",
+      "id": "metricspage_evaluationheader"
+    },
+    {
+      "label": "EvaluationEditor()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L279",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "evaluationeditor()",
+      "id": "metricspage_evaluationeditor"
+    },
+    {
+      "label": "buildGroups()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L424",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "buildgroups()",
+      "id": "metricspage_buildgroups"
+    },
+    {
+      "label": "inferStrengths()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L448",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "inferstrengths()",
+      "id": "metricspage_inferstrengths"
+    },
+    {
+      "label": "inferImprovements()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L457",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "inferimprovements()",
+      "id": "metricspage_inferimprovements"
+    },
+    {
+      "label": "hasMeaningfulText()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L466",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "hasmeaningfultext()",
+      "id": "metricspage_hasmeaningfultext"
+    },
+    {
+      "label": "ChartTooltip()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L470",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "charttooltip()",
+      "id": "metricspage_charttooltip"
+    },
+    {
+      "label": "ChartLegend()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L486",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "chartlegend()",
+      "id": "metricspage_chartlegend"
+    },
+    {
+      "label": "MetricsPage()",
+      "file_type": "code",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L500",
+      "_origin": "ast",
+      "community": 0,
+      "norm_label": "metricspage()",
+      "id": "metricspage_metricspage"
+    },
+    {
+      "label": "OrganizationsPage.jsx",
+      "file_type": "code",
+      "source_file": "OrganizationsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 9,
+      "norm_label": "organizationspage.jsx",
+      "id": "organizationspage"
+    },
+    {
+      "label": "ProfilePage.jsx",
+      "file_type": "code",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 10,
+      "norm_label": "profilepage.jsx",
+      "id": "profilepage"
+    },
+    {
+      "label": "splitUserName()",
+      "file_type": "code",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L6",
+      "_origin": "ast",
+      "community": 10,
+      "norm_label": "splitusername()",
+      "id": "profilepage_splitusername"
+    },
+    {
+      "label": "getDisplayName()",
+      "file_type": "code",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L15",
+      "_origin": "ast",
+      "community": 10,
+      "norm_label": "getdisplayname()",
+      "id": "profilepage_getdisplayname"
+    },
+    {
+      "label": "getInitials()",
+      "file_type": "code",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L19",
+      "_origin": "ast",
+      "community": 10,
+      "norm_label": "getinitials()",
+      "id": "profilepage_getinitials"
+    },
+    {
+      "label": "emptyPasswordForm",
+      "file_type": "code",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "community": 10,
+      "norm_label": "emptypasswordform",
+      "id": "profilepage_emptypasswordform"
+    },
+    {
+      "label": "RecordsPage.jsx",
+      "file_type": "code",
+      "source_file": "RecordsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "recordspage.jsx",
+      "id": "recordspage"
+    },
+    {
+      "label": "emptyFilters",
+      "file_type": "code",
+      "source_file": "RecordsPage.jsx",
+      "source_location": "L5",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "emptyfilters",
+      "id": "recordspage_emptyfilters"
+    },
+    {
+      "label": "RecordsPage()",
+      "file_type": "code",
+      "source_file": "RecordsPage.jsx",
+      "source_location": "L11",
+      "_origin": "ast",
+      "community": 18,
+      "norm_label": "recordspage()",
+      "id": "recordspage_recordspage"
+    },
+    {
+      "label": "RolesPage.jsx",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "rolespage.jsx",
+      "id": "rolespage"
+    },
+    {
+      "label": "ROLE_ORDER",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L7",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "role_order",
+      "id": "rolespage_role_order"
+    },
+    {
+      "label": "SCOPE_LABELS",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L17",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "scope_labels",
+      "id": "rolespage_scope_labels"
+    },
+    {
+      "label": "ROLE_ICONS",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L24",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "role_icons",
+      "id": "rolespage_role_icons"
+    },
+    {
+      "label": "MATRIX_COLUMNS",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L72",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "matrix_columns",
+      "id": "rolespage_matrix_columns"
+    },
+    {
+      "label": "MATRIX_ROWS",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L83",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "matrix_rows",
+      "id": "rolespage_matrix_rows"
+    },
+    {
+      "label": "STATE_META",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L93",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "state_meta",
+      "id": "rolespage_state_meta"
+    },
+    {
+      "label": "PAGE_TABS",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L100",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "page_tabs",
+      "id": "rolespage_page_tabs"
+    },
+    {
+      "label": "CONFIG_ITEMS",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L107",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "config_items",
+      "id": "rolespage_config_items"
+    },
+    {
+      "label": "normalizeList()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L118",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "normalizelist()",
+      "id": "rolespage_normalizelist"
+    },
+    {
+      "label": "getUserLabel()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L122",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "getuserlabel()",
+      "id": "rolespage_getuserlabel"
+    },
+    {
+      "label": "getUserEmail()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L127",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "getuseremail()",
+      "id": "rolespage_getuseremail"
+    },
+    {
+      "label": "getScopeLabel()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L132",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "getscopelabel()",
+      "id": "rolespage_getscopelabel"
+    },
+    {
+      "label": "buildScopeDescription()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L136",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "buildscopedescription()",
+      "id": "rolespage_buildscopedescription"
+    },
+    {
+      "label": "summarizeCapabilities()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L142",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "summarizecapabilities()",
+      "id": "rolespage_summarizecapabilities"
+    },
+    {
+      "label": "sortPresets()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L146",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "sortpresets()",
+      "id": "rolespage_sortpresets"
+    },
+    {
+      "label": "IconBadge()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L151",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "iconbadge()",
+      "id": "rolespage_iconbadge"
+    },
+    {
+      "label": "RoleIcon()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L161",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "roleicon()",
+      "id": "rolespage_roleicon"
+    },
+    {
+      "label": "MatrixMark()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L171",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "matrixmark()",
+      "id": "rolespage_matrixmark"
+    },
+    {
+      "label": "RolesPage()",
+      "file_type": "code",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L198",
+      "_origin": "ast",
+      "community": 3,
+      "norm_label": "rolespage()",
+      "id": "rolespage_rolespage"
+    },
+    {
+      "label": "SchoolsPage.jsx",
+      "file_type": "code",
+      "source_file": "SchoolsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 9,
+      "norm_label": "schoolspage.jsx",
+      "id": "schoolspage"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "SchoolsPage.jsx",
+      "source_location": "L5",
+      "_origin": "ast",
+      "community": 9,
+      "norm_label": "emptyform",
+      "id": "schoolspage_emptyform"
+    },
+    {
+      "label": "SettingsPage.jsx",
+      "file_type": "code",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 12,
+      "norm_label": "settingspage.jsx",
+      "id": "settingspage"
+    },
+    {
+      "label": "ALL_EVENTS",
+      "file_type": "code",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L6",
+      "_origin": "ast",
+      "community": 12,
+      "norm_label": "all_events",
+      "id": "settingspage_all_events"
+    },
+    {
+      "label": "defaultSettings",
+      "file_type": "code",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L14",
+      "_origin": "ast",
+      "community": 12,
+      "norm_label": "defaultsettings",
+      "id": "settingspage_defaultsettings"
+    },
+    {
+      "label": "SettingsPage()",
+      "file_type": "code",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L29",
+      "_origin": "ast",
+      "community": 12,
+      "norm_label": "settingspage()",
+      "id": "settingspage_settingspage"
+    },
+    {
+      "label": "StorageCenterPage.jsx",
+      "file_type": "code",
+      "source_file": "StorageCenterPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 19,
+      "norm_label": "storagecenterpage.jsx",
+      "id": "storagecenterpage"
+    },
+    {
+      "label": "formatDate()",
+      "file_type": "code",
+      "source_file": "StorageCenterPage.jsx",
+      "source_location": "L7",
+      "_origin": "ast",
+      "community": 19,
+      "norm_label": "formatdate()",
+      "id": "storagecenterpage_formatdate"
+    },
+    {
+      "label": "emptyFilters",
+      "file_type": "code",
+      "source_file": "StorageCenterPage.jsx",
+      "source_location": "L14",
+      "_origin": "ast",
+      "community": 19,
+      "norm_label": "emptyfilters",
+      "id": "storagecenterpage_emptyfilters"
+    },
+    {
+      "label": "UsageAnalyticsPage.jsx",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "usageanalyticspage.jsx",
+      "id": "usageanalyticspage"
+    },
+    {
+      "label": "Bone()",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L16",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "bone()",
+      "id": "usageanalyticspage_bone"
+    },
+    {
+      "label": "StatCardSkeleton()",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L20",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "statcardskeleton()",
+      "id": "usageanalyticspage_statcardskeleton"
+    },
+    {
+      "label": "StatCard()",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L32",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "statcard()",
+      "id": "usageanalyticspage_statcard"
+    },
+    {
+      "label": "Section()",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L55",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "section()",
+      "id": "usageanalyticspage_section"
+    },
+    {
+      "label": "ProgressBar()",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L69",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "progressbar()",
+      "id": "usageanalyticspage_progressbar"
+    },
+    {
+      "label": "CustomTooltip()",
+      "file_type": "code",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L86",
+      "_origin": "ast",
+      "community": 8,
+      "norm_label": "customtooltip()",
+      "id": "usageanalyticspage_customtooltip"
+    },
+    {
+      "label": "UsersPage.jsx",
+      "file_type": "code",
+      "source_file": "UsersPage.jsx",
+      "source_location": "L1",
+      "_origin": "ast",
+      "community": 20,
+      "norm_label": "userspage.jsx",
+      "id": "userspage"
+    },
+    {
+      "label": "emptyForm",
+      "file_type": "code",
+      "source_file": "UsersPage.jsx",
+      "source_location": "L9",
+      "_origin": "ast",
+      "community": 20,
+      "norm_label": "emptyform",
+      "id": "userspage_emptyform"
+    },
+    {
+      "label": "UsersPage()",
+      "file_type": "code",
+      "source_file": "UsersPage.jsx",
+      "source_location": "L17",
+      "_origin": "ast",
+      "community": 20,
+      "norm_label": "userspage()",
+      "id": "userspage_userspage"
+    }
+  ],
+  "links": [
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L60",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_announcementcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L45",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_audiencelabel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_empty_form"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_matchesquery"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_type_labels"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage",
+      "target": "announcementspage_typepillclass"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L99",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage_announcementcard",
+      "target": "announcementspage_formatdate"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L96",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage_announcementcard",
+      "target": "announcementspage_typepillclass"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "AnnouncementsPage.jsx",
+      "source_location": "L100",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "announcementspage_announcementcard",
+      "target": "announcementspage_audiencelabel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "auditpage",
+      "target": "auditpage_auditpage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L12",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "auditpage",
+      "target": "auditpage_emptyfilters"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "AuditPage.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "auditpage",
+      "target": "auditpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L73",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_buildissuemap"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L1024",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_emptystate"
+    },
+    {
+      "relation": "contains",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L58",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L66",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_formatfilesize"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L86",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_getnormalizedsheetname"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L110",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_getservermessage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L114",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_isanalyzevalidationerror"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L265",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_jobresultcards"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L216",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_previewcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_previewtabs"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_sheetlabels"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L192",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_sheetstatuscard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L173",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_statcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L100",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_statusmeta"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L139",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_stepcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L48",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_stepdefinitions"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L124",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "bulkimportpage_surfacecard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage",
+      "target": "competenciespage_templates"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "BulkImportPage.jsx",
+      "source_location": "L220",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "bulkimportpage_previewcard",
+      "target": "bulkimportpage_statusmeta"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CompaniesPage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "companiespage",
+      "target": "companiespage_emptycompany"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CompaniesPage.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "companiespage",
+      "target": "companiespage_slugify"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "OrganizationsPage.jsx",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "organizationspage",
+      "target": "companiespage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L67",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "competenciespage",
+      "target": "competenciespage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L82",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "competenciespage",
+      "target": "competenciespage_formataudience"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CompetenciesPage.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "competenciespage",
+      "target": "competenciespage_templates"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L66",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_actionbadge"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L80",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_bone"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L84",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_dashboardskeleton"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L140",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_demo_steps"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L149",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_demotourcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L76",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_emptystate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_getdashboardcachekey"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L38",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_statcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L23",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_surfacecard"
+    },
+    {
+      "relation": "contains",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "DashboardPage.jsx",
+      "source_location": "L198",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "dashboardpage",
+      "target": "dashboardpage_usegreeting"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DevelopmentPlansPage.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "developmentplanspage",
+      "target": "developmentplanspage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "DevelopmentPlansPage.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "developmentplanspage",
+      "target": "developmentplanspage_suggestionfilters"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EducationalExportsPage.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "educationalexportspage",
+      "target": "educationalexportspage_datasetlabels"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EducationalExportsPage.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "educationalexportspage",
+      "target": "educationalexportspage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EmployeesPage.jsx",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "employeespage",
+      "target": "employeespage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EmployeesPage.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "employeespage",
+      "target": "employeespage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationCyclesPage.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationcyclespage",
+      "target": "evaluationcyclespage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationCyclesPage.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationcyclespage",
+      "target": "evaluationcyclespage_formatstage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_buildprintablereport"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_defaultscore"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_estado_labels"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L94",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_evaluationspage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L22",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_labelestado"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L21",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_labeltipo"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L79",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_surfacecard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage",
+      "target": "evaluationspage_tipo_labels"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "EvaluationsPage.jsx",
+      "source_location": "L755",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "evaluationspage_evaluationspage",
+      "target": "evaluationspage_labelestado"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L326",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_actionbadge"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L53",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_average"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L465",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_buildevaluationtypechart"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L457",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_buildgeneralactionsummary"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L476",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_buildmetricsignalrows"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L68",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_buildpdfdocument"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L318",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_emptypanel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L64",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_eschtml"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_execcharttooltip"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L46",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L489",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_kpicard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L448",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_mapactiondestination"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L361",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_minibarchart"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L406",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_minidonut"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L509",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_okrcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L59",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_pct"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L35",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_primary_tabs"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L334",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_progressbar"
+    },
+    {
+      "relation": "contains",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L256",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_safenum"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L40",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_severitytone"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L276",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_statcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L261",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage",
+      "target": "executivereportpage_surfacecard"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L470",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_buildevaluationtypechart",
+      "target": "executivereportpage_average"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L490",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_kpicard",
+      "target": "executivereportpage_pct"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L510",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_okrcard",
+      "target": "executivereportpage_pct"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L170",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_buildpdfdocument",
+      "target": "executivereportpage_eschtml"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L75",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_buildpdfdocument",
+      "target": "executivereportpage_safenum"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L501",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_kpicard",
+      "target": "executivereportpage_safenum"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExecutiveReportPage.jsx",
+      "source_location": "L519",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "executivereportpage_okrcard",
+      "target": "executivereportpage_safenum"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L18",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage",
+      "target": "exportpage_chartcolors"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage",
+      "target": "exportpage_exportcharttooltip"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L69",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage",
+      "target": "exportpage_exportpage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L50",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage",
+      "target": "exportpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L36",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage",
+      "target": "exportpage_piechartlegend"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L59",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage",
+      "target": "exportpage_summarycard"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ExportPage.jsx",
+      "source_location": "L226",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "exportpage_exportpage",
+      "target": "exportpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "LoginPage.jsx",
+      "source_location": "L8",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "loginpage",
+      "target": "loginpage_defaultbranding"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "LoginPage.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "loginpage",
+      "target": "loginpage_loginpage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L86",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_average"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L98",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_buildcyclelabel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L102",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_buildemployeelabel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L424",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_buildgroups"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L486",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_chartlegend"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L470",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_charttooltip"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L92",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_clamplevel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L58",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_emptyeditor"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L47",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_estado_labels"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L41",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_evaluation_types"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L279",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_evaluationeditor"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L252",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_evaluationheader"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L73",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L80",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_formatscore"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L466",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_hasmeaningfultext"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L457",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_inferimprovements"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L448",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_inferstrengths"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L54",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_labelestado"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L106",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_mapdetailscores"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L186",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_metricdescriptorcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L500",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_metricspage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L69",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_normalizetext"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L164",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_scorebuttons"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L34",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_status_options"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L151",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_statuspill"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L132",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_summarycard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L117",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_surfacecard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L25",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage",
+      "target": "metricspage_tabs"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L1048",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_metricspage",
+      "target": "metricspage_labelestado"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L467",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_hasmeaningfultext",
+      "target": "metricspage_normalizetext"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L1143",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_metricspage",
+      "target": "metricspage_formatdate"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L272",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_evaluationheader",
+      "target": "metricspage_formatscore"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L1063",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_metricspage",
+      "target": "metricspage_formatscore"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L261",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_evaluationheader",
+      "target": "metricspage_buildcyclelabel"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L335",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_evaluationeditor",
+      "target": "metricspage_buildemployeelabel"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "MetricsPage.jsx",
+      "source_location": "L257",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "metricspage_evaluationheader",
+      "target": "metricspage_buildemployeelabel"
+    },
+    {
+      "relation": "imports_from",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "OrganizationsPage.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "organizationspage",
+      "target": "schoolspage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "profilepage",
+      "target": "profilepage_emptypasswordform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L15",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "profilepage",
+      "target": "profilepage_getdisplayname"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L19",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "profilepage",
+      "target": "profilepage_getinitials"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "profilepage",
+      "target": "profilepage_splitusername"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "ProfilePage.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "profilepage_getinitials",
+      "target": "profilepage_getdisplayname"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RecordsPage.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "recordspage",
+      "target": "recordspage_emptyfilters"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RecordsPage.jsx",
+      "source_location": "L11",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "recordspage",
+      "target": "recordspage_recordspage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L136",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_buildscopedescription"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L107",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_config_items"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L132",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_getscopelabel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L127",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_getuseremail"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L122",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_getuserlabel"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L151",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_iconbadge"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L72",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_matrix_columns"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L83",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_matrix_rows"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L171",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_matrixmark"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L118",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_normalizelist"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L100",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_page_tabs"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L24",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_role_icons"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_role_order"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L161",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_roleicon"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L198",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_rolespage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_scope_labels"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L146",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_sortpresets"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L93",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_state_meta"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L142",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage",
+      "target": "rolespage_summarizecapabilities"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "RolesPage.jsx",
+      "source_location": "L143",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "rolespage_summarizecapabilities",
+      "target": "rolespage_normalizelist"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "SchoolsPage.jsx",
+      "source_location": "L5",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "schoolspage",
+      "target": "schoolspage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L6",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "settingspage",
+      "target": "settingspage_all_events"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "settingspage",
+      "target": "settingspage_defaultsettings"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "SettingsPage.jsx",
+      "source_location": "L29",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "settingspage",
+      "target": "settingspage_settingspage"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "StorageCenterPage.jsx",
+      "source_location": "L14",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "storagecenterpage",
+      "target": "storagecenterpage_emptyfilters"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "StorageCenterPage.jsx",
+      "source_location": "L7",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "storagecenterpage",
+      "target": "storagecenterpage_formatdate"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L16",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "usageanalyticspage",
+      "target": "usageanalyticspage_bone"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L86",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "usageanalyticspage",
+      "target": "usageanalyticspage_customtooltip"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L69",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "usageanalyticspage",
+      "target": "usageanalyticspage_progressbar"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L55",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "usageanalyticspage",
+      "target": "usageanalyticspage_section"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L32",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "usageanalyticspage",
+      "target": "usageanalyticspage_statcard"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsageAnalyticsPage.jsx",
+      "source_location": "L20",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "usageanalyticspage",
+      "target": "usageanalyticspage_statcardskeleton"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsersPage.jsx",
+      "source_location": "L9",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "userspage",
+      "target": "userspage_emptyform"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "UsersPage.jsx",
+      "source_location": "L17",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "userspage",
+      "target": "userspage_userspage"
+    }
+  ],
+  "hyperedges": [],
+  "built_at_commit": "01aa244fe8186defff9fa9546ac3cd3d4ba91a2a"
+}
