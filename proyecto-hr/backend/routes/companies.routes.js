@@ -13,6 +13,7 @@ import { requireSuperAdmin } from "../middleware/rbac.js";
 import { ensureCompanyStructure } from "../utils/bootstrap.js";
 import { logAudit } from "../utils/audit.js";
 import { generateTempPassword } from "../utils/password.js";
+import { sendWelcomeEmail } from "../utils/mailer.js";
 import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
 import { isForbiddenPlatformRoleInput, mapRoleInputToLegacyRoleCode } from "../utils/legacyRoleMapping.js";
 
@@ -213,6 +214,15 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
         imported.rows += 1;
       }
     }
+  }
+
+  if (adminUser && generatedPassword) {
+    sendWelcomeEmail({
+      to: adminUser.email,
+      nombre: adminUser.nombre,
+      companyName: company.nombre,
+      password: generatedPassword,
+    }).catch(() => {});
   }
 
   res.status(201).json({
