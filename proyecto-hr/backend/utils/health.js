@@ -1,3 +1,4 @@
+// health.js — endpoint de salud para Cloud Run y Render
 import { createRequire } from "node:module";
 
 const require = createRequire(import.meta.url);
