@@ -1,6 +1,10 @@
 import express from "express";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Evaluation from "../models/Evaluation.js";
+import EvaluationScore from "../models/EvaluationScore.js";
+import Employee from "../models/Employee.js";
+import Metric from "../models/Metric.js";
+import Competency from "../models/Competency.js";
 import Company from "../models/Company.js";
 import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
@@ -243,6 +247,162 @@ router.delete(
     }), "audit-cycle-delete");
 
     res.json({ mensaje: "Ciclo eliminado" });
+  }
+);
+
+// GET /evaluation-cycles/:id/calibration — calibration matrix for a cycle
+router.get(
+  "/:id/calibration",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_EVALUATIONS, PERMISSIONS.VIEW_REPORTS),
+  async (req, res) => {
+    const scopedFilter = buildScopedFilter(req, { _id: req.params.id });
+    const cycle = await EvaluationCycle.findOne(scopedFilter).lean();
+    if (!cycle) {
+      return res.status(404).json({ mensaje: "Ciclo no encontrado" });
+    }
+
+    // Find all evaluations for this cycle (prefer JEFATURA, fall back to any type)
+    const evalFilter = buildScopedFilter(req, { cycleId: cycle._id });
+    const evaluations = await Evaluation.find(evalFilter).lean();
+
+    if (!evaluations.length) {
+      return res.json({
+        cycle: { periodo: cycle.periodo, estado: cycle.estado },
+        competencies: [],
+        rows: [],
+        areaAverages: {},
+      });
+    }
+
+    // Collect all evaluation IDs and employee IDs
+    const evalIds = evaluations.map((e) => e._id);
+    const employeeIds = [...new Set(evaluations.map((e) => String(e.employeeId)))];
+
+    // Fetch scores, employees, metrics and competencies in parallel
+    const [scores, employees, metrics] = await Promise.all([
+      EvaluationScore.find({ evaluationId: { $in: evalIds } }).lean(),
+      Employee.find({ _id: { $in: employeeIds } }).lean(),
+      Metric.find(buildScopedFilter(req, { activa: true })).lean(),
+    ]);
+
+    // Collect competency IDs from the metrics used in scores
+    const metricById = new Map(metrics.map((m) => [String(m._id), m]));
+    const competencyIds = [...new Set(metrics.map((m) => String(m.competencyId)).filter(Boolean))];
+    const competencies = await Competency.find({ _id: { $in: competencyIds } }).lean();
+    const competencyById = new Map(competencies.map((c) => [String(c._id), c]));
+
+    // Build: employeeId → best evaluation (prefer REVISADA > ENVIADA > BORRADOR, prefer JEFATURA)
+    const typeRank = { JEFATURA: 0, FINAL: 1, AUTOEVALUACION: 2, EVALUACION_360: 3 };
+    const stateRank = { REVISADA: 0, CERRADA: 1, ENVIADA: 2, BORRADOR: 3 };
+    const bestEvalByEmployee = new Map();
+    for (const ev of evaluations) {
+      const key = String(ev.employeeId);
+      const existing = bestEvalByEmployee.get(key);
+      if (!existing) {
+        bestEvalByEmployee.set(key, ev);
+      } else {
+        const newTypeRank = typeRank[ev.tipo] ?? 99;
+        const existTypeRank = typeRank[existing.tipo] ?? 99;
+        const newStateRank = stateRank[ev.estado] ?? 99;
+        const existStateRank = stateRank[existing.estado] ?? 99;
+        if (newTypeRank < existTypeRank || (newTypeRank === existTypeRank && newStateRank < existStateRank)) {
+          bestEvalByEmployee.set(key, ev);
+        }
+      }
+    }
+
+    // Map scores by evaluationId
+    const scoresByEval = new Map();
+    for (const score of scores) {
+      const key = String(score.evaluationId);
+      if (!scoresByEval.has(key)) scoresByEval.set(key, []);
+      scoresByEval.get(key).push(score);
+    }
+
+    // Build competency name list (only those referenced by scores in this cycle)
+    const usedCompetencyIds = new Set();
+    for (const [, evalScores] of scoresByEval) {
+      for (const s of evalScores) {
+        const metric = metricById.get(String(s.metricId));
+        if (metric?.competencyId) usedCompetencyIds.add(String(metric.competencyId));
+      }
+    }
+    const competencyNames = [...usedCompetencyIds].map((id) => competencyById.get(id)?.nombre).filter(Boolean);
+
+    // Build rows
+    const employeeById = new Map(employees.map((e) => [String(e._id), e]));
+    const rows = [];
+
+    for (const [empIdStr, evaluation] of bestEvalByEmployee) {
+      const employee = employeeById.get(empIdStr);
+      if (!employee) continue;
+
+      const evalScores = scoresByEval.get(String(evaluation._id)) || [];
+
+      // Aggregate scores per competency (average of metrics within a competency)
+      const competencyScores = {};
+      const metricsByCompetency = new Map();
+      for (const s of evalScores) {
+        const metric = metricById.get(String(s.metricId));
+        if (!metric?.competencyId) continue;
+        const compId = String(metric.competencyId);
+        const compName = competencyById.get(compId)?.nombre;
+        if (!compName) continue;
+        if (!metricsByCompetency.has(compName)) metricsByCompetency.set(compName, []);
+        metricsByCompetency.get(compName).push(s.nivel);
+      }
+      for (const [compName, levels] of metricsByCompetency) {
+        competencyScores[compName] = Math.round((levels.reduce((a, b) => a + b, 0) / levels.length) * 10) / 10;
+      }
+
+      const scoreValues = Object.values(competencyScores);
+      const average = scoreValues.length
+        ? Math.round((scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length) * 10) / 10
+        : null;
+
+      rows.push({
+        employee: {
+          _id: employee._id,
+          nombre: `${employee.nombre} ${employee.apellido}`.trim(),
+          area: employee.area || "",
+          cargo: employee.cargo || "",
+        },
+        scores: competencyScores,
+        average,
+        evaluationType: evaluation.tipo,
+        evaluationState: evaluation.estado,
+      });
+    }
+
+    // Sort: by area asc, then by average desc
+    rows.sort((a, b) => {
+      const areaCompare = (a.employee.area || "").localeCompare(b.employee.area || "", "es");
+      if (areaCompare !== 0) return areaCompare;
+      return (b.average ?? -1) - (a.average ?? -1);
+    });
+
+    // Area averages
+    const areaGroups = {};
+    for (const row of rows) {
+      const area = row.employee.area || "Sin área";
+      if (!areaGroups[area]) areaGroups[area] = [];
+      if (row.average !== null) areaGroups[area].push(row.average);
+    }
+    const areaAverages = {};
+    for (const [area, avgs] of Object.entries(areaGroups)) {
+      areaAverages[area] = avgs.length
+        ? Math.round((avgs.reduce((a, b) => a + b, 0) / avgs.length) * 10) / 10
+        : null;
+    }
+
+    res.json({
+      cycle: { periodo: cycle.periodo, estado: cycle.estado },
+      competencies: competencyNames,
+      rows,
+      areaAverages,
+    });
   }
 );
 

@@ -6,6 +6,185 @@ import { useView } from "../context/ViewContext";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
 import CollapsibleList from "../components/CollapsibleList";
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
+
+// Chart color palette for competency lines
+const CHART_COLORS = [
+  "#14b8a6", // teal
+  "#60a5fa", // blue
+  "#f472b6", // pink
+  "#a78bfa", // violet
+  "#fb923c", // orange
+  "#34d399", // emerald
+  "#fbbf24", // amber
+  "#f87171", // red
+];
+
+function CustomEvolutionTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#0a1a22] p-3 text-xs shadow-xl max-w-xs">
+      <p className="mb-1 font-semibold text-[#14b8a6]">{label}</p>
+      {payload.map((entry) => (
+        <div key={entry.dataKey} className="mt-1">
+          <span style={{ color: entry.color }} className="font-medium">{entry.name}:</span>{" "}
+          <span className="text-white">{entry.value}</span>
+          {entry.payload?.[`${entry.dataKey}_comentario`] ? (
+            <p className="mt-0.5 text-[#9fb6c4] italic">
+              "{entry.payload[`${entry.dataKey}_comentario`]}"
+            </p>
+          ) : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function EvolutionPanel({ employeeId, token }) {
+  const [state, setState] = useState({ status: "idle", data: null, error: null });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading", data: null, error: null });
+    apiFetch(`/employees/${employeeId}/evolution`, { token })
+      .then((data) => {
+        if (!cancelled) setState({ status: "done", data, error: null });
+      })
+      .catch((err) => {
+        if (!cancelled) setState({ status: "error", data: null, error: err.message });
+      });
+    return () => { cancelled = true; };
+  }, [employeeId, token]);
+
+  if (state.status === "loading") {
+    return <p className="py-4 text-center text-xs text-[#9fb6c4]">Cargando evolución...</p>;
+  }
+  if (state.status === "error") {
+    return <p className="py-4 text-center text-xs text-rose-300">Error: {state.error}</p>;
+  }
+  if (!state.data) return null;
+
+  const { cycles } = state.data;
+
+  if (!cycles.length) {
+    return (
+      <p className="py-4 text-center text-xs text-[#9fb6c4]">
+        Aún no hay evaluaciones cerradas para este empleado.
+      </p>
+    );
+  }
+
+  // Collect all unique competency names
+  const competencySet = new Set();
+  cycles.forEach((c) => c.scores.forEach((s) => competencySet.add(s.competencia)));
+  const competencies = Array.from(competencySet);
+
+  // Build chart data: one row per cycle
+  const chartData = cycles.map((c) => {
+    const row = { periodo: c.periodo };
+    c.scores.forEach((s) => {
+      const key = s.competencia;
+      row[key] = s.nivel;
+      if (s.comentario) row[`${key}_comentario`] = s.comentario;
+    });
+    return row;
+  });
+
+  // Summary stats
+  const lastCycle = cycles[cycles.length - 1];
+  const prevCycle = cycles.length >= 2 ? cycles[cycles.length - 2] : null;
+  const promedioActual = lastCycle.resultadoFinal
+    ? Number(lastCycle.resultadoFinal).toFixed(1)
+    : lastCycle.scores.length
+    ? (lastCycle.scores.reduce((s, x) => s + x.nivel, 0) / lastCycle.scores.length).toFixed(1)
+    : "—";
+
+  let tendencia = "→";
+  if (prevCycle) {
+    const diff = lastCycle.resultadoFinal - prevCycle.resultadoFinal;
+    if (diff > 0.05) tendencia = "↑";
+    else if (diff < -0.05) tendencia = "↓";
+  }
+
+  const useLine = cycles.length > 1;
+
+  return (
+    <div className="mt-3 space-y-3">
+      {/* Summary stats */}
+      <div className="flex flex-wrap gap-4 rounded-xl border border-white/10 bg-[#060f14] px-4 py-3 text-xs">
+        <div>
+          <span className="text-[#9fb6c4]">Promedio actual</span>
+          <p className="mt-0.5 text-base font-bold text-[#14b8a6]">{promedioActual}</p>
+        </div>
+        <div>
+          <span className="text-[#9fb6c4]">Tendencia</span>
+          <p className={`mt-0.5 text-base font-bold ${tendencia === "↑" ? "text-emerald-400" : tendencia === "↓" ? "text-rose-400" : "text-[#9fb6c4]"}`}>
+            {tendencia}
+          </p>
+        </div>
+        <div>
+          <span className="text-[#9fb6c4]">Ciclos evaluados</span>
+          <p className="mt-0.5 text-base font-bold text-white">{cycles.length}</p>
+        </div>
+      </div>
+
+      {/* Chart */}
+      <div className="rounded-xl border border-white/10 bg-[#060f14] p-3">
+        <ResponsiveContainer width="100%" height={220}>
+          {useLine ? (
+            <LineChart data={chartData} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="periodo" tick={{ fill: "#9fb6c4", fontSize: 11 }} />
+              <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: "#9fb6c4", fontSize: 11 }} />
+              <Tooltip content={<CustomEvolutionTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#9fb6c4" }} />
+              {competencies.map((comp, i) => (
+                <Line
+                  key={comp}
+                  type="monotone"
+                  dataKey={comp}
+                  name={comp}
+                  stroke={CHART_COLORS[i % CHART_COLORS.length]}
+                  strokeWidth={2}
+                  dot={{ r: 4, fill: CHART_COLORS[i % CHART_COLORS.length] }}
+                  activeDot={{ r: 6 }}
+                />
+              ))}
+            </LineChart>
+          ) : (
+            <BarChart data={chartData} margin={{ top: 8, right: 16, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#ffffff10" />
+              <XAxis dataKey="periodo" tick={{ fill: "#9fb6c4", fontSize: 11 }} />
+              <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} tick={{ fill: "#9fb6c4", fontSize: 11 }} />
+              <Tooltip content={<CustomEvolutionTooltip />} />
+              <Legend wrapperStyle={{ fontSize: 11, color: "#9fb6c4" }} />
+              {competencies.map((comp, i) => (
+                <Bar
+                  key={comp}
+                  dataKey={comp}
+                  name={comp}
+                  fill={CHART_COLORS[i % CHART_COLORS.length]}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))}
+            </BarChart>
+          )}
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
 
 const emptyForm = {
   schoolId: "",
@@ -44,6 +223,7 @@ export default function EmployeesPage() {
   const [confirmState, setConfirmState] = useState({ open: false, employee: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [evolutionOpenId, setEvolutionOpenId] = useState(null);
   const deferredSearch = useDeferredValue(filters.q);
   const appliedFilters = useMemo(
     () => ({ ...filters, q: deferredSearch }),
@@ -376,14 +556,24 @@ export default function EmployeesPage() {
                           </p>
                         </div>
                       </div>
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2">
                         <button type="button" onClick={() => handleEdit(employee)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                           Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEvolutionOpenId((prev) => prev === employee._id ? null : employee._id)}
+                          className={`rounded-xl border px-4 py-2 text-sm transition ${evolutionOpenId === employee._id ? "border-[#14b8a6]/60 bg-[#14b8a6]/15 text-[#14b8a6]" : "border-white/15 text-[#c5d5de] hover:bg-white/5"}`}
+                        >
+                          {evolutionOpenId === employee._id ? "Ocultar evolución" : "Evolución"}
                         </button>
                         <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20">
                           Eliminar
                         </button>
                       </div>
+                      {evolutionOpenId === employee._id ? (
+                        <EvolutionPanel employeeId={employee._id} token={token} />
+                      ) : null}
                     </article>
                   );
                 }}

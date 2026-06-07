@@ -28,6 +28,9 @@ const loadStorageCenterPage = () => import("./pages/StorageCenterPage");
 const loadSettingsPage = () => import("./pages/SettingsPage");
 const loadProfilePage = () => import("./pages/ProfilePage");
 const loadUsageAnalyticsPage = () => import("./pages/UsageAnalyticsPage");
+const loadOrgChartPage = () => import("./pages/OrgChartPage");
+const loadCalibracionPage = () => import("./pages/CalibracionPage");
+const loadPulsePage = () => import("./pages/PulsePage");
 
 const DashboardPage = lazy(loadDashboardPage);
 const OrganizationsPage = lazy(loadOrganizationsPage);
@@ -47,6 +50,9 @@ const StorageCenterPage = lazy(loadStorageCenterPage);
 const SettingsPage = lazy(loadSettingsPage);
 const ProfilePage = lazy(loadProfilePage);
 const UsageAnalyticsPage = lazy(loadUsageAnalyticsPage);
+const OrgChartPage = lazy(loadOrgChartPage);
+const CalibracionPage = lazy(loadCalibracionPage);
+const PulsePage = lazy(loadPulsePage);
 
 function ViewLoader() {
   return (
@@ -113,6 +119,7 @@ function AppContent() {
         user ? "novedades" : null,
         user ? "perfil" : null,
         hasPermission("manage_employees") ? "empleados" : null,
+        hasPermission("manage_employees") ? "organigrama" : null,
         hasPermission("manage_competencies") ? "competencias" : null,
         hasPermission("manage_metrics") ? "metricas" : null,
         hasPermission("manage_evaluation_cycles") || hasPermission("view_reports")
@@ -152,6 +159,10 @@ function AppContent() {
           : null,
         user?.isSuperAdmin ? "archivo-central" : null,
         user?.isSuperAdmin ? "analytics" : null,
+        hasPermission("manage_evaluations") || hasPermission("view_reports")
+          ? "calibracion"
+          : null,
+        user ? "pulse" : null,
       ].filter(Boolean),
     [hasPermission, user]
   );
@@ -260,6 +271,7 @@ function AppContent() {
         language={language}
         setLanguage={setLanguage}
         t={t}
+        availableViews={availableViews}
       >
         <ErrorBoundary>
         <Suspense fallback={<ViewLoader />}>
@@ -282,7 +294,10 @@ function AppContent() {
           {view === "usuarios" && <UsersPage />}
           {view === "roles" && <RolesPage />}
           {view === "settings" && <SettingsPage />}
-          {!["dashboard","novedades","perfil","organizaciones","empleados","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics","usuarios","roles","settings"].includes(view) && (
+          {view === "organigrama" && <OrgChartPage />}
+          {view === "calibracion" && <CalibracionPage />}
+          {view === "pulse" && <PulsePage />}
+          {!["dashboard","novedades","perfil","organizaciones","empleados","organigrama","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics","usuarios","roles","settings","calibracion","pulse"].includes(view) && (
             <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28] text-3xl">🧭</div>
               <p className="text-lg font-semibold text-white">Vista no encontrada</p>

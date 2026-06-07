@@ -336,6 +336,31 @@ function AppIcon({ name, active }) {
           <rect x="4" y="3" width="16" height="18" rx="2.5" />
         </svg>
       );
+    case "organigrama":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <rect x="9" y="2" width="6" height="4" rx="1" />
+          <rect x="2" y="18" width="6" height="4" rx="1" />
+          <rect x="9" y="18" width="6" height="4" rx="1" />
+          <rect x="16" y="18" width="6" height="4" rx="1" />
+          <path d="M12 6v4M12 10H5v4M12 10h7v4" />
+        </svg>
+      );
+    case "calibracion":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case "pulse":
+      return (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+          <path d="M3 12h3l2.5-7 3 14 2.5-9L16 12h5" />
+        </svg>
+      );
     default:
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
@@ -358,6 +383,7 @@ function translateNavLabel(key, fallback, t) {
     "reporte-ejecutivo": "nav.report",
     "carga-masiva": "nav.import",
     novedades: "nav.news",
+    organigrama: "nav.orgchart",
     organizaciones: "nav.organizations",
     settings: "nav.settings",
     roles: "nav.settings",
@@ -522,6 +548,7 @@ export default function AppShell({
   language,
   setLanguage,
   t,
+  availableViews,
   children,
 }) {
   const {
@@ -543,6 +570,9 @@ export default function AppShell({
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchFocusedIdx, setSearchFocusedIdx] = useState(-1);
   const [backendDown, setBackendDown] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+  const [apiSearchResults, setApiSearchResults] = useState(null);
+  const [apiSearchLoading, setApiSearchLoading] = useState(false);
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
 
@@ -574,6 +604,40 @@ export default function AppShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [searchOpen]);
 
+  // Keyboard shortcuts — single-key nav (only when not in an input and no modifier)
+  useEffect(() => {
+    function handleKey(e) {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+      const shortcuts = {
+        i: "dashboard",
+        p: "empleados",
+        e: "evaluaciones",
+        c: "ciclos",
+        m: "metricas",
+        r: "reporte-ejecutivo",
+        d: "planes",
+      };
+
+      const target = shortcuts[e.key.toLowerCase()];
+      if (target && availableViews && availableViews.includes(target)) {
+        e.preventDefault();
+        setView(target);
+        return;
+      }
+      if (e.key === "?") {
+        e.preventDefault();
+        setShowShortcuts((v) => !v);
+      }
+      if (e.key === "Escape") {
+        setShowShortcuts(false);
+      }
+    }
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [availableViews, setView]);
+
   // Backend health check — show banner if unreachable
   useEffect(() => {
     let cancelled = false;
@@ -595,10 +659,45 @@ export default function AppShell({
   const searchRef = useRef(null);
   useClickOutside(searchRef, () => setSearchOpen(false), searchOpen);
 
+  // Allow any child page to navigate by dispatching performia:set-view
+  useEffect(() => {
+    function handleSetView(e) {
+      const target = e?.detail?.view;
+      if (target) setView(target);
+    }
+    window.addEventListener("performia:set-view", handleSetView);
+    return () => window.removeEventListener("performia:set-view", handleSetView);
+  }, [setView]);
+
+  // Debounced API search — fires 300ms after user stops typing
+  useEffect(() => {
+    const term = String(searchQuery || "").trim();
+    if (!term || !isSuperAdmin) {
+      setApiSearchResults(null);
+      return;
+    }
+    setApiSearchLoading(true);
+    const timerId = setTimeout(async () => {
+      try {
+        const data = await apiFetch(`/search/global?q=${encodeURIComponent(term)}`, { token });
+        setApiSearchResults(data);
+      } catch {
+        setApiSearchResults(null);
+      } finally {
+        setApiSearchLoading(false);
+      }
+    }, 300);
+    return () => {
+      clearTimeout(timerId);
+      setApiSearchLoading(false);
+    };
+  }, [searchQuery, token, isSuperAdmin]);
+
   const allViews = useMemo(
     () => [
       { key: "dashboard", label: "Inicio", show: true, keywords: ["inicio", "dashboard", "panel", "resumen"] },
       { key: "empleados", label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas", show: hasPermission("manage_employees"), keywords: ["personas", "empleados", "equipo", "perfil"] },
+      { key: "organigrama", label: "Organigrama", show: hasPermission("manage_employees"), keywords: ["organigrama", "org chart", "jerarquía", "jerarquia", "estructura"] },
       { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), keywords: ["usuarios", "credenciales", "accesos"] },
       { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee), keywords: ["ciclos", "periodo", "período", "calendario"] },
       { key: "evaluaciones", label: "Evaluaciones", show: hasPermission("manage_evaluations") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("view_reports"), keywords: ["evaluaciones", "autoevaluacion", "autoevaluación", "feedback", "desempeño"] },
@@ -613,6 +712,8 @@ export default function AppShell({
       { key: "settings", label: "Configuración", show: isSuperAdmin, keywords: ["configuracion", "configuración", "ajustes"] },
       { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
       { key: "analytics", label: "Analytics", show: isSuperAdmin, keywords: ["analytics", "uso", "estadísticas", "estadisticas"] },
+      { key: "calibracion", label: "Calibración", show: hasPermission("manage_evaluations") || hasPermission("view_reports"), keywords: ["calibracion", "calibración", "notas", "matriz"] },
+      { key: "pulse", label: "Clima", show: true, keywords: ["clima", "pulse", "encuesta", "satisfaccion", "satisfacción"] },
     ],
     [hasPermission, isEmployee, isManager, isSuperAdmin]
   );
@@ -625,11 +726,11 @@ export default function AppShell({
 
     const groups = [];
     groups.push({ label: "Inicio", keys: ["dashboard"] });
-    groups.push({ label: "Personas y accesos", keys: ["empleados", "usuarios"] });
-    groups.push({ label: "Evaluación de desempeño", keys: ["evaluaciones", "metricas", "ciclos", "competencias"] });
+    groups.push({ label: "Personas y accesos", keys: ["empleados", "organigrama", "usuarios"] });
+    groups.push({ label: "Evaluación de desempeño", keys: ["evaluaciones", "metricas", "ciclos", "competencias", "calibracion"] });
     groups.push({ label: "Desarrollo", keys: ["planes"] });
     groups.push({ label: "Reportes", keys: ["reporte-ejecutivo"] });
-    groups.push({ label: "Comunicación", keys: ["novedades"] });
+    groups.push({ label: "Comunicación", keys: ["novedades", "pulse"] });
     groups.push({ label: "Operación", keys: ["carga-masiva"] });
     if (isSuperAdmin) {
       groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "settings", "archivo-central", "analytics"] });
@@ -894,19 +995,102 @@ export default function AppShell({
                 </div>
                 {searchOpen && searchQuery.trim() ? (
                   <div className="absolute inset-x-0 z-30 mt-2 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_32px_rgba(2,8,23,0.35)]">
+                    {/* Nav results */}
                     {searchResults.length ? (
-                      searchResults.map((item, idx) => (
-                        <SearchResultItem
-                          key={item.viewKey}
-                          item={item}
-                          onSelect={handleSearchSelect}
-                          focused={searchFocusedIdx === idx}
-                        />
-                      ))
+                      <div>
+                        <p className="px-3 pb-1 pt-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Navegación</p>
+                        {searchResults.map((item, idx) => (
+                          <SearchResultItem
+                            key={item.viewKey}
+                            item={item}
+                            onSelect={handleSearchSelect}
+                            focused={searchFocusedIdx === idx}
+                          />
+                        ))}
+                      </div>
                     ) : (
-                      <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-4 text-sm text-[#8ea5b3]">
+                      <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-sm text-[#8ea5b3]">
                         No encontramos coincidencias en la navegación visible.
                       </div>
+                    )}
+
+                    {/* API search results — superadmin only */}
+                    {isSuperAdmin && (
+                      <>
+                        <div className="my-2 border-t border-white/10" />
+                        {apiSearchLoading ? (
+                          <div className="px-3 py-2 text-xs text-[#5e7d8e]">Buscando en base de datos…</div>
+                        ) : apiSearchResults ? (
+                          <>
+                            {apiSearchResults.companies?.length > 0 && (
+                              <div>
+                                <p className="px-3 pb-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Empresas</p>
+                                {apiSearchResults.companies.slice(0, 3).map((item) => (
+                                  <button
+                                    key={item._id}
+                                    type="button"
+                                    onClick={() => { setView("organizaciones"); setSearchQuery(item.nombre); setSearchOpen(false); }}
+                                    className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/5"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-white">{item.nombre}</p>
+                                      <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.tipoCliente || item.slug}</p>
+                                    </div>
+                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
+                                      {item.activa ? "Activa" : "Inactiva"}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {apiSearchResults.announcements?.length > 0 && (
+                              <div>
+                                <p className="px-3 pb-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Novedades</p>
+                                {apiSearchResults.announcements.slice(0, 3).map((item) => (
+                                  <button
+                                    key={item._id}
+                                    type="button"
+                                    onClick={() => { setView("novedades"); setSearchQuery(""); setSearchOpen(false); }}
+                                    className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/5"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-white">{item.titulo}</p>
+                                      <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.companyName || item.categoria}</p>
+                                    </div>
+                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
+                                      Novedad
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {apiSearchResults.files?.length > 0 && (
+                              <div>
+                                <p className="px-3 pb-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Archivos</p>
+                                {apiSearchResults.files.slice(0, 3).map((item) => (
+                                  <button
+                                    key={item._id}
+                                    type="button"
+                                    onClick={() => { setView("archivo-central"); setSearchQuery(item.nombreVisible || item.nombreArchivo); setSearchOpen(false); }}
+                                    className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/5"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="truncate text-sm font-semibold text-white">{item.nombreVisible || item.nombreArchivo}</p>
+                                      <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.companyName || item.tipoArchivo}</p>
+                                    </div>
+                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
+                                      Archivo
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            {!apiSearchResults.companies?.length && !apiSearchResults.announcements?.length && !apiSearchResults.files?.length && (
+                              <div className="px-3 py-2 text-xs text-[#5e7d8e]">Sin resultados en base de datos.</div>
+                            )}
+                          </>
+                        ) : null}
+                      </>
                     )}
                   </div>
                 ) : null}
@@ -922,6 +1106,35 @@ export default function AppShell({
                   onOpenAnnouncement={handleOpenAnnouncement}
                   t={t}
                 />
+                {/* Theme toggle */}
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
+                  aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+                  title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
+                >
+                  {theme === "dark" ? (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                      <circle cx="12" cy="12" r="4" />
+                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+                    </svg>
+                  ) : (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+                    </svg>
+                  )}
+                </button>
+                {/* Shortcuts help */}
+                <button
+                  type="button"
+                  onClick={() => setShowShortcuts(true)}
+                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:bg-[#172c39] hover:text-white"
+                  aria-label="Atajos de teclado"
+                  title="Atajos de teclado (?)"
+                >
+                  <span className="text-sm font-semibold">?</span>
+                </button>
                 <LanguageMenu language={language} setLanguage={setLanguage} t={t} />
                 <button
                   type="button"
@@ -1049,6 +1262,65 @@ export default function AppShell({
                 </div>
               </button>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Keyboard shortcuts modal */}
+      {showShortcuts ? (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0c1e28] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <p className="text-base font-semibold text-white">Atajos de teclado</p>
+              <button
+                type="button"
+                onClick={() => setShowShortcuts(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#8ea5b3] transition hover:text-white"
+                aria-label="Cerrar"
+              >
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
+                  <path d="M2 2l8 8M10 2l-8 8" />
+                </svg>
+              </button>
+            </div>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-white/10">
+                  <th className="pb-2 text-left text-xs uppercase tracking-[0.14em] text-[#5e7d8e]">Tecla</th>
+                  <th className="pb-2 text-left text-xs uppercase tracking-[0.14em] text-[#5e7d8e]">Acción</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5">
+                {[
+                  { key: "Ctrl+K", action: "Abrir búsqueda global" },
+                  { key: "I", action: "Ir a Inicio" },
+                  { key: "P", action: "Ir a Personas" },
+                  { key: "E", action: "Ir a Evaluaciones" },
+                  { key: "C", action: "Ir a Ciclos" },
+                  { key: "M", action: "Ir a Mediciones" },
+                  { key: "R", action: "Ir a Reportes" },
+                  { key: "D", action: "Ir a Desarrollo" },
+                  { key: "?", action: "Mostrar/ocultar atajos" },
+                  { key: "Esc", action: "Cerrar paneles" },
+                ].map(({ key, action }) => (
+                  <tr key={key}>
+                    <td className="py-2 pr-4">
+                      <kbd className="rounded-lg border border-white/15 bg-[#12222d] px-2.5 py-1 text-xs font-mono font-semibold text-[#c7d5dc]">
+                        {key}
+                      </kbd>
+                    </td>
+                    <td className="py-2 text-[#c7d5dc]">{action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="mt-4 text-xs text-[#5e7d8e]">Las teclas de navegación solo funcionan cuando el cursor no está en un campo de texto.</p>
           </div>
         </div>
       ) : null}

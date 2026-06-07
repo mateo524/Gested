@@ -253,6 +253,405 @@ function buildPdfDocument({ orgName, execSummaryLines, execSignals, overview, pr
 </html>`;
 }
 
+function buildExecutivePdf({ orgName, cycleName, execSummaryLines, execSignals, overview, priorityEmployees, topPerformers, overviewActions, evaluationCoverage, departmentScores }) {
+  const date = new Date().toLocaleDateString("es-AR", { dateStyle: "long" });
+  const avg = overview?.summary?.averageScore || 0;
+  const employeesTotal = overview?.summary?.employeesTotal || 0;
+  const coveragePct = evaluationCoverage.pct;
+  const activePlans = overview?.development?.active || 0;
+  const completedPlans = overview?.development?.completed || 0;
+  const overduePlans = overview?.development?.overdue || 0;
+  const totalPlans = overview?.development?.total || 0;
+  const kpisAtRisk = safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0);
+
+  // Top 10 performers for slide 4
+  const top10 = (overview?.catalogs?.employees || [])
+    .filter(e => e.averageScore > 0)
+    .sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0))
+    .slice(0, 10);
+
+  // Overdue plan employees (priority attention employees with overdue plans)
+  const overdueEmployees = (overview?.catalogs?.employees || [])
+    .filter(e => (e.overduePlans || 0) > 0)
+    .sort((a, b) => (b.overduePlans || 0) - (a.overduePlans || 0))
+    .slice(0, 8);
+
+  // Dept rows for slide 3
+  const deptRows = (departmentScores || [])
+    .filter(d => d.averageScore > 0)
+    .sort((a, b) => b.averageScore - a.averageScore);
+
+  const maxDeptScore = Math.max(...deptRows.map(d => d.averageScore), 1);
+
+  function scoreColor(score) {
+    if (score >= 4) return "#15803d";
+    if (score >= 3) return "#b45309";
+    return "#b91c1c";
+  }
+  function scoreBg(score) {
+    if (score >= 4) return "#f0fdf4";
+    if (score >= 3) return "#fffbeb";
+    return "#fef2f2";
+  }
+  function scoreBorder(score) {
+    if (score >= 4) return "#bbf7d0";
+    if (score >= 3) return "#fde68a";
+    return "#fecaca";
+  }
+  function scoreLabel(score) {
+    if (score >= 4) return "Destacado";
+    if (score >= 3) return "Esperado";
+    return "En riesgo";
+  }
+  function barColor(score) {
+    if (score >= 4) return "#22c55e";
+    if (score >= 3) return "#f59e0b";
+    return "#ef4444";
+  }
+
+  // Build next steps based on data
+  const nextSteps = [];
+  if (coveragePct < 80 && evaluationCoverage.total > 0) {
+    nextSteps.push({ icon: "📋", text: `Completar las ${overview?.summary?.evaluationsPending || 0} evaluaciones pendientes para cerrar el ciclo con cobertura total.` });
+  }
+  if (priorityEmployees.length > 0) {
+    nextSteps.push({ icon: "🎯", text: `Agendar reuniones 1:1 con las ${priorityEmployees.length} personas que requieren atención prioritaria antes del cierre del período.` });
+  }
+  if (kpisAtRisk > 0) {
+    nextSteps.push({ icon: "⚠️", text: `Revisar los ${kpisAtRisk} KPI/OKR en riesgo con los managers de cada área e implementar planes de acción correctivos.` });
+  }
+  if (overduePlans > 0) {
+    nextSteps.push({ icon: "🔔", text: `Hacer seguimiento de los ${overduePlans} planes de desarrollo con fecha de revisión vencida.` });
+  }
+  if (nextSteps.length < 3) {
+    nextSteps.push({ icon: "📈", text: `Reconocer y visibilizar los logros del período para reforzar la cultura de desempeño en la organización.` });
+  }
+  if (nextSteps.length < 4) {
+    nextSteps.push({ icon: "🔄", text: `Iniciar el próximo ciclo de evaluación con los aprendizajes de este período como base para la calibración.` });
+  }
+
+  const rankEmoji = (i) => i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+
+  const slide = (content, last = false) =>
+    `<div class="slide${last ? " slide-last" : ""}">${content}</div>`;
+
+  const slideHeader = (label, title) => `
+    <div class="slide-header">
+      <span class="slide-tag">${escHtml(label)}</span>
+      <h2 class="slide-title">${escHtml(title)}</h2>
+    </div>`;
+
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reporte Ejecutivo de Desempeño — ZENTOR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    @page { size: A4 landscape; margin: 1.5cm; }
+    body { font-family: 'Inter', Arial, sans-serif; background: #fff; color: #0f172a; font-size: 10pt; line-height: 1.5; }
+
+    /* Slide shell */
+    .slide { width: 100%; min-height: 17.5cm; page-break-after: always; display: flex; flex-direction: column; }
+    .slide-last { page-break-after: avoid; }
+
+    /* Slide 1 — Cover */
+    .cover { background: #060f14; color: #fff; justify-content: center; align-items: center; padding: 2cm 2.5cm; text-align: center; position: relative; overflow: hidden; }
+    .cover::before { content: ""; position: absolute; inset: 0; background: radial-gradient(ellipse at 70% 30%, rgba(20,184,166,0.18) 0%, transparent 65%); pointer-events: none; }
+    .cover-logo { font-size: 52pt; font-weight: 900; letter-spacing: -3px; color: #fff; line-height: 1; }
+    .cover-logo span { color: #14b8a6; }
+    .cover-tagline { font-size: 11pt; color: #94a3b8; margin-top: 6px; letter-spacing: 0.15em; text-transform: uppercase; }
+    .cover-title { font-size: 22pt; font-weight: 700; color: #fff; margin-top: 32px; line-height: 1.25; }
+    .cover-subtitle { font-size: 13pt; color: #14b8a6; font-weight: 500; margin-top: 10px; }
+    .cover-meta { margin-top: 36px; display: flex; gap: 32px; justify-content: center; }
+    .cover-meta-item { text-align: center; }
+    .cover-meta-item .label { font-size: 7.5pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; }
+    .cover-meta-item .value { font-size: 10pt; color: #e2e8f0; font-weight: 500; margin-top: 3px; }
+    .cover-line { width: 80px; height: 3px; background: linear-gradient(90deg, #14b8a6, #38bdf8); border-radius: 2px; margin: 28px auto 0; }
+
+    /* Slide header */
+    .slide-header { margin-bottom: 18px; }
+    .slide-tag { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.18em; color: #14b8a6; display: block; margin-bottom: 4px; }
+    .slide-title { font-size: 18pt; font-weight: 800; color: #0f172a; line-height: 1.2; }
+
+    /* Common slide padding */
+    .slide-body { flex: 1; display: flex; flex-direction: column; padding: 0; }
+
+    /* Footer strip */
+    .slide-footer { margin-top: auto; padding-top: 12px; border-top: 1.5px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; font-size: 7.5pt; color: #94a3b8; }
+    .slide-footer strong { color: #14b8a6; }
+
+    /* Grids */
+    .g2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .g3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .g4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+
+    /* Stat cards */
+    .sc { border-radius: 12px; border: 1.5px solid #e2e8f0; padding: 14px 16px; background: #f8fafc; }
+    .sc-label { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.13em; color: #94a3b8; }
+    .sc-value { font-size: 26pt; font-weight: 900; line-height: 1; margin: 8px 0 4px; color: #0f172a; }
+    .sc-hint { font-size: 8pt; color: #64748b; }
+    .sc-success { border-color: #bbf7d0; background: #f0fdf4; }
+    .sc-success .sc-value { color: #15803d; }
+    .sc-warning { border-color: #fde68a; background: #fffbeb; }
+    .sc-warning .sc-value { color: #b45309; }
+    .sc-danger { border-color: #fecaca; background: #fef2f2; }
+    .sc-danger .sc-value { color: #b91c1c; }
+    .sc-teal { border-color: #99f6e4; background: #f0fdfa; }
+    .sc-teal .sc-value { color: #0d9488; }
+
+    /* Progress bar */
+    .pb { height: 5px; border-radius: 4px; background: #e2e8f0; margin-top: 9px; overflow: hidden; }
+    .pb-fill { height: 100%; border-radius: 4px; }
+
+    /* Executive summary block */
+    .exec-summary p { font-size: 10.5pt; color: #334155; margin-bottom: 6px; line-height: 1.7; }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 9pt; }
+    th { font-size: 7pt; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; color: #64748b; text-align: left; padding: 6px 10px; border-bottom: 2px solid #f1f5f9; background: #f8fafc; }
+    td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:nth-child(even) td { background: #f8fafc; }
+
+    /* Medal row highlights */
+    .rank-gold td { background: #fffbeb !important; }
+    .rank-silver td { background: #f8fafc !important; }
+    .rank-bronze td { background: #fff7ed !important; }
+
+    /* Rank badge */
+    .rank-badge { font-size: 13pt; line-height: 1; }
+
+    /* Score pill */
+    .spill { display: inline-block; font-size: 9pt; font-weight: 700; padding: 2px 10px; border-radius: 99px; }
+
+    /* Area bar row */
+    .area-bar { height: 8px; border-radius: 4px; background: #e2e8f0; overflow: hidden; margin-top: 4px; }
+    .area-bar-fill { height: 100%; border-radius: 4px; }
+
+    /* Plan summary pills */
+    .plan-pill { border-radius: 10px; padding: 12px 18px; text-align: center; border: 1.5px solid; }
+    .plan-pill .pp-num { font-size: 28pt; font-weight: 900; line-height: 1; }
+    .plan-pill .pp-label { font-size: 8pt; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 5px; }
+
+    /* Next step rows */
+    .next-step { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .next-step:last-child { border-bottom: none; }
+    .next-step-icon { font-size: 16pt; line-height: 1; flex-shrink: 0; width: 28px; }
+    .next-step-text { font-size: 10pt; color: #334155; line-height: 1.6; }
+
+    /* Closing branding block */
+    .closing-brand { background: #060f14; border-radius: 14px; padding: 28px 36px; display: flex; justify-content: space-between; align-items: center; margin-top: 20px; }
+    .closing-brand .logo { font-size: 32pt; font-weight: 900; letter-spacing: -2px; color: #fff; }
+    .closing-brand .logo span { color: #14b8a6; }
+    .closing-brand .tagline { font-size: 9pt; color: #64748b; margin-top: 4px; }
+    .closing-brand .contact { text-align: right; font-size: 9pt; color: #94a3b8; }
+    .closing-brand .contact strong { color: #14b8a6; display: block; font-size: 11pt; }
+
+    @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+  </style>
+</head>
+<body>
+
+${slide(`
+  <div class="cover slide-body">
+    <div class="cover-logo">ZEN<span>TOR</span></div>
+    <div class="cover-tagline">Plataforma de gestión del desempeño</div>
+    <div class="cover-title">Reporte Ejecutivo de Desempeño</div>
+    ${orgName ? `<div class="cover-subtitle">${escHtml(orgName)}</div>` : ""}
+    <div class="cover-line"></div>
+    <div class="cover-meta">
+      ${cycleName ? `<div class="cover-meta-item"><div class="label">Período</div><div class="value">${escHtml(cycleName)}</div></div>` : ""}
+      <div class="cover-meta-item"><div class="label">Generado el</div><div class="value">${date}</div></div>
+      ${employeesTotal > 0 ? `<div class="cover-meta-item"><div class="label">Alcance</div><div class="value">${employeesTotal.toLocaleString("es-AR")} personas</div></div>` : ""}
+    </div>
+  </div>
+`, false)}
+
+${slide(`
+  <div class="slide-body">
+    ${slideHeader("Slide 2 de 6", "Resumen ejecutivo")}
+    <div class="g4" style="margin-bottom:18px">
+      <div class="sc ${avg >= 4 ? "sc-success" : avg >= 3 ? "sc-warning" : avg > 0 ? "sc-danger" : ""}">
+        <div class="sc-label">Promedio general</div>
+        <div class="sc-value">${avg > 0 ? avg.toFixed(2) : "—"}</div>
+        <div class="sc-hint">Escala 1 – 5</div>
+        ${avg > 0 ? `<div class="pb"><div class="pb-fill" style="width:${(avg/5)*100}%;background:${barColor(avg)}"></div></div>` : ""}
+      </div>
+      <div class="sc sc-teal">
+        <div class="sc-label">Empleados evaluados</div>
+        <div class="sc-value">${employeesTotal}</div>
+        <div class="sc-hint">Dentro del alcance</div>
+      </div>
+      <div class="sc ${coveragePct >= 80 ? "sc-success" : coveragePct >= 50 ? "sc-warning" : "sc-danger"}">
+        <div class="sc-label">Completado</div>
+        <div class="sc-value">${coveragePct}%</div>
+        <div class="sc-hint">${evaluationCoverage.completed} de ${evaluationCoverage.total} ev.</div>
+        <div class="pb"><div class="pb-fill" style="width:${coveragePct}%;background:${coveragePct >= 80 ? "#22c55e" : coveragePct >= 50 ? "#f59e0b" : "#ef4444"}"></div></div>
+      </div>
+      <div class="sc ${overduePlans > 0 ? "sc-warning" : ""}">
+        <div class="sc-label">Planes activos</div>
+        <div class="sc-value">${activePlans}</div>
+        <div class="sc-hint">${overduePlans} vencidos · ${completedPlans} completados</div>
+      </div>
+    </div>
+    ${execSummaryLines.length ? `<div class="exec-summary">${execSummaryLines.map(l => `<p>${escHtml(l)}</p>`).join("")}</div>` : ""}
+    <div class="slide-footer">
+      <p>Generado por <strong>ZENTOR</strong> · Plataforma de gestión del desempeño</p>
+      <p>${date}</p>
+    </div>
+  </div>
+`, false)}
+
+${slide(`
+  <div class="slide-body">
+    ${slideHeader("Slide 3 de 6", "Distribución por área")}
+    ${deptRows.length ? `
+    <table>
+      <thead>
+        <tr>
+          <th>Área</th>
+          <th style="width:80px;text-align:center">Empleados</th>
+          <th style="width:180px">Promedio</th>
+          <th style="width:100px;text-align:center">Estado</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${deptRows.map(d => `
+        <tr>
+          <td style="font-weight:600;color:#0f172a">${escHtml(d.name)}</td>
+          <td style="text-align:center">${d.count}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="area-bar" style="flex:1">
+                <div class="area-bar-fill" style="width:${Math.round((d.averageScore / maxDeptScore) * 100)}%;background:${barColor(d.averageScore)}"></div>
+              </div>
+              <span style="font-weight:700;color:${scoreColor(d.averageScore)};min-width:28px;text-align:right">${d.averageScore.toFixed(1)}</span>
+            </div>
+          </td>
+          <td style="text-align:center">
+            <span class="spill" style="background:${scoreBg(d.averageScore)};color:${scoreColor(d.averageScore)};border:1px solid ${scoreBorder(d.averageScore)}">${scoreLabel(d.averageScore)}</span>
+          </td>
+        </tr>`).join("")}
+      </tbody>
+    </table>` : `<p style="color:#64748b;font-style:italic">No hay datos de área disponibles para el alcance seleccionado.</p>`}
+    <div class="slide-footer" style="margin-top:auto">
+      <p>Generado por <strong>ZENTOR</strong> · Plataforma de gestión del desempeño</p>
+      <p>${date}</p>
+    </div>
+  </div>
+`, false)}
+
+${slide(`
+  <div class="slide-body">
+    ${slideHeader("Slide 4 de 6", "Top performers del período")}
+    ${top10.length ? `
+    <table>
+      <thead>
+        <tr>
+          <th style="width:36px"></th>
+          <th>Nombre</th>
+          <th>Cargo</th>
+          <th>Área</th>
+          <th style="width:90px;text-align:center">Promedio</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${top10.map((e, i) => `
+        <tr class="${i === 0 ? "rank-gold" : i === 1 ? "rank-silver" : i === 2 ? "rank-bronze" : ""}">
+          <td style="text-align:center"><span class="rank-badge">${rankEmoji(i)}</span></td>
+          <td style="font-weight:${i < 3 ? "700" : "500"};color:#0f172a">${escHtml(e.fullName || [e.apellido, e.nombre].filter(Boolean).join(", "))}</td>
+          <td style="color:#475569">${escHtml(e.cargo || "—")}</td>
+          <td style="color:#475569">${escHtml(e.area || "—")}</td>
+          <td style="text-align:center">
+            <span class="spill" style="background:${scoreBg(e.averageScore)};color:${scoreColor(e.averageScore)};border:1px solid ${scoreBorder(e.averageScore)}">${e.averageScore.toFixed(1)}</span>
+          </td>
+        </tr>`).join("")}
+      </tbody>
+    </table>` : `<p style="color:#64748b;font-style:italic">No hay datos de desempeño disponibles.</p>`}
+    <div class="slide-footer" style="margin-top:auto">
+      <p>Generado por <strong>ZENTOR</strong> · Plataforma de gestión del desempeño</p>
+      <p>${date}</p>
+    </div>
+  </div>
+`, false)}
+
+${slide(`
+  <div class="slide-body">
+    ${slideHeader("Slide 5 de 6", "Planes de desarrollo")}
+    <div class="g3" style="margin-bottom:20px">
+      <div class="plan-pill" style="background:#f0fdfa;border-color:#99f6e4;color:#0d9488">
+        <div class="pp-num">${activePlans}</div>
+        <div class="pp-label">Activos</div>
+      </div>
+      <div class="plan-pill" style="background:#f0fdf4;border-color:#bbf7d0;color:#15803d">
+        <div class="pp-num">${completedPlans}</div>
+        <div class="pp-label">Completados</div>
+      </div>
+      <div class="plan-pill" style="background:${overduePlans > 0 ? "#fffbeb" : "#f8fafc"};border-color:${overduePlans > 0 ? "#fde68a" : "#e2e8f0"};color:${overduePlans > 0 ? "#b45309" : "#475569"}">
+        <div class="pp-num">${overduePlans}</div>
+        <div class="pp-label">Vencidos</div>
+      </div>
+    </div>
+    ${overdueEmployees.length ? `
+    <div style="margin-bottom:8px">
+      <p style="font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#b45309;margin-bottom:8px">Personas con planes vencidos</p>
+      <table>
+        <thead>
+          <tr>
+            <th>Persona</th>
+            <th>Área</th>
+            <th style="width:100px;text-align:center">Planes vencidos</th>
+            <th style="width:90px;text-align:center">Score</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${overdueEmployees.map(e => `
+          <tr>
+            <td style="font-weight:600;color:#0f172a">${escHtml(e.fullName || [e.apellido, e.nombre].filter(Boolean).join(", "))}</td>
+            <td style="color:#475569">${escHtml(e.area || "—")}</td>
+            <td style="text-align:center;color:#b45309;font-weight:700">${e.overduePlans}</td>
+            <td style="text-align:center">${e.averageScore > 0 ? `<span class="spill" style="background:${scoreBg(e.averageScore)};color:${scoreColor(e.averageScore)};border:1px solid ${scoreBorder(e.averageScore)}">${e.averageScore.toFixed(1)}</span>` : "—"}</td>
+          </tr>`).join("")}
+        </tbody>
+      </table>
+    </div>` : overduePlans === 0 ? `<p style="color:#15803d;font-weight:500">✓ No hay planes con seguimiento vencido.</p>` : ""}
+    <div class="slide-footer" style="margin-top:auto">
+      <p>Generado por <strong>ZENTOR</strong> · Plataforma de gestión del desempeño</p>
+      <p>${date}</p>
+    </div>
+  </div>
+`, false)}
+
+${slide(`
+  <div class="slide-body">
+    ${slideHeader("Slide 6 de 6", "Próximos pasos recomendados")}
+    <div style="max-width:620px">
+      ${nextSteps.slice(0, 4).map(s => `
+      <div class="next-step">
+        <div class="next-step-icon">${s.icon}</div>
+        <div class="next-step-text">${escHtml(s.text)}</div>
+      </div>`).join("")}
+    </div>
+    <div class="closing-brand">
+      <div>
+        <div class="logo">ZEN<span>TOR</span></div>
+        <div class="tagline">Plataforma de gestión del desempeño</div>
+      </div>
+      <div class="contact">
+        <strong>zentor.app</strong>
+        ${orgName ? escHtml(orgName) : ""}
+      </div>
+    </div>
+  </div>
+`, true)}
+
+<script>window.onload = function() { window.print(); }<\/script>
+</body>
+</html>`;
+}
+
 function safeNum(value, fallback = 0) {
   const n = Number(value);
   return Number.isFinite(n) ? n : fallback;
@@ -753,6 +1152,29 @@ export default function ExecutiveReportPage() {
     win.document.close();
   }
 
+  function handlePrintPresentation() {
+    if (!overview) return;
+    const orgName = user?.companyName || "";
+    const cycleName = overview?.selectedCycle?.label || "";
+    const html = buildExecutivePdf({
+      orgName,
+      cycleName,
+      execSummaryLines,
+      execSignals,
+      overview,
+      priorityEmployees,
+      topPerformers,
+      overviewActions,
+      evaluationCoverage,
+      departmentScores,
+    });
+    const win = window.open("", "_blank", "width=1200,height=800");
+    if (!win) return;
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  }
+
   const evaluationChart = useMemo(
     () => [
       {
@@ -1101,6 +1523,17 @@ export default function ExecutiveReportPage() {
                       <path d="M4 20h16" />
                     </svg>
                     Exportar PDF
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintPresentation}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-300 transition hover:bg-violet-500/20"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
+                      <rect x="2" y="5" width="20" height="14" rx="2" />
+                      <path d="M9 9l6 3-6 3V9z" fill="currentColor" stroke="none" />
+                    </svg>
+                    Exportar presentación
                   </button>
                 </div>
               }
