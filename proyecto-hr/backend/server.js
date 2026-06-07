@@ -36,6 +36,8 @@ import notificationsRoutes from "./routes/notifications.routes.js";
 import notificationsFeedRoutes from "./routes/notifications-feed.routes.js";
 import calendlyRoutes from "./routes/calendly.routes.js";
 import webhooksConfigRoutes from "./routes/webhooks-config.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
+import dripRoutes from "./routes/drip.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { buildHealthStatus } from "./utils/health.js";
 import { logger } from "./utils/logger.js";
@@ -219,6 +221,8 @@ app.use("/notifications", notificationsRoutes);
 app.use("/notifications-feed", notificationsFeedRoutes);
 app.use("/webhooks", calendlyRoutes);
 app.use("/webhooks-config", webhooksConfigRoutes);
+app.use("/analytics", analyticsRoutes);
+app.use("/drip", dripRoutes);
 
 // Request logging — emits one structured log line per completed request.
 // Skips /health to avoid noise in Cloud Logging dashboards.

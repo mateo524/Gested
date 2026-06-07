@@ -1,4 +1,5 @@
 import Notification from "../models/Notification.js";
+import { pushNotification } from "../routes/notifications-feed.routes.js";
 
 /**
  * Creates a notification for a user.
@@ -12,5 +13,7 @@ import Notification from "../models/Notification.js";
  * @returns {Promise<import("../models/Notification.js").default>}
  */
 export async function createNotification({ userId, companyId, type = "info", title, body = "", link = null }) {
-  return Notification.create({ userId, companyId, type, title, body, link });
+  const notification = await Notification.create({ userId, companyId, type, title, body, link });
+  pushNotification(userId, notification);
+  return notification;
 }

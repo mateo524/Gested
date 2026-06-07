@@ -1,5 +1,7 @@
 import express from "express";
 import EvaluationCycle from "../models/EvaluationCycle.js";
+import Evaluation from "../models/Evaluation.js";
+import Company from "../models/Company.js";
 import School from "../models/School.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
@@ -7,6 +9,7 @@ import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
+import { slack } from "../utils/slackNotifier.js";
 
 const router = express.Router();
 
@@ -125,6 +128,16 @@ router.post(
         periodo: cycle.periodo,
         estado: cycle.estado,
       });
+      Company.findById(companyId).lean().then((co) => {
+        slack.cycleStarted(co?.nombre || String(companyId), cycle.periodo).catch(() => {});
+      }).catch(() => {});
+    }
+
+    if (cycle.estado === "CERRADO") {
+      Company.findById(companyId).lean().then(async (co) => {
+        const totalEvals = await Evaluation.countDocuments({ cycleId: cycle._id }).catch(() => 0);
+        slack.cycleClosed(co?.nombre || String(companyId), cycle.periodo, totalEvals).catch(() => {});
+      }).catch(() => {});
     }
 
     res.status(201).json({ mensaje: "Ciclo creado", cycle });
@@ -178,6 +191,16 @@ router.put(
         periodo: cycle.periodo,
         estado: cycle.estado,
       });
+      Company.findById(cycle.companyId).lean().then((co) => {
+        slack.cycleStarted(co?.nombre || String(cycle.companyId), cycle.periodo).catch(() => {});
+      }).catch(() => {});
+    }
+
+    if (cycle.estado === "CERRADO") {
+      Company.findById(cycle.companyId).lean().then(async (co) => {
+        const totalEvals = await Evaluation.countDocuments({ cycleId: cycle._id }).catch(() => 0);
+        slack.cycleClosed(co?.nombre || String(cycle.companyId), cycle.periodo, totalEvals).catch(() => {});
+      }).catch(() => {});
     }
 
     res.json({ mensaje: "Ciclo actualizado", cycle });

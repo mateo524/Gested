@@ -403,9 +403,33 @@ function FeedBell({ token }) {
   }
 
   useEffect(() => {
+    if (!token) return;
+
+    // Initial fetch to populate notifications
     fetchFeed();
-    const id = setInterval(fetchFeed, 60000);
-    return () => clearInterval(id);
+
+    // SSE connection for real-time updates
+    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000";
+    const es = new EventSource(`${apiBase}/notifications-feed/stream?token=${token}`);
+
+    es.addEventListener("notification", (e) => {
+      const notif = JSON.parse(e.data);
+      setNotifications((prev) => [notif, ...prev.slice(0, 19)]);
+      setUnreadCount((prev) => prev + 1);
+    });
+
+    es.addEventListener("ping", () => {}); // keep-alive
+
+    let fallbackInterval = null;
+    es.onerror = () => {
+      es.close();
+      fallbackInterval = setInterval(fetchFeed, 60000);
+    };
+
+    return () => {
+      es.close();
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -588,6 +612,7 @@ export default function AppShell({
       { key: "roles", label: "Roles y accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "scope", "permisos"] },
       { key: "settings", label: "Configuración", show: isSuperAdmin, keywords: ["configuracion", "configuración", "ajustes"] },
       { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
+      { key: "analytics", label: "Analytics", show: isSuperAdmin, keywords: ["analytics", "uso", "estadísticas", "estadisticas"] },
     ],
     [hasPermission, isEmployee, isManager, isSuperAdmin]
   );
@@ -607,7 +632,7 @@ export default function AppShell({
     groups.push({ label: "Comunicación", keys: ["novedades"] });
     groups.push({ label: "Operación", keys: ["carga-masiva"] });
     if (isSuperAdmin) {
-      groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "settings", "archivo-central"] });
+      groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "settings", "archivo-central", "analytics"] });
     }
 
     return groups

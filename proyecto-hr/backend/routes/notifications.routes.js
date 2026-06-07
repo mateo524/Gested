@@ -4,7 +4,9 @@ import { requireSuperAdmin } from "../middleware/rbac.js";
 import User from "../models/User.js";
 import Evaluation from "../models/Evaluation.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
+import Company from "../models/Company.js";
 import { sendEvaluationReminderEmail } from "../utils/mailer.js";
+import { slack } from "../utils/slackNotifier.js";
 
 const router = express.Router();
 
@@ -34,6 +36,8 @@ router.post("/remind-pending", auth, requireSuperAdmin, async (req, res) => {
       isSuperAdmin: false,
     }).lean();
 
+    let sentForCycle = 0;
+
     for (const user of usersInCompany) {
       const pending = await Evaluation.countDocuments({
         companyId: cycle.companyId,
@@ -50,8 +54,19 @@ router.post("/remind-pending", auth, requireSuperAdmin, async (req, res) => {
           cycleEndDate: cycle.fechaCierre,
         }).catch(() => ({ sent: false }));
 
-        result.sent ? sent++ : errors++;
+        if (result.sent) {
+          sent++;
+          sentForCycle++;
+        } else {
+          errors++;
+        }
       }
+    }
+
+    if (sentForCycle > 0) {
+      Company.findById(cycle.companyId).lean().then((co) => {
+        slack.overdueEvaluations(co?.nombre || String(cycle.companyId), sentForCycle).catch(() => {});
+      }).catch(() => {});
     }
   }
 

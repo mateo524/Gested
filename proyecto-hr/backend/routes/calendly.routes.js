@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { slack } from "../utils/slackNotifier.js";
+import { enrollLead } from "../utils/nurturingHelpers.js";
 
 const router = Router();
 const HUBSPOT_BASE = "https://api.hubapi.com";
@@ -65,6 +67,13 @@ router.post("/calendly", async (req, res) => {
 
     const deal = await createDeal(`Demo ZENTOR — ${name}`, contact.id);
     console.log(`[calendly] Deal creado: ${deal.id} para ${email}`);
+
+    // Fire-and-forget: enroll calendly booker in nurturing sequence
+    enrollLead({ email, name, source: "calendly" }).catch(() => {});
+
+    const startTime = payload?.event?.start_time;
+    slack.demoBooked(name, email, startTime || "fecha no disponible").catch(() => {});
+    slack.newDeal(name, email).catch(() => {});
 
     return res.status(200).json({ ok: true, contactId: contact.id, dealId: deal.id });
   } catch (err) {

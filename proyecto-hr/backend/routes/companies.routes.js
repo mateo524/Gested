@@ -16,6 +16,7 @@ import { generateTempPassword } from "../utils/password.js";
 import { sendWelcomeEmail } from "../utils/mailer.js";
 import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
 import { isForbiddenPlatformRoleInput, mapRoleInputToLegacyRoleCode } from "../utils/legacyRoleMapping.js";
+import { slack } from "../utils/slackNotifier.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -224,6 +225,8 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
       password: generatedPassword,
     }).catch(() => {});
   }
+
+  slack.newOrg(company.nombre, adminUser?.email || "sin admin").catch(() => {});
 
   res.status(201).json({
     mensaje: "Empresa creada",

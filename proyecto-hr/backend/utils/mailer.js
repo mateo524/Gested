@@ -25,7 +25,7 @@ function canSend() {
   return Boolean(process.env.SENDGRID_API_KEY) || Boolean(process.env.SMTP_HOST);
 }
 
-async function dispatch({ to, subject, html, text }) {
+export async function dispatch({ to, subject, html, text }) {
   if (process.env.SENDGRID_API_KEY) return sendViaSendGrid({ to, subject, html });
   if (!smtpConfigured()) return { sent: false, reason: "no_transport" };
   const t = createTransporter();

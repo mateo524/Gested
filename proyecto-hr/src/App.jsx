@@ -27,6 +27,7 @@ const loadExecutiveReportPage = () => import("./pages/ExecutiveReportPage");
 const loadStorageCenterPage = () => import("./pages/StorageCenterPage");
 const loadSettingsPage = () => import("./pages/SettingsPage");
 const loadProfilePage = () => import("./pages/ProfilePage");
+const loadUsageAnalyticsPage = () => import("./pages/UsageAnalyticsPage");
 
 const DashboardPage = lazy(loadDashboardPage);
 const OrganizationsPage = lazy(loadOrganizationsPage);
@@ -45,6 +46,7 @@ const ExecutiveReportPage = lazy(loadExecutiveReportPage);
 const StorageCenterPage = lazy(loadStorageCenterPage);
 const SettingsPage = lazy(loadSettingsPage);
 const ProfilePage = lazy(loadProfilePage);
+const UsageAnalyticsPage = lazy(loadUsageAnalyticsPage);
 
 function ViewLoader() {
   return (
@@ -149,6 +151,7 @@ function AppContent() {
           ? "carga-masiva"
           : null,
         user?.isSuperAdmin ? "archivo-central" : null,
+        user?.isSuperAdmin ? "analytics" : null,
       ].filter(Boolean),
     [hasPermission, user]
   );
@@ -214,7 +217,8 @@ function AppContent() {
         loadRolesPage,
         loadSettingsPage,
         loadEducationalExportsPage,
-        loadStorageCenterPage
+        loadStorageCenterPage,
+        loadUsageAnalyticsPage
       );
     } else if (hasPermission("view_reports")) {
       preloaders.push(loadEducationalExportsPage);
@@ -274,10 +278,11 @@ function AppContent() {
           {view === "reporte-ejecutivo" && <ExecutiveReportPage />}
           {view === "carga-masiva" && <BulkImportPage />}
           {view === "archivo-central" && <StorageCenterPage />}
+          {view === "analytics" && <UsageAnalyticsPage />}
           {view === "usuarios" && <UsersPage />}
           {view === "roles" && <RolesPage />}
           {view === "settings" && <SettingsPage />}
-          {!["dashboard","novedades","perfil","organizaciones","empleados","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","usuarios","roles","settings"].includes(view) && (
+          {!["dashboard","novedades","perfil","organizaciones","empleados","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics","usuarios","roles","settings"].includes(view) && (
             <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28] text-3xl">🧭</div>
               <p className="text-lg font-semibold text-white">Vista no encontrada</p>
