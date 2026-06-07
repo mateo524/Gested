@@ -12,6 +12,7 @@ env:
   PROJECT_ID: zentor-cloud-credits-guardrail
   REGION: us-east1
   SERVICE: zentor-backend
+  IMAGE: us-east1-docker.pkg.dev/zentor-cloud-credits-guardrail/zentor-backend/app
   WIF_PROVIDER: projects/201875892373/locations/global/workloadIdentityPools/github-actions-pool/providers/github-provider
   WIF_SA: zentor-github-actions@zentor-cloud-credits-guardrail.iam.gserviceaccount.com
 
@@ -42,7 +43,7 @@ jobs:
     if: vars.DEPLOY_TO_CLOUD_RUN == 'true'
     permissions:
       contents: read
-      id-token: write   # Required for Workload Identity Federation
+      id-token: write
 
     steps:
       - uses: actions/checkout@v4
@@ -55,28 +56,36 @@ jobs:
 
       - uses: google-github-actions/setup-gcloud@v2
 
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker us-east1-docker.pkg.dev --quiet
+
       - name: Build and push Docker image
         run: |
-          gcloud builds submit proyecto-hr/backend \
-            --tag gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }} \
-            --project ${{ env.PROJECT_ID }}
+          docker build -t ${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.IMAGE }}:latest \
+            proyecto-hr/backend
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
 
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.SERVICE }} \
-            --image gcr.io/${{ env.PROJECT_ID }}/${{ env.SERVICE }} \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
             --min-instances 0 \
             --max-instances 3 \
             --memory 512Mi \
+            --port 8080 \
             --set-env-vars="NODE_ENV=production" \
             --project ${{ env.PROJECT_ID }}
 
-      - name: Print service URL
+      - name: Print deployed URL
         run: |
           URL=$(gcloud run services describe ${{ env.SERVICE }} \
             --region ${{ env.REGION }} \
-            --format "value(status.url)")
-          echo "✅ Deployed: $URL"
+            --format "value(status.url)" \
+            --project ${{ env.PROJECT_ID }})
+          echo "✅ Backend live at: $URL"
+          echo "CLOUD_RUN_URL=$URL" >> $GITHUB_ENV
