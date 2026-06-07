@@ -17,6 +17,7 @@ import { sendWelcomeEmail } from "../utils/mailer.js";
 import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
 import { isForbiddenPlatformRoleInput, mapRoleInputToLegacyRoleCode } from "../utils/legacyRoleMapping.js";
 import { slack } from "../utils/slackNotifier.js";
+import { runInBackground } from "../utils/background.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -144,13 +145,13 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
     });
   }
 
-  await logAudit({
+  runInBackground(() => logAudit({
     companyId: company._id,
     userId: req.user.userId,
     accion: "create",
     modulo: "companies",
     detalle: `Empresa creada: ${company.nombre}`,
-  });
+  }), "audit-company-create");
 
   let imported = { rows: 0, employees: 0, users: 0, errors: 0 };
   if (req.file) {
@@ -263,13 +264,13 @@ router.post("/bulk", auth, requireSuperAdmin, permit("manage_companies"), async 
     return res.status(400).json({ mensaje: "Accion masiva no valida" });
   }
 
-  await logAudit({
+  runInBackground(() => logAudit({
     companyId: req.user.companyId,
     userId: req.user.userId,
     accion: "bulk",
     modulo: "companies",
     detalle: `Accion masiva ${action} sobre ${companies.length} empresa(s)`,
-  });
+  }), "audit-company-bulk");
 
   res.json({ mensaje: "Accion masiva aplicada", processed: companies.length });
 });
@@ -289,13 +290,13 @@ router.put("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (r
 
   await company.save();
 
-  await logAudit({
+  runInBackground(() => logAudit({
     companyId: company._id,
     userId: req.user.userId,
     accion: "update",
     modulo: "companies",
     detalle: `Empresa actualizada: ${company.nombre} (${company.activa ? "activa" : "inactiva"})`,
-  });
+  }), "audit-company-update");
 
   res.json({ mensaje: "Empresa actualizada", company });
 });
@@ -320,13 +321,13 @@ router.delete("/:id", auth, requireSuperAdmin, permit("manage_companies"), async
 
   await Company.deleteOne({ _id: company._id });
 
-  await logAudit({
+  runInBackground(() => logAudit({
     companyId: company._id,
     userId: req.user.userId,
     accion: "delete",
     modulo: "companies",
     detalle: `Empresa eliminada: ${company.nombre}`,
-  });
+  }), "audit-company-delete");
 
   res.json({ mensaje: "Empresa eliminada" });
 });

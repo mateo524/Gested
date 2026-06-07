@@ -39,6 +39,7 @@ import webhooksConfigRoutes from "./routes/webhooks-config.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import dripRoutes from "./routes/drip.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
+import { ensureIndexes } from "./utils/ensureIndexes.js";
 import { buildHealthStatus } from "./utils/health.js";
 import { logger } from "./utils/logger.js";
 
@@ -307,6 +308,7 @@ async function start() {
     assertRuntimeConfig();
     await mongoose.connect(process.env.MONGO_URI);
     console.log("MongoDB conectado");
+    await ensureIndexes();
 
     const { credentials } = await ensureInitialAccess();
     if (credentials?.email) {

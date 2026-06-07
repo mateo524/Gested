@@ -7,6 +7,7 @@ import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { logAudit } from "../utils/audit.js";
+import { cacheGetOrFetch, cacheDelete } from "../utils/cache.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { PERMISSION_SEED, PERMISSIONS, ROLE_DEFINITIONS } from "../utils/permissions.js";
 import {
@@ -251,14 +252,20 @@ router.get("/qa/status", auth, permit("manage_roles"), async (req, res) => {
 
 router.get("/", auth, permit("manage_roles"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
-  const roles = await Role.find({ companyId }).lean();
-  const users = await User.find({ companyId, isSuperAdmin: false }).select("roleId").lean();
 
-  const enrichedRoles = roles.map((role) => ({
-    ...role,
-    usersCount: users.filter((user) => String(user.roleId) === String(role._id)).length,
-    descripcion: role.descripcion || roleDescriptions[role.code] || "",
-  }));
+  const enrichedRoles = await cacheGetOrFetch(
+    `roles:${companyId}`,
+    async () => {
+      const roles = await Role.find({ companyId }).lean();
+      const users = await User.find({ companyId, isSuperAdmin: false }).select("roleId").lean();
+      return roles.map((role) => ({
+        ...role,
+        usersCount: users.filter((user) => String(user.roleId) === String(role._id)).length,
+        descripcion: role.descripcion || roleDescriptions[role.code] || "",
+      }));
+    },
+    600 // 10 minutes
+  );
 
   res.json(enrichedRoles);
 });
@@ -300,6 +307,8 @@ router.post("/", auth, permit("manage_roles"), async (req, res) => {
     scope: code ? ROLE_DEFINITIONS.find((item) => item.code === code)?.scope || "company" : "company",
     isSystem: Boolean(code),
   });
+
+  cacheDelete(`roles:${companyId}`);
 
   await logAudit({
     companyId,
@@ -354,6 +363,8 @@ router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
     roleId: role._id,
   });
 
+  cacheDelete(`roles:${String(role.companyId)}`);
+
   await logAudit({
     companyId: role.companyId,
     userId: req.user.userId,
@@ -392,6 +403,8 @@ router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
     return res.status(404).json({ mensaje: "Rol no encontrado" });
   }
 
+  cacheDelete(`roles:${companyId}`);
+
   await logAudit({
     companyId,
     userId: req.user.userId,
@@ -427,6 +440,8 @@ router.post("/sync-defaults", auth, permit("manage_roles"), async (req, res) => 
 
     output.push(updated);
   }
+
+  cacheDelete(`roles:${companyId}`);
 
   await logAudit({
     companyId,

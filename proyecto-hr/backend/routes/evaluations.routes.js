@@ -8,6 +8,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { runInBackground } from "../utils/background.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
@@ -260,14 +261,14 @@ router.post(
       );
     }
 
-    await logAudit({
+    runInBackground(() => logAudit({
       companyId: employee.companyId,
       schoolId: employee.schoolId,
       userId: req.user.userId,
       accion: "create",
       modulo: "evaluations",
       detalle: `Se creo una evaluacion ${req.body.tipo} para ${employee.apellido}, ${employee.nombre}`,
-    });
+    }), "audit-evaluation-create");
 
     emitWebhook(String(employee.companyId), "evaluation.created", {
       evaluationId: String(evaluation._id),
@@ -331,14 +332,14 @@ router.put(
       }
     }
 
-    await logAudit({
+    runInBackground(() => logAudit({
       companyId: evaluation.companyId,
       schoolId: evaluation.schoolId,
       userId: req.user.userId,
       accion: "update",
       modulo: "evaluations",
       detalle: `Se actualizo la evaluacion ${evaluation._id}`,
-    });
+    }), "audit-evaluation-update");
 
     res.json({ mensaje: "Evaluacion actualizada", evaluation });
   }
@@ -370,14 +371,14 @@ router.delete(
     await EvaluationScore.deleteMany({ evaluationId: evaluation._id });
     await Evaluation.deleteOne({ _id: evaluation._id });
 
-    await logAudit({
+    runInBackground(() => logAudit({
       companyId: evaluation.companyId,
       schoolId: evaluation.schoolId,
       userId: req.user.userId,
       accion: "delete",
       modulo: "evaluations",
       detalle: `Se elimino la evaluacion ${evaluation._id}`,
-    });
+    }), "audit-evaluation-delete");
 
     res.json({ mensaje: "Evaluacion eliminada" });
   }

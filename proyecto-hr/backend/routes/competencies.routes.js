@@ -8,6 +8,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { cacheGetOrFetch, cacheDelete } from "../utils/cache.js";
 
 const router = express.Router();
 
@@ -30,6 +31,21 @@ async function assertSchoolInCompany(companyId, schoolId) {
 }
 
 router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_COMPETENCIES), async (req, res) => {
+  const companyId = String(req.scope.companyId || "");
+  const hasFilters = req.query.tipo || req.query.componente || req.query.schoolId || req.query.q?.trim();
+
+  if (!hasFilters && companyId) {
+    const cached = await cacheGetOrFetch(
+      `competencies:${companyId}`,
+      async () => {
+        const filter = buildScopedFilter(req, {});
+        return Competency.find(filter).sort({ nombre: 1 }).lean();
+      },
+      300 // 5 minutes
+    );
+    return res.json(cached);
+  }
+
   const filter = buildScopedFilter(req, {});
 
   if (req.query.tipo) filter.tipo = req.query.tipo;
@@ -81,6 +97,8 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_C
     audienceEmployeeIds: scopedEmployeeIds.map((item) => item._id),
     metadata: req.body.metadata && typeof req.body.metadata === "object" ? req.body.metadata : {},
   });
+
+  cacheDelete(`competencies:${companyId}`);
 
   await logAudit({
     companyId,
@@ -135,6 +153,8 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
 
   await competency.save();
 
+  cacheDelete(`competencies:${String(competency.companyId)}`);
+
   await logAudit({
     companyId: competency.companyId,
     schoolId: competency.schoolId,
@@ -164,6 +184,8 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
   }
 
   await Competency.deleteOne({ _id: competency._id });
+
+  cacheDelete(`competencies:${String(competency.companyId)}`);
 
   await logAudit({
     companyId: competency.companyId,

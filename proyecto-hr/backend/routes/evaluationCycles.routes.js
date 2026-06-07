@@ -8,6 +8,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { runInBackground } from "../utils/background.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
 import { slack } from "../utils/slackNotifier.js";
 import { notifyClientSlack, clientSlack } from "../utils/clientSlack.js";
@@ -113,14 +114,14 @@ router.post(
       fechaFin: dateValidation.end,
     });
 
-    await logAudit({
+    runInBackground(() => logAudit({
       companyId,
       schoolId,
       userId: req.user.userId,
       accion: "create",
       modulo: "evaluation-cycles",
       detalle: `Se creo el ciclo ${cycle.periodo} ${cycle.anio}`,
-    });
+    }), "audit-cycle-create");
 
     if (cycle.estado === "Inicio") {
       emitWebhook(String(companyId), "cycle.started", {
@@ -181,14 +182,14 @@ router.put(
 
     await cycle.save();
 
-    await logAudit({
+    runInBackground(() => logAudit({
       companyId: cycle.companyId,
       schoolId: cycle.schoolId,
       userId: req.user.userId,
       accion: "update",
       modulo: "evaluation-cycles",
       detalle: `Se actualizo el ciclo ${cycle.periodo} ${cycle.anio}`,
-    });
+    }), "audit-cycle-update");
 
     if (cycle.estado === "Inicio") {
       emitWebhook(String(cycle.companyId), "cycle.started", {
@@ -232,14 +233,14 @@ router.delete(
 
     await EvaluationCycle.deleteOne({ _id: cycle._id });
 
-    await logAudit({
+    runInBackground(() => logAudit({
       companyId: cycle.companyId,
       schoolId: cycle.schoolId,
       userId: req.user.userId,
       accion: "delete",
       modulo: "evaluation-cycles",
       detalle: `Se elimino el ciclo ${cycle.periodo} ${cycle.anio}`,
-    });
+    }), "audit-cycle-delete");
 
     res.json({ mensaje: "Ciclo eliminado" });
   }

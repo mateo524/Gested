@@ -15,6 +15,7 @@ import { buildEmployeeScopedFilter } from "../utils/accessControl.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { cacheGetOrFetch, cacheDelete } from "../utils/cache.js";
 
 const router = express.Router();
 const METRIC_RECORD_READ_PERMISSIONS = [
@@ -494,6 +495,30 @@ async function findOperationalRecordOrFail(req, Model, id, notFoundMessage) {
 }
 
 router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_METRICS), async (req, res) => {
+  const companyId = String(req.scope.companyId || "");
+  const hasFilters = req.query.competencyId || req.query.schoolId || req.query.q?.trim();
+
+  if (!hasFilters && companyId) {
+    const cached = await cacheGetOrFetch(
+      `metrics:${companyId}`,
+      async () => {
+        const filter = buildScopedFilter(req, {});
+        const metrics = await Metric.find(filter).sort({ nombre: 1 }).lean();
+        const ids = metrics.map((item) => item._id);
+        const levels = await MetricLevel.find({ metricId: { $in: ids } }).sort({ nivel: 1 }).lean();
+        const levelMap = new Map();
+        levels.forEach((level) => {
+          const key = String(level.metricId);
+          if (!levelMap.has(key)) levelMap.set(key, []);
+          levelMap.get(key).push(level);
+        });
+        return metrics.map((metric) => ({ ...metric, levels: levelMap.get(String(metric._id)) || [] }));
+      },
+      300 // 5 minutes
+    );
+    return res.json(cached);
+  }
+
   const filter = buildScopedFilter(req, {});
 
   if (req.query.competencyId) filter.competencyId = req.query.competencyId;
@@ -737,6 +762,8 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_M
     );
   }
 
+  cacheDelete(`metrics:${companyId}`);
+
   await logAudit({
     companyId,
     schoolId: effectiveSchoolId,
@@ -798,6 +825,8 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
     }
   }
 
+  cacheDelete(`metrics:${String(metric.companyId)}`);
+
   await logAudit({
     companyId: metric.companyId,
     schoolId: metric.schoolId,
@@ -819,6 +848,8 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
 
   await MetricLevel.deleteMany({ metricId: metric._id });
   await Metric.deleteOne({ _id: metric._id });
+
+  cacheDelete(`metrics:${String(metric.companyId)}`);
 
   await logAudit({
     companyId: metric.companyId,
