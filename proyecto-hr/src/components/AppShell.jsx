@@ -366,6 +366,128 @@ function translateNavLabel(key, fallback, t) {
   return t(map[key] || "", fallback);
 }
 
+function formatFeedTime(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 1) return "Ahora";
+  if (diffMins < 60) return `Hace ${diffMins} min`;
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return `Hace ${diffHours} h`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `Hace ${diffDays} d`;
+  return date.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
+}
+
+function FeedBell({ token }) {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [open, setOpen] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const containerRef = useRef(null);
+  useClickOutside(containerRef, () => setOpen(false), open);
+
+  async function fetchFeed() {
+    if (!token) return;
+    try {
+      const data = await apiFetch("/notifications-feed/feed", { token });
+      if (data?.ok) {
+        setNotifications(data.notifications || []);
+        setUnreadCount(data.unreadCount || 0);
+      }
+    } catch {
+      // silently ignore — non-critical feature
+    }
+  }
+
+  useEffect(() => {
+    fetchFeed();
+    const id = setInterval(fetchFeed, 60000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  async function handleMarkAllRead() {
+    if (!token || !unreadCount || marking) return;
+    try {
+      setMarking(true);
+      await apiFetch("/notifications-feed/feed/read", { method: "PATCH", token });
+      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+      setUnreadCount(0);
+    } catch {
+      // silently ignore
+    } finally {
+      setMarking(false);
+    }
+  }
+
+  return (
+    <div ref={containerRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
+        aria-label="Notificaciones de actividad"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+        </svg>
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white">
+            {unreadCount > 9 ? "9+" : unreadCount}
+          </span>
+        ) : null}
+      </button>
+
+      {open ? (
+        <div className="absolute right-0 top-10 z-50 w-80 rounded-2xl border border-white/10 bg-[#0c1e28] shadow-xl">
+          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+            <p className="text-sm font-semibold text-white">Actividad</p>
+            <button
+              type="button"
+              disabled={!unreadCount || marking}
+              onClick={handleMarkAllRead}
+              className="rounded-xl border border-white/10 px-3 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {marking ? "Marcando..." : "Marcar todo como leído"}
+            </button>
+          </div>
+          <div className="max-h-[360px] overflow-y-auto p-2">
+            {notifications.length ? (
+              <div className="space-y-1.5">
+                {notifications.map((n) => (
+                  <div
+                    key={n._id}
+                    className={`rounded-xl border px-3 py-2.5 ${
+                      n.read ? "border-white/10 bg-[#0f1d26]" : "border-[#14b8a6]/25 bg-[#0c2028]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`text-sm font-medium ${n.read ? "text-[#c5d5de]" : "text-white"}`}>{n.title}</p>
+                      {!n.read ? (
+                        <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[#14b8a6]" />
+                      ) : null}
+                    </div>
+                    {n.body ? (
+                      <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">{n.body}</p>
+                    ) : null}
+                    <p className="mt-1.5 text-[11px] text-[#6b8797]">{formatFeedTime(n.createdAt)}</p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="px-3 py-6 text-center text-sm text-[#8ea5b3]">Sin notificaciones</div>
+            )}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export default function AppShell({
   view,
   setView,
@@ -766,6 +888,7 @@ export default function AppShell({
               </div>
 
               <div className="flex items-center justify-end gap-2">
+                <FeedBell token={token} />
                 <NotificationBell
                   announcementSummary={announcementSummary}
                   onMarkRead={handleMarkRead}

@@ -1,4 +1,5 @@
 import express from "express";
+import ExcelJS from "exceljs";
 import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
@@ -764,6 +765,155 @@ router.get(
       return res.status(error.status || 500).json({
         ok: false,
         message: error.message || "No pudimos cargar el detalle del empleado.",
+      });
+    }
+  }
+);
+
+router.get(
+  "/export-excel",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const dataset = await resolveExecutiveDataset(req);
+      const { company, employees, evaluations, selectedCycle } = dataset;
+
+      // Gather evaluation scores for the detail sheet
+      const evaluationIds = evaluations.map((item) => item._id);
+      const [scores, metrics, competencies] = await (async () => {
+        if (!evaluationIds.length) return [[], [], []];
+        const rawScores = await EvaluationScore.find({ evaluationId: { $in: evaluationIds } })
+          .populate("metricId", "nombre competencyId")
+          .lean();
+        const metricIds = rawScores.map((s) => s.metricId?._id || s.metricId).filter(Boolean);
+        const rawMetrics = metricIds.length
+          ? await Metric.find({ _id: { $in: metricIds } }).select("_id nombre competencyId").lean()
+          : [];
+        const competencyIds = rawMetrics.map((m) => m.competencyId).filter(Boolean);
+        const rawCompetencies = competencyIds.length
+          ? await Competency.find({ _id: { $in: competencyIds } }).select("_id nombre").lean()
+          : [];
+        return [rawScores, rawMetrics, rawCompetencies];
+      })();
+
+      const metricMap = new Map(metrics.map((m) => [String(m._id), m]));
+      const competencyMap = new Map(competencies.map((c) => [String(c._id), c.nombre]));
+      const employeeMap = new Map(employees.map((e) => [String(e._id), e]));
+
+      // Build evaluation map keyed by employeeId
+      const evalByEmployee = new Map();
+      for (const ev of evaluations) {
+        const key = String(ev.employeeId);
+        if (!evalByEmployee.has(key)) evalByEmployee.set(key, []);
+        evalByEmployee.get(key).push(ev);
+      }
+
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "Zentor";
+      workbook.created = new Date();
+
+      // ─── Sheet 1: Resumen ─────────────────────────────────────────────────
+      const summarySheet = workbook.addWorksheet("Resumen");
+      summarySheet.columns = [
+        { header: "Empleado", key: "empleado", width: 30 },
+        { header: "Área", key: "area", width: 20 },
+        { header: "Tipo eval.", key: "tipo", width: 16 },
+        { header: "Estado", key: "estado", width: 16 },
+        { header: "Resultado final", key: "resultadoFinal", width: 18 },
+        { header: "# Competencias evaluadas", key: "competencias", width: 26 },
+      ];
+
+      // Style header row
+      const summaryHeaderRow = summarySheet.getRow(1);
+      summaryHeaderRow.font = { bold: true, color: { argb: "FF0F172A" } };
+      summaryHeaderRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF14B8A6" } };
+      summaryHeaderRow.alignment = { vertical: "middle", horizontal: "center" };
+      summaryHeaderRow.height = 20;
+
+      for (const employee of employees) {
+        const evs = evalByEmployee.get(String(employee._id)) || [];
+        if (evs.length === 0) {
+          summarySheet.addRow({
+            empleado: employee.fullName,
+            area: employee.area || "",
+            tipo: "",
+            estado: "Sin evaluaciones",
+            resultadoFinal: "",
+            competencias: 0,
+          });
+        } else {
+          for (const ev of evs) {
+            const evScores = scores.filter((s) => String(s.evaluationId) === String(ev._id));
+            const uniqueCompetencies = new Set(
+              evScores.map((s) => {
+                const metric = metricMap.get(String(s.metricId?._id || s.metricId));
+                return metric?.competencyId ? String(metric.competencyId) : null;
+              }).filter(Boolean)
+            );
+            summarySheet.addRow({
+              empleado: employee.fullName,
+              area: employee.area || "",
+              tipo: ev.tipo || "",
+              estado: ev.estado || "",
+              resultadoFinal: Number(ev.resultadoFinal || 0) > 0 ? Number(ev.resultadoFinal) : "",
+              competencias: uniqueCompetencies.size,
+            });
+          }
+        }
+      }
+
+      summarySheet.autoFilter = { from: "A1", to: "F1" };
+
+      // ─── Sheet 2: Scores detalle ──────────────────────────────────────────
+      const detailSheet = workbook.addWorksheet("Scores detalle");
+      detailSheet.columns = [
+        { header: "Empleado", key: "empleado", width: 30 },
+        { header: "Competencia", key: "competencia", width: 28 },
+        { header: "Nivel (1-5)", key: "nivel", width: 14 },
+        { header: "Comentario", key: "comentario", width: 50 },
+      ];
+
+      const detailHeaderRow = detailSheet.getRow(1);
+      detailHeaderRow.font = { bold: true, color: { argb: "FF0F172A" } };
+      detailHeaderRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF14B8A6" } };
+      detailHeaderRow.alignment = { vertical: "middle", horizontal: "center" };
+      detailHeaderRow.height = 20;
+
+      for (const score of scores) {
+        const ev = evaluations.find((e) => String(e._id) === String(score.evaluationId));
+        const employeeEntry = ev ? employeeMap.get(String(ev.employeeId)) : null;
+        const metric = metricMap.get(String(score.metricId?._id || score.metricId));
+        const competencyName = metric?.competencyId
+          ? competencyMap.get(String(metric.competencyId)) || metric.nombre || ""
+          : metric?.nombre || "";
+
+        detailSheet.addRow({
+          empleado: employeeEntry?.fullName || "",
+          competencia: competencyName,
+          nivel: Number(score.nivel || 0),
+          comentario: score.comentario || "",
+        });
+      }
+
+      detailSheet.autoFilter = { from: "A1", to: "D1" };
+
+      // ─── Send response ────────────────────────────────────────────────────
+      const cyclePart = selectedCycle
+        ? `${selectedCycle.anio || ""}${selectedCycle.periodo ? `-${selectedCycle.periodo}` : ""}`
+        : new Date().toISOString().slice(0, 10);
+      const filename = `zentor-reporte-${cyclePart}.xlsx`;
+
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+
+      await workbook.xlsx.write(res);
+      return res.end();
+    } catch (error) {
+      return res.status(error.status || 500).json({
+        ok: false,
+        message: error.message || "No pudimos generar el archivo Excel.",
       });
     }
   }

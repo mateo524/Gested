@@ -3,6 +3,14 @@ import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { ErrorState, LoadingState } from "../components/AppStates";
 
+const ALL_EVENTS = [
+  { value: "evaluation.created", label: "Evaluación creada" },
+  { value: "evaluation.closed", label: "Evaluación cerrada" },
+  { value: "employee.created", label: "Empleado creado" },
+  { value: "cycle.started", label: "Ciclo iniciado" },
+  { value: "plan.created", label: "Plan de desarrollo creado" },
+];
+
 const defaultSettings = {
   nombreVisible: "",
   logoUrl: "",
@@ -19,12 +27,23 @@ const defaultSettings = {
 };
 
 export default function SettingsPage() {
-  const { token, activeCompany, refreshBranding } = useAuth();
+  const { token, activeCompany, refreshBranding, user } = useAuth();
   const [settings, setSettings] = useState(defaultSettings);
   const [securityStatus, setSecurityStatus] = useState(null);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
   const [securityStatusState, setSecurityStatusState] = useState("loading");
+
+  // Webhooks state
+  const [webhooks, setWebhooks] = useState([]);
+  const [webhooksState, setWebhooksState] = useState("loading"); // loading | ready | error
+  const [webhookForm, setWebhookForm] = useState({ url: "", events: [] });
+  const [webhookMessage, setWebhookMessage] = useState("");
+  const [webhookMessageType, setWebhookMessageType] = useState("info");
+  const [savingWebhook, setSavingWebhook] = useState(false);
+  const [testingWebhookId, setTestingWebhookId] = useState(null);
+
+  const isAdmin = user?.permisos?.includes("manage_settings") || user?.isSuperAdmin;
 
   useEffect(() => {
     apiFetch("/settings", { token })
@@ -56,6 +75,79 @@ export default function SettingsPage() {
         setMessage(error.message);
       });
   }, [token]);
+
+  function loadWebhooks() {
+    if (!isAdmin) return;
+    setWebhooksState("loading");
+    apiFetch("/webhooks-config", { token })
+      .then((data) => {
+        setWebhooks(Array.isArray(data) ? data : []);
+        setWebhooksState("ready");
+      })
+      .catch(() => setWebhooksState("error"));
+  }
+
+  useEffect(() => {
+    loadWebhooks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, isAdmin]);
+
+  async function handleAddWebhook(event) {
+    event.preventDefault();
+    if (!webhookForm.url.startsWith("http")) {
+      setWebhookMessage("La URL debe comenzar con http o https.");
+      setWebhookMessageType("warning");
+      return;
+    }
+    if (!webhookForm.events.length) {
+      setWebhookMessage("Seleccioná al menos un evento.");
+      setWebhookMessageType("warning");
+      return;
+    }
+    try {
+      setSavingWebhook(true);
+      setWebhookMessage("");
+      await apiFetch("/webhooks-config", {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(webhookForm),
+      });
+      setWebhookForm({ url: "", events: [] });
+      setWebhookMessage("Webhook agregado correctamente.");
+      setWebhookMessageType("success");
+      loadWebhooks();
+    } catch (error) {
+      setWebhookMessage(error.message);
+      setWebhookMessageType("error");
+    } finally {
+      setSavingWebhook(false);
+    }
+  }
+
+  async function handleDeleteWebhook(id) {
+    try {
+      await apiFetch(`/webhooks-config/${id}`, { method: "DELETE", token });
+      setWebhooks((prev) => prev.filter((w) => w._id !== id));
+    } catch (error) {
+      setWebhookMessage(error.message);
+      setWebhookMessageType("error");
+    }
+  }
+
+  async function handleTestWebhook(id) {
+    try {
+      setTestingWebhookId(id);
+      const result = await apiFetch(`/webhooks-config/${id}/test`, { method: "POST", token });
+      setWebhookMessage(`Test enviado. Respuesta del servidor: ${result.status ?? "OK"}.`);
+      setWebhookMessageType("success");
+    } catch (error) {
+      setWebhookMessage(`Error al probar: ${error.message}`);
+      setWebhookMessageType("error");
+    } finally {
+      setTestingWebhookId(null);
+    }
+  }
 
   async function save() {
     try {
@@ -170,6 +262,97 @@ export default function SettingsPage() {
           ) : null}
         </div>
       </section>
+
+      {isAdmin ? (
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <h3 className="text-xl font-semibold text-white">Webhooks salientes</h3>
+          <p className="mt-1 text-sm text-[#9fb6c4]">
+            Recibí notificaciones automáticas en tus sistemas externos (Zapier, Make, etc.) cuando ocurran eventos en Zentor.
+          </p>
+
+          <div className="mt-5">
+            {webhooksState === "loading" ? (
+              <LoadingState compact title="Cargando webhooks" description="Un momento..." />
+            ) : webhooksState === "error" ? (
+              <ErrorState compact title="No se pudieron cargar los webhooks" description="Reintentá para ver la configuración." actionLabel="Reintentar" onAction={loadWebhooks} />
+            ) : webhooks.length ? (
+              <div className="mb-5 space-y-3">
+                {webhooks.map((wh) => (
+                  <div key={wh._id} className="flex flex-wrap items-start gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="break-all text-sm font-semibold text-white">{wh.url}</p>
+                      <p className="mt-1 text-xs text-[#9fb6c4]">
+                        {(wh.events || []).join(", ") || "Sin eventos"} · {wh.active ? "Activo" : "Inactivo"}
+                      </p>
+                    </div>
+                    <div className="flex gap-2 shrink-0">
+                      <button
+                        type="button"
+                        disabled={testingWebhookId === wh._id}
+                        onClick={() => handleTestWebhook(wh._id)}
+                        className="rounded-xl border border-white/15 px-3 py-1.5 text-xs font-semibold text-[#c5d5de] transition hover:bg-white/5"
+                      >
+                        {testingWebhookId === wh._id ? "Enviando..." : "Probar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteWebhook(wh._id)}
+                        className="rounded-xl border border-rose-300/40 px-3 py-1.5 text-xs font-semibold text-rose-200"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="mb-4 text-sm text-[#9fb6c4]">No hay webhooks configurados.</p>
+            )}
+
+            <form onSubmit={handleAddWebhook} className="space-y-3 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+              <p className="text-sm font-semibold text-white">Agregar webhook</p>
+              <input
+                className="w-full rounded-2xl border border-white/15 bg-[#122530] px-4 py-3 text-white"
+                placeholder="https://hooks.zapier.com/..."
+                value={webhookForm.url}
+                onChange={(e) => setWebhookForm((prev) => ({ ...prev, url: e.target.value }))}
+              />
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {ALL_EVENTS.map((ev) => (
+                  <label key={ev.value} className="flex items-center gap-2 rounded-xl border border-white/10 bg-[#122530] px-3 py-2 text-xs text-[#c5d5de]">
+                    <input
+                      type="checkbox"
+                      checked={webhookForm.events.includes(ev.value)}
+                      onChange={(e) =>
+                        setWebhookForm((prev) => ({
+                          ...prev,
+                          events: e.target.checked
+                            ? [...prev.events, ev.value]
+                            : prev.events.filter((x) => x !== ev.value),
+                        }))
+                      }
+                    />
+                    {ev.label}
+                  </label>
+                ))}
+              </div>
+              <button
+                type="submit"
+                disabled={savingWebhook}
+                className="rounded-2xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]"
+              >
+                {savingWebhook ? "Guardando..." : "Agregar webhook"}
+              </button>
+            </form>
+
+            {webhookMessage ? (
+              <p className={`mt-3 ${webhookMessageType === "error" ? "pf-alert-error" : webhookMessageType === "success" ? "pf-alert-success" : "pf-alert-warning"}`}>
+                {webhookMessage}
+              </p>
+            ) : null}
+          </div>
+        </section>
+      ) : null}
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <h3 className="text-xl font-semibold text-white">Seguridad de accesos</h3>

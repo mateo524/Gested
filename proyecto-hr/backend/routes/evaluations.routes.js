@@ -8,6 +8,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { emitWebhook } from "../utils/webhookEmitter.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
 const router = express.Router();
@@ -266,6 +267,13 @@ router.post(
       accion: "create",
       modulo: "evaluations",
       detalle: `Se creo una evaluacion ${req.body.tipo} para ${employee.apellido}, ${employee.nombre}`,
+    });
+
+    emitWebhook(String(employee.companyId), "evaluation.created", {
+      evaluationId: String(evaluation._id),
+      employeeId: String(employee._id),
+      tipo: evaluation.tipo,
+      estado: evaluation.estado,
     });
 
     res.status(201).json({ mensaje: "Evaluacion creada", evaluation });

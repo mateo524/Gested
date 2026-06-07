@@ -6,6 +6,64 @@ import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import CollapsibleList from "../components/CollapsibleList";
 import ConfirmDialog from "../components/ConfirmDialog";
 
+const TEMPLATES = {
+  logistica: {
+    label: "Logística y transporte",
+    icon: "🚛",
+    items: [
+      { nombre: "Gestión de rutas", descripcion: "Planifica y optimiza rutas de distribución" },
+      { nombre: "Seguridad operacional", descripcion: "Cumplimiento de normas de seguridad vial y de carga" },
+      { nombre: "Orientación al cliente", descripcion: "Atención y resolución de problemas con clientes" },
+      { nombre: "Trabajo en equipo", descripcion: "Colaboración en operaciones de depósito y distribución" },
+      { nombre: "Gestión del tiempo", descripcion: "Cumplimiento de ventanas de entrega" },
+    ],
+  },
+  tech: {
+    label: "Tecnología / IT",
+    icon: "💻",
+    items: [
+      { nombre: "Calidad de código", descripcion: "Escribe código mantenible, testeable y documentado" },
+      { nombre: "Resolución de problemas", descripcion: "Diagnóstico y solución efectiva de incidentes técnicos" },
+      { nombre: "Comunicación técnica", descripcion: "Explica conceptos complejos a audiencias no técnicas" },
+      { nombre: "Aprendizaje continuo", descripcion: "Actualización proactiva en tecnologías relevantes" },
+      { nombre: "Colaboración", descripcion: "Trabajo efectivo en equipo ágil o multidisciplinario" },
+    ],
+  },
+  salud: {
+    label: "Salud y cuidado",
+    icon: "🏥",
+    items: [
+      { nombre: "Atención centrada en el paciente", descripcion: "Trato humanizado y escucha activa" },
+      { nombre: "Protocolos clínicos", descripcion: "Cumplimiento de guías y protocolos establecidos" },
+      { nombre: "Trabajo bajo presión", descripcion: "Mantiene desempeño en situaciones de urgencia" },
+      { nombre: "Comunicación asertiva", descripcion: "Comunicación clara con pacientes, familias y equipo" },
+      { nombre: "Responsabilidad", descripcion: "Gestión correcta de medicamentos y procedimientos" },
+    ],
+  },
+  retail: {
+    label: "Retail / Comercio",
+    icon: "🛍️",
+    items: [
+      { nombre: "Atención al cliente", descripcion: "Servicio proactivo y resolución de quejas" },
+      { nombre: "Conocimiento del producto", descripcion: "Dominio del catálogo y beneficios de productos" },
+      { nombre: "Cumplimiento de metas", descripcion: "Alcance de objetivos de venta individuales" },
+      { nombre: "Orden y presentación", descripcion: "Mantenimiento del espacio de trabajo y exhibición" },
+      { nombre: "Trabajo en equipo", descripcion: "Colaboración con el equipo de tienda" },
+    ],
+  },
+  rrhh: {
+    label: "Recursos Humanos",
+    icon: "👥",
+    items: [
+      { nombre: "Gestión del talento", descripcion: "Identificación y desarrollo de potencial en el equipo" },
+      { nombre: "Comunicación organizacional", descripcion: "Transmisión efectiva de políticas y cultura" },
+      { nombre: "Resolución de conflictos", descripcion: "Mediación y solución de situaciones interpersonales" },
+      { nombre: "Planificación", descripcion: "Organización de procesos de RRHH y calendarios" },
+      { nombre: "Confidencialidad", descripcion: "Manejo responsable de información sensible" },
+    ],
+  },
+};
+
 const emptyForm = {
   nombre: "",
   descripcion: "",
@@ -50,6 +108,8 @@ export default function CompetenciesPage() {
   const [confirmState, setConfirmState] = useState({ open: false, competency: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const listRef = useRef(null);
+  const [templateModal, setTemplateModal] = useState({ open: false, selected: null });
+  const [templateProgress, setTemplateProgress] = useState(null); // null | { done, total }
 
   const departmentOptions = useMemo(() => {
     return [...new Set(employees.map((item) => String(item.area || "").trim()).filter(Boolean))].sort();
@@ -188,6 +248,41 @@ export default function CompetenciesPage() {
     }
   }
 
+  async function handleCreateFromTemplate() {
+    const template = TEMPLATES[templateModal.selected];
+    if (!template) return;
+    setTemplateProgress({ done: 0, total: template.items.length });
+    let created = 0;
+    for (const item of template.items) {
+      try {
+        await apiFetch("/competencies", {
+          method: "POST",
+          token,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            nombre: item.nombre,
+            descripcion: item.descripcion,
+            tipo: "TRANSVERSAL",
+            componente: "C",
+            audienceType: "all",
+            audienceDepartmentCodes: [],
+            audienceEmployeeIds: [],
+            metadata: { docenteCategory: "", transversalCategory: "", descriptores: "" },
+          }),
+        });
+      } catch {
+        // continue on individual errors
+      }
+      created += 1;
+      setTemplateProgress({ done: created, total: template.items.length });
+    }
+    setTemplateModal({ open: false, selected: null });
+    setTemplateProgress(null);
+    setMessageType("success");
+    setMessage(`Se crearon ${created} competencias del template "${template.label}".`);
+    await loadData();
+  }
+
   function toggleEmployeeSelection(employeeId) {
     setForm((current) => {
       const nextIds = current.audienceEmployeeIds.includes(employeeId)
@@ -204,6 +299,13 @@ export default function CompetenciesPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Modelo de desempeño</p>
           <h2 className="mt-1 text-xl font-semibold text-white">Competencias</h2>
         </div>
+        <button
+          type="button"
+          onClick={() => setTemplateModal({ open: true, selected: null })}
+          className="rounded-2xl border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-5 py-2.5 text-sm font-semibold text-[#14b8a6] transition hover:bg-[#14b8a6]/20"
+        >
+          Templates de industria
+        </button>
       </div>
 
       <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
@@ -482,6 +584,78 @@ export default function CompetenciesPage() {
         >
           {message}
         </p>
+      ) : null}
+
+      {templateModal.open ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-lg rounded-[2rem] border border-white/10 bg-[#0f1f28] p-6 shadow-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-white">Templates de industria</h3>
+              <button
+                type="button"
+                onClick={() => { setTemplateModal({ open: false, selected: null }); setTemplateProgress(null); }}
+                className="rounded-xl border border-white/15 px-3 py-1.5 text-sm text-[#9fb6c4] hover:bg-white/5"
+              >
+                Cerrar
+              </button>
+            </div>
+
+            {!templateModal.selected ? (
+              <>
+                <p className="mb-4 text-sm text-[#9fb6c4]">
+                  Elegí un template para pre-cargar un conjunto de competencias típicas de tu industria.
+                </p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {Object.entries(TEMPLATES).map(([key, tpl]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setTemplateModal((prev) => ({ ...prev, selected: key }))}
+                      className="flex flex-col items-center gap-2 rounded-2xl border border-white/10 bg-[#122530] p-4 text-center transition hover:border-[#14b8a6]/40 hover:bg-[#14b8a6]/10"
+                    >
+                      <span className="text-2xl">{tpl.icon}</span>
+                      <span className="text-xs font-semibold text-[#d6e2e8]">{tpl.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setTemplateModal((prev) => ({ ...prev, selected: null }))}
+                  className="mb-4 text-sm text-[#14b8a6] hover:underline"
+                >
+                  ← Volver a templates
+                </button>
+                <p className="mb-3 text-sm font-semibold text-white">
+                  {TEMPLATES[templateModal.selected].icon} {TEMPLATES[templateModal.selected].label}
+                </p>
+                <div className="mb-5 space-y-2">
+                  {TEMPLATES[templateModal.selected].items.map((item) => (
+                    <div key={item.nombre} className="rounded-xl border border-white/10 bg-[#122530] px-4 py-3">
+                      <p className="text-sm font-semibold text-white">{item.nombre}</p>
+                      <p className="mt-0.5 text-xs text-[#9fb6c4]">{item.descripcion}</p>
+                    </div>
+                  ))}
+                </div>
+                {templateProgress ? (
+                  <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm text-[#14b8a6]">
+                    Creando {templateProgress.done}/{templateProgress.total}...
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleCreateFromTemplate}
+                    className="w-full rounded-2xl bg-[#14b8a6] py-3 font-semibold text-[#0f172a] transition hover:bg-[#0d9488]"
+                  >
+                    Crear {TEMPLATES[templateModal.selected].items.length} competencias
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       ) : null}
 
       <ConfirmDialog

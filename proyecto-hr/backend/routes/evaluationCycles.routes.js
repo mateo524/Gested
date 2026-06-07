@@ -6,6 +6,7 @@ import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
+import { emitWebhook } from "../utils/webhookEmitter.js";
 
 const router = express.Router();
 
@@ -117,6 +118,15 @@ router.post(
       detalle: `Se creo el ciclo ${cycle.periodo} ${cycle.anio}`,
     });
 
+    if (cycle.estado === "Inicio") {
+      emitWebhook(String(companyId), "cycle.started", {
+        cycleId: String(cycle._id),
+        anio: cycle.anio,
+        periodo: cycle.periodo,
+        estado: cycle.estado,
+      });
+    }
+
     res.status(201).json({ mensaje: "Ciclo creado", cycle });
   }
 );
@@ -160,6 +170,15 @@ router.put(
       modulo: "evaluation-cycles",
       detalle: `Se actualizo el ciclo ${cycle.periodo} ${cycle.anio}`,
     });
+
+    if (cycle.estado === "Inicio") {
+      emitWebhook(String(cycle.companyId), "cycle.started", {
+        cycleId: String(cycle._id),
+        anio: cycle.anio,
+        periodo: cycle.periodo,
+        estado: cycle.estado,
+      });
+    }
 
     res.json({ mensaje: "Ciclo actualizado", cycle });
   }

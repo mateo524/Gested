@@ -12,7 +12,7 @@ import {
 import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiUrl } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
 import CollapsibleList from "../components/CollapsibleList";
 
@@ -705,6 +705,34 @@ export default function ExecutiveReportPage() {
 
   const actionPrioritySummary = useMemo(() => buildGeneralActionSummary(overviewActions), [overviewActions]);
 
+  async function handleExportExcel() {
+    try {
+      const params = new URLSearchParams();
+      if (filters.cycleId) params.set("cycleId", filters.cycleId);
+      const url = `/reports/export-excel${params.toString() ? `?${params.toString()}` : ""}`;
+      const response = await fetch(`${apiUrl}${url}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(localStorage.getItem("active_company_id")
+            ? { "X-Company-Id": localStorage.getItem("active_company_id") }
+            : {}),
+        },
+      });
+      if (!response.ok) throw new Error("No se pudo generar el Excel.");
+      const blob = await response.blob();
+      const a = document.createElement("a");
+      const today = new Date().toISOString().slice(0, 10);
+      a.href = URL.createObjectURL(blob);
+      a.download = `zentor-reporte-${today}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(a.href);
+    } catch {
+      // silently ignore — user will see no download
+    }
+  }
+
   function handlePrintPDF() {
     if (!overview) return;
     const orgName = user?.companyName || "";
@@ -1051,17 +1079,30 @@ export default function ExecutiveReportPage() {
               title="Resumen ejecutivo"
               subtitle={`Síntesis generada a partir de los datos del período visible.`}
               actions={
-                <button
-                  type="button"
-                  onClick={handlePrintPDF}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488]"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
-                    <path d="M12 4v10M8 10l4 4 4-4" />
-                    <path d="M4 20h16" />
-                  </svg>
-                  Exportar PDF
-                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleExportExcel}
+                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
+                      <rect x="3" y="3" width="18" height="18" rx="2.5" />
+                      <path d="M8 8l3 4 3-4M8 16l3-4 3 4" />
+                    </svg>
+                    Exportar Excel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handlePrintPDF}
+                    className="inline-flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488]"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
+                      <path d="M12 4v10M8 10l4 4 4-4" />
+                      <path d="M4 20h16" />
+                    </svg>
+                    Exportar PDF
+                  </button>
+                </div>
               }
             >
               <div className="space-y-2">

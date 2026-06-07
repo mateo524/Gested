@@ -33,9 +33,12 @@ import reportsRoutes from "./routes/reports.routes.js";
 import onboardingRoutes from "./routes/onboarding.routes.js";
 import linkedinRoutes from "./routes/linkedin.routes.js";
 import notificationsRoutes from "./routes/notifications.routes.js";
+import notificationsFeedRoutes from "./routes/notifications-feed.routes.js";
 import calendlyRoutes from "./routes/calendly.routes.js";
+import webhooksConfigRoutes from "./routes/webhooks-config.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { buildHealthStatus } from "./utils/health.js";
+import { logger } from "./utils/logger.js";
 
 const app = express();
 app.set("trust proxy", 1);
@@ -213,7 +216,25 @@ app.use("/reports", reportsRoutes);
 app.use("/onboarding", onboardingRoutes);
 app.use("/api/linkedin", linkedinRoutes);
 app.use("/notifications", notificationsRoutes);
+app.use("/notifications-feed", notificationsFeedRoutes);
 app.use("/webhooks", calendlyRoutes);
+app.use("/webhooks-config", webhooksConfigRoutes);
+
+// Request logging — emits one structured log line per completed request.
+// Skips /health to avoid noise in Cloud Logging dashboards.
+app.use((req, res, next) => {
+  if (req.path === "/health") return next();
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    logger.info("request", {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+  next();
+});
 
 app.get("/health", (_req, res) => {
   const payload = buildHealthStatus("zentor-backend", {
@@ -232,7 +253,7 @@ app.use((err, _req, res, _next) => {
   const status = err.status || err.statusCode || 500;
 
   if (status >= 500) {
-    console.error("Unhandled error:", err);
+    logger.error("Unhandled error", { message: err.message, stack: err.stack, status });
   }
 
   if (status >= 500 && process.env.NODE_ENV === "production") {
