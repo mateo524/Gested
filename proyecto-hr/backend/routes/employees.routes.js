@@ -73,9 +73,14 @@ router.get(
 
     if (isManagerScope(req.scope)) {
       const teamIds = await getScopedEmployeeIds(req.scope);
-      if (teamIds && teamIds.length) {
-        filter._id = { $in: teamIds };
+      const ids = teamIds || [];
+      // ?includeSelf=true → include the manager's own employee record
+      if (req.query.includeSelf === "true" && req.scope.employeeId) {
+        const selfId = req.scope.employeeId;
+        const alreadyIncluded = ids.some((id) => String(id) === String(selfId));
+        if (!alreadyIncluded) ids.push(selfId);
       }
+      if (ids.length) filter._id = { $in: ids };
     }
 
     if (isEmployeeScope(req.scope)) {

@@ -93,10 +93,19 @@ async function validateEvaluationCreation(req) {
   }
 
   if (isManagerScope(req.scope)) {
-    const teamIds = await getScopedEmployeeIds(req.scope);
-    const allowed = teamIds.some((id) => String(id) === String(employee._id));
-    if (!allowed || req.body.tipo !== "JEFATURA") {
-      return { error: { status: 403, mensaje: "Solo puedes evaluar a tu equipo en modalidad jefatura" } };
+    const isSelf = req.scope.employeeId && String(req.scope.employeeId) === String(employee._id);
+    if (isSelf) {
+      // Manager evaluating themselves → must be AUTOEVALUACION
+      if (req.body.tipo !== "AUTOEVALUACION") {
+        return { error: { status: 403, mensaje: "La autoevaluación debe ser de tipo AUTOEVALUACION" } };
+      }
+    } else {
+      // Manager evaluating a team member → must be JEFATURA and employee must be in their team
+      const teamIds = await getScopedEmployeeIds(req.scope);
+      const allowed = teamIds.some((id) => String(id) === String(employee._id));
+      if (!allowed || req.body.tipo !== "JEFATURA") {
+        return { error: { status: 403, mensaje: "Solo puedes evaluar a tu equipo en modalidad jefatura" } };
+      }
     }
   }
 
