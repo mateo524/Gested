@@ -30,7 +30,6 @@ const loadProfilePage = () => import("./pages/ProfilePage");
 const loadUsageAnalyticsPage = () => import("./pages/UsageAnalyticsPage");
 const loadOrgChartPage = () => import("./pages/OrgChartPage");
 const loadCalibracionPage = () => import("./pages/CalibracionPage");
-const loadPulsePage = () => import("./pages/PulsePage");
 
 const DashboardPage = lazy(loadDashboardPage);
 const OrganizationsPage = lazy(loadOrganizationsPage);
@@ -52,7 +51,6 @@ const ProfilePage = lazy(loadProfilePage);
 const UsageAnalyticsPage = lazy(loadUsageAnalyticsPage);
 const OrgChartPage = lazy(loadOrgChartPage);
 const CalibracionPage = lazy(loadCalibracionPage);
-const PulsePage = lazy(loadPulsePage);
 
 function ViewLoader() {
   return (
@@ -162,7 +160,6 @@ function AppContent() {
         hasPermission("manage_evaluations") || hasPermission("view_reports")
           ? "calibracion"
           : null,
-        user ? "pulse" : null,
       ].filter(Boolean),
     [hasPermission, user]
   );
@@ -296,8 +293,7 @@ function AppContent() {
           {view === "settings" && <SettingsPage />}
           {view === "organigrama" && <OrgChartPage />}
           {view === "calibracion" && <CalibracionPage />}
-          {view === "pulse" && <PulsePage />}
-          {!["dashboard","novedades","perfil","organizaciones","empleados","organigrama","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics","usuarios","roles","settings","calibracion","pulse"].includes(view) && (
+          {!["dashboard","novedades","perfil","organizaciones","empleados","organigrama","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics","usuarios","roles","settings","calibracion"].includes(view) && (
             <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28] text-3xl">🧭</div>
               <p className="text-lg font-semibold text-white">Vista no encontrada</p>

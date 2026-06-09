@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { apiUrl } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
@@ -8,10 +8,7 @@ import useClickOutside from "../hooks/useClickOutside";
 
 function formatAnnouncementTime(value) {
   if (!value) return "";
-  return new Date(value).toLocaleString("es-AR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
+  return new Date(value).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 }
 
 function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onViewAll, onOpenAnnouncement, t }) {
@@ -24,145 +21,81 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
 
   async function handleMarkRead(item) {
     if (item.isRead || busyId) return;
-    try {
-      setBusyId(item._id);
-      await onMarkRead?.(item);
-    } finally {
-      setBusyId("");
-    }
+    try { setBusyId(item._id); await onMarkRead?.(item); } finally { setBusyId(""); }
   }
 
   async function handleMarkAllRead() {
     if (!unreadCount || markingAll) return;
-    try {
-      setMarkingAll(true);
-      await onMarkAllRead?.();
-    } finally {
-      setMarkingAll(false);
-    }
+    try { setMarkingAll(true); await onMarkAllRead?.(); } finally { setMarkingAll(false); }
   }
 
   return (
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
-        aria-label={t("topbar.news", "Novedades")}
+        onClick={() => setOpen(v => !v)}
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
+        aria-label={t("topbar.notifications", "Novedades")}
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
           <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5" />
           <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
         </svg>
         {unreadCount ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-[#14b8a6] px-1.5 text-[11px] font-semibold text-white">
-            {unreadCount}
-          </span>
+          <span className="absolute -right-1 -top-1 rounded-full bg-[#14b8a6] px-1 text-[10px] font-semibold text-white">{unreadCount}</span>
         ) : null}
       </button>
-
       {open ? (
-        <div className="absolute right-0 z-30 mt-3 w-[24rem] rounded-3xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
-          <div className="flex items-center justify-between gap-3 px-2 pb-2">
+        <div className="absolute right-0 z-30 mt-3 w-[22rem] rounded-2xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+          <div className="flex items-center justify-between gap-3 px-1 pb-2">
             <div>
-              <p className="text-sm font-semibold text-white">{t("topbar.news", "Novedades")}</p>
-              <span className="text-xs text-[#89a3b1]">
-                {unreadCount ? `${unreadCount} nuevas` : t("topbar.upToDate", "Al día")}
-              </span>
+              <p className="text-sm font-semibold text-white">{t("nav.news", "Novedades")}</p>
+              <span className="text-xs text-[#89a3b1]">{unreadCount ? `${unreadCount} nuevas` : t("topbar.upToDate", "Al día")}</span>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                type="button"
-                disabled={!unreadCount || markingAll}
-                onClick={handleMarkAllRead}
-                className="rounded-2xl border border-white/10 px-3 py-1.5 text-xs text-[#c7d5dc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-              >
+              <button type="button" disabled={!unreadCount || markingAll} onClick={handleMarkAllRead}
+                className="rounded-xl border border-white/10 px-2.5 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50">
                 {markingAll ? "Marcando..." : "Marcar todas"}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onViewAll?.();
-                  setOpen(false);
-                }}
-                className="rounded-2xl bg-[#14b8a6] px-3 py-1.5 text-xs font-medium text-[#0f172a] transition hover:bg-[#0d9488]"
-              >
+              <button type="button" onClick={() => { onViewAll?.(); setOpen(false); }}
+                className="rounded-xl bg-[#14b8a6] px-2.5 py-1 text-xs font-medium text-[#0f172a] transition hover:bg-[#0d9488]">
                 Ver todas
               </button>
             </div>
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {announcementSummary?.latest?.length ? (
-              announcementSummary.latest.map((item) => (
-                <div
-                  key={item._id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => {
-                    onOpenAnnouncement?.(item);
-                    setOpen(false);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      onOpenAnnouncement?.(item);
-                      setOpen(false);
-                    }
-                  }}
-                  className={`block w-full rounded-2xl border px-3 py-3 text-left ${
-                    item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#14b8a6]/30 bg-[#0d1e22]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
+              announcementSummary.latest.map(item => (
+                <div key={item._id} role="button" tabIndex={0}
+                  onClick={() => { onOpenAnnouncement?.(item); setOpen(false); }}
+                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenAnnouncement?.(item); setOpen(false); } }}
+                  className={`block w-full rounded-xl border px-3 py-2.5 text-left ${item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#14b8a6]/30 bg-[#0d1e22]"}`}>
+                  <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-medium text-white">{item.title || item.titulo}</p>
-                        {!item.isRead ? (
-                          <span className="rounded-full bg-[#14b8a6] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-white">
-                            Nueva
-                          </span>
-                        ) : null}
+                        {!item.isRead ? <span className="rounded-full bg-[#14b8a6] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white">Nueva</span> : null}
                       </div>
-                      <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">{item.body || item.cuerpo}</p>
+                      <p className="mt-0.5 text-xs leading-relaxed text-[#8ea5b3]">{item.body || item.cuerpo}</p>
                     </div>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                        item.type === "warning"
-                          ? "bg-amber-500/15 text-amber-200"
-                          : item.type === "success"
-                            ? "bg-emerald-500/15 text-emerald-200"
-                            : item.type === "update"
-                              ? "bg-violet-500/15 text-violet-200"
-                              : "bg-white/10 text-[#c7d5dc]"
-                      }`}
-                    >
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${item.type === "warning" ? "bg-amber-500/15 text-amber-200" : item.type === "success" ? "bg-emerald-500/15 text-emerald-200" : item.type === "update" ? "bg-violet-500/15 text-violet-200" : "bg-white/10 text-[#c7d5dc]"}`}>
                       {item.type || "info"}
                     </span>
                   </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <span className="text-[11px] text-[#7f99a8]">{formatAnnouncementTime(item.createdAt)}</span>
+                  <div className="mt-2 flex items-center justify-between gap-2">
+                    <span className="text-[10px] text-[#7f99a8]">{formatAnnouncementTime(item.createdAt)}</span>
                     {!item.isRead ? (
-                      <button
-                        type="button"
-                        disabled={busyId === item._id}
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleMarkRead(item);
-                        }}
-                        className="rounded-2xl border border-[#14b8a6]/30 px-3 py-1.5 text-xs font-medium text-[#ccfbf1] transition hover:bg-[#0d2826] disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        {busyId === item._id ? "Marcando..." : "Marcar como vista"}
+                      <button type="button" disabled={busyId === item._id}
+                        onClick={e => { e.stopPropagation(); handleMarkRead(item); }}
+                        className="rounded-lg border border-[#14b8a6]/30 px-2.5 py-1 text-[10px] font-medium text-[#ccfbf1] transition hover:bg-[#0d2826] disabled:cursor-not-allowed disabled:opacity-60">
+                        {busyId === item._id ? "Marcando..." : "Marcar vista"}
                       </button>
-                    ) : (
-                      <span className="text-[11px] text-[#7f99a8]">Vista</span>
-                    )}
+                    ) : <span className="text-[10px] text-[#7f99a8]">Vista</span>}
                   </div>
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-4 text-sm text-[#8ea5b3]">
-                No hay novedades nuevas.
-              </div>
+              <div className="rounded-xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-sm text-[#8ea5b3]">No hay novedades nuevas.</div>
             )}
           </div>
         </div>
@@ -179,26 +112,16 @@ function LanguageMenu({ language, setLanguage, t }) {
 
   return (
     <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm font-medium text-white transition hover:bg-[#172c39]"
-        aria-label={t("common.language", "Idioma")}
-      >
+      <button type="button" onClick={() => setOpen(v => !v)}
+        className="rounded-xl border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-xs font-semibold text-white transition hover:bg-[#172c39]"
+        aria-label={t("common.language", "Idioma")}>
         {current}
       </button>
       {open ? (
-        <div className="absolute right-0 z-30 mt-3 w-44 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
-          {[
-            { code: "es", label: "Español" },
-            { code: "en", label: "English (US)" },
-          ].map((lang) => (
-            <button
-              key={lang.code}
-              type="button"
-              onClick={() => { setLanguage(lang.code); setOpen(false); }}
-              className={`flex w-full items-center justify-between rounded-2xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/5 ${language === lang.code ? "bg-[#122f55]" : ""}`}
-            >
+        <div className="absolute right-0 z-30 mt-2 w-40 rounded-2xl border border-white/10 bg-[#12222d] p-1.5 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+          {[{ code: "es", label: "Español" }, { code: "en", label: "English (US)" }].map(lang => (
+            <button key={lang.code} type="button" onClick={() => { setLanguage(lang.code); setOpen(false); }}
+              className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/5 ${language === lang.code ? "bg-[#122f55]" : ""}`}>
               <span>{lang.label}</span>
               {language === lang.code ? <span className="h-2 w-2 rounded-full bg-[#14b8a6]" /> : null}
             </button>
@@ -211,20 +134,13 @@ function LanguageMenu({ language, setLanguage, t }) {
 
 function SearchResultItem({ item, onSelect, focused }) {
   return (
-    <button
-      type="button"
-      onClick={() => onSelect(item)}
-      className={`flex w-full items-start justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition ${
-        focused ? "bg-[#14b8a6]/10 ring-1 ring-[#14b8a6]/30" : "hover:bg-white/5"
-      }`}
-    >
+    <button type="button" onClick={() => onSelect(item)}
+      className={`flex w-full items-start justify-between gap-3 rounded-xl px-3 py-2 text-left transition ${focused ? "bg-[#14b8a6]/10 ring-1 ring-[#14b8a6]/30" : "hover:bg-white/5"}`}>
       <div className="min-w-0">
         <p className={`truncate text-sm font-semibold ${focused ? "text-[#14b8a6]" : "text-white"}`}>{item.label}</p>
         <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.detail}</p>
       </div>
-      <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
-        {item.group}
-      </span>
+      <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2 py-0.5 text-[10px] text-[#c7d5dc]">{item.group}</span>
     </button>
   );
 }
@@ -235,335 +151,56 @@ function getUserDisplayName(user) {
 
 function getUserInitials(user) {
   const parts = getUserDisplayName(user).split(/\s+/).filter(Boolean);
-  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() || "").join("") || "U";
+  return parts.slice(0, 2).map(p => p[0]?.toUpperCase() || "").join("") || "U";
 }
 
-function AppIcon({ name, active }) {
-  const className = `h-5 w-5 ${active ? "text-white" : "text-[#8ea5b3]"}`;
+function AppIcon({ name, active, size = "md" }) {
+  const sz = size === "sm" ? "h-4 w-4" : "h-5 w-5";
+  const className = `${sz} ${active ? "text-white" : "text-[#8ea5b3]"}`;
   switch (name) {
-    case "inicio":
-    case "dashboard":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M3 10.5L12 3l9 7.5" />
-          <path d="M5.5 9.5V20h13V9.5" />
-        </svg>
-      );
-    case "personas":
-    case "empleados":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" />
-          <path d="M16 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
-          <path d="M3.5 20a5.5 5.5 0 0 1 9 0" />
-          <path d="M13 20a4.5 4.5 0 0 1 7.5-2.8" />
-        </svg>
-      );
+    case "inicio": case "dashboard":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M3 10.5L12 3l9 7.5"/><path d="M5.5 9.5V20h13V9.5"/></svg>;
+    case "personas": case "empleados":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M16 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"/><path d="M3.5 20a5.5 5.5 0 0 1 9 0"/><path d="M13 20a4.5 4.5 0 0 1 7.5-2.8"/></svg>;
     case "usuarios":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z" />
-          <path d="M4 20a8 8 0 0 1 16 0" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/><path d="M4 20a8 8 0 0 1 16 0"/></svg>;
+    case "roles": case "accesos":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
     case "ciclos":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
-          <path d="M7 3v4M17 3v4M3.5 10h17" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M7 3v4M17 3v4M3.5 10h17"/></svg>;
     case "evaluaciones":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M7 4.5h10" />
-          <path d="M7 8.5h10" />
-          <path d="M7 12.5h5" />
-          <rect x="4" y="3" width="16" height="18" rx="2.5" />
-          <path d="M14.5 16.5l1.7 1.7 3.3-4" />
-        </svg>
-      );
-    case "competencias":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7l7-4z" />
-          <path d="M9 12l2 2 4-4" />
-        </svg>
-      );
-    case "objetivos":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M7 4.5h10"/><path d="M7 8.5h10"/><path d="M7 12.5h5"/><rect x="4" y="3" width="16" height="18" rx="2.5"/><path d="M14.5 16.5l1.7 1.7 3.3-4"/></svg>;
+    case "competencias": case "skills":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M12 3l7 4v5c0 5-3 7.5-7 9-4-1.5-7-4-7-9V7l7-4z"/><path d="M9 12l2 2 4-4"/></svg>;
     case "metricas":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M12 12m-8 0a8 8 0 1 0 16 0 8 8 0 1 0-16 0" />
-          <path d="M12 12l5-5" />
-          <path d="M12 12l-3 1" />
-          <path d="M17 7h2v2" />
-        </svg>
-      );
-    case "desarrollo":
-    case "planes":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M8 16l-2 5" />
-          <path d="M16 16l2 5" />
-          <path d="M12 3l6 6-6 6-6-6 6-6z" />
-        </svg>
-      );
-    case "reportes":
-    case "reporte-ejecutivo":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M5 20V8" />
-          <path d="M12 20V4" />
-          <path d="M19 20v-6" />
-        </svg>
-      );
-    case "importacion":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M12 12m-8 0a8 8 0 1 0 16 0 8 8 0 1 0-16 0"/><path d="M12 12l5-5"/><path d="M12 12l-3 1"/><path d="M17 7h2v2"/></svg>;
+    case "planes": case "desarrollo":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M8 16l-2 5"/><path d="M16 16l2 5"/><path d="M12 3l6 6-6 6-6-6 6-6z"/></svg>;
+    case "reporte-ejecutivo": case "reportes":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M5 20V8"/><path d="M12 20V4"/><path d="M19 20v-6"/></svg>;
     case "carga-masiva":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M12 4v10" />
-          <path d="M8 10l4 4 4-4" />
-          <path d="M4 20h16" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M4 20h16"/></svg>;
     case "novedades":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M6 5h12" />
-          <path d="M6 10h12" />
-          <path d="M6 15h8" />
-          <rect x="4" y="3" width="16" height="18" rx="2.5" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M6 5h12"/><path d="M6 10h12"/><path d="M6 15h8"/><rect x="4" y="3" width="16" height="18" rx="2.5"/></svg>;
     case "organigrama":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <rect x="9" y="2" width="6" height="4" rx="1" />
-          <rect x="2" y="18" width="6" height="4" rx="1" />
-          <rect x="9" y="18" width="6" height="4" rx="1" />
-          <rect x="16" y="18" width="6" height="4" rx="1" />
-          <path d="M12 6v4M12 10H5v4M12 10h7v4" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="9" y="2" width="6" height="4" rx="1"/><rect x="2" y="18" width="6" height="4" rx="1"/><rect x="9" y="18" width="6" height="4" rx="1"/><rect x="16" y="18" width="6" height="4" rx="1"/><path d="M12 6v4M12 10H5v4M12 10h7v4"/></svg>;
     case "calibracion":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <rect x="3" y="3" width="7" height="7" rx="1.5" />
-          <rect x="14" y="3" width="7" height="7" rx="1.5" />
-          <rect x="3" y="14" width="7" height="7" rx="1.5" />
-          <rect x="14" y="14" width="7" height="7" rx="1.5" />
-        </svg>
-      );
-    case "pulse":
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M3 12h3l2.5-7 3 14 2.5-9L16 12h5" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>;
+    case "organizaciones":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+    case "settings":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
+    case "analytics": case "archivo-central":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>;
     default:
-      return (
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
-          <path d="M4 12h16" />
-        </svg>
-      );
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M4 12h16"/></svg>;
   }
-}
-
-function translateNavLabel(key, fallback, t) {
-  const map = {
-    dashboard: "nav.home",
-    empleados: "nav.people",
-    usuarios: "nav.users",
-    ciclos: "nav.cycles",
-    evaluaciones: "nav.evaluations",
-    competencias: "nav.skills",
-    metricas: "nav.metrics",
-    planes: "nav.development",
-    "reporte-ejecutivo": "nav.report",
-    "carga-masiva": "nav.import",
-    novedades: "nav.news",
-    organigrama: "nav.orgchart",
-    organizaciones: "nav.organizations",
-    settings: "nav.settings",
-    roles: "nav.settings",
-    "archivo-central": "nav.platform",
-  };
-  return t(map[key] || "", fallback);
-}
-
-function formatFeedTime(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  const now = new Date();
-  const diffMs = now - date;
-  const diffMins = Math.floor(diffMs / 60000);
-  if (diffMins < 1) return "Ahora";
-  if (diffMins < 60) return `Hace ${diffMins} min`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `Hace ${diffHours} h`;
-  const diffDays = Math.floor(diffHours / 24);
-  if (diffDays < 7) return `Hace ${diffDays} d`;
-  return date.toLocaleDateString("es-AR", { day: "numeric", month: "short" });
-}
-
-function FeedBell({ token }) {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [open, setOpen] = useState(false);
-  const [marking, setMarking] = useState(false);
-  const containerRef = useRef(null);
-  useClickOutside(containerRef, () => setOpen(false), open);
-
-  async function fetchFeed() {
-    if (!token) return;
-    try {
-      const data = await apiFetch("/notifications-feed/feed", { token });
-      if (data?.ok) {
-        setNotifications(data.notifications || []);
-        setUnreadCount(data.unreadCount || 0);
-      }
-    } catch {
-      // silently ignore — non-critical feature
-    }
-  }
-
-  useEffect(() => {
-    if (!token) return;
-
-    // Initial fetch to populate notifications
-    fetchFeed();
-
-    // SSE connection for real-time updates
-    const apiBase = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    const es = new EventSource(`${apiBase}/notifications-feed/stream?token=${token}`);
-
-    es.addEventListener("notification", (e) => {
-      const notif = JSON.parse(e.data);
-      setNotifications((prev) => [notif, ...prev.slice(0, 19)]);
-      setUnreadCount((prev) => prev + 1);
-    });
-
-    es.addEventListener("ping", () => {}); // keep-alive
-
-    let fallbackInterval = null;
-    es.onerror = () => {
-      es.close();
-      fallbackInterval = setInterval(fetchFeed, 60000);
-    };
-
-    return () => {
-      es.close();
-      if (fallbackInterval) clearInterval(fallbackInterval);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
-
-  async function handleMarkAllRead() {
-    if (!token || !unreadCount || marking) return;
-    try {
-      setMarking(true);
-      await apiFetch("/notifications-feed/feed/read", { method: "PATCH", token });
-      setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-      setUnreadCount(0);
-    } catch {
-      // silently ignore
-    } finally {
-      setMarking(false);
-    }
-  }
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
-        aria-label="Notificaciones de actividad"
-      >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-        </svg>
-        {unreadCount > 0 ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-rose-500 px-1.5 text-[11px] font-semibold text-white">
-            {unreadCount > 9 ? "9+" : unreadCount}
-          </span>
-        ) : null}
-      </button>
-
-      {open ? (
-        <div className="absolute right-0 top-10 z-50 w-80 rounded-2xl border border-white/10 bg-[#0c1e28] shadow-xl">
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-            <p className="text-sm font-semibold text-white">Actividad</p>
-            <button
-              type="button"
-              disabled={!unreadCount || marking}
-              onClick={handleMarkAllRead}
-              className="rounded-xl border border-white/10 px-3 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {marking ? "Marcando..." : "Marcar todo como leído"}
-            </button>
-          </div>
-          <div className="max-h-[360px] overflow-y-auto p-2">
-            {notifications.length ? (
-              <div className="space-y-1.5">
-                {notifications.map((n) => (
-                  <div
-                    key={n._id}
-                    className={`rounded-xl border px-3 py-2.5 ${
-                      n.read ? "border-white/10 bg-[#0f1d26]" : "border-[#14b8a6]/25 bg-[#0c2028]"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`text-sm font-medium ${n.read ? "text-[#c5d5de]" : "text-white"}`}>{n.title}</p>
-                      {!n.read ? (
-                        <span className="mt-0.5 h-2 w-2 shrink-0 rounded-full bg-[#14b8a6]" />
-                      ) : null}
-                    </div>
-                    {n.body ? (
-                      <p className="mt-1 text-xs leading-relaxed text-[#8ea5b3]">{n.body}</p>
-                    ) : null}
-                    <p className="mt-1.5 text-[11px] text-[#6b8797]">{formatFeedTime(n.createdAt)}</p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="px-3 py-6 text-center text-sm text-[#8ea5b3]">Sin notificaciones</div>
-            )}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
 }
 
 export default function AppShell({
-  view,
-  setView,
-  searchQuery,
-  setSearchQuery,
-  theme,
-  setTheme,
-  language,
-  setLanguage,
-  t,
-  availableViews,
-  children,
+  view, setView, searchQuery, setSearchQuery, language, setLanguage, t, availableViews, children,
 }) {
-  const {
-    user,
-    logout,
-    hasPermission,
-    companies,
-    activeCompanyId,
-    setActiveCompanyId,
-    announcementSummary,
-    refreshAnnouncementSummary,
-    token,
-    tokenExpiresAt,
-    tokenNearExpiry,
-  } = useAuth();
+  const { user, logout, hasPermission, companies, activeCompanyId, setActiveCompanyId, announcementSummary, refreshAnnouncementSummary, token, tokenExpiresAt, tokenNearExpiry } = useAuth();
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -573,213 +210,200 @@ export default function AppShell({
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [apiSearchResults, setApiSearchResults] = useState(null);
   const [apiSearchLoading, setApiSearchLoading] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(() => new Set(["personas-group", "eval-group"]));
+
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
+  const isManager = isManagerUser(user);
+  const searchRef = useRef(null);
+  useClickOutside(searchRef, () => setSearchOpen(false), searchOpen);
 
-  // Cmd+K / Ctrl+K → focus search + arrow key navigation
+  function toggleGroup(key) {
+    setExpandedGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  }
+
+  // Cmd+K search
   useEffect(() => {
     function onKey(e) {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-        e.preventDefault();
-        setSearchOpen(true);
-        setSearchFocusedIdx(-1);
-        searchRef.current?.querySelector("input")?.focus();
-      }
-      if (e.key === "Escape") {
-        setSearchOpen(false);
-        setSearchFocusedIdx(-1);
-        setMobileMenuOpen(false);
-      }
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") { e.preventDefault(); setSearchOpen(true); setSearchFocusedIdx(-1); searchRef.current?.querySelector("input")?.focus(); }
+      if (e.key === "Escape") { setSearchOpen(false); setSearchFocusedIdx(-1); setMobileMenuOpen(false); }
       if (!searchOpen) return;
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setSearchFocusedIdx((i) => i + 1);
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setSearchFocusedIdx((i) => Math.max(-1, i - 1));
-      }
+      if (e.key === "ArrowDown") { e.preventDefault(); setSearchFocusedIdx(i => i + 1); }
+      if (e.key === "ArrowUp") { e.preventDefault(); setSearchFocusedIdx(i => Math.max(-1, i - 1)); }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [searchOpen]);
 
-  // Keyboard shortcuts — single-key nav (only when not in an input and no modifier)
+  // Keyboard shortcuts
   useEffect(() => {
     function handleKey(e) {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-
-      const shortcuts = {
-        i: "dashboard",
-        p: "empleados",
-        e: "evaluaciones",
-        c: "ciclos",
-        m: "metricas",
-        r: "reporte-ejecutivo",
-        d: "planes",
-      };
-
+      const shortcuts = { i: "dashboard", p: "empleados", e: "evaluaciones", c: "ciclos", m: "metricas", r: "reporte-ejecutivo", d: "planes" };
       const target = shortcuts[e.key.toLowerCase()];
-      if (target && availableViews && availableViews.includes(target)) {
-        e.preventDefault();
-        setView(target);
-        return;
-      }
-      if (e.key === "?") {
-        e.preventDefault();
-        setShowShortcuts((v) => !v);
-      }
-      if (e.key === "Escape") {
-        setShowShortcuts(false);
-      }
+      if (target && availableViews?.includes(target)) { e.preventDefault(); setView(target); return; }
+      if (e.key === "?") { e.preventDefault(); setShowShortcuts(v => !v); }
+      if (e.key === "Escape") setShowShortcuts(false);
     }
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [availableViews, setView]);
 
-  // Backend health check — show banner if unreachable
+  // Backend health check
   useEffect(() => {
     let cancelled = false;
     async function check() {
       try {
         const ctrl = new AbortController();
-        const t = setTimeout(() => ctrl.abort(), 8000);
-        const res = await fetch(`${apiUrl}/health`, { signal: ctrl.signal }).finally(() => clearTimeout(t));
+        const timer = setTimeout(() => ctrl.abort(), 8000);
+        const res = await fetch(`${apiUrl}/health`, { signal: ctrl.signal }).finally(() => clearTimeout(timer));
         if (!cancelled) setBackendDown(!res.ok);
-      } catch {
-        if (!cancelled) setBackendDown(true);
-      }
+      } catch { if (!cancelled) setBackendDown(true); }
     }
     check();
     const id = setInterval(check, 5 * 60 * 1000);
     return () => { cancelled = true; clearInterval(id); };
   }, []);
-  const isManager = isManagerUser(user);
-  const searchRef = useRef(null);
-  useClickOutside(searchRef, () => setSearchOpen(false), searchOpen);
 
-  // Allow any child page to navigate by dispatching performia:set-view
+  // Allow child pages to navigate
   useEffect(() => {
-    function handleSetView(e) {
-      const target = e?.detail?.view;
-      if (target) setView(target);
-    }
+    function handleSetView(e) { const target = e?.detail?.view; if (target) setView(target); }
     window.addEventListener("performia:set-view", handleSetView);
     return () => window.removeEventListener("performia:set-view", handleSetView);
   }, [setView]);
 
-  // Debounced API search — fires 300ms after user stops typing
+  // Debounced API search (superadmin)
   useEffect(() => {
     const term = String(searchQuery || "").trim();
-    if (!term || !isSuperAdmin) {
-      setApiSearchResults(null);
-      return;
-    }
+    if (!term || !isSuperAdmin) { setApiSearchResults(null); return; }
     setApiSearchLoading(true);
     const timerId = setTimeout(async () => {
       try {
         const data = await apiFetch(`/search/global?q=${encodeURIComponent(term)}`, { token });
         setApiSearchResults(data);
-      } catch {
-        setApiSearchResults(null);
-      } finally {
-        setApiSearchLoading(false);
-      }
+      } catch { setApiSearchResults(null); } finally { setApiSearchLoading(false); }
     }, 300);
-    return () => {
-      clearTimeout(timerId);
-      setApiSearchLoading(false);
-    };
+    return () => { clearTimeout(timerId); setApiSearchLoading(false); };
   }, [searchQuery, token, isSuperAdmin]);
 
-  const allViews = useMemo(
-    () => [
-      { key: "dashboard", label: "Inicio", show: true, keywords: ["inicio", "dashboard", "panel", "resumen"] },
-      { key: "empleados", label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas", show: hasPermission("manage_employees"), keywords: ["personas", "empleados", "equipo", "perfil"] },
-      { key: "organigrama", label: "Organigrama", show: hasPermission("manage_employees"), keywords: ["organigrama", "org chart", "jerarquía", "jerarquia", "estructura"] },
-      { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), keywords: ["usuarios", "credenciales", "accesos"] },
-      { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee), keywords: ["ciclos", "periodo", "período", "calendario"] },
-      { key: "evaluaciones", label: "Evaluaciones", show: hasPermission("manage_evaluations") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("view_reports"), keywords: ["evaluaciones", "autoevaluacion", "autoevaluación", "feedback", "desempeño"] },
-      { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), keywords: ["competencias", "transversales", "docentes"] },
-      { key: "metricas", label: "Mediciones", show: hasPermission("manage_metrics"), keywords: ["objetivos", "indicadores", "kpi", "okr", "metas", "mediciones"] },
-      { key: "planes", label: isEmployee ? "Mi desarrollo" : "Desarrollo", show: hasPermission("manage_development_plans") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("download_self_report") || hasPermission("view_reports"), keywords: ["desarrollo", "planes", "seguimiento"] },
-      { key: "reporte-ejecutivo", label: "Reportes", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["reportes", "reporte ejecutivo", "personas", "acciones", "insights"] },
-      { key: "carga-masiva", label: "Importación", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "excel", "carga", "plantilla"] },
-      { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
-      { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
-      { key: "roles", label: "Roles y accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "scope", "permisos"] },
-      { key: "settings", label: "Configuración", show: isSuperAdmin, keywords: ["configuracion", "configuración", "ajustes"] },
-      { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
-      { key: "analytics", label: "Analytics", show: isSuperAdmin, keywords: ["analytics", "uso", "estadísticas", "estadisticas"] },
-      { key: "calibracion", label: "Calibración", show: hasPermission("manage_evaluations") || hasPermission("view_reports"), keywords: ["calibracion", "calibración", "notas", "matriz"] },
-      { key: "pulse", label: "Clima", show: true, keywords: ["clima", "pulse", "encuesta", "satisfaccion", "satisfacción"] },
-    ],
-    [hasPermission, isEmployee, isManager, isSuperAdmin]
-  );
+  const allViews = useMemo(() => [
+    { key: "dashboard", label: "Inicio", show: true, keywords: ["inicio", "dashboard", "panel", "resumen"] },
+    { key: "empleados", label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas", show: hasPermission("manage_employees"), keywords: ["personas", "empleados", "equipo", "perfil"] },
+    { key: "organigrama", label: "Organigrama", show: hasPermission("manage_employees"), keywords: ["organigrama", "org chart", "jerarquía"] },
+    { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), keywords: ["usuarios", "credenciales", "accesos"] },
+    { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee), keywords: ["ciclos", "periodo", "período"] },
+    { key: "evaluaciones", label: "Evaluaciones", show: hasPermission("manage_evaluations") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("view_reports"), keywords: ["evaluaciones", "autoevaluacion", "feedback", "desempeño"] },
+    { key: "competencias", label: "Habilidades", show: hasPermission("manage_competencies"), keywords: ["competencias", "habilidades", "skills"] },
+    { key: "metricas", label: "Mediciones", show: hasPermission("manage_metrics"), keywords: ["objetivos", "indicadores", "kpi", "okr", "metas", "mediciones"] },
+    { key: "planes", label: isEmployee ? "Mi desarrollo" : "Planes de acción", show: hasPermission("manage_development_plans") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("download_self_report") || hasPermission("view_reports"), keywords: ["desarrollo", "planes", "seguimiento"] },
+    { key: "reporte-ejecutivo", label: "Reportes", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["reportes", "reporte ejecutivo", "insights"] },
+    { key: "carga-masiva", label: "Migración", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "excel", "carga", "plantilla", "migracion"] },
+    { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
+    { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
+    { key: "roles", label: "Accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "permisos"] },
+    { key: "settings", label: "Configuración", show: isSuperAdmin, keywords: ["configuracion", "configuración", "ajustes"] },
+    { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
+    { key: "analytics", label: "Analytics", show: isSuperAdmin, keywords: ["analytics", "uso", "estadísticas"] },
+    { key: "calibracion", label: "Calibración", show: hasPermission("manage_evaluations") || hasPermission("view_reports"), keywords: ["calibracion", "calibración", "notas", "matriz"] },
+  ], [hasPermission, isEmployee, isManager, isSuperAdmin]);
 
-  const visibleViews = useMemo(() => allViews.filter((item) => item.show), [allViews]);
+  const visibleViews = useMemo(() => allViews.filter(item => item.show), [allViews]);
 
-  const navGroups = useMemo(() => {
-    const byKey = {};
-    visibleViews.forEach(v => { byKey[v.key] = v; });
+  // New collapsible sidebar nav structure
+  const sidebarNav = useMemo(() => {
+    const byKey = Object.fromEntries(visibleViews.map(v => [v.key, v]));
+    const L = (es, en) => language === "en" ? en : es;
 
-    const groups = [];
-    groups.push({ label: "Inicio", keys: ["dashboard"] });
-    groups.push({ label: "Personas y accesos", keys: ["empleados", "organigrama", "usuarios"] });
-    groups.push({ label: "Evaluación de desempeño", keys: ["evaluaciones", "metricas", "ciclos", "competencias", "calibracion"] });
-    groups.push({ label: "Desarrollo", keys: ["planes"] });
-    groups.push({ label: "Reportes", keys: ["reporte-ejecutivo"] });
-    groups.push({ label: "Comunicación", keys: ["novedades", "pulse"] });
-    groups.push({ label: "Operación", keys: ["carga-masiva"] });
-    if (isSuperAdmin) {
-      groups.push({ label: "Plataforma", keys: ["organizaciones", "roles", "settings", "archivo-central", "analytics"] });
+    // Employee-only (no manager, no superadmin)
+    if (isEmployee && !isManager && !isSuperAdmin) {
+      const items = [];
+      if (byKey["evaluaciones"]) items.push({ type: "item", key: "evaluaciones", label: L("Mi evaluación", "My Evaluation"), icon: "evaluaciones" });
+      return items;
     }
 
-    return groups
-      .map(group => ({
-        ...group,
-        items: group.keys.map(key => byKey[key]).filter(Boolean)
-      }))
-      .filter(group => group.items.length > 0);
-  }, [visibleViews, isSuperAdmin]);
+    const items = [];
+
+    // Inicio
+    if (byKey["dashboard"]) items.push({ type: "item", key: "dashboard", label: L("Inicio", "Home"), icon: "dashboard" });
+
+    // Personas group
+    const personasKids = [
+      byKey["empleados"] && { key: "empleados", label: L("Personas", "People"), icon: "personas" },
+      byKey["organigrama"] && { key: "organigrama", label: L("Organigrama", "Org Chart"), icon: "organigrama" },
+      byKey["usuarios"] && { key: "usuarios", label: L("Usuarios", "Users"), icon: "usuarios" },
+      isSuperAdmin && byKey["roles"] && { key: "roles", label: L("Accesos", "Access"), icon: "roles" },
+    ].filter(Boolean);
+    if (personasKids.length) {
+      items.push({ type: "group", key: "personas-group", label: L("Personas", "People"), icon: "personas", children: personasKids });
+    }
+
+    // Habilidades standalone
+    if (byKey["competencias"]) {
+      items.push({ type: "item", key: "competencias", label: L("Habilidades", "Skills"), icon: "competencias" });
+    }
+
+    // Evaluación de desempeño group
+    const evalKids = [
+      { key: "evaluaciones", es: "Evaluaciones", en: "Evaluations" },
+      { key: "planes", es: "Planes de acción", en: "Action Plans" },
+      { key: "ciclos", es: "Ciclos", en: "Cycles" },
+      { key: "metricas", es: "Mediciones", en: "Metrics" },
+      { key: "calibracion", es: "Calibración", en: "Calibration" },
+      { key: "novedades", es: "Novedades", en: "Updates" },
+      { key: "carga-masiva", es: "Migración", en: "Migration" },
+      { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
+    ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
+    if (evalKids.length) {
+      items.push({ type: "group", key: "eval-group", label: L("Evaluación de desempeño", "Performance"), icon: "evaluaciones", children: evalKids });
+    }
+
+    // Plataforma group (superadmin)
+    if (isSuperAdmin) {
+      const platKids = [
+        { key: "organizaciones", es: "Organizaciones", en: "Organizations" },
+        { key: "settings", es: "Configuración", en: "Settings" },
+        { key: "archivo-central", es: "Plataforma", en: "Platform" },
+        { key: "analytics", es: "Analytics", en: "Analytics" },
+      ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
+      if (platKids.length) {
+        items.push({ type: "group", key: "plataforma-group", label: L("Plataforma", "Platform"), icon: "analytics", children: platKids });
+      }
+    }
+
+    return items;
+  }, [visibleViews, isSuperAdmin, isEmployee, isManager, language]);
+
+  // Auto-expand group containing active view
+  useEffect(() => {
+    sidebarNav.forEach(item => {
+      if (item.type === "group" && item.children?.some(c => c.key === view)) {
+        setExpandedGroups(prev => new Set([...prev, item.key]));
+      }
+    });
+  }, [view, sidebarNav]);
 
   const organizationLabel = user?.companyName || "Organización activa";
   const displayName = getUserDisplayName(user);
   const userInitials = getUserInitials(user);
-  const contextualSubtitle = isSuperAdmin
-    ? "Gestión global multi-organización"
-    : `Operación en ${organizationLabel}`;
+  const contextualSubtitle = isSuperAdmin ? "Gestión global multi-organización" : `${organizationLabel}`;
 
-  const globalSearchItems = useMemo(() => {
-    return visibleViews.map((item) => ({
-      viewKey: item.key,
-      label: translateNavLabel(item.key, item.label, t),
-      group:
-        item.key === "dashboard"
-          ? "Inicio"
-          : item.key === "carga-masiva"
-            ? "Importación"
-            : item.key === "reporte-ejecutivo"
-              ? "Reportes"
-              : item.key === "planes"
-                ? "Desarrollo"
-                : "Módulo",
-      detail: item.key === "metricas"
-        ? "Abrir mediciones, metas, KPIs y OKRs"
-        : item.key === "evaluaciones"
-          ? "Abrir ciclos, formularios y seguimiento"
-          : item.key === "planes"
-            ? "Abrir sugerencias y planes de desarrollo"
-            : `Abrir ${translateNavLabel(item.key, item.label, t).toLowerCase()}`,
-      searchable: [item.label, ...(item.keywords || [])].join(" ").toLowerCase(),
-    }));
-  }, [t, visibleViews]);
+  const globalSearchItems = useMemo(() => visibleViews.map(item => ({
+    viewKey: item.key,
+    label: item.label,
+    group: item.key === "dashboard" ? "Inicio" : item.key === "carga-masiva" ? "Migración" : item.key === "reporte-ejecutivo" ? "Reportes" : "Módulo",
+    detail: `Abrir ${item.label.toLowerCase()}`,
+    searchable: [item.label, ...(item.keywords || [])].join(" ").toLowerCase(),
+  })), [visibleViews]);
 
   const searchResults = useMemo(() => {
     const term = String(searchQuery || "").trim().toLowerCase();
     if (!term) return globalSearchItems.slice(0, 8);
-    return globalSearchItems.filter((item) => item.searchable.includes(term)).slice(0, 8);
+    return globalSearchItems.filter(item => item.searchable.includes(term)).slice(0, 8);
   }, [globalSearchItems, searchQuery]);
 
   async function handleMarkRead(item) {
@@ -795,250 +419,198 @@ export default function AppShell({
   }
 
   function handleSearchSelect(item) {
-    setView(item.viewKey);
-    setSearchQuery("");
-    setSearchOpen(false);
-    setSearchFocusedIdx(-1);
+    setView(item.viewKey); setSearchQuery(""); setSearchOpen(false); setSearchFocusedIdx(-1);
   }
 
   function handleOpenAnnouncement(item) {
     setView("novedades");
-    window.setTimeout(() => {
-      window.dispatchEvent(
-        new CustomEvent("performia:announcement-focus", {
-          detail: { announcementId: item._id },
-        })
-      );
-    }, 80);
+    window.setTimeout(() => window.dispatchEvent(new CustomEvent("performia:announcement-focus", { detail: { announcementId: item._id } })), 80);
+  }
+
+  function renderNavItem(item, onClickOverride) {
+    const active = view === item.key;
+    return (
+      <button key={item.key} type="button"
+        onClick={() => { setView(item.key); onClickOverride?.(); }}
+        className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${active ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_4px_14px_rgba(20,184,166,0.28)]" : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"}`}>
+        <AppIcon name={item.icon || item.key} active={active} size="sm" />
+        <span className="truncate">{item.label}</span>
+      </button>
+    );
+  }
+
+  function renderNavGroup(group, onClickOverride) {
+    const isExpanded = expandedGroups.has(group.key);
+    const hasActiveChild = group.children?.some(c => c.key === view);
+    return (
+      <div key={group.key}>
+        <button type="button" onClick={() => toggleGroup(group.key)}
+          className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${hasActiveChild && !isExpanded ? "text-[#14b8a6] bg-[#14b8a6]/10" : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"}`}>
+          <AppIcon name={group.icon} active={hasActiveChild} size="sm" />
+          <span className="flex-1 truncate">{group.label}</span>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
+            className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
+            <path d="M6 3l5 5-5 5"/>
+          </svg>
+        </button>
+        {isExpanded ? (
+          <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-2.5">
+            {group.children.map(child => renderNavItem(child, onClickOverride))}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  function renderCollapsedIcon(item) {
+    const active = item.type === "item" ? view === item.key : item.children?.some(c => c.key === view);
+    return (
+      <button key={item.key} type="button"
+        onClick={() => item.type === "item" ? setView(item.key) : toggleGroup(item.key)}
+        title={item.label}
+        className={`flex w-full items-center justify-center rounded-xl py-2.5 transition ${active ? "bg-[#14b8a6] text-[#0f172a]" : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"}`}>
+        <AppIcon name={item.icon || item.key} active={active} />
+      </button>
+    );
   }
 
   return (
     <div className="h-screen overflow-hidden bg-[#091319] text-[#E8EEF1]">
       <div className="flex h-full">
-        <aside
-          className={`hidden h-screen shrink-0 border-r border-white/10 bg-[#0c171d] transition-all lg:flex lg:flex-col ${
-            sidebarCollapsed ? "w-[92px]" : "w-[288px]"
-          }`}
-        >
-          <div className="border-b border-white/10 px-4 py-4">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0 overflow-hidden">
-                <AppLogo variant="dark" compact={sidebarCollapsed} />
-              </div>
-              <button
-                type="button"
-                onClick={() => setSidebarCollapsed((value) => !value)}
-                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#c7d5dc]"
-                aria-label="Colapsar sidebar"
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                  {sidebarCollapsed ? <path d="M9 6l6 6-6 6" /> : <path d="M15 6l-6 6 6 6" />}
-                </svg>
-              </button>
-            </div>
-            {!sidebarCollapsed ? <p className="mt-3 text-sm text-[#7c97a6]">{contextualSubtitle}</p> : null}
-          </div>
-
-          <div className="flex-1 overflow-y-auto px-3 py-3">
+        {/* Sidebar */}
+        <aside className={`hidden h-screen shrink-0 border-r border-white/10 bg-[#0b1620] transition-all lg:flex lg:flex-col ${sidebarCollapsed ? "w-[72px]" : "w-[256px]"}`}>
+          <div className="flex items-center justify-between border-b border-white/10 px-3 py-3.5">
             {!sidebarCollapsed ? (
-              <nav className="space-y-4">
-                {navGroups.map((group) => (
-                  <div key={group.label}>
-                    <p className="px-3 pb-1.5 text-[10px] uppercase tracking-[0.18em] text-[#5e7d8e] font-semibold">
-                      {group.label}
-                    </p>
-                    <div className="space-y-0.5">
-                      {group.items.map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={() => setView(item.key)}
-                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition ${
-                            view === item.key
-                              ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_6px_20px_rgba(20,184,166,0.30),inset_0_1px_0_rgba(255,255,255,0.25)]"
-                              : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"
-                          }`}
-                        >
-                          <AppIcon name={item.key} active={view === item.key} />
-                          <span>{translateNavLabel(item.key, item.label, t)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="min-w-0 overflow-hidden">
+                <AppLogo variant="dark" compact={false} />
+              </div>
+            ) : null}
+            <button type="button" onClick={() => setSidebarCollapsed(v => !v)}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#c7d5dc] transition hover:bg-[#172c39] ${sidebarCollapsed ? "mx-auto" : ""}`}
+              aria-label="Colapsar sidebar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                {sidebarCollapsed ? <path d="M9 6l6 6-6 6"/> : <path d="M15 6l-6 6 6 6"/>}
+              </svg>
+            </button>
+          </div>
+          {!sidebarCollapsed && contextualSubtitle ? (
+            <div className="px-4 py-2 border-b border-white/5">
+              <p className="text-[11px] text-[#5e7d8e] truncate">{contextualSubtitle}</p>
+            </div>
+          ) : null}
+
+          <div className="flex-1 overflow-y-auto px-2.5 py-3">
+            {!sidebarCollapsed ? (
+              <nav className="space-y-0.5">
+                {sidebarNav.map(item =>
+                  item.type === "item" ? renderNavItem(item) : renderNavGroup(item)
+                )}
               </nav>
             ) : (
-              <nav className="space-y-2">
-                {navGroups.flatMap(group => group.items).map((item) => (
-                  <button
-                    key={item.key}
-                    type="button"
-                    onClick={() => setView(item.key)}
-                    className={`flex w-full items-center justify-center rounded-2xl px-0 py-3 text-sm font-medium transition ${
-                      view === item.key
-                        ? "bg-[#14b8a6] text-[#0f172a]"
-                        : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"
-                    }`}
-                  >
-                    <AppIcon name={item.key} active={view === item.key} />
-                  </button>
-                ))}
+              <nav className="space-y-1">
+                {sidebarNav.map(item => renderCollapsedIcon(item))}
               </nav>
             )}
           </div>
 
-          <div className="border-t border-white/10 px-3 py-2.5">
+          <div className="border-t border-white/10 px-2.5 py-2.5">
             {!sidebarCollapsed ? (
-              <button
-                type="button"
-                onClick={() => setView("perfil")}
-                className="flex w-full items-center gap-2.5 rounded-2xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]"
-              >
+              <button type="button" onClick={() => setView("perfil")}
+                className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]">
                 {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={displayName} className="h-8 w-8 shrink-0 rounded-xl object-cover" />
+                  <img src={user.avatarUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-lg object-cover"/>
                 ) : (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#14b8a6] text-xs font-semibold text-[#0f172a]">
-                    {userInitials}
-                  </div>
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#14b8a6] text-[11px] font-semibold text-[#0f172a]">{userInitials}</div>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-semibold text-white">{displayName}</p>
-                  <p className="truncate text-[11px] text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
+                  <p className="truncate text-[10px] text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
                 </div>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 shrink-0 text-[#7c97a6]">
-                  <path d="M6 3l5 5-5 5" />
-                </svg>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3 shrink-0 text-[#7c97a6]"><path d="M6 3l5 5-5 5"/></svg>
               </button>
             ) : (
               <div className="flex justify-center">
-                <button
-                  type="button"
-                  onClick={() => setView("perfil")}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#101d25] text-sm font-semibold text-white"
-                  aria-label="Abrir mi perfil"
-                >
-                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={displayName} className="h-11 w-11 rounded-2xl object-cover" />
-                  ) : (
-                    userInitials.slice(0, 1)
-                  )}
+                <button type="button" onClick={() => setView("perfil")}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#101d25] text-xs font-semibold text-white"
+                  aria-label="Mi perfil">
+                  {user?.avatarUrl ? <img src={user.avatarUrl} alt={displayName} className="h-9 w-9 rounded-xl object-cover"/> : userInitials.slice(0, 1)}
                 </button>
               </div>
             )}
           </div>
         </aside>
 
+        {/* Main content */}
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-[#091319]/95 shadow-[0_1px_0_rgba(255,255,255,0.04)] backdrop-blur-md">
-            <div className="grid gap-4 px-4 py-4 md:grid-cols-[240px_minmax(0,1fr)_auto] md:px-6">
-              <div className="flex min-w-0 items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMobileMenuOpen(true)}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39] lg:hidden"
-                  aria-label="Abrir menú"
-                >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4.5 w-4.5">
-                    <path d="M4 6h16M4 12h16M4 18h10" />
-                  </svg>
-                </button>
-                <div className="lg:hidden">
-                  <AppLogo variant="dark" compact />
-                </div>
-                {isSuperAdmin && companies.length ? (
-                  <select
-                    className="min-w-[220px] rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3 text-sm text-white"
-                    value={activeCompanyId}
-                    onChange={(event) => setActiveCompanyId(event.target.value)}
-                  >
-                    {companies.map((company) => (
-                      <option key={company._id} value={company._id}>
-                        {company.nombre}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="rounded-2xl border border-white/10 bg-[#12222d] px-4 py-3">
-                    <p className="text-xs text-[#7f99a8]">{t("topbar.organization", "Organización activa")}</p>
-                    <p className="text-sm font-medium text-white">{organizationLabel}</p>
-                  </div>
-                )}
-              </div>
+          <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-[#091319]/95 backdrop-blur-md">
+            <div className="flex items-center gap-3 px-4 py-3 md:px-5">
+              {/* Mobile menu */}
+              <button type="button" onClick={() => setMobileMenuOpen(true)}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39] lg:hidden"
+                aria-label="Abrir menú">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                  <path d="M4 6h16M4 12h16M4 18h10"/>
+                </svg>
+              </button>
+              <div className="lg:hidden"><AppLogo variant="dark" compact /></div>
 
-              <div ref={searchRef} className="relative mx-auto w-full max-w-2xl">
-                <div className="flex w-full items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-4 py-2.5">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-[#7f99a8]">
-                    <path d="M11 19a8 8 0 1 1 5.3-14l4.2 4.2" />
-                    <path d="M21 21l-4.35-4.35" />
+              {/* Org selector */}
+              {isSuperAdmin && companies.length ? (
+                <select className="hidden min-w-[200px] rounded-xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm text-white md:block"
+                  value={activeCompanyId} onChange={e => setActiveCompanyId(e.target.value)}>
+                  {companies.map(c => <option key={c._id} value={c._id}>{c.nombre}</option>)}
+                </select>
+              ) : (
+                <div className="hidden rounded-xl border border-white/10 bg-[#12222d] px-3 py-2 md:block">
+                  <p className="text-[10px] text-[#7f99a8]">{t("topbar.organization", "Organización")}</p>
+                  <p className="text-sm font-medium text-white leading-none mt-0.5">{organizationLabel}</p>
+                </div>
+              )}
+
+              {/* Search */}
+              <div ref={searchRef} className="relative flex-1 max-w-xl mx-auto">
+                <div className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#12222d] px-3 py-2">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 text-[#7f99a8]">
+                    <path d="M11 19a8 8 0 1 1 5.3-14l4.2 4.2"/><path d="M21 21l-4.35-4.35"/>
                   </svg>
                   <input
                     className="w-full bg-transparent text-sm text-[#e8eef1] outline-none placeholder:text-[#7f99a8]"
-                    placeholder="Buscar… (Ctrl+K)"
+                    placeholder={language === "en" ? "Search… (Ctrl+K)" : "Buscar… (Ctrl+K)"}
                     value={searchQuery}
                     onFocus={() => { setSearchOpen(true); setSearchFocusedIdx(-1); }}
-                    onChange={(event) => {
-                      setSearchQuery(event.target.value);
-                      setSearchOpen(true);
-                      setSearchFocusedIdx(-1);
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && searchResults[searchFocusedIdx]) {
-                        event.preventDefault();
-                        handleSearchSelect(searchResults[searchFocusedIdx]);
-                      } else if (event.key === "Enter" && searchResults.length === 1) {
-                        event.preventDefault();
-                        handleSearchSelect(searchResults[0]);
-                      }
+                    onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); setSearchFocusedIdx(-1); }}
+                    onKeyDown={e => {
+                      if (e.key === "Enter" && searchResults[searchFocusedIdx]) { e.preventDefault(); handleSearchSelect(searchResults[searchFocusedIdx]); }
+                      else if (e.key === "Enter" && searchResults.length === 1) { e.preventDefault(); handleSearchSelect(searchResults[0]); }
                     }}
                     aria-label="Buscar en ZENTOR"
                   />
                 </div>
                 {searchOpen && searchQuery.trim() ? (
-                  <div className="absolute inset-x-0 z-30 mt-2 rounded-3xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_32px_rgba(2,8,23,0.35)]">
-                    {/* Nav results */}
+                  <div className="absolute inset-x-0 z-30 mt-2 rounded-2xl border border-white/10 bg-[#12222d] p-2 shadow-[0_18px_32px_rgba(2,8,23,0.35)]">
                     {searchResults.length ? (
                       <div>
                         <p className="px-3 pb-1 pt-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Navegación</p>
-                        {searchResults.map((item, idx) => (
-                          <SearchResultItem
-                            key={item.viewKey}
-                            item={item}
-                            onSelect={handleSearchSelect}
-                            focused={searchFocusedIdx === idx}
-                          />
-                        ))}
+                        {searchResults.map((item, idx) => <SearchResultItem key={item.viewKey} item={item} onSelect={handleSearchSelect} focused={searchFocusedIdx === idx}/>)}
                       </div>
                     ) : (
-                      <div className="rounded-2xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-sm text-[#8ea5b3]">
-                        No encontramos coincidencias en la navegación visible.
-                      </div>
+                      <div className="rounded-xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-sm text-[#8ea5b3]">Sin coincidencias.</div>
                     )}
-
-                    {/* API search results — superadmin only */}
                     {isSuperAdmin && (
                       <>
-                        <div className="my-2 border-t border-white/10" />
+                        <div className="my-2 border-t border-white/10"/>
                         {apiSearchLoading ? (
-                          <div className="px-3 py-2 text-xs text-[#5e7d8e]">Buscando en base de datos…</div>
+                          <div className="px-3 py-2 text-xs text-[#5e7d8e]">Buscando…</div>
                         ) : apiSearchResults ? (
                           <>
                             {apiSearchResults.companies?.length > 0 && (
                               <div>
                                 <p className="px-3 pb-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Empresas</p>
-                                {apiSearchResults.companies.slice(0, 3).map((item) => (
-                                  <button
-                                    key={item._id}
-                                    type="button"
-                                    onClick={() => { setView("organizaciones"); setSearchQuery(item.nombre); setSearchOpen(false); }}
-                                    className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/5"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-semibold text-white">{item.nombre}</p>
-                                      <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.tipoCliente || item.slug}</p>
-                                    </div>
-                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
-                                      {item.activa ? "Activa" : "Inactiva"}
-                                    </span>
+                                {apiSearchResults.companies.slice(0, 3).map(item => (
+                                  <button key={item._id} type="button" onClick={() => { setView("organizaciones"); setSearchQuery(item.nombre); setSearchOpen(false); }}
+                                    className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white/5">
+                                    <p className="truncate text-sm font-semibold text-white">{item.nombre}</p>
+                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2 py-0.5 text-[10px] text-[#c7d5dc]">{item.activa ? "Activa" : "Inactiva"}</span>
                                   </button>
                                 ))}
                               </div>
@@ -1046,47 +618,14 @@ export default function AppShell({
                             {apiSearchResults.announcements?.length > 0 && (
                               <div>
                                 <p className="px-3 pb-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Novedades</p>
-                                {apiSearchResults.announcements.slice(0, 3).map((item) => (
-                                  <button
-                                    key={item._id}
-                                    type="button"
-                                    onClick={() => { setView("novedades"); setSearchQuery(""); setSearchOpen(false); }}
-                                    className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/5"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-semibold text-white">{item.titulo}</p>
-                                      <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.companyName || item.categoria}</p>
-                                    </div>
-                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
-                                      Novedad
-                                    </span>
+                                {apiSearchResults.announcements.slice(0, 3).map(item => (
+                                  <button key={item._id} type="button" onClick={() => { setView("novedades"); setSearchQuery(""); setSearchOpen(false); }}
+                                    className="flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white/5">
+                                    <p className="truncate text-sm font-semibold text-white">{item.titulo}</p>
+                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2 py-0.5 text-[10px] text-[#c7d5dc]">Novedad</span>
                                   </button>
                                 ))}
                               </div>
-                            )}
-                            {apiSearchResults.files?.length > 0 && (
-                              <div>
-                                <p className="px-3 pb-1 text-[10px] uppercase tracking-[0.16em] text-[#5e7d8e] font-semibold">Archivos</p>
-                                {apiSearchResults.files.slice(0, 3).map((item) => (
-                                  <button
-                                    key={item._id}
-                                    type="button"
-                                    onClick={() => { setView("archivo-central"); setSearchQuery(item.nombreVisible || item.nombreArchivo); setSearchOpen(false); }}
-                                    className="flex w-full items-center justify-between gap-3 rounded-2xl px-3 py-2.5 text-left transition hover:bg-white/5"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="truncate text-sm font-semibold text-white">{item.nombreVisible || item.nombreArchivo}</p>
-                                      <p className="mt-0.5 text-xs text-[#8ea5b3]">{item.companyName || item.tipoArchivo}</p>
-                                    </div>
-                                    <span className="shrink-0 rounded-full border border-white/10 bg-[#122530] px-2.5 py-1 text-[11px] text-[#c7d5dc]">
-                                      Archivo
-                                    </span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
-                            {!apiSearchResults.companies?.length && !apiSearchResults.announcements?.length && !apiSearchResults.files?.length && (
-                              <div className="px-3 py-2 text-xs text-[#5e7d8e]">Sin resultados en base de datos.</div>
                             )}
                           </>
                         ) : null}
@@ -1096,96 +635,37 @@ export default function AppShell({
                 ) : null}
               </div>
 
-              <div className="flex items-center justify-end gap-2">
-                <FeedBell token={token} />
-                <NotificationBell
-                  announcementSummary={announcementSummary}
-                  onMarkRead={handleMarkRead}
-                  onMarkAllRead={handleMarkAllRead}
-                  onViewAll={() => setView("novedades")}
-                  onOpenAnnouncement={handleOpenAnnouncement}
-                  t={t}
-                />
-                {/* Theme toggle */}
-                <button
-                  type="button"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
-                  aria-label={theme === "dark" ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-                  title={theme === "dark" ? "Modo claro" : "Modo oscuro"}
-                >
-                  {theme === "dark" ? (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                      <circle cx="12" cy="12" r="4" />
-                      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
-                      <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
-                    </svg>
-                  )}
-                </button>
-                {/* Shortcuts help */}
-                <button
-                  type="button"
-                  onClick={() => setShowShortcuts(true)}
-                  className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:bg-[#172c39] hover:text-white"
-                  aria-label="Atajos de teclado"
-                  title="Atajos de teclado (?)"
-                >
+              {/* Right actions */}
+              <div className="flex items-center gap-2">
+                <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} onMarkAllRead={handleMarkAllRead} onViewAll={() => setView("novedades")} onOpenAnnouncement={handleOpenAnnouncement} t={t}/>
+                <button type="button" onClick={() => setShowShortcuts(true)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:bg-[#172c39] hover:text-white"
+                  aria-label="Atajos de teclado" title="Atajos (?)">
                   <span className="text-sm font-semibold">?</span>
                 </button>
-                <LanguageMenu language={language} setLanguage={setLanguage} t={t} />
-                <button
-                  type="button"
-                  onClick={() => setView("perfil")}
-                  className="hidden items-center gap-3 rounded-2xl border border-white/10 bg-[#12222d] px-3 py-2 text-left transition hover:bg-[#172c39] md:flex"
-                >
-                  {user?.avatarUrl ? (
-                    <img src={user.avatarUrl} alt={displayName} className="h-10 w-10 rounded-2xl object-cover" />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#14b8a6] text-sm font-semibold text-[#0f172a]">
-                      {userInitials}
-                    </div>
-                  )}
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-white">{displayName}</p>
-                    <p className="truncate text-xs text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
-                  </div>
-                </button>
-                <button
-                  onClick={logout}
-                  className="rounded-2xl border border-white/15 bg-[#152833] px-4 py-3 text-sm text-white transition hover:bg-[#1a3240]"
-                >
+                <LanguageMenu language={language} setLanguage={setLanguage} t={t}/>
+                <button onClick={logout}
+                  className="rounded-xl border border-white/15 bg-[#152833] px-3 py-2 text-sm text-white transition hover:bg-[#1a3240]">
                   {t("topbar.logout", "Salir")}
                 </button>
               </div>
             </div>
           </header>
 
-          <main className="flex-1 overflow-y-auto px-4 py-5 md:px-6">
+          <main className="flex-1 overflow-y-auto px-4 py-5 md:px-5">
             <div className="mx-auto w-full max-w-[1440px]">
               {backendDown ? (
                 <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0">
-                    <path d="M8 5v3M8 10h.01" /><path d="M7.1 2.5L1.5 13h13L9 2.5a1.1 1.1 0 00-1.9 0z" />
-                  </svg>
+                  <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0"><path d="M8 5v3M8 10h.01"/><path d="M7.1 2.5L1.5 13h13L9 2.5a1.1 1.1 0 00-1.9 0z"/></svg>
                   <span>El servidor está iniciando — las primeras solicitudes pueden tardar unos segundos.</span>
-                  <button
-                    type="button"
-                    onClick={() => setBackendDown(false)}
-                    className="ml-auto shrink-0 opacity-60 hover:opacity-100"
-                    aria-label="Cerrar"
-                  >
-                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
-                      <path d="M2 2l8 8M10 2l-8 8" />
-                    </svg>
+                  <button type="button" onClick={() => setBackendDown(false)} className="ml-auto shrink-0 opacity-60 hover:opacity-100" aria-label="Cerrar">
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><path d="M2 2l8 8M10 2l-8 8"/></svg>
                   </button>
                 </div>
               ) : null}
               {tokenNearExpiry ? (
                 <div className="mb-5 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                  Tu sesión vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guarda cambios y vuelve a iniciar sesión.
+                  Tu sesión vence pronto ({tokenExpiresAt?.toLocaleString("es-AR")}). Guardá cambios y volvé a iniciar sesión.
                 </div>
               ) : null}
               {children}
@@ -1197,68 +677,29 @@ export default function AppShell({
       {/* Mobile sidebar overlay */}
       {mobileMenuOpen ? (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setMobileMenuOpen(false)}
-          />
-          <div className="absolute left-0 top-0 bottom-0 flex w-72 flex-col border-r border-white/10 bg-[#0c171d] shadow-[4px_0_32px_rgba(2,8,23,0.6)]">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileMenuOpen(false)}/>
+          <div className="absolute left-0 top-0 bottom-0 flex w-64 flex-col border-r border-white/10 bg-[#0b1620] shadow-[4px_0_32px_rgba(2,8,23,0.6)]">
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3.5">
-              <AppLogo variant="dark" />
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-white"
-                aria-label="Cerrar menú"
-              >
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-                  <path d="M3 3l10 10M13 3L3 13" />
-                </svg>
+              <AppLogo variant="dark"/>
+              <button type="button" onClick={() => setMobileMenuOpen(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-white" aria-label="Cerrar menú">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><path d="M3 3l10 10M13 3L3 13"/></svg>
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto px-3 py-3">
-              <nav className="space-y-4">
-                {navGroups.map((group) => (
-                  <div key={group.label}>
-                    <p className="px-3 pb-1.5 text-[10px] uppercase tracking-[0.18em] text-[#5e7d8e] font-semibold">
-                      {group.label}
-                    </p>
-                    <div className="space-y-0.5">
-                      {group.items.map((item) => (
-                        <button
-                          key={item.key}
-                          type="button"
-                          onClick={() => { setView(item.key); setMobileMenuOpen(false); }}
-                          className={`flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-left text-sm font-medium transition ${
-                            view === item.key
-                              ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_6px_20px_rgba(20,184,166,0.30)]"
-                              : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"
-                          }`}
-                        >
-                          <AppIcon name={item.key} active={view === item.key} />
-                          <span>{translateNavLabel(item.key, item.label, t)}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+            <div className="flex-1 overflow-y-auto px-2.5 py-3">
+              <nav className="space-y-0.5">
+                {sidebarNav.map(item =>
+                  item.type === "item" ? renderNavItem(item, () => setMobileMenuOpen(false)) : renderNavGroup(item, () => setMobileMenuOpen(false))
+                )}
               </nav>
             </div>
-            <div className="border-t border-white/10 px-3 py-2.5">
-              <button
-                type="button"
-                onClick={() => { setView("perfil"); setMobileMenuOpen(false); }}
-                className="flex w-full items-center gap-2.5 rounded-2xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]"
-              >
-                {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={displayName} className="h-8 w-8 shrink-0 rounded-xl object-cover" />
-                ) : (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#14b8a6] text-xs font-semibold text-[#0f172a]">
-                    {userInitials}
-                  </div>
-                )}
+            <div className="border-t border-white/10 px-2.5 py-2.5">
+              <button type="button" onClick={() => { setView("perfil"); setMobileMenuOpen(false); }}
+                className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]">
+                {user?.avatarUrl ? <img src={user.avatarUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-lg object-cover"/> : <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#14b8a6] text-[11px] font-semibold text-[#0f172a]">{userInitials}</div>}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-semibold text-white">{displayName}</p>
-                  <p className="truncate text-[11px] text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
+                  <p className="truncate text-[10px] text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
                 </div>
               </button>
             </div>
@@ -1268,34 +709,17 @@ export default function AppShell({
 
       {/* Keyboard shortcuts modal */}
       {showShortcuts ? (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm"
-          onClick={() => setShowShortcuts(false)}
-        >
-          <div
-            className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0c1e28] p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowShortcuts(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#0c1e28] p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <p className="text-base font-semibold text-white">Atajos de teclado</p>
-              <button
-                type="button"
-                onClick={() => setShowShortcuts(false)}
-                className="flex h-7 w-7 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#8ea5b3] transition hover:text-white"
-                aria-label="Cerrar"
-              >
-                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
-                  <path d="M2 2l8 8M10 2l-8 8" />
-                </svg>
+              <button type="button" onClick={() => setShowShortcuts(false)}
+                className="flex h-7 w-7 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-[#8ea5b3] transition hover:text-white" aria-label="Cerrar">
+                <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><path d="M2 2l8 8M10 2l-8 8"/></svg>
               </button>
             </div>
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="pb-2 text-left text-xs uppercase tracking-[0.14em] text-[#5e7d8e]">Tecla</th>
-                  <th className="pb-2 text-left text-xs uppercase tracking-[0.14em] text-[#5e7d8e]">Acción</th>
-                </tr>
-              </thead>
+              <thead><tr className="border-b border-white/10"><th className="pb-2 text-left text-xs uppercase tracking-[0.14em] text-[#5e7d8e]">Tecla</th><th className="pb-2 text-left text-xs uppercase tracking-[0.14em] text-[#5e7d8e]">Acción</th></tr></thead>
               <tbody className="divide-y divide-white/5">
                 {[
                   { key: "Ctrl+K", action: "Abrir búsqueda global" },
@@ -1310,33 +734,22 @@ export default function AppShell({
                   { key: "Esc", action: "Cerrar paneles" },
                 ].map(({ key, action }) => (
                   <tr key={key}>
-                    <td className="py-2 pr-4">
-                      <kbd className="rounded-lg border border-white/15 bg-[#12222d] px-2.5 py-1 text-xs font-mono font-semibold text-[#c7d5dc]">
-                        {key}
-                      </kbd>
-                    </td>
+                    <td className="py-2 pr-4"><kbd className="rounded-lg border border-white/15 bg-[#12222d] px-2 py-0.5 text-xs font-mono font-semibold text-[#c7d5dc]">{key}</kbd></td>
                     <td className="py-2 text-[#c7d5dc]">{action}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="mt-4 text-xs text-[#5e7d8e]">Las teclas de navegación solo funcionan cuando el cursor no está en un campo de texto.</p>
+            <p className="mt-4 text-xs text-[#5e7d8e]">Las teclas solo funcionan cuando el cursor no está en un campo de texto.</p>
           </div>
         </div>
       ) : null}
 
-      {/* Floating contact CTA — visible to non-superadmin users */}
+      {/* Floating CTA */}
       {!isSuperAdmin ? (
-        <a
-          href="https://calendly.com/zentorhq/demo-zentor"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition hover:bg-[#0d9488] hover:shadow-[0_12px_32px_rgba(20,184,166,0.4)] no-underline"
-        >
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
-            <rect x="2" y="2" width="12" height="12" rx="6" />
-            <path d="M8 5v3.5l2 2" />
-          </svg>
+        <a href="https://calendly.com/zentorhq/demo-zentor" target="_blank" rel="noopener noreferrer"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition hover:bg-[#0d9488] no-underline">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><rect x="2" y="2" width="12" height="12" rx="6"/><path d="M8 5v3.5l2 2"/></svg>
           Agendar demo
         </a>
       ) : null}
