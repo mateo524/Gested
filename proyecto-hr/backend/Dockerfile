@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Copy package manifests and install production dependencies only
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --no-audit --legacy-peer-deps
 
 # ---- Runtime stage ----
 FROM node:20-alpine

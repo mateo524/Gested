@@ -78,6 +78,12 @@ router.get("/", auth, requireSuperAdmin, permit("manage_companies"), async (req,
   );
 });
 
+router.get("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
+  const company = await Company.findById(req.params.id).select("nombre slug tipoCliente activa spreadsheetId spreadsheetUrl spreadsheetLastSync").lean();
+  if (!company) return res.status(404).json({ mensaje: "Empresa no encontrada" });
+  res.json(company);
+});
+
 router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.single("file"), async (req, res) => {
   const {
     nombre,

@@ -1,8 +1,42 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import CompaniesPage from "./CompaniesPage";
 import SchoolsPage from "./SchoolsPage";
+
+function SpreadsheetBadge({ token, companyId }) {
+  const [url, setUrl] = useState(null);
+  const [lastSync, setLastSync] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!companyId) return;
+    apiFetch(`/companies/${companyId}`, { token })
+      .then(data => {
+        setUrl(data?.spreadsheetUrl || null);
+        setLastSync(data?.spreadsheetLastSync || null);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [companyId, token]);
+
+  if (loading) return <span className="text-[11px] text-[#7f99a8]">…</span>;
+  if (!url) return <span className="text-[11px] text-[#7f99a8]">Sin Excel conectado</span>;
+
+  return (
+    <a href={url} target="_blank" rel="noopener noreferrer"
+      onClick={e => e.stopPropagation()}
+      className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-300 transition hover:bg-emerald-500/20">
+      <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0">
+        <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+        <path d="M5 6h6M5 8h6M5 10h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+      </svg>
+      Ver Excel
+      {lastSync ? <span className="text-emerald-400/70 font-normal">· {new Date(lastSync).toLocaleDateString("es-AR")}</span> : null}
+    </a>
+  );
+}
 
 export default function OrganizationsPage() {
   const { user, activeCompany, token } = useAuth();
@@ -96,6 +130,7 @@ export default function OrganizationsPage() {
                   <div className="flex items-center justify-between gap-3">
                     <p className="font-medium text-[#E8EEF1]">{item.nombre}</p>
                     <div className="flex items-center gap-2">
+                      <SpreadsheetBadge token={token} companyId={item.companyId}/>
                       <span className={`h-2.5 w-2.5 rounded-full ${(item.score ?? 0) < 50 ? "bg-red-400" : (item.score ?? 0) < 70 ? "bg-amber-400" : "bg-emerald-400"}`} />
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
