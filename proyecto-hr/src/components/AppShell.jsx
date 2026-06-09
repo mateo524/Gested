@@ -210,21 +210,13 @@ export default function AppShell({
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [apiSearchResults, setApiSearchResults] = useState(null);
   const [apiSearchLoading, setApiSearchLoading] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState(() => new Set(["personas-group", "eval-group"]));
+  const [activeGroup, setActiveGroup] = useState(null);
 
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
   const isManager = isManagerUser(user);
   const searchRef = useRef(null);
   useClickOutside(searchRef, () => setSearchOpen(false), searchOpen);
-
-  function toggleGroup(key) {
-    setExpandedGroups(prev => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  }
 
   // Cmd+K search
   useEffect(() => {
@@ -314,7 +306,7 @@ export default function AppShell({
 
   const visibleViews = useMemo(() => allViews.filter(item => item.show), [allViews]);
 
-  // New collapsible sidebar nav structure
+  // Sidebar nav structure (groups + standalone items)
   const sidebarNav = useMemo(() => {
     const byKey = Object.fromEntries(visibleViews.map(v => [v.key, v]));
     const L = (es, en) => language === "en" ? en : es;
@@ -378,14 +370,15 @@ export default function AppShell({
     return items;
   }, [visibleViews, isSuperAdmin, isEmployee, isManager, language]);
 
-  // Auto-expand group containing active view
+  // Auto-set activeGroup when view changes into a group
   useEffect(() => {
-    sidebarNav.forEach(item => {
-      if (item.type === "group" && item.children?.some(c => c.key === view)) {
-        setExpandedGroups(prev => new Set([...prev, item.key]));
-      }
-    });
+    const found = sidebarNav.find(item => item.type === "group" && item.children?.some(c => c.key === view));
+    if (found) setActiveGroup(found.key);
+    else if (sidebarNav.some(item => item.type === "item" && item.key === view)) setActiveGroup(null);
   }, [view, sidebarNav]);
+
+  // Sub-items for the currently active group (shown in top tab bar)
+  const activeGroupDef = useMemo(() => sidebarNav.find(g => g.key === activeGroup && g.type === "group") || null, [sidebarNav, activeGroup]);
 
   const organizationLabel = user?.companyName || "Organización activa";
   const displayName = getUserDisplayName(user);
@@ -427,46 +420,53 @@ export default function AppShell({
     window.setTimeout(() => window.dispatchEvent(new CustomEvent("performia:announcement-focus", { detail: { announcementId: item._id } })), 80);
   }
 
+  // Sidebar item: standalone view
   function renderNavItem(item, onClickOverride) {
-    const active = view === item.key;
+    const active = view === item.key && activeGroup === null;
     return (
       <button key={item.key} type="button"
-        onClick={() => { setView(item.key); onClickOverride?.(); }}
-        className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${active ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_4px_14px_rgba(20,184,166,0.28)]" : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"}`}>
-        <AppIcon name={item.icon || item.key} active={active} size="sm" />
-        <span className="truncate">{item.label}</span>
+        onClick={() => { setView(item.key); setActiveGroup(null); onClickOverride?.(); }}
+        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition ${active ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_4px_14px_rgba(20,184,166,0.28)]" : "text-[#8fa8b6] hover:bg-white/[0.06] hover:text-white"}`}>
+        <AppIcon name={item.icon || item.key} active={active} />
+        {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
       </button>
     );
   }
 
+  // Sidebar group: large button — clicking opens first child + sets activeGroup
   function renderNavGroup(group, onClickOverride) {
-    const isExpanded = expandedGroups.has(group.key);
-    const hasActiveChild = group.children?.some(c => c.key === view);
+    const isActive = activeGroup === group.key;
     return (
-      <div key={group.key}>
-        <button type="button" onClick={() => toggleGroup(group.key)}
-          className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-left text-sm font-medium transition ${hasActiveChild && !isExpanded ? "text-[#14b8a6] bg-[#14b8a6]/10" : "text-[#8fa8b6] hover:bg-white/[0.05] hover:text-white"}`}>
-          <AppIcon name={group.icon} active={hasActiveChild} size="sm" />
-          <span className="flex-1 truncate">{group.label}</span>
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
-            className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${isExpanded ? "rotate-90" : ""}`}>
-            <path d="M6 3l5 5-5 5"/>
-          </svg>
-        </button>
-        {isExpanded ? (
-          <div className="ml-4 mt-0.5 space-y-0.5 border-l border-white/10 pl-2.5">
-            {group.children.map(child => renderNavItem(child, onClickOverride))}
-          </div>
-        ) : null}
-      </div>
+      <button key={group.key} type="button"
+        onClick={() => {
+          const first = group.children?.[0];
+          setActiveGroup(group.key);
+          if (first) setView(first.key);
+          onClickOverride?.();
+        }}
+        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition ${isActive ? "bg-white/10 text-white ring-1 ring-white/20" : "text-[#8fa8b6] hover:bg-white/[0.06] hover:text-white"}`}>
+        <AppIcon name={group.icon} active={isActive} />
+        {!sidebarCollapsed && (
+          <>
+            <span className="flex-1 truncate">{group.label}</span>
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
+              className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isActive ? "rotate-90 text-white" : "text-[#5e7d8e]"}`}>
+              <path d="M6 3l5 5-5 5"/>
+            </svg>
+          </>
+        )}
+      </button>
     );
   }
 
   function renderCollapsedIcon(item) {
-    const active = item.type === "item" ? view === item.key : item.children?.some(c => c.key === view);
+    const active = item.type === "item" ? (view === item.key && !activeGroup) : activeGroup === item.key;
     return (
       <button key={item.key} type="button"
-        onClick={() => item.type === "item" ? setView(item.key) : toggleGroup(item.key)}
+        onClick={() => {
+          if (item.type === "item") { setView(item.key); setActiveGroup(null); }
+          else { setActiveGroup(item.key); const first = item.children?.[0]; if (first) setView(first.key); }
+        }}
         title={item.label}
         className={`flex w-full items-center justify-center rounded-xl py-2.5 transition ${active ? "bg-[#14b8a6] text-[#0f172a]" : "text-[#9ab0bc] hover:bg-white/5 hover:text-white"}`}>
         <AppIcon name={item.icon || item.key} active={active} />
@@ -652,6 +652,25 @@ export default function AppShell({
             </div>
           </header>
 
+          {/* Sub-nav tab bar — shown when a group is active */}
+          {activeGroupDef ? (
+            <div className="shrink-0 border-b border-white/[0.07] bg-[#091319]/80 px-4 md:px-5">
+              <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                {activeGroupDef.children.map(child => {
+                  const isActive = view === child.key;
+                  return (
+                    <button key={child.key} type="button"
+                      onClick={() => setView(child.key)}
+                      className={`flex shrink-0 items-center gap-2 border-b-2 px-3 py-3 text-sm font-medium transition ${isActive ? "border-[#14b8a6] text-[#14b8a6]" : "border-transparent text-[#7f99a8] hover:text-[#c7d5dc]"}`}>
+                      <AppIcon name={child.icon || child.key} active={isActive} size="sm" />
+                      <span>{child.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ) : null}
+
           <main className="flex-1 overflow-y-auto px-4 py-5 md:px-5">
             <div className="mx-auto w-full max-w-[1440px]">
               {backendDown ? (
@@ -687,7 +706,7 @@ export default function AppShell({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-2.5 py-3">
-              <nav className="space-y-0.5">
+              <nav className="space-y-1">
                 {sidebarNav.map(item =>
                   item.type === "item" ? renderNavItem(item, () => setMobileMenuOpen(false)) : renderNavGroup(item, () => setMobileMenuOpen(false))
                 )}
