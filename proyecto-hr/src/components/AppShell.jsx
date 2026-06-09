@@ -346,13 +346,19 @@ export default function AppShell({
       { key: "ciclos", es: "Ciclos", en: "Cycles" },
       { key: "metricas", es: "Mediciones", en: "Metrics" },
       { key: "calibracion", es: "Calibración", en: "Calibration" },
-      { key: "novedades", es: "Novedades", en: "Updates" },
-      { key: "carga-masiva", es: "Migración", en: "Migration" },
-      { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
     ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
     if (evalKids.length) {
       items.push({ type: "group", key: "eval-group", label: L("Evaluaciones", "Evaluations"), icon: "evaluaciones", children: evalKids });
     }
+
+    // Standalone items: Novedades, Migración, Reportes
+    [
+      { key: "novedades", es: "Novedades", en: "Updates" },
+      { key: "carga-masiva", es: "Migración", en: "Migration" },
+      { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
+    ].forEach(item => {
+      if (byKey[item.key]) items.push({ type: "item", key: item.key, label: L(item.es, item.en), icon: item.key });
+    });
 
     // Plataforma group (superadmin)
     if (isSuperAdmin) {
@@ -764,14 +770,6 @@ export default function AppShell({
         </div>
       ) : null}
 
-      {/* Floating CTA */}
-      {!isSuperAdmin ? (
-        <a href="https://calendly.com/zentorhq/demo-zentor" target="_blank" rel="noopener noreferrer"
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.35)] transition hover:bg-[#0d9488] no-underline">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><rect x="2" y="2" width="12" height="12" rx="6"/><path d="M8 5v3.5l2 2"/></svg>
-          Agendar demo
-        </a>
-      ) : null}
     </div>
   );
 }

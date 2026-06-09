@@ -494,7 +494,7 @@ async function findOperationalRecordOrFail(req, Model, id, notFoundMessage) {
   return record;
 }
 
-router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_METRICS), async (req, res) => {
+router.get("/", auth, attachTenantScope, requireAnyPermission(PERMISSIONS.MANAGE_METRICS, PERMISSIONS.MANAGE_EVALUATIONS, PERMISSIONS.EVALUATE_TEAM, PERMISSIONS.SELF_EVALUATE, PERMISSIONS.VIEW_REPORTS), async (req, res) => {
   const companyId = String(req.scope.companyId || "");
   const hasFilters = req.query.competencyId || req.query.schoolId || req.query.q?.trim();
 
