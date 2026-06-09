@@ -9,8 +9,6 @@ import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
 const TIPO_LABELS = { AUTOEVALUACION: "Autoevaluación", JEFATURA: "Jefatura", FINAL: "Cierre final", EVALUACION_360: "360°" };
 const ESTADO_LABELS = { BORRADOR: "Borrador", ENVIADA: "Enviada", REVISADA: "Revisada", CERRADA: "Cerrada" };
 
-function L(language, es, en) { return language === "en" ? en : es; }
-
 function StatusBadge({ estado }) {
   const label = ESTADO_LABELS[estado] || estado;
   const cls = estado === "CERRADA" ? "bg-emerald-500/15 text-emerald-200"
@@ -24,18 +22,10 @@ function StarRow({ value, onChange, disabled }) {
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map(n => (
-        <button
-          key={n}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange?.(n)}
+        <button key={n} type="button" disabled={disabled} onClick={() => onChange?.(n)}
           className={`h-7 w-7 flex items-center justify-center rounded-lg text-lg transition
-            ${n <= (value || 0)
-              ? "text-[#14b8a6]"
-              : "text-white/20 hover:text-white/50"
-            }
-            ${disabled ? "cursor-default" : "hover:scale-110"}`}
-        >
+            ${n <= (value || 0) ? "text-[#14b8a6]" : "text-white/20 hover:text-white/50"}
+            ${disabled ? "cursor-default" : "hover:scale-110"}`}>
           ★
         </button>
       ))}
@@ -44,7 +34,7 @@ function StarRow({ value, onChange, disabled }) {
 }
 
 // ─── Eval Detail View (Vista Jefe — side by side) ─────────────────────────────
-function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
+function EvalDetailView({ evalId, token, onBack, onSaved }) {
   const { addToast } = useToast();
   const [data, setData] = useState(null);
   const [autoData, setAutoData] = useState(null);
@@ -65,33 +55,24 @@ function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
           apiFetch("/metrics", { token, signal: ctrl.signal }).catch(() => []),
         ]);
         if (ctrl.signal.aborted) return;
-
         const ev = detail?.evaluation || detail;
         const sc = detail?.scores || [];
         setData({ evaluation: ev, scores: sc });
         setMetrics(met || []);
-
-        // init editable scores from existing data
-        const initScores = {};
-        const initComments = {};
+        const initS = {}, initC = {};
         sc.forEach(s => {
           const id = String(s.metricId?._id || s.metricId);
-          initScores[id] = s.nivel || 0;
-          initComments[id] = s.comentario || "";
+          initS[id] = s.nivel || 0;
+          initC[id] = s.comentario || "";
         });
-        setScores(initScores);
-        setComments(initComments);
+        setScores(initS);
+        setComments(initC);
         setComentariosGenerales(ev?.comentariosGenerales || "");
-
-        // load autoevaluacion for the same employee + cycle
         if (ev?.tipo === "JEFATURA" && ev?.employeeId && ev?.cycleId) {
           const empId = ev.employeeId?._id || ev.employeeId;
           const cycId = ev.cycleId?._id || ev.cycleId;
           try {
-            const allEvals = await apiFetch(
-              `/evaluations?employeeId=${empId}&cycleId=${cycId}&tipo=AUTOEVALUACION`,
-              { token, signal: ctrl.signal }
-            );
+            const allEvals = await apiFetch(`/evaluations?employeeId=${empId}&cycleId=${cycId}&tipo=AUTOEVALUACION`, { token, signal: ctrl.signal });
             const autoEval = Array.isArray(allEvals) ? allEvals[0] : null;
             if (autoEval?._id) {
               const autoDetail = await apiFetch(`/evaluations/${autoEval._id}`, { token, signal: ctrl.signal });
@@ -110,42 +91,33 @@ function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
 
   const metricMap = useMemo(() => new Map(metrics.map(m => [String(m._id), m])), [metrics]);
 
-  // Merge all metric IDs from both evals
   const allMetricIds = useMemo(() => {
     const ids = new Set();
     (data?.scores || []).forEach(s => ids.add(String(s.metricId?._id || s.metricId)));
     (autoData?.scores || []).forEach(s => ids.add(String(s.metricId?._id || s.metricId)));
-    // If no scores yet, use all metrics
     if (!ids.size) metrics.forEach(m => ids.add(String(m._id)));
     return [...ids];
   }, [data, autoData, metrics]);
 
   const autoScoreMap = useMemo(() => {
     const m = new Map();
-    (autoData?.scores || []).forEach(s => {
-      m.set(String(s.metricId?._id || s.metricId), s);
-    });
+    (autoData?.scores || []).forEach(s => m.set(String(s.metricId?._id || s.metricId), s));
     return m;
   }, [autoData]);
 
   async function handleSave(submit) {
     const evaluation = data?.evaluation;
     if (!evaluation) return;
-    const payload = {
-      scores: allMetricIds.map(id => ({
-        metricId: id,
-        nivel: scores[id] || 0,
-        comentario: comments[id] || "",
-      })),
-      comentariosGenerales,
-      ...(submit ? { estado: "ENVIADA" } : {}),
-    };
     try {
       setSaving(true);
       await apiFetch(`/evaluations/${evaluation._id}`, {
         method: "PUT", token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          scores: allMetricIds.map(id => ({ metricId: id, nivel: scores[id] || 0, comentario: comments[id] || "" })),
+          comentariosGenerales,
+          ...(submit ? { estado: "ENVIADA" } : {}),
+        }),
       });
       addToast({ message: submit ? "Evaluación enviada." : "Borrador guardado.", type: "success" });
       onSaved?.();
@@ -157,51 +129,45 @@ function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
   }
 
   if (loading) return <LoadingState compact title="Cargando evaluación…" description=""/>;
-
   const ev = data?.evaluation;
   if (!ev) return <ErrorState compact title="No encontrada" description=""/>;
 
   const emp = ev.employeeId;
   const empName = emp ? `${emp.nombre || ""} ${emp.apellido || ""}`.trim() : "—";
-  const cycleLabel = ev.cycleId?.periodo ? `${ev.cycleId.periodo} ${ev.cycleId.anio || ""}` : "—";
   const isJefatura = ev.tipo === "JEFATURA";
   const isReadOnly = ev.estado === "ENVIADA" || ev.estado === "CERRADA";
+  const showSideBySide = isJefatura && autoData;
 
   return (
     <div className="space-y-5">
       {/* Back + header */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={onBack}
           className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#c7d5dc] transition hover:bg-white/10">
-          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-            <path d="M10 3L5 8l5 5"/>
-          </svg>
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M10 3L5 8l5 5"/></svg>
           Volver
         </button>
         <div className="flex-1 min-w-0">
-          <h2 className="text-lg font-semibold text-white truncate">{empName}</h2>
-          <p className="text-xs text-[#7f99a8]">{ev.cycleId?.periodo || cycleLabel} · {TIPO_LABELS[ev.tipo] || ev.tipo}</p>
+          <h2 className="text-lg font-semibold text-white">{empName}</h2>
+          <p className="text-xs text-[#7f99a8]">{ev.cycleId?.periodo || "—"} · {TIPO_LABELS[ev.tipo] || ev.tipo}</p>
         </div>
         <StatusBadge estado={ev.estado}/>
-        {emp?.area ? <span className="hidden sm:block text-xs text-[#7f99a8]">{emp.area}</span> : null}
         {emp?.cargo ? <span className="hidden sm:block text-xs text-[#9fb6c4]">{emp.cargo}</span> : null}
+        {emp?.area ? <span className="hidden sm:block text-xs text-[#7f99a8]">{emp.area}</span> : null}
       </div>
 
-      {/* Auto eval notice */}
-      {isJefatura && autoData && (
+      {showSideBySide && (
         <div className="rounded-xl border border-[#14b8a6]/25 bg-[#14b8a6]/8 px-4 py-2.5 text-sm text-[#9ecfcc]">
           Podés ver la autoevaluación del empleado al costado para hacer una evaluación justa y objetiva.
         </div>
       )}
 
-      {/* Side-by-side skills */}
+      {/* Skills grid */}
       <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
-        {/* Header row */}
-        <div className={`grid border-b border-white/10 px-4 py-3 ${isJefatura && autoData ? "grid-cols-[1.5fr_1fr_1fr_1.5fr]" : "grid-cols-[2fr_1fr_1.5fr]"}`}>
+        {/* Header */}
+        <div className={`grid gap-3 border-b border-white/10 px-4 py-3 ${showSideBySide ? "grid-cols-[2fr_1fr_1fr_1.5fr]" : "grid-cols-[2fr_1fr_1.5fr]"}`}>
           <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Habilidad</span>
-          {isJefatura && autoData && (
-            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-300">Autoevaluación</span>
-          )}
+          {showSideBySide && <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-300">Autoevaluación</span>}
           <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${isJefatura ? "text-[#14b8a6]" : "text-[#5e7d8e]"}`}>
             {isJefatura ? "Tu evaluación" : "Calificación"}
           </span>
@@ -209,9 +175,7 @@ function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
         </div>
 
         {allMetricIds.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-[#7f99a8]">
-            Sin habilidades asignadas en este ciclo.
-          </div>
+          <div className="px-4 py-8 text-center text-sm text-[#7f99a8]">Sin habilidades asignadas en este ciclo.</div>
         ) : (
           <div className="divide-y divide-white/5">
             {allMetricIds.map(id => {
@@ -220,52 +184,35 @@ function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
               const autoNivel = autoScore?.nivel || 0;
               const currentNivel = scores[id] || 0;
               const diff = currentNivel && autoNivel ? currentNivel - autoNivel : null;
-
               return (
-                <div
-                  key={id}
-                  className={`grid items-center gap-3 px-4 py-3 ${isJefatura && autoData ? "grid-cols-[1.5fr_1fr_1fr_1.5fr]" : "grid-cols-[2fr_1fr_1.5fr]"}`}
-                >
-                  {/* Skill name */}
+                <div key={id} className={`grid items-center gap-3 px-4 py-3 ${showSideBySide ? "grid-cols-[2fr_1fr_1fr_1.5fr]" : "grid-cols-[2fr_1fr_1.5fr]"}`}>
                   <div>
-                    <p className="text-sm font-medium text-white">{metric?.nombre || id}</p>
+                    <p className="text-sm font-medium text-white">{metric?.nombre || "—"}</p>
                     {metric?.descripcion ? <p className="text-xs text-[#7f99a8] truncate">{metric.descripcion}</p> : null}
                   </div>
-
-                  {/* Auto eval column */}
-                  {isJefatura && autoData && (
-                    <div className="flex flex-col gap-0.5">
+                  {showSideBySide && (
+                    <div>
                       <StarRow value={autoNivel} disabled/>
                       {autoScore?.comentario ? <p className="text-[11px] text-[#8ea5b3] truncate">{autoScore.comentario}</p> : null}
                     </div>
                   )}
-
-                  {/* Editable eval */}
-                  <div className="flex flex-col gap-0.5">
-                    <StarRow
-                      value={currentNivel}
+                  <div>
+                    <StarRow value={currentNivel}
                       onChange={isReadOnly ? undefined : (n) => setScores(s => ({ ...s, [id]: n }))}
-                      disabled={isReadOnly}
-                    />
+                      disabled={isReadOnly}/>
                     {diff !== null && (
                       <span className={`text-[10px] font-medium ${diff > 0 ? "text-emerald-400" : diff < 0 ? "text-rose-400" : "text-[#7f99a8]"}`}>
                         {diff > 0 ? `+${diff}` : diff} vs auto
                       </span>
                     )}
                   </div>
-
-                  {/* Notes / comment */}
                   <div>
                     {isReadOnly ? (
                       <p className="text-sm text-[#9fb6c4]">{comments[id] || "—"}</p>
                     ) : (
-                      <input
-                        type="text"
-                        placeholder="Notas…"
-                        value={comments[id] || ""}
+                      <input type="text" placeholder="Notas…" value={comments[id] || ""}
                         onChange={e => setComments(c => ({ ...c, [id]: e.target.value }))}
-                        className="w-full rounded-lg border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-sm text-white outline-none placeholder:text-[#5e7d8e] focus:border-[#14b8a6]/50"
-                      />
+                        className="w-full rounded-lg border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-sm text-white outline-none placeholder:text-[#5e7d8e] focus:border-[#14b8a6]/50"/>
                     )}
                   </div>
                 </div>
@@ -281,17 +228,12 @@ function EvalDetailView({ evalId, token, language, onBack, onSaved }) {
         {isReadOnly ? (
           <p className="rounded-xl border border-white/10 bg-[#0c1e28] px-4 py-3 text-sm text-[#c7d5dc]">{comentariosGenerales || "—"}</p>
         ) : (
-          <textarea
-            value={comentariosGenerales}
-            onChange={e => setComentariosGenerales(e.target.value)}
-            rows={3}
-            placeholder="Observaciones generales sobre el desempeño…"
-            className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-4 py-3 text-sm text-white outline-none placeholder:text-[#5e7d8e] resize-none focus:border-[#14b8a6]/50"
-          />
+          <textarea value={comentariosGenerales} onChange={e => setComentariosGenerales(e.target.value)}
+            rows={3} placeholder="Observaciones generales sobre el desempeño…"
+            className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-4 py-3 text-sm text-white outline-none placeholder:text-[#5e7d8e] resize-none focus:border-[#14b8a6]/50"/>
         )}
       </div>
 
-      {/* Actions */}
       {!isReadOnly && (
         <div className="flex gap-3 justify-end">
           <button type="button" onClick={() => handleSave(false)} disabled={saving}
@@ -364,8 +306,7 @@ function EmployeeView({ token, language, searchQuery, user }) {
   const metricMap = useMemo(() => new Map(metrics.map(m => [String(m._id), m])), [metrics]);
   const selfEval = useMemo(() => evaluations.find(e => e.tipo === "AUTOEVALUACION"), [evaluations]);
   const activeCycle = useMemo(() =>
-    cycles.find(c => c.estado === "Activo" || c.estado === "Inicio") || cycles[0] || null
-  , [cycles]);
+    cycles.find(c => c.estado === "Activo" || c.estado === "Inicio") || cycles[0] || null, [cycles]);
 
   const scores = evalDetail?.scores || [];
   const visibleScores = useMemo(() => {
@@ -416,7 +357,6 @@ function EmployeeView({ token, language, searchQuery, user }) {
         </p>
       </div>
 
-      {/* CTA */}
       {!selfEval ? (
         <div className="rounded-2xl border border-[#14b8a6]/30 bg-[#14b8a6]/8 px-5 py-5 flex items-center justify-between gap-4">
           <div>
@@ -441,23 +381,17 @@ function EmployeeView({ token, language, searchQuery, user }) {
         </div>
       ) : null}
 
-      {/* Stats */}
       {evalDetail && (
         <div className="grid grid-cols-3 gap-3">
-          {[
-            { label: "Habilidades", value: stats.total },
-            { label: "Completadas", value: stats.completed, accent: true },
-            { label: "Promedio", value: stats.avg, accent: true },
-          ].map(s => (
+          {[{ label: "Habilidades", v: stats.total }, { label: "Completadas", v: stats.completed, a: true }, { label: "Promedio", v: stats.avg, a: true }].map(s => (
             <div key={s.label} className="rounded-2xl border border-white/10 bg-[#0c1e28] px-4 py-3">
               <p className="text-xs text-[#7f99a8]">{s.label}</p>
-              <p className={`mt-1 text-xl font-bold ${s.accent ? "text-[#14b8a6]" : "text-white"}`}>{s.value}</p>
+              <p className={`mt-1 text-xl font-bold ${s.a ? "text-[#14b8a6]" : "text-white"}`}>{s.v}</p>
             </div>
           ))}
         </div>
       )}
 
-      {/* Eval picker */}
       {evaluations.length > 1 && (
         <div className="flex flex-wrap gap-2">
           {evaluations.map(ev => {
@@ -472,7 +406,6 @@ function EmployeeView({ token, language, searchQuery, user }) {
         </div>
       )}
 
-      {/* Skills table */}
       {selectedEvalId ? (
         <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
           {loadingDetail ? (
@@ -512,17 +445,14 @@ function EmployeeView({ token, language, searchQuery, user }) {
           )}
         </div>
       ) : evaluations.length === 0 ? (
-        <EmptyState compact
-          title="Sin evaluaciones aún"
-          description="Cuando tu jefe cree una evaluación aparecerá aquí."
-        />
+        <EmptyState compact title="Sin evaluaciones aún" description="Cuando tu jefe cree una evaluación aparecerá aquí."/>
       ) : null}
     </div>
   );
 }
 
 // ─── Manager view ──────────────────────────────────────────────────────────────
-function ManagerView({ token, language, user }) {
+function ManagerView({ token, user }) {
   const { addToast } = useToast();
   const [employees, setEmployees] = useState([]);
   const [cycles, setCycles] = useState([]);
@@ -538,8 +468,7 @@ function ManagerView({ token, language, user }) {
   const selfEmployeeId = String(user?.employeeId || "");
 
   const activeCycle = useMemo(() =>
-    cycles.find(c => c.estado === "Activo" || c.estado === "Inicio") || cycles[0] || null
-  , [cycles]);
+    cycles.find(c => c.estado === "Activo" || c.estado === "Inicio") || cycles[0] || null, [cycles]);
 
   const loadData = useCallback(async (signal) => {
     try {
@@ -579,7 +508,6 @@ function ManagerView({ token, language, user }) {
   }, [evaluations]);
 
   const areaOptions = useMemo(() => [...new Set(employees.map(e => e.area).filter(Boolean))].sort(), [employees]);
-
   const selectedIsSelf = form.employeeId === selfEmployeeId;
   const derivedTipo = selectedIsSelf ? "AUTOEVALUACION" : "JEFATURA";
 
@@ -610,7 +538,6 @@ function ManagerView({ token, language, user }) {
       addToast({ message: "Evaluación creada.", type: "success" });
       const ctrl = new AbortController();
       await loadData(ctrl.signal);
-      // Open the newly created eval immediately
       const newId = created?.evaluation?._id || created?._id;
       if (newId) setOpenEvalId(newId);
     } catch (err) {
@@ -620,26 +547,19 @@ function ManagerView({ token, language, user }) {
     }
   }
 
-  // If an eval is open, show detail view
   if (openEvalId) {
     return (
       <EvalDetailView
         evalId={openEvalId}
         token={token}
-        language={language}
         onBack={() => setOpenEvalId(null)}
-        onSaved={() => {
-          setOpenEvalId(null);
-          const ctrl = new AbortController();
-          loadData(ctrl.signal);
-        }}
+        onSaved={() => { setOpenEvalId(null); const ctrl = new AbortController(); loadData(ctrl.signal); }}
       />
     );
   }
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Ciclos de evaluación</p>
@@ -654,7 +574,6 @@ function ManagerView({ token, language, user }) {
         </button>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Activas", value: stats.active },
@@ -669,7 +588,6 @@ function ManagerView({ token, language, user }) {
         ))}
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap items-center gap-2">
         <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
           value={filters.cicloId} onChange={e => setFilters(f => ({ ...f, cicloId: e.target.value }))}>
@@ -694,7 +612,6 @@ function ManagerView({ token, language, user }) {
         ) : null}
       </div>
 
-      {/* Table */}
       <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
         {isLoading ? (
           <LoadingState compact title="Cargando evaluaciones…" description=""/>
@@ -742,7 +659,7 @@ function ManagerView({ token, language, user }) {
                     </td>
                     <td className="px-4 py-3">
                       <button type="button"
-                        onClick={e => { e.stopPropagation(); setOpenEvalId(ev._id); }}
+                        onClick={e2 => { e2.stopPropagation(); setOpenEvalId(ev._id); }}
                         className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#9fb6c4] transition hover:bg-white/5 hover:text-white">
                         Ver →
                       </button>
@@ -755,7 +672,6 @@ function ManagerView({ token, language, user }) {
         )}
       </div>
 
-      {/* New evaluation modal */}
       {newModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
           <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0c1e28] p-6 shadow-2xl">
@@ -794,8 +710,7 @@ function ManagerView({ token, language, user }) {
                 <div className="rounded-xl border border-white/10 bg-[#12222d]/60 px-3 py-2.5 text-sm text-white">
                   {activeCycle
                     ? <span>{activeCycle.periodo} <span className="ml-2 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-200">{activeCycle.estado}</span></span>
-                    : <span className="text-[#5e7d8e]">Sin ciclo activo</span>
-                  }
+                    : <span className="text-[#5e7d8e]">Sin ciclo activo</span>}
                 </div>
               </div>
 
@@ -821,14 +736,10 @@ function ManagerView({ token, language, user }) {
 export default function EvaluationsPage() {
   const { token, user } = useAuth();
   const { language, searchQuery } = useView();
-
   const isEmployee = isEmployeeUser(user);
   const isManager = isManagerUser(user);
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployeeOnly = isEmployee && !isManager && !isSuperAdmin;
-
-  if (isEmployeeOnly) {
-    return <EmployeeView token={token} language={language} searchQuery={searchQuery} user={user}/>;
-  }
-  return <ManagerView token={token} language={language} user={user}/>;
+  if (isEmployeeOnly) return <EmployeeView token={token} language={language} searchQuery={searchQuery} user={user}/>;
+  return <ManagerView token={token} user={user}/>;
 }
