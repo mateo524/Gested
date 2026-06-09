@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  <g id="Zentor-Isotype">
+    <line x1="60" y1="100" x2="440" y2="100" stroke="#0F172A" stroke-width="18" stroke-linecap="round" />
+    <line x1="440" y1="100" x2="60" y2="400" stroke="#0F172A" stroke-width="20" stroke-linecap="round" />
+    <line x1="60" y1="400" x2="440" y2="400" stroke="#0F172A" stroke-width="18" stroke-linecap="round" />
+    <line x1="60" y1="100" x2="250" y2="250" stroke="#0F172A" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+    <line x1="440" y1="400" x2="250" y2="250" stroke="#0F172A" stroke-width="12" stroke-linecap="round" opacity="0.6" />
+    <circle cx="180" cy="190" r="18" fill="#8B5CF6" stroke="#0F172A" stroke-width="8" />
+    <circle cx="320" cy="310" r="18" fill="#8B5CF6" stroke="#0F172A" stroke-width="8" />
+    <circle cx="60" cy="100" r="32" fill="#14B8A6" stroke="#0F172A" stroke-width="10" />
+    <circle cx="440" cy="100" r="32" fill="#14B8A6" stroke="#0F172A" stroke-width="10" />
+    <circle cx="250" cy="250" r="28" fill="#14B8A6" stroke="#0F172A" stroke-width="10" />
+    <circle cx="60" cy="400" r="32" fill="#14B8A6" stroke="#0F172A" stroke-width="10" />
+    <circle cx="440" cy="400" r="32" fill="#14B8A6" stroke="#0F172A" stroke-width="10" />
+  </g>
+</svg>

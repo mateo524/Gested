@@ -1,0 +1,21 @@
+warning: in the working copy of 'proyecto-hr/backend/server.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/proyecto-hr/backend/server.js b/proyecto-hr/backend/server.js[m
+[1mindex 1e2c19f..831c534 100644[m
+[1m--- a/proyecto-hr/backend/server.js[m
+[1m+++ b/proyecto-hr/backend/server.js[m
+[36m@@ -27,6 +27,7 @@[m [mimport educationExportsRoutes from "./routes/educationExports.routes.js";[m
+ import developmentPlansRoutes from "./routes/developmentPlans.routes.js";[m
+ import automationRoutes from "./routes/automation.routes.js";[m
+ import supportRoutes from "./routes/support.routes.js";[m
+[32m+[m[32mimport bulkImportRoutes from "./routes/bulkImport.routes.js";[m
+ import { ensureInitialAccess } from "./utils/bootstrap.js";[m
+ [m
+ const app = express();[m
+[36m@@ -119,6 +120,7 @@[m [mapp.use("/education-exports", educationExportsRoutes);[m
+ app.use("/development-plans", developmentPlansRoutes);[m
+ app.use("/automation", automationRoutes);[m
+ app.use("/support", supportRoutes);[m
+[32m+[m[32mapp.use("/bulk-import", bulkImportRoutes);[m
+ [m
+ app.get("/", (req, res) => {[m
+   res.send("API RRHH PRO funcionando");[m

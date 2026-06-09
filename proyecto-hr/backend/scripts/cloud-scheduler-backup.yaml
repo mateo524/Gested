@@ -1,0 +1,33 @@
+# Cloud Scheduler job — runs the MongoDB backup script daily at 03:00 AR time
+# (Argentina Standard Time = UTC-3, no DST)
+#
+# Deploy with:
+#   gcloud scheduler jobs create http zentor-mongodb-backup \
+#     --schedule="0 3 * * *" \
+#     --time-zone="America/Argentina/Buenos_Aires" \
+#     --uri="https://<CLOUD_RUN_URL>/internal/backup" \
+#     --http-method=POST \
+#     --oidc-service-account-email=<SA_EMAIL> \
+#     --oidc-token-audience="https://<CLOUD_RUN_URL>" \
+#     --project=<GCP_PROJECT_ID>
+#
+# Alternatively, deploy via this declarative spec:
+
+name: zentor-mongodb-backup
+schedule: "0 3 * * *"
+timeZone: "America/Argentina/Buenos_Aires"
+httpTarget:
+  uri: "https://YOUR_CLOUD_RUN_URL/internal/backup"
+  httpMethod: POST
+  oidcToken:
+    serviceAccountEmail: "zentor-scheduler@YOUR_PROJECT_ID.iam.gserviceaccount.com"
+    audience: "https://YOUR_CLOUD_RUN_URL"
+  headers:
+    Content-Type: "application/json"
+  body: ""     # empty body — the backup route needs no payload
+retryConfig:
+  retryCount: 3
+  minBackoffDuration: "60s"
+  maxBackoffDuration: "3600s"
+  maxDoublings: 3
+attemptDeadline: "1800s"   # 30 min max per attempt

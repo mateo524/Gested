@@ -1,136 +1,456 @@
-import { useState, useEffect } from "react";
+﻿import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
-import { TableSkeleton } from "../components/Skeleton";
+import { useView } from "../context/ViewContext";
+import { apiFetch } from "../lib/api";
+import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import ConfirmDialog from "../components/ConfirmDialog";
+import CollapsibleList from "../components/CollapsibleList";
+
+const emptyForm = {
+  nombre: "",
+  email: "",
+  password: "",
+  roleId: "",
+  activo: true,
+};
 
 export default function UsersPage() {
   const { token } = useAuth();
-  const [usuarios, setUsuarios] = useState([]);
+  const { searchQuery, setSearchQuery } = useView();
+  const [users, setUsers] = useState([]);
   const [roles, setRoles] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ nombre: "", email: "", password: "", roleId: "" });
+  const [form, setForm] = useState(emptyForm);
+  const [editingId, setEditingId] = useState("");
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [query, setQuery] = useState("");
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkPasswords, setBulkPasswords] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [confirmState, setConfirmState] = useState({ open: false, mode: "", userId: "", count: 0 });
+  const [isConfirming, setIsConfirming] = useState(false);
+  const deferredQuery = useDeferredValue(query);
+  const availableRoles = useMemo(
+    () =>
+      roles.filter((role) => {
+        const roleCode = String(role.code || role.nombre || "").toUpperCase();
+        return roleCode !== "SUPER_ADMIN";
+      }),
+    [roles]
+  );
 
-  useEffect(() => {
-    cargarDatos();
+  const filteredUsers = useMemo(() => {
+    const terms = [deferredQuery, searchQuery].map((item) => String(item || "").trim().toLowerCase()).filter(Boolean);
+    if (!terms.length) return users;
+    return users.filter((user) =>
+      [user.nombre, user.email, user.roleId?.nombre]
+        .filter(Boolean)
+        .some((field) => terms.some((term) => String(field).toLowerCase().includes(term)))
+    );
+  }, [users, deferredQuery, searchQuery]);
+
+  const allVisibleSelected =
+    filteredUsers.length > 0 && filteredUsers.every((user) => selectedIds.includes(user._id));
+
+  const loadData = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const [usersData, rolesData] = await Promise.all([
+        apiFetch("/users", { token, cache: "no-cache" }),
+        apiFetch("/roles", { token, cache: "no-cache" }),
+      ]);
+      setUsers(usersData);
+      setRoles(rolesData);
+      setMessage("");
+      setMessageType("info");
+    } finally {
+      setIsLoading(false);
+    }
   }, [token]);
 
-  async function cargarDatos(intento = 0) {
-    try {
-      setCargando(true);
-      setError(null);
-      const headers = { Authorization: `Bearer ${token}` };
-      const [usersRes, rolesRes] = await Promise.all([
-        fetch(`${import.meta.env.VITE_API_URL}/auth`, { headers }),
-        fetch(`${import.meta.env.VITE_API_URL}/roles`, { headers }),
-      ]);
-      if (usersRes.ok) setUsuarios(await usersRes.json());
-      if (rolesRes.ok) setRoles(await rolesRes.json());
-    } catch (err) {
-      if (intento < 2) {
-        setTimeout(() => cargarDatos(intento + 1), 1500);
-        return;
-      }
-      setError(err.message);
-    } finally {
-      setCargando(false);
-    }
+  useEffect(() => {
+    loadData().catch((error) => {
+      setMessageType("error");
+      setMessage(error.message);
+    });
+  }, [loadData]);
+
+  function resetForm() {
+    setEditingId("");
+    setForm(emptyForm);
+    setFieldErrors({});
   }
 
-  async function handleCrear(e) {
-    e.preventDefault();
+  function startEdit(user) {
+    setEditingId(user._id);
+    setForm({
+      nombre: user.nombre || "",
+      email: user.email || "",
+      password: "",
+      roleId: user.roleId?._id || user.roleId || "",
+      activo: Boolean(user.activo),
+    });
+    setMessageType("info");
+    setMessage("Editando usuario seleccionado.");
+    setFieldErrors({});
+  }
+
+  async function handleSubmit(event) {
+    event.preventDefault();
+    const nextErrors = {};
+    if (!form.nombre?.trim()) nextErrors.nombre = "El nombre es obligatorio.";
+    if (!form.email?.trim()) nextErrors.email = "El email es obligatorio.";
+    if (!form.roleId) nextErrors.roleId = "Selecciona un rol.";
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length) {
+      setMessageType("warning");
+      setMessage("Completa nombre, email y rol para guardar.");
+      return;
+    }
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(form),
+      setMessage("");
+      setMessageType("info");
+      setBulkPasswords([]);
+      setIsSubmitting(true);
+      const path = editingId ? `/users/${editingId}` : "/users";
+      const method = editingId ? "PUT" : "POST";
+      const payload = {
+        nombre: form.nombre,
+        email: form.email,
+        roleId: form.roleId,
+        activo: form.activo,
+        ...(form.password ? { password: form.password } : {}),
+      };
+
+      const data = await apiFetch(path, {
+        method,
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.mensaje || "Error al crear");
-      setMessage(`Usuario ${form.email} creado`);
-      setShowForm(false);
-      setForm({ nombre: "", email: "", password: "", roleId: "" });
-      cargarDatos();
-    } catch (err) {
-      setMessage(`Error: ${err.message}`);
+
+      await loadData();
+      const hadSearch = Boolean(String(searchQuery || "").trim() || String(query || "").trim());
+      if (searchQuery) setSearchQuery("");
+      if (query) setQuery("");
+      const wasEditing = Boolean(editingId);
+      resetForm();
+      setMessageType("success");
+      setMessage(
+        `${wasEditing ? "Usuario actualizado." : "Usuario creado."}${
+          hadSearch ? " Limpiamos la búsqueda activa para mostrarlo en la lista." : ""
+        }`
+      );
+      setFieldErrors({});
+
+      if (!wasEditing && data?.temporaryPassword) {
+        setBulkPasswords([
+          {
+            _id: data.user?._id || Date.now().toString(),
+            nombre: data.user?.nombre || payload.nombre,
+            email: data.user?.email || payload.email,
+            temporaryPassword: data.temporaryPassword,
+          },
+        ]);
+      }
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
-  if (cargando) return <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6"><TableSkeleton rows={4} /></div>;
+  function toggleSelection(userId) {
+    setSelectedIds((current) =>
+      current.includes(userId) ? current.filter((id) => id !== userId) : [...current, userId]
+    );
+  }
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelectedIds((current) =>
+        current.filter((id) => !filteredUsers.some((user) => user._id === id))
+      );
+      return;
+    }
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      filteredUsers.forEach((user) => next.add(user._id));
+      return [...next];
+    });
+  }
+
+  async function runBulkAction(action) {
+    if (!selectedIds.length) {
+      setMessageType("warning");
+      setMessage("Selecciona al menos un usuario.");
+      return;
+    }
+    if (action === "delete") {
+      setConfirmState({ open: true, mode: "bulk-delete", userId: "", count: selectedIds.length });
+      return;
+    }
+    try {
+      const data = await apiFetch("/users/bulk", {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, userIds: selectedIds }),
+      });
+      setMessageType("success");
+      setMessage(data.mensaje || "Acción masiva aplicada.");
+      setBulkPasswords(data.temporaryPasswords || []);
+      setSelectedIds([]);
+      await loadData();
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    }
+  }
+
+  async function performUserDelete(userId) {
+    try {
+      await apiFetch(`/users/${userId}`, { method: "DELETE", token });
+      await loadData();
+      if (editingId === userId) resetForm();
+      setMessageType("success");
+      setMessage("Usuario eliminado.");
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    }
+  }
+
+  async function confirmCurrentAction() {
+    try {
+      setIsConfirming(true);
+      if (confirmState.mode === "bulk-delete") {
+        const data = await apiFetch("/users/bulk", {
+          method: "POST",
+          token,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "delete", userIds: selectedIds }),
+        });
+        setMessageType("success");
+        setMessage(data.mensaje || "Acción masiva aplicada.");
+        setBulkPasswords(data.temporaryPasswords || []);
+        setSelectedIds([]);
+        await loadData();
+      } else if (confirmState.mode === "delete-user" && confirmState.userId) {
+        await performUserDelete(confirmState.userId);
+      }
+      setConfirmState({ open: false, mode: "", userId: "", count: 0 });
+    } catch (error) {
+      setMessageType("error");
+      setMessage(error.message);
+    } finally {
+      setIsConfirming(false);
+    }
+  }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-slate-900">Usuarios del Sistema</h2>
-        <button onClick={() => setShowForm(!showForm)} className="bg-emerald-500 text-white px-6 py-3 rounded-2xl hover:bg-emerald-600">
-          + Nuevo Usuario
-        </button>
-      </div>
-
-      {message && (
-        <div className="bg-blue-50 border border-blue-200 text-blue-800 rounded-2xl px-4 py-3 text-sm">
-          {message}
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Accesos</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">Usuarios y credenciales</h2>
         </div>
-      )}
-
-      {showForm && (
-        <form onSubmit={handleCrear} className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 space-y-4">
-          <h3 className="font-semibold text-lg">Crear Usuario</h3>
-          <div className="grid md:grid-cols-2 gap-4">
-            <input required placeholder="Nombre" value={form.nombre} onChange={(e) => setForm({ ...form, nombre: e.target.value })} className="border border-slate-300 rounded-xl px-4 py-3" />
-            <input required type="email" placeholder="Email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} className="border border-slate-300 rounded-xl px-4 py-3" />
-            <input required type="password" placeholder="Contraseña" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} className="border border-slate-300 rounded-xl px-4 py-3" />
-            <select required value={form.roleId} onChange={(e) => setForm({ ...form, roleId: e.target.value })} className="border border-slate-300 rounded-xl px-4 py-3">
-              <option value="">Seleccionar rol</option>
-              {roles.map((r) => <option key={r._id} value={r._id}>{r.nombre}</option>)}
-            </select>
-          </div>
-          <button type="submit" className="bg-emerald-500 text-white px-6 py-3 rounded-2xl hover:bg-emerald-600">
-            Crear Usuario
-          </button>
-        </form>
-      )}
-
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-        {error && (
-          <div className="text-center py-4">
-            <p className="text-red-500 mb-2">Error: {error}</p>
-            <button onClick={() => cargarDatos()} className="text-emerald-600 hover:text-emerald-800 font-semibold text-sm">Reintentar</button>
-          </div>
-        )}
-        {!error && usuarios.length === 0 && (
-          <p className="text-slate-500">No hay usuarios registrados</p>
-        )}
-        {!error && usuarios.length > 0 && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200">
-                  <th className="text-left px-4 py-2 font-semibold text-slate-700">Nombre</th>
-                  <th className="text-left px-4 py-2 font-semibold text-slate-700">Email</th>
-                  <th className="text-left px-4 py-2 font-semibold text-slate-700">Rol</th>
-                  <th className="text-left px-4 py-2 font-semibold text-slate-700">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {usuarios.map((u) => (
-                  <tr key={u._id} className="border-b border-slate-100 hover:bg-slate-50">
-                    <td className="px-4 py-3">{u.nombre}</td>
-                    <td className="px-4 py-3 text-sm text-slate-600">{u.email}</td>
-                    <td className="px-4 py-3 text-sm">{u.roleId?.nombre || "-"}</td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${u.activo ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}>
-                        {u.activo ? "Activo" : "Inactivo"}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
+
+      <div className="grid gap-4 xl:grid-cols-[0.92fr_1.08fr]">
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <div className="flex items-center justify-between gap-4">
+            <h3 className="text-xl font-semibold text-white">{editingId ? "Editar usuario" : "Nuevo usuario"}</h3>
+            {editingId ? (
+              <button type="button" onClick={resetForm} className="rounded-xl border border-white/20 px-3 py-2 text-sm text-[#c5d5de]">
+                Cancelar
+              </button>
+            ) : null}
+          </div>
+
+          <form className="mt-5 space-y-4" onSubmit={handleSubmit}>
+            <label className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">Nombre completo</span>
+              <input aria-label="Nombre completo" className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.nombre ? "border-rose-400/70" : "border-white/15"}`} placeholder="Ej: Ana Pérez" value={form.nombre} onChange={(event) => setForm({ ...form, nombre: event.target.value })} />
+              {fieldErrors.nombre ? <p className="mt-1 text-xs text-rose-300">{fieldErrors.nombre}</p> : null}
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">Email de acceso</span>
+              <input aria-label="Email de acceso" className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.email ? "border-rose-400/70" : "border-white/15"}`} placeholder="usuario@organizacion.com" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} />
+              {fieldErrors.email ? <p className="mt-1 text-xs text-rose-300">{fieldErrors.email}</p> : null}
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">{editingId ? "Nueva contraseña (opcional)" : "Contraseña inicial (opcional)"}</span>
+              <input aria-label="Contraseña" className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" type="password" placeholder={editingId ? "Dejar vacío para no cambiar" : "Se genera automáticamente si está vacío"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
+            </label>
+            <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.roleId ? "border-rose-400/70" : "border-white/15"}`} value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
+              <option value="">Selecciona un rol</option>
+              {availableRoles.map((role) => (
+                <option key={role._id} value={role._id}>
+                  {role.nombre}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.roleId ? <p className="text-xs text-rose-300">{fieldErrors.roleId}</p> : null}
+            <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-[#c5d5de]">
+              <input type="checkbox" checked={form.activo} onChange={(event) => setForm({ ...form, activo: event.target.checked })} />
+              <span>Usuario activo</span>
+            </label>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full rounded-2xl bg-[#14b8a6] py-3 font-semibold text-[#0f172a] disabled:cursor-wait disabled:opacity-70"
+            >
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear usuario"}
+            </button>
+          </form>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <h3 className="text-xl font-semibold text-white">Usuarios creados</h3>
+            <input className="w-full max-w-xs rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" placeholder="Buscar usuario o rol" value={query} onChange={(event) => setQuery(event.target.value)} />
+          </div>
+          {query !== deferredQuery ? (
+            <p className="mt-2 text-xs text-[#9fb6c4]">Actualizando búsqueda...</p>
+          ) : null}
+
+          <div className="mt-4 rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-[#9fb6c4]">
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
+                Seleccionar visibles
+              </label>
+              <span className="text-sm text-[#9fb6c4]">{selectedIds.length} seleccionados</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button type="button" onClick={() => runBulkAction("activate")} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">Activar</button>
+              <button type="button" onClick={() => runBulkAction("deactivate")} className="rounded-xl border border-amber-300/40 px-4 py-2 text-sm text-amber-200">Desactivar</button>
+              <button type="button" onClick={() => runBulkAction("reset_password")} className="rounded-xl border border-white/20 px-4 py-2 text-sm text-[#c5d5de]">Resetear password</button>
+              <button type="button" onClick={() => runBulkAction("delete")} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">Eliminar</button>
+            </div>
+          </div>
+
+          {bulkPasswords.length ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/40 bg-amber-500/10 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-amber-200">Passwords temporales generadas</p>
+              <div className="mt-2 space-y-1 text-sm text-[#f7e9c2]">
+                {bulkPasswords.map((item) => (
+                  <p key={item._id}>{item.nombre} - {item.email} - {item.temporaryPassword}</p>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-5 space-y-3">
+            {searchQuery ? (
+              <div className="pf-alert-info flex flex-wrap items-center justify-between gap-3">
+                <span>Hay una búsqueda activa. Limpiála para ver todos los usuarios.</span>
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-white"
+                >
+                  Limpiar búsqueda
+                </button>
+              </div>
+            ) : null}
+            {isLoading ? (
+              <LoadingState
+                compact
+                title="Cargando usuarios"
+                description="Estamos trayendo accesos, roles y credenciales."
+              />
+            ) : null}
+            {!isLoading && messageType === "error" && !users.length ? (
+              <ErrorState
+                compact
+                title="No pudimos cargar los usuarios"
+                description="Reintenta para recuperar la lista de accesos."
+                actionLabel="Reintentar"
+                onAction={() =>
+                  loadData().catch((error) => {
+                    setMessageType("error");
+                    setMessage(error.message);
+                  })
+                }
+              />
+            ) : null}
+            {!isLoading && filteredUsers.length ? (
+              <CollapsibleList
+                items={filteredUsers}
+                initialCount={3}
+                buttonLabelMore={`Ver más (${filteredUsers.length - 3})`}
+                renderItem={(user) => (
+                  <article key={user._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <label className="flex items-start gap-3">
+                        <input type="checkbox" checked={selectedIds.includes(user._id)} onChange={() => toggleSelection(user._id)} className="mt-1" />
+                        <div>
+                          <p className="font-semibold text-white">{user.nombre}</p>
+                          <p className="text-sm text-[#9fb6c4]">{user.email}</p>
+                          <p className="text-xs text-[#7f99a8]">{user.roleId?.nombre || "Sin rol"} - {user.activo ? "Activo" : "Inactivo"}</p>
+                        </div>
+                      </label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[#c5d5de] transition hover:bg-white/5">Editar</button>
+                        <button type="button" onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
+                      </div>
+                    </div>
+                  </article>
+                )}
+              />
+            ) : null}
+            {!isLoading && messageType !== "error" && !filteredUsers.length ? (
+              <EmptyState
+                compact
+                title="No hay usuarios para mostrar"
+                description={
+                  query || searchQuery
+                    ? "Prueba con otra búsqueda o limpia el filtro actual."
+                    : "Crea el primer acceso para empezar a asignar roles."
+                }
+              />
+            ) : null}
+          </div>
+        </section>
+      </div>
+
+      {message ? (
+        <p
+          className={
+            messageType === "error"
+              ? "pf-alert-error"
+              : messageType === "success"
+                ? "pf-alert-success"
+                : messageType === "warning"
+                  ? "pf-alert-warning"
+                  : "pf-alert-info"
+          }
+        >
+          {message}
+        </p>
+      ) : null}
+
+      <ConfirmDialog
+        open={confirmState.open}
+        title={confirmState.mode === "bulk-delete" ? "¿Eliminar estos usuarios?" : "¿Eliminar este usuario?"}
+        message={
+          confirmState.mode === "bulk-delete"
+            ? `Vas a eliminar ${confirmState.count} usuario(s). Esta acción no se puede deshacer.`
+            : "Esta acción no se puede deshacer."
+        }
+        confirmLabel="Eliminar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isConfirming}
+        onCancel={() => setConfirmState({ open: false, mode: "", userId: "", count: 0 })}
+        onConfirm={confirmCurrentAction}
+      />
     </div>
   );
 }
+

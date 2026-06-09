@@ -11,7 +11,7 @@ function resolveApiUrl() {
       origin.includes("127.0.0.1") ||
       origin.includes("[::1]");
 
-    return isLocalOrigin ? "http://localhost:3000" : origin;
+    return isLocalOrigin ? "http://localhost:3000" : "https://gested-1-backend.onrender.com";
   }
 
   return "http://localhost:3000";

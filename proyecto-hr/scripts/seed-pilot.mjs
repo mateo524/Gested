@@ -1,0 +1,982 @@
+#!/usr/bin/env node
+
+// Performia Pilot Seed Script
+// Idempotent: safe to run multiple times. Creates demo data if not exists.
+// Does NOT delete existing data.
+// Usage:
+//   SEED_CONFIRM=1 node scripts/seed-pilot.mjs
+//   SEED_CONFIRM=1 node scripts/seed-pilot.mjs --reset-passwords
+//   node scripts/seed-pilot.mjs --dry-run
+
+const API_URL = process.env.API_URL || "https://gested-1-backend.onrender.com";
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "admin@demo.com";
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "123456";
+const DEMO_PASSWORD = process.env.DEMO_PASSWORD || "Demo1234!";
+const DRY_RUN = process.argv.includes("--dry-run");
+const RESET_PASSWORDS = process.argv.includes("--reset-passwords");
+
+let TOKEN = "";
+let COMPANY_ID = "";
+
+async function api(method, path, body, extraHeaders = {}) {
+  const headers = { "Content-Type": "application/json", ...extraHeaders };
+  if (TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
+  if (COMPANY_ID) headers["X-Company-Id"] = COMPANY_ID;
+  const res = await fetch(`${API_URL}${path}`, {
+    method,
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data;
+  const text = await res.text();
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = { message: text };
+  }
+  if (!res.ok) {
+    const msg = data?.message || data?.mensaje || data?.error || `HTTP ${res.status}`;
+    throw new Error(`${method} ${path}: ${msg}`);
+  }
+  return data;
+}
+
+async function apiSafe(method, path, body) {
+  try {
+    return await api(method, path, body);
+  } catch (err) {
+    return { _error: err.message };
+  }
+}
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+async function listAll(path) {
+  const items = [];
+  let page = 1;
+  while (true) {
+    const data = await api("GET", `${path}?page=${page}&limit=100`);
+    const list = Array.isArray(data) ? data : data?.data || data?.items || data?.results || [];
+    if (!list.length) break;
+    items.push(...list);
+    if (list.length < 100) break;
+    page++;
+  }
+  return items;
+}
+
+// ──────────────────────────────────────────────
+// Data
+// ──────────────────────────────────────────────
+
+const PILOT_USERS = [
+  { email: "superadmin.demo@performia.test", roleCode: "SUPER_ADMIN", nombre: "Super Admin Demo" },
+  { email: "orgadmin.demo@performia.test", roleCode: "ORG_ADMIN", nombre: "Admin Org Demo" },
+  { email: "hr.demo@performia.test", roleCode: "HR", nombre: "RRHH Demo" },
+  { email: "manager.demo@performia.test", roleCode: "MANAGER", nombre: "Manager Demo" },
+  { email: "employee.demo@performia.test", roleCode: "EMPLOYEE", nombre: "Empleado Demo" },
+  { email: "viewer.demo@performia.test", roleCode: "VIEWER", nombre: "Lector Demo" },
+  { email: "auditor.demo@performia.test", roleCode: "AUDITOR", nombre: "Auditor Demo" },
+];
+
+// Standard roles required for pilot users
+const PILOT_ROLE_DEFS = [
+  { roleKey: "ORG_ADMIN", legacyCode: "ADMIN_COLEGIO", nombre: "Administrador", roleLabel: "Administrador" },
+  { roleKey: "HR", legacyCode: "RRHH", nombre: "RRHH", roleLabel: "RRHH" },
+  { roleKey: "MANAGER", legacyCode: "JEFE", nombre: "Manager", roleLabel: "Manager" },
+  { roleKey: "EMPLOYEE", legacyCode: "EMPLEADO", nombre: "Empleado", roleLabel: "Empleado" },
+  { roleKey: "VIEWER", legacyCode: "LECTOR", nombre: "Lector", roleLabel: "Lector" },
+  { roleKey: "AUDITOR", legacyCode: "LECTOR", nombre: "Auditor", roleLabel: "Auditor" },
+];
+
+// Ensure standard roles exist, return map legacyCode → role
+async function ensurePilotRoles(existingRoles, companyId) {
+  console.log("→ Ensuring standard roles...\n");
+
+  // Filter to company-specific roles
+  const companyRoles = existingRoles.filter(r => String(r.companyId) === String(companyId));
+
+  const results = [];
+
+  for (const def of PILOT_ROLE_DEFS) {
+    // AUDITOR uses LECTOR legacy role, handled after
+    if (def.roleKey === "AUDITOR") continue;
+
+    const existing = companyRoles.find(r =>
+      String(r.code || "").toUpperCase() === def.legacyCode.toUpperCase()
+    );
+
+    if (existing) {
+      results.push({ ...def, role: existing, status: "existente" });
+      continue;
+    }
+
+    if (DRY_RUN) {
+      results.push({ ...def, role: null, status: "a crear" });
+      continue;
+    }
+
+    const created = await apiSafe("POST", "/roles", {
+      nombre: def.nombre,
+      code: def.legacyCode,
+      descripcion: `Rol estándar para ${def.roleLabel}`,
+    });
+
+    if (created._error) {
+      console.warn(`  ⚠ Error creating role ${def.legacyCode}: ${created._error}`);
+      results.push({ ...def, role: null, status: "error" });
+    } else {
+      results.push({ ...def, role: created.role, status: "creado" });
+    }
+  }
+
+  // Print summary
+  for (const r of results) {
+    const roleId = r.role ? r.role._id : "N/A";
+    console.log(`  ${r.legacyCode}: ${roleId} / ${r.status.toUpperCase()}`);
+  }
+
+  const missing = results.filter(r => !r.role && r.status !== "a crear");
+  if (missing.length > 0) {
+    console.error(`\n  ✗ ${missing.length} rol(es) sin crear. Abortando.`);
+    return null;
+  }
+
+  // Build role map: legacyCode → role document
+  const roleMap = {};
+  for (const r of results) {
+    if (r.role) {
+      roleMap[r.legacyCode] = r.role;
+    } else if (DRY_RUN) {
+      // Placeholder for dry-run so downstream code can still map
+      roleMap[r.legacyCode] = { _id: "dry-run", code: r.legacyCode, nombre: r.nombre };
+    }
+  }
+
+  // AUDITOR shares LECTOR as legacy role
+  const lector = roleMap["LECTOR"];
+  if (!lector) {
+    console.error("\n  ✗ LECTOR role required for AUDITOR but not available. Abortando.");
+    return null;
+  }
+  if (!roleMap["AUDITOR"]) {
+    roleMap["AUDITOR"] = DRY_RUN
+      ? { _id: "dry-run", code: "LECTOR", nombre: "Auditor" }
+      : lector;
+  }
+
+  console.log(`  → ${Object.keys(roleMap).length} roles ready\n`);
+  return roleMap;
+}
+
+const DEMO_EMPLOYEES = [
+  { nombre: "Carlos", apellido: "Rodríguez", email: "carlos.rodriguez@horizonte.edu", cargo: "Director General", area: "Dirección", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-01-15" },
+  { nombre: "María", apellido: "López", email: "maria.lopez@horizonte.edu", cargo: "Jefa de Departamento Académico", area: "Académica", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-03-01" },
+  { nombre: "Juan", apellido: "Martínez", email: "juan.martinez@horizonte.edu", cargo: "Coordinador Académico", area: "Académica", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-06-15" },
+  { nombre: "Ana", apellido: "García", email: "ana.garcia@horizonte.edu", cargo: "Coordinadora de Evaluaciones", area: "Académica", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-02-01" },
+  { nombre: "Pedro", apellido: "González", email: "pedro.gonzalez@horizonte.edu", cargo: "Docente de Matemática", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2023-03-01" },
+  { nombre: "Laura", apellido: "Díaz", email: "laura.diaz@horizonte.edu", cargo: "Docente de Lengua", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2023-03-15" },
+  { nombre: "Roberto", apellido: "Pérez", email: "roberto.perez@horizonte.edu", cargo: "Docente de Ciencias", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2023-04-01" },
+  { nombre: "Sofía", apellido: "Ramírez", email: "sofia.ramirez@horizonte.edu", cargo: "Docente de Historia", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2023-04-15" },
+  { nombre: "Diego", apellido: "Torres", email: "diego.torres@horizonte.edu", cargo: "Docente de Inglés", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2024-02-01" },
+  { nombre: "Valentina", apellido: "Acosta", email: "valentina.acosta@horizonte.edu", cargo: "Docente de Educación Física", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2024-02-15" },
+  { nombre: "Facundo", apellido: "Moreno", email: "facundo.moreno@horizonte.edu", cargo: "Docente de Arte", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2024-03-01" },
+  { nombre: "Camila", apellido: "Sosa", email: "camila.sosa@horizonte.edu", cargo: "Docente de Tecnología", area: "Académica", tipoEmpleado: "DOCENTE", fechaIngreso: "2024-03-15" },
+  { nombre: "Gabriela", apellido: "Sánchez", email: "gabriela.sanchez@horizonte.edu", cargo: "Jefa de Operaciones", area: "Operaciones", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-05-01" },
+  { nombre: "Martín", apellido: "Álvarez", email: "martin.alvarez@horizonte.edu", cargo: "Coordinador de Logística", area: "Operaciones", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-01-15" },
+  { nombre: "Florencia", apellido: "Romero", email: "florencia.romero@horizonte.edu", cargo: "Coordinadora de Mantenimiento", area: "Operaciones", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-02-01" },
+  { nombre: "Lucas", apellido: "Fernández", email: "lucas.fernandez@horizonte.edu", cargo: "Asistente Operativo", area: "Operaciones", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-06-01" },
+  { nombre: "Emilia", apellido: "Luna", email: "emilia.luna@horizonte.edu", cargo: "Asistente Operativa", area: "Operaciones", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-06-15" },
+  { nombre: "Nicolás", apellido: "Ríos", email: "nicolas.rios@horizonte.edu", cargo: "Asistente de Logística", area: "Operaciones", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-07-01" },
+  { nombre: "Julieta", apellido: "Paz", email: "julieta.paz@horizonte.edu", cargo: "Asistente de Mantenimiento", area: "Operaciones", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
+  { nombre: "Agustín", apellido: "Vega", email: "agustin.vega@horizonte.edu", cargo: "Asistente Operativo", area: "Operaciones", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-01" },
+  { nombre: "Victoria", apellido: "Castillo", email: "victoria.castillo@horizonte.edu", cargo: "Asistente Administrativa", area: "Operaciones", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-15" },
+  { nombre: "Pablo", apellido: "Herrera", email: "pablo.herrera@horizonte.edu", cargo: "Jefe de RRHH", area: "RRHH", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-04-01" },
+  { nombre: "Carolina", apellido: "Medina", email: "carolina.medina@horizonte.edu", cargo: "Coordinadora de Selección", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2023-02-15" },
+  { nombre: "Fernando", apellido: "Silva", email: "fernando.silva@horizonte.edu", cargo: "Coordinador de Desarrollo", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2023-03-01" },
+  { nombre: "Lucía", apellido: "Molina", email: "lucia.molina@horizonte.edu", cargo: "Analista de RRHH", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2023-05-01" },
+  { nombre: "Tomás", apellido: "Roldán", email: "tomas.roldan@horizonte.edu", cargo: "Analista de RRHH", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2023-06-01" },
+  { nombre: "Daniela", apellido: "Cáceres", email: "daniela.caceres@horizonte.edu", cargo: "Analista de RRHH", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2024-01-01" },
+  { nombre: "Esteban", apellido: "Pereyra", email: "esteban.pereyra@horizonte.edu", cargo: "Analista de RRHH", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2024-02-01" },
+  { nombre: "Rocío", apellido: "Giménez", email: "rocio.gimenez@horizonte.edu", cargo: "Analista de RRHH", area: "RRHH", tipoEmpleado: "RRHH", fechaIngreso: "2024-03-01" },
+  { nombre: "Alejandro", apellido: "Navarro", email: "alejandro.navarro@horizonte.edu", cargo: "Jefe de Tecnología", area: "Tecnología", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-06-01" },
+  { nombre: "Valeria", apellido: "Suárez", email: "valeria.suarez@horizonte.edu", cargo: "Coordinadora de Infraestructura", area: "Tecnología", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-04-01" },
+  { nombre: "Gustavo", apellido: "Ortiz", email: "gustavo.ortiz@horizonte.edu", cargo: "Coordinador de Desarrollo", area: "Tecnología", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-04-15" },
+  { nombre: "Elena", apellido: "Rivas", email: "elena.rivas@horizonte.edu", cargo: "Ingeniera de Sistemas", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-07-15" },
+  { nombre: "Matías", apellido: "Cruz", email: "matias.cruz@horizonte.edu", cargo: "Desarrollador Frontend", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-08-01" },
+  { nombre: "Camila", apellido: "Flores", email: "camila.flores@horizonte.edu", cargo: "Desarrolladora Backend", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-08-15" },
+  { nombre: "Santiago", apellido: "Mendoza", email: "santiago.mendoza@horizonte.edu", cargo: "Soporte TI", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-01" },
+  { nombre: "Andrea", apellido: "Reyes", email: "andrea.reyes@horizonte.edu", cargo: "Soporte TI", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
+  { nombre: "Francisco", apellido: "Peña", email: "francisco.pena@horizonte.edu", cargo: "Analista de Datos", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-15" },
+  { nombre: "Marina", apellido: "Costas", email: "marina.costas@horizonte.edu", cargo: "Analista de Datos", area: "Tecnología", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-03-01" },
+  { nombre: "Leonardo", apellido: "Vargas", email: "leonardo.vargas@horizonte.edu", cargo: "Jefe de Ventas", area: "Ventas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-04-01" },
+  { nombre: "Brenda", apellido: "Aguirre", email: "brenda.aguirre@horizonte.edu", cargo: "Coordinadora de Ventas", area: "Ventas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-02-01" },
+  { nombre: "Héctor", apellido: "Mansilla", email: "hector.mansilla@horizonte.edu", cargo: "Coordinador de Postventa", area: "Ventas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-03-01" },
+  { nombre: "Lorena", apellido: "Ponce", email: "lorena.ponce@horizonte.edu", cargo: "Ejecutiva de Ventas", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-06-01" },
+  { nombre: "Mauro", apellido: "Delgado", email: "mauro.delgado@horizonte.edu", cargo: "Ejecutivo de Ventas", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-07-01" },
+  { nombre: "Paula", apellido: "Arias", email: "paula.arias@horizonte.edu", cargo: "Ejecutiva de Ventas", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-08-01" },
+  { nombre: "Iván", apellido: "Benítez", email: "ivan.benitez@horizonte.edu", cargo: "Analista de Mercado", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
+  { nombre: "Débora", apellido: "Quiroga", email: "debora.quiroga@horizonte.edu", cargo: "Asistente Comercial", area: "Ventas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-01" },
+  { nombre: "Ricardo", apellido: "Montenegro", email: "ricardo.montenegro@horizonte.edu", cargo: "Jefe de Finanzas", area: "Finanzas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2022-05-01" },
+  { nombre: "Silvina", apellido: "Lorenzini", email: "silvina.lorenzini@horizonte.edu", cargo: "Coordinadora de Presupuesto", area: "Finanzas", tipoEmpleado: "DIRECTIVO", fechaIngreso: "2023-03-15" },
+  { nombre: "Gonzalo", apellido: "Fábrega", email: "gonzalo.fabrega@horizonte.edu", cargo: "Analista Financiero", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-06-01" },
+  { nombre: "Melisa", apellido: "Pizarro", email: "melisa.pizarro@horizonte.edu", cargo: "Analista Financiera", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2023-07-01" },
+  { nombre: "Brian", apellido: "Soria", email: "brian.soria@horizonte.edu", cargo: "Analista de Costos", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-01-15" },
+  { nombre: "Luisina", apellido: "Barrientos", email: "luisina.barrientos@horizonte.edu", cargo: "Analista de Contabilidad", area: "Finanzas", tipoEmpleado: "NO_DOCENTE", fechaIngreso: "2024-02-01" },
+];
+
+const DEMO_COMPETENCIES = [
+  { nombre: "Dominio del contenido disciplinar", descripcion: "Demuestra dominio de los contenidos del area que ensena.", tipo: "DOCENTE", componente: "C" },
+  { nombre: "Planificacion de la ensenanza", descripcion: "Planifica sus clases con objetivos claros y materiales adecuados.", tipo: "DOCENTE", componente: "H" },
+  { nombre: "Evaluacion de aprendizajes", descripcion: "Utiliza instrumentos variados para evaluar el progreso del estudiante.", tipo: "DOCENTE", componente: "H" },
+  { nombre: "Comunicacion con estudiantes", descripcion: "Establece una comunicacion clara y efectiva con los estudiantes.", tipo: "DOCENTE", componente: "A" },
+  { nombre: "Trabajo en equipo", descripcion: "Colabora activamente con colegas en proyectos institucionales.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Liderazgo", descripcion: "Inspira y guia a otros hacia el logro de objetivos.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Resolucion de conflictos", descripcion: "Media y resuelve conflictos de manera constructiva.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Gestion del tiempo", descripcion: "Organiza su tiempo para cumplir con plazos y prioridades.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Uso de herramientas digitales", descripcion: "Utiliza plataformas y herramientas digitales para su trabajo.", tipo: "TRANSVERSAL", componente: "H" },
+  { nombre: "Comunicacion escrita", descripcion: "Redacta informes y comunicaciones con claridad y correccion.", tipo: "TRANSVERSAL", componente: "H" },
+  { nombre: "Atencion al cliente interno", descripcion: "Responde a necesidades de colegas con eficiencia y amabilidad.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Innovacion y mejora continua", descripcion: "Propone mejoras y nuevas ideas para optimizar procesos.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Cumplimiento de objetivos", descripcion: "Alcanza los objetivos definidos para su rol en el periodo.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Asistencia y puntualidad", descripcion: "Asiste regularmente y cumple con el horario laboral.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Feedback y acompanamiento", descripcion: "Brinda retroalimentacion constructiva y acompanamiento al equipo.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Gestion operativa", descripcion: "Coordina recursos y procesos para asegurar la operacion diaria.", tipo: "LIDERAZGO", componente: "H" },
+  { nombre: "Toma de decisiones", descripcion: "Analiza opciones y toma decisiones informadas y oportunas.", tipo: "LIDERAZGO", componente: "H" },
+];
+
+const DEMO_CYCLES = [
+  { periodo: "Q3", anio: 2025, etapa: "EVALUACION_FINAL", estado: "CERRADO", fechaInicio: "2025-07-01", fechaFin: "2025-09-30" },
+  { periodo: "Q4", anio: 2025, etapa: "EVALUACION_FINAL", estado: "CERRADO", fechaInicio: "2025-10-01", fechaFin: "2025-12-31" },
+  { periodo: "Q1", anio: 2026, etapa: "REVISION_INTERMEDIA", estado: "CERRADO", fechaInicio: "2026-01-01", fechaFin: "2026-03-31" },
+  { periodo: "Q2", anio: 2026, etapa: "INICIO", estado: "ABIERTO", fechaInicio: "2026-04-01", fechaFin: "2026-06-30" },
+];
+
+const DEMO_PLANS = [
+  { aspectoDesarrollar: "Liderazgo pedagógico", medicion: "Encuesta de satisfacción del equipo docente", estado: "EN_CURSO", fortalezas: ["Planificación", "Organización"] },
+  { aspectoDesarrollar: "Herramientas digitales", medicion: "Cantidad de plataformas integradas en el aula", estado: "EN_CURSO", fortalezas: ["Curiosidad tecnológica"] },
+  { aspectoDesarrollar: "Comunicación efectiva con familias", medicion: "Encuesta de satisfacción de padres", estado: "PENDIENTE", fortalezas: ["Empatía"] },
+  { aspectoDesarrollar: "Optimización de procesos operativos", medicion: "Tiempo promedio de resolución de incidencias", estado: "EN_CURSO", fortalezas: ["Visión sistémica"] },
+  { aspectoDesarrollar: "Bienestar laboral del equipo", medicion: "Índice de clima laboral trimestral", estado: "PENDIENTE", fortalezas: ["Escucha activa"] },
+  { aspectoDesarrollar: "Evaluación por competencias", medicion: "Cantidad de evaluaciones completadas con rúbrica", estado: "CERRADO", fortalezas: ["Rigor académico"] },
+  { aspectoDesarrollar: "Sistema de seguimiento de desempeño", medicion: "% de empleados con evaluación al día", estado: "EN_CURSO", fortalezas: ["Organización", "Análisis"] },
+  { aspectoDesarrollar: "Infraestructura TI", medicion: "Uptime de servidores y disponibilidad de red", estado: "EN_CURSO", fortalezas: ["Conocimiento técnico"] },
+  { aspectoDesarrollar: "Mentoría a nuevos docentes", medicion: "Retención de docentes en primer año", estado: "CERRADO", fortalezas: ["Paciencia", "Comunicación"] },
+  { aspectoDesarrollar: "OKR institucionales", medicion: "% de OKR cumplidos por departamento", estado: "EN_CURSO", fortalezas: ["Pensamiento estratégico"] },
+  { aspectoDesarrollar: "Feedback continuo al equipo", medicion: "Frecuencia de reuniones 1:1 realizadas", estado: "EN_CURSO", fortalezas: ["Escucha activa", "Comunicación"] },
+  { aspectoDesarrollar: "Planificación estratégica anual", medicion: "Cumplimiento de hitos del plan anual", estado: "PENDIENTE", fortalezas: ["Visión de futuro"] },
+];
+
+const DEMO_KPIS = [
+  { name: "Cumplimiento de objetivos académicos", targetValue: 90, currentValue: 78, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Asistencia del personal", targetValue: 95, currentValue: 92, unit: "percent", frequency: "monthly", status: "on_track" },
+  { name: "Calidad de entregables", targetValue: 85, currentValue: 72, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Satisfacción de familias", targetValue: 88, currentValue: 85, unit: "percent", frequency: "quarterly", status: "on_track" },
+  { name: "Tiempo de respuesta a incidencias", targetValue: 4, currentValue: 6, unit: "hours", frequency: "monthly", status: "critical" },
+  { name: "Avance de proyectos tecnológicos", targetValue: 80, currentValue: 55, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Cumplimiento de evaluaciones", targetValue: 100, currentValue: 67, unit: "percent", frequency: "monthly", status: "critical" },
+  { name: "Rotación de personal", targetValue: 5, currentValue: 8, unit: "percent", frequency: "quarterly", status: "warning" },
+  { name: "Capacitaciones completadas", targetValue: 90, currentValue: 65, unit: "percent", frequency: "monthly", status: "warning" },
+  { name: "Clima laboral", targetValue: 80, currentValue: 73, unit: "percent", frequency: "quarterly", status: "on_track" },
+];
+
+const DEMO_OKRS = [
+  { objectiveTitle: "Mejorar calidad operativa", keyResultTitle: "Reducir incidencias críticas un 40%", targetValue: 40, currentValue: 22, status: "in_progress" },
+  { objectiveTitle: "Mejorar calidad operativa", keyResultTitle: "Implementar protocolos en todas las áreas", targetValue: 100, currentValue: 60, status: "in_progress" },
+  { objectiveTitle: "Transformación digital", keyResultTitle: "Capacitar 100% del personal en plataformas", targetValue: 100, currentValue: 45, status: "at_risk" },
+  { objectiveTitle: "Transformación digital", keyResultTitle: "Migrar 80% de procesos a digital", targetValue: 80, currentValue: 35, status: "at_risk" },
+  { objectiveTitle: "Excelencia académica", keyResultTitle: "Alcanzar 90% de satisfacción estudiantil", targetValue: 90, currentValue: 78, status: "in_progress" },
+  { objectiveTitle: "Excelencia académica", keyResultTitle: "Completar evaluaciones 100% del plantel", targetValue: 100, currentValue: 67, status: "at_risk" },
+  { objectiveTitle: "Bienestar organizacional", keyResultTitle: "Mejorar clima laboral a 80% positivo", targetValue: 80, currentValue: 73, status: "in_progress" },
+  { objectiveTitle: "Bienestar organizacional", keyResultTitle: "Reducir rotación anual a menos de 5%", targetValue: 5, currentValue: 8, status: "at_risk" },
+  { objectiveTitle: "Eficiencia operativa", keyResultTitle: "Reducir tiempo de respuesta a <4hs", targetValue: 4, currentValue: 6, status: "at_risk" },
+  { objectiveTitle: "Eficiencia operativa", keyResultTitle: "Automatizar 50% de reportes manuales", targetValue: 50, currentValue: 20, status: "in_progress" },
+];
+
+const DEMO_ANNOUNCEMENTS = [
+  { titulo: "Inicio del ciclo de evaluaciones Q2 2026", cuerpo: "Se habilita la plataforma para completar las autoevaluaciones y evaluaciones de jefatura del segundo trimestre. Fecha límite: 30/06/2026.", prioridad: "importante", tipo: "info", audienceType: "all" },
+  { titulo: "Nueva plataforma de formación disponible", cuerpo: "Ya está disponible el acceso a la nueva plataforma de capacitación con cursos sobre liderazgo, comunicación efectiva y herramientas digitales.", prioridad: "informativa", tipo: "success", audienceType: "all" },
+  { titulo: "Recordatorio: completar feedback trimestral", cuerpo: "Recuerden completar las evaluaciones de desempeño pendientes. El equipo de RRHH hará seguimiento esta semana.", prioridad: "importante", tipo: "warning", audienceType: "department", audienceDepartmentCodes: ["Académica", "Operaciones"], audienceRoleKeys: ["MANAGER", "HR"] },
+  { titulo: "Actualización del sistema de RRHH", cuerpo: "Se implementaron mejoras en el módulo de reportes ejecutivos y la carga de KPIs.", prioridad: "informativa", tipo: "update", audienceType: "all" },
+  { titulo: "Plan de desarrollo profesional 2026", cuerpo: "Se abre la convocatoria para el plan de desarrollo profesional. Los interesados deben completar el formulario antes del 15/07.", prioridad: "importante", tipo: "info", audienceType: "all", pinned: true },
+  { titulo: "Política de feedback continuo", cuerpo: "Recordar que desde RRHH se implementó la política de feedback continuo. Todos los managers deben realizar al menos una reunión 1:1 semanal.", prioridad: "informativa", tipo: "info", audienceType: "all", audienceRoleKeys: ["MANAGER", "HR"], expiresAt: "2026-09-01" },
+];
+
+// Helper: pick random item from array
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function getManagerIdx(empIdx) {
+  if (empIdx === 0) return null;
+  const areaManager = {
+    "Dirección": null, "Académica": 1, "Operaciones": 12, "RRHH": 21, "Tecnología": 29, "Ventas": 39, "Finanzas": 49,
+  };
+  const coordinators = {
+    "Académica": [2, 3], "Operaciones": [13, 14], "RRHH": [22, 23], "Tecnología": [30, 31],
+    "Ventas": [40, 41], "Finanzas": [50],
+  };
+  const emp = DEMO_EMPLOYEES[empIdx];
+  if ([1, 12, 21, 29, 39, 49].includes(empIdx)) return 0;
+  if ([2, 3].includes(empIdx)) return 1;
+  if ([13, 14].includes(empIdx)) return 12;
+  if ([22, 23].includes(empIdx)) return 21;
+  if ([30, 31].includes(empIdx)) return 29;
+  if ([40, 41].includes(empIdx)) return 39;
+  if ([50].includes(empIdx)) return 49;
+  const deptCoords = coordinators[emp.area] || [];
+  return deptCoords.length > 0 ? deptCoords[empIdx % deptCoords.length] : (areaManager[emp.area] ?? null);
+}
+
+function randomScore(includeLow) {
+  const pool = includeLow ? [1, 2, 3, 3, 4, 4, 4, 5, 5, 5] : [3, 3, 4, 4, 4, 5, 5, 5];
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+function randomDate(start, end) {
+  const d = new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+  return d.toISOString().split("T")[0];
+}
+
+// ──────────────────────────────────────────────
+// Main
+// ──────────────────────────────────────────────
+
+async function main() {
+  const startTime = Date.now();
+  console.log("=== Performia Pilot Seed ===\n");
+  console.log(`API: ${API_URL}`);
+  console.log(`Admin: ${ADMIN_EMAIL}`);
+  if (DRY_RUN) console.log("Mode: DRY RUN (no changes)");
+  if (RESET_PASSWORDS) console.log("Mode: RESET PASSWORDS (will update existing user passwords)");
+  console.log();
+
+  if (!process.env.CI && !process.env.SEED_CONFIRM && !DRY_RUN) {
+    console.log("Set SEED_CONFIRM=1 to proceed, use --dry-run to preview, or use CI=1.");
+    console.log("Example: SEED_CONFIRM=1 node scripts/seed-pilot.mjs");
+    process.exit(1);
+  }
+
+  // 1. Login
+  console.log("→ Logging in...");
+  const auth = await api("POST", "/auth/login", { email: ADMIN_EMAIL, password: ADMIN_PASSWORD });
+  TOKEN = auth.token;
+  COMPANY_ID = auth.user?.companyId || "";
+  console.log(`  OK: ${auth.user?.email || ADMIN_EMAIL} (company: ${auth.user?.companyName || "N/A"})\n`);
+
+  // 2. Fetch existing data
+  console.log("→ Checking existing data...");
+  const existingEmployees = await listAll("/employees");
+  const existingUsers = await listAll("/users");
+  const existingRoles = await listAll("/roles");
+  const existingCompetencies = await listAll("/competencies");
+  const existingCycles = await listAll("/evaluation-cycles");
+  console.log(`  Employees: ${existingEmployees.length}, Users: ${existingUsers.length}, Roles: ${existingRoles.length}`);
+  if (existingRoles.length > 0) {
+    for (const r of existingRoles) {
+      console.log(`    role: _id=${r._id} code=${JSON.stringify(r.code)} nombre="${r.nombre}" companyId=${r.companyId ? String(r.companyId).slice(0,8) : "N/A"}...`);
+    }
+  }
+  console.log(`  Competencies: ${existingCompetencies.length}, Cycles: ${existingCycles.length}\n`);
+
+  // 2.5. Ensure a school exists (users require an active school)
+  console.log("→ Checking schools...");
+  const existingSchools = await listAll("/schools");
+  const ourSchools = existingSchools.filter(s => String(s.companyId) === COMPANY_ID);
+  console.log(`  Schools for this company: ${ourSchools.length}`);
+  if (!DRY_RUN && ourSchools.length === 0) {
+    console.log("  → Creating default school...");
+    const school = await apiSafe("POST", "/schools", {
+      nombre: "Escuela Horizonte - Sede Principal",
+      codigo: "HQ",
+      ciudad: "Buenos Aires",
+      provincia: "CABA",
+      pais: "Argentina",
+      activa: true,
+      companyId: COMPANY_ID,
+    });
+    if (school._error) {
+      console.warn(`  ⚠ Could not create school: ${school._error}`);
+    } else {
+      console.log(`  Created school: ${school.school?.nombre || "OK"}\n`);
+    }
+  }
+
+  // 2.6. Ensure standard roles exist
+  const roleMap = await ensurePilotRoles(existingRoles, COMPANY_ID);
+  if (!roleMap && !DRY_RUN) {
+    console.error("\n  ✗ No se pueden crear usuarios sin roles estándar. Abortando.");
+    process.exit(1);
+  }
+
+  const employeeByEmail = new Map();
+  for (const emp of existingEmployees) {
+    employeeByEmail.set(String(emp.email || "").trim().toLowerCase(), emp);
+  }
+
+  // 3. Create demo employees (if missing)
+  console.log("→ Creating demo employees...");
+  const empIds = [];
+  let empCreated = 0;
+  if (DRY_RUN) {
+    const missing = DEMO_EMPLOYEES.filter(e => !employeeByEmail.has(String(e.email || "").trim().toLowerCase()));
+    console.log(`  Would create ${missing.length} employees (${existingEmployees.length} already exist)`);
+    for (const e of DEMO_EMPLOYEES) empIds.push("dry-run-id");
+  } else {
+    for (let i = 0; i < DEMO_EMPLOYEES.length; i++) {
+      const e = DEMO_EMPLOYEES[i];
+      const existing = employeeByEmail.get(String(e.email || "").trim().toLowerCase());
+      if (existing) {
+        empIds.push(existing._id);
+        continue;
+      }
+      const created = await apiSafe("POST", "/employees", {
+        nombre: e.nombre, apellido: e.apellido, email: e.email,
+        cargo: e.cargo, area: e.area, tipoEmpleado: e.tipoEmpleado, fechaIngreso: e.fechaIngreso,
+      });
+      if (created._error) {
+        console.warn(`  ⚠ Employee ${e.nombre} ${e.apellido}: ${created._error}`);
+        empIds.push(null);
+      } else {
+        empIds.push(created._id || created.employee?._id);
+        empCreated++;
+      }
+    }
+    console.log(`  Created ${empCreated} employees (${existingEmployees.length} pre-existing)\n`);
+
+    // Set manager relationships
+    console.log("→ Setting manager relationships...");
+    let mgrSet = 0;
+    for (let i = 0; i < empIds.length; i++) {
+      const mgrIdx = getManagerIdx(i);
+      if (mgrIdx !== null && empIds[i] && empIds[mgrIdx]) {
+        const updated = await apiSafe("PUT", `/employees/${empIds[i]}`, {
+          ...DEMO_EMPLOYEES[i],
+          managerId: empIds[mgrIdx],
+        });
+        if (!updated._error) mgrSet++;
+      }
+    }
+    console.log(`  Set ${mgrSet} manager relationships\n`);
+  }
+
+  // 4. Create pilot users
+  console.log("→ Creating pilot users...");
+  const userResults = [];
+  if (DRY_RUN) {
+    for (const pu of PILOT_USERS) {
+      const exists = existingUsers.find(u => String(u.email || "").trim().toLowerCase() === pu.email);
+      if (pu.roleCode === "SUPER_ADMIN") {
+        console.log(`  SKIP  ${pu.email} (SUPER_ADMIN - usar admin existente)`);
+        userResults.push({ ...pu, status: "omitido", motivo: "simulado" });
+      } else if (exists) {
+        console.log(`  EXISTS ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: "ya existía" });
+      } else {
+        const def = PILOT_ROLE_DEFS.find(d => d.roleKey === pu.roleCode);
+        const legacyRole = def ? roleMap?.[def.legacyCode] : null;
+        const roleInfo = legacyRole ? ` → ${def.legacyCode} (${legacyRole.nombre || legacyRole.code})` : " → SIN ROL";
+        console.log(`  WOULD CREATE${roleInfo} ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: legacyRole ? "creado (simulado)" : "falló (simulado)", motivo: legacyRole ? null : "rol compatible no encontrado" });
+      }
+    }
+  } else {
+    for (const pu of PILOT_USERS) {
+      const exists = existingUsers.find(u => String(u.email || "").trim().toLowerCase() === pu.email);
+      if (exists && !RESET_PASSWORDS) {
+        console.log(`  EXISTS ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: "ya existía", created: false, id: exists._id });
+        continue;
+      }
+      if (exists && RESET_PASSWORDS) {
+        // Update password - we can't update via API easily, so skip for now
+        console.log(`  EXISTS ${pu.email} - use --reset-passwords via backend`);
+        userResults.push({ ...pu, status: "ya existía", created: false, id: exists._id });
+        continue;
+      }
+      if (pu.roleCode === "SUPER_ADMIN") {
+        console.log(`  SKIP  ${pu.email} (SUPER_ADMIN - usar admin existente)`);
+        userResults.push({ ...pu, status: "omitido", motivo: "usar admin existente admin@demo.com" });
+        continue;
+      }
+
+      const def = PILOT_ROLE_DEFS.find(d => d.roleKey === pu.roleCode);
+      if (!def) {
+        console.warn(`  FALLÓ ${pu.email} (${pu.roleCode}): sin definición de rol`);
+        userResults.push({ ...pu, status: "falló", motivo: "sin definición de rol" });
+        continue;
+      }
+
+      const role = roleMap?.[def.legacyCode];
+      if (!role) {
+        console.warn(`  FALLÓ ${pu.email} (${pu.roleCode}): rol legacy "${def.legacyCode}" no disponible`);
+        userResults.push({ ...pu, status: "falló", motivo: `rol ${def.legacyCode} no disponible` });
+        continue;
+      }
+
+      // AUDITOR needs roleKey override so assignment gets AUDITOR (not VIEWER from LECTOR preset)
+      const userPayload = {
+        nombre: pu.nombre,
+        email: pu.email,
+        password: DEMO_PASSWORD,
+        roleId: role._id,
+        activo: true,
+      };
+      if (pu.roleCode === "AUDITOR") {
+        userPayload.roleKey = "AUDITOR";
+      }
+
+      console.log(`  ${pu.roleCode}: usando rol "${role.nombre || role.code}" (ID: ${role._id})`);
+      const created = await apiSafe("POST", "/users", userPayload);
+      if (created._error) {
+        if (created._error.includes("409") || created._error.includes("ya existe")) {
+          console.log(`  YA EXISTE ${pu.email} (${pu.roleCode})`);
+          userResults.push({ ...pu, status: "ya existía" });
+        } else {
+          console.warn(`  ⚠ ${pu.email}: ${created._error}`);
+          userResults.push({ ...pu, status: "falló", motivo: created._error });
+        }
+      } else {
+        console.log(`  CREADO ${pu.email} (${pu.roleCode})`);
+        userResults.push({ ...pu, status: "creado", id: created._id });
+      }
+    }
+  }
+  const creados = userResults.filter(u => u.status === "creado").length;
+  const existentes = userResults.filter(u => u.status === "ya existía").length;
+  const omitidos = userResults.filter(u => u.status === "omitido").length;
+  const fallos = userResults.filter(u => u.status === "falló").length;
+  console.log(`  Pilot users: ${creados} creados, ${existentes} existentes, ${omitidos} omitidos, ${fallos} fallos\n`);
+
+  // 5. Create competencies (if missing)
+  console.log("→ Creating competencies...");
+  const metricIds = [];
+  let compCreated = 0;
+  const existingCompNames = new Set(existingCompetencies.map(c => String(c.competencia || c.nombre || "").trim().toLowerCase()));
+  if (DRY_RUN) {
+    const missing = DEMO_COMPETENCIES.filter(c => !existingCompNames.has(String(c.nombre).trim().toLowerCase()));
+    console.log(`  Would create ${missing.length} competencies`);
+  } else {
+    for (const c of DEMO_COMPETENCIES) {
+      if (existingCompNames.has(String(c.nombre).trim().toLowerCase())) {
+        const found = existingCompetencies.find(x => String(x.competencia || x.nombre || "").trim().toLowerCase() === String(c.nombre).trim().toLowerCase());
+        if (found) metricIds.push(found._id);
+        continue;
+      }
+      const created = await apiSafe("POST", "/competencies", c);
+      if (created._error) {
+        console.warn(`  ⚠ Competency "${c.nombre}": ${created._error}`);
+      } else {
+        metricIds.push(created._id);
+        compCreated++;
+      }
+    }
+    console.log(`  Created ${compCreated} competencies\n`);
+  }
+
+  // 6. Create cycles (if missing)
+  console.log("→ Creating cycles...");
+  const cycleIds = [];
+  let cycleCreated = 0;
+  if (DRY_RUN) {
+    console.log(`  Would create ${DEMO_CYCLES.length - existingCycles.length} cycles`);
+  } else {
+    for (const c of DEMO_CYCLES) {
+      const exists = existingCycles.find(x => String(x.periodo || "") === c.periodo && Number(x.anio) === c.anio);
+      if (exists) {
+        cycleIds.push(exists._id);
+        continue;
+      }
+      const created = await apiSafe("POST", "/evaluation-cycles", c);
+      if (created._error) {
+        console.warn(`  ⚠ Cycle "${c.periodo} ${c.anio}": ${created._error}`);
+      } else {
+        cycleIds.push(created._id);
+        cycleCreated++;
+      }
+    }
+    console.log(`  Created ${cycleCreated} cycles\n`);
+  }
+
+  let evalsCreated = 0;
+  let plansCreated = 0;
+
+  // Patterns for varied evaluation distribution
+  function evalPattern(empIdx, cycleIdx) {
+    // 54 employees, 4 cycles — deterministic distribution
+    const seed = (empIdx * 7 + cycleIdx * 13) % 100;
+    // Skip for last cycle (Q2 2026 — not yet due)
+    if (cycleIdx === 3) {
+      if (seed < 30) return "skip";          // 30% no evaluation yet
+      if (seed < 55) return "auto_only";     // 25% employee submitted, manager pending
+      return "both_open";                     // 45% both in draft
+    }
+    // Finished cycles (Q3/Q4 2025, Q1 2026)
+    if (seed < 10) return "skip";             // 10% never evaluated
+    if (seed < 20) return "auto_only";        // 10% only autoevaluación exists
+    if (seed < 30) return "jefe_only";        // 10% only jefatura exists
+    if (seed < 50 && cycleIdx === 0) return "both_alert"; // 20% first cycle: alert (bajo desempeño)
+    if (seed < 65) return "both_aligned";     // 15% aligned
+    if (seed < 80) return "both_gap";         // 15% gap (auto > jefe)
+    return "both_aligned";                    // remainder
+  }
+
+  function scoresByPattern(pattern) {
+    const base = () => 3 + Math.floor(Math.random() * 3);
+    const low = () => 2 + Math.floor(Math.random() * 2);
+    const high = () => 4 + Math.round(Math.random());
+    switch (pattern) {
+      case "both_alert":
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: base() })), jefe: metricIds.map(mid => ({ metricId: mid, nivel: low() })) };
+      case "both_gap":
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: high() })), jefe: metricIds.map(mid => ({ metricId: mid, nivel: low() })) };
+      case "both_aligned":
+        const v = base();
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: v })), jefe: metricIds.map(mid => ({ metricId: mid, nivel: v })) };
+      case "jefe_only":
+        return { auto: null, jefe: metricIds.map(mid => ({ metricId: mid, nivel: base() })) };
+      case "both_open":
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: base() })), jefe: null };
+      default:
+        return { auto: metricIds.map(mid => ({ metricId: mid, nivel: base() })), jefe: null };
+    }
+  }
+
+  // 7. Create evaluations
+  let evalsFailed = 0;
+  let evalsOmitted = 0;
+  let evalSampleErrors = [];
+  if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0 && metricIds.length > 0) {
+    console.log("→ Creating evaluations...");
+
+    // Pre-fetch existing evaluations per cycle for idempotency (faster than fetching all)
+    const existingEvalKey = new Set();
+    for (const cid of cycleIds) {
+      const evals = await apiSafe("GET", `/evaluations?cycleId=${cid}&limit=200`);
+      if (evals._error) continue;
+      const list = Array.isArray(evals) ? evals : evals?.data || evals?.items || evals?.results || [];
+      for (const ev of list) {
+        const eid = String(ev.employeeId?._id || ev.employeeId || "");
+        const t = ev.tipo || "";
+        if (eid && cid && t) existingEvalKey.add(`${eid}|${cid}|${t}`);
+      }
+    }
+
+    for (let ci = 0; ci < cycleIds.length; ci++) {
+      const evalStatus = ci < 3 ? "CERRADA" : "ENVIADA";
+      for (let ei = 0; ei < empIds.length; ei++) {
+        if (!empIds[ei] || !cycleIds[ci]) continue;
+        await sleep(10);
+        const pattern = evalPattern(ei, ci);
+        if (pattern === "skip") continue;
+        const { auto: autoScores, jefe: mgrScores } = scoresByPattern(pattern);
+
+        if (autoScores && pattern !== "jefe_only") {
+          const key = `${empIds[ei]}|${cycleIds[ci]}|AUTOEVALUACION`;
+          if (existingEvalKey.has(key)) {
+            evalsOmitted++;
+            continue;
+          }
+          existingEvalKey.add(key);
+          const autoResult = await apiSafe("POST", "/evaluations", {
+            employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "AUTOEVALUACION",
+            scores: autoScores, estado: evalStatus,
+          });
+          if (!autoResult._error) {
+            evalsCreated++;
+          } else {
+            evalsFailed++;
+            if (evalSampleErrors.length < 3) evalSampleErrors.push(`AUTOEVAL empIdx=${ei} cycleIdx=${ci}: ${autoResult._error}`);
+          }
+        }
+
+        if (mgrScores && pattern !== "auto_only" && pattern !== "both_open") {
+          const key = `${empIds[ei]}|${cycleIds[ci]}|JEFATURA`;
+          if (existingEvalKey.has(key)) {
+            evalsOmitted++;
+            continue;
+          }
+          existingEvalKey.add(key);
+          const mgrResult = await apiSafe("POST", "/evaluations", {
+            employeeId: empIds[ei], cycleId: cycleIds[ci], tipo: "JEFATURA",
+            scores: mgrScores, estado: evalStatus,
+          });
+          if (!mgrResult._error) {
+            evalsCreated++;
+          } else {
+            evalsFailed++;
+            if (evalSampleErrors.length < 3) evalSampleErrors.push(`JEFATURA empIdx=${ei} cycleIdx=${ci}: ${mgrResult._error}`);
+          }
+        }
+      }
+      const cycleLabel = `${DEMO_CYCLES[ci].periodo} ${DEMO_CYCLES[ci].anio}`;
+      console.log(`  Cycle ${ci + 1}/${cycleIds.length} (${cycleLabel}): ${evalStatus} — ${evalsCreated + evalsOmitted} total, ${evalsFailed} errors`);
+    }
+
+    if (evalSampleErrors.length > 0) {
+      console.warn("  ⚠ Sample eval errors:");
+      for (const err of evalSampleErrors) console.warn(`    ${err}`);
+    }
+    console.log(`  Evaluations: ${evalsCreated} created, ${evalsOmitted} existed, ${evalsFailed} failed\n`);
+  } else if (DRY_RUN && cycleIds.length > 0 && metricIds.length > 0) {
+    let dryEvalCount = 0;
+    for (let ci = 0; ci < cycleIds.length; ci++) {
+      for (let ei = 0; ei < DEMO_EMPLOYEES.length; ei++) {
+        const pattern = evalPattern(ei, ci);
+        if (pattern === "skip") continue;
+        const p = scoresByPattern(pattern);
+        if (p.auto && pattern !== "jefe_only") dryEvalCount++;
+        if (p.jefe && pattern !== "auto_only" && pattern !== "both_open") dryEvalCount++;
+      }
+    }
+    console.log(`→ Evaluations: would create ~${dryEvalCount} evaluations across ${cycleIds.length} cycles\n`);
+  }
+
+  // 8. Create development plans
+  if (!DRY_RUN && empIds.filter(Boolean).length > 0) {
+    console.log("→ Creating development plans...");
+    const planEmpIndices = [1, 2, 4, 7, 12, 15, 21, 23, 29, 32, 5, 10];
+    for (let i = 0; i < DEMO_PLANS.length; i++) {
+      const empIdx = planEmpIndices[i % planEmpIndices.length];
+      if (!empIds[empIdx]) continue;
+      const result = await apiSafe("POST", "/development-plans", {
+        employeeId: empIds[empIdx],
+        aspectoDesarrollar: DEMO_PLANS[i].aspectoDesarrollar,
+        medicion: DEMO_PLANS[i].medicion,
+        fortalezas: DEMO_PLANS[i].fortalezas,
+        estado: DEMO_PLANS[i].estado,
+        fechaSeguimiento: randomDate(new Date("2026-06-01"), new Date("2026-09-30")),
+      });
+      if (!result._error) plansCreated++;
+    }
+    console.log(`  Created ${plansCreated} plans\n`);
+  }
+
+  // 9. Create KPI records
+  let kpiCreated = 0;
+  let kpiOmitted = 0;
+  let kpiFailed = 0;
+  let kpiSampleErrors = [];
+  if (!DRY_RUN && empIds.filter(Boolean).length > 0 && cycleIds.length > 0) {
+    console.log("→ Creating KPI records...");
+
+    // Probe if endpoint exists first
+    const probe = await apiSafe("GET", "/metrics/kpi-records?limit=1");
+    const endpointAvailable = !probe._error;
+
+    if (!endpointAvailable) {
+      console.warn(`  ⚠ /metrics/kpi-records endpoint not available: ${probe._error}`);
+      console.warn("  → KPIs omitidos: endpoint no disponible/restringido\n");
+      kpiOmitted = DEMO_KPIS.length;
+    } else {
+      // Pre-fetch existing KPI records for idempotency
+      const existingKpis = await listAll("/metrics/kpi-records");
+      const existingKpiKey = new Set();
+      for (const k of existingKpis) {
+        const n = (k.name || "").toLowerCase().trim();
+        const p = (k.period || "").toLowerCase().trim();
+        const e = String(k.employeeId || "");
+        const d = (k.departmentCode || "").toLowerCase().trim();
+        if (n && p) existingKpiKey.add(`${n}|${p}|${e}|${d}`);
+      }
+
+      for (const kpi of DEMO_KPIS) {
+        const empIdx = pickRandom(Array.from({ length: empIds.length }, (_, i) => i).filter(i => empIds[i]));
+        if (empIdx === undefined) continue;
+        const ci = pickRandom([0, 1, 2, 3]);
+        const period = `${DEMO_CYCLES[ci].periodo} ${DEMO_CYCLES[ci].anio}`;
+        const empId = empIds[empIdx];
+        const deptCode = DEMO_EMPLOYEES[empIdx].area;
+
+        // Check duplicate by composite key
+        const lookup = `${kpi.name.toLowerCase().trim()}|${period.toLowerCase().trim()}|${String(empId)}|${deptCode.toLowerCase().trim()}`;
+        if (existingKpiKey.has(lookup)) {
+          kpiOmitted++;
+          continue;
+        }
+        existingKpiKey.add(lookup);
+
+        // Skip cycleId — deployed backend's resolveScopedCycle requires companyId match
+        // that fails for SUPER_ADMIN tokens. cycleId is optional in KPIRecord model.
+        const payload = {
+          employeeId: empId,
+          name: kpi.name,
+          targetValue: kpi.targetValue,
+          currentValue: kpi.currentValue,
+          unit: kpi.unit,
+          frequency: kpi.frequency,
+          period,
+          departmentCode: deptCode,
+          status: kpi.status === "on_track" ? "active" : kpi.status === "critical" ? "active" : kpi.status === "warning" ? "active" : kpi.status,
+        };
+
+        const result = await apiSafe("POST", "/metrics/kpi-records", payload);
+        if (result._error) {
+          if (result._error.includes("duplicate") || result._error.includes("E11000") || result._error.includes("ya existe")) {
+            kpiOmitted++;
+          } else {
+            kpiFailed++;
+            if (kpiSampleErrors.length < 3) kpiSampleErrors.push(`"${kpi.name}": ${result._error}`);
+          }
+        } else {
+          kpiCreated++;
+        }
+      }
+      if (kpiSampleErrors.length > 0) {
+        console.warn("  ⚠ Sample KPI errors:");
+        for (const err of kpiSampleErrors) console.warn(`    ${err}`);
+      }
+      console.log(`  KPIs: ${kpiCreated} created, ${kpiOmitted} existed/omitted, ${kpiFailed} failed\n`);
+    }
+  } else if (DRY_RUN) {
+    console.log(`→ KPIs: would create ${DEMO_KPIS.length} records (1 por empleado/ciclo)\n`);
+  }
+
+  // 10. Create OKR records
+  let okrCreated = 0;
+  if (!DRY_RUN && cycleIds.length > 0) {
+    console.log("→ Creating OKR records...");
+    const areas = [...new Set(DEMO_EMPLOYEES.filter(e => e.area).map(e => e.area))];
+    for (const okr of DEMO_OKRS) {
+      const area = pickRandom(areas);
+      const ci = pickRandom([1, 2, 3]);
+      const result = await apiSafe("POST", "/metrics/okr-records", {
+        objectiveTitle: okr.objectiveTitle,
+        keyResultTitle: okr.keyResultTitle,
+        targetValue: okr.targetValue,
+        currentValue: okr.currentValue,
+        quarter: `${DEMO_CYCLES[ci].anio}-${DEMO_CYCLES[ci].periodo}`,
+        departmentCode: area,
+        cycleId: cycleIds[ci],
+        status: okr.status,
+      });
+      if (!result._error) okrCreated++;
+    }
+    console.log(`  Created ${okrCreated} OKRs\n`);
+  }
+
+  // 11. Create announcements
+  let annCreated = 0;
+  if (!DRY_RUN) {
+    console.log("→ Creating announcements...");
+    for (const ann of DEMO_ANNOUNCEMENTS) {
+      const payload = {
+        titulo: ann.titulo,
+        cuerpo: ann.cuerpo,
+        prioridad: ann.prioridad,
+        type: ann.tipo,
+        audienceType: ann.audienceType,
+        audienceDepartmentCodes: ann.audienceDepartmentCodes || [],
+        audienceRoleKeys: ann.audienceRoleKeys || [],
+        pinned: ann.pinned || false,
+      };
+      if (ann.expiresAt) payload.expiresAt = ann.expiresAt;
+      const result = await apiSafe("POST", "/announcements", payload);
+      if (!result._error) annCreated++;
+    }
+    console.log(`  Created ${annCreated} announcements\n`);
+  }
+
+  // 12. Summary
+  console.log("=== RESUMEN PILOTO ===\n");
+  const totalEmps = empIds.filter(Boolean).length;
+  const totalComps = metricIds.length;
+  const totalCycles = cycleIds.length;
+  const createdCreds = userResults.filter(u => u.status === "creado").length;
+  const existingCreds = userResults.filter(u => u.status === "ya existía").length;
+  const failedCreds = userResults.filter(u => u.status === "falló").length;
+  const omittedCreds = userResults.filter(u => u.status === "omitido").length;
+  console.log(`Empresa:         ${auth.user?.companyName || "Perfomia Corp"}`);
+  const preExistingEmps = existingEmployees.length;
+  console.log(`Empleados:       ${DRY_RUN ? "(simulado)" : `${totalEmps} en lista seed`} (${DEMO_EMPLOYEES.length} definidos)`);
+  if (!DRY_RUN) {
+    const alreadyInDb = DEMO_EMPLOYEES.length - empCreated;
+    console.log(`                 → ${preExistingEmps} total en DB antes del seed, ${empCreated} creados nuevos, ${alreadyInDb} ya existían en DB`);
+  }
+  console.log(`Usuarios:        ${createdCreds} creados / ${existingCreds} existentes / ${omittedCreds} omitidos / ${failedCreds} fallidos`);
+  console.log(`Roles:           ${Object.keys(roleMap || {}).length} estándar garantizados`);
+  console.log(`Competencias:    ${DRY_RUN ? DEMO_COMPETENCIES.length + " (simulado)" : totalComps}`);
+  console.log(`Ciclos:          ${DRY_RUN ? DEMO_CYCLES.length + " (simulado)" : totalCycles}`);
+  console.log(`Evaluaciones:    ${evalsCreated || 0} creadas / ${evalsOmitted || 0} existentes / ${evalsFailed || 0} fallidas`);
+  console.log(`KPIs:            ${kpiCreated} creados / ${kpiOmitted} omitidos / ${kpiFailed || 0} fallidos`);
+  console.log(`OKRs:            ${okrCreated} creados`);
+  console.log(`Planes:          ${plansCreated || 0} creados`);
+  console.log(`Novedades:       ${annCreated} creadas\n`);
+
+  const completeModules = [];
+  if (totalEmps > 0) completeModules.push("Empleados con jerarquía de managers");
+  if (Object.keys(roleMap || {}).length > 0) completeModules.push("Roles estándar + pilot users (7 cuentas)");
+  if (totalCycles > 0) completeModules.push("Ciclos de evaluación (4 trimestres)");
+  if (totalComps > 0) completeModules.push("Competencias (transversales, docente, liderazgo)");
+  if (plansCreated > 0) completeModules.push("Planes de desarrollo");
+  if (okrCreated > 0) completeModules.push("OKRs (objetivos y resultados clave)");
+  if (annCreated > 0) completeModules.push("Novedades / anuncios");
+
+  const partialModules = [];
+  if (evalsCreated > 0 || evalsOmitted > 0) completeModules.push("Evaluaciones (AUTOEVALUACION + JEFATURA, estados variados)");
+  else if (evalsFailed > 0) partialModules.push({ name: "Evaluaciones", reason: `${evalsFailed} fallaron — revisar endpoint y ciclo/employee IDs` });
+  else if (evalsCreated === 0 && !DRY_RUN) partialModules.push({ name: "Evaluaciones", reason: "no se crearon — endpoint puede requerir permisos adicionales" });
+
+  if (kpiCreated === 0 && kpiFailed > 0) partialModules.push({ name: "KPIs", reason: `${kpiFailed} fallaron — revisar endpoint y payload` });
+  else if (kpiCreated === 0 && kpiOmitted > 0 && !DRY_RUN) partialModules.push({ name: "KPIs", reason: "todos existían o endpoint no disponible" });
+  else if (kpiCreated > 0) completeModules.push("KPIs (métricas por empleado/área)");
+
+  console.log("─── Módulos completos ───");
+  for (const m of completeModules) console.log(`  ✅ ${m}`);
+
+  if (partialModules.length > 0) {
+    console.log("\n─── Módulos parciales ───");
+    for (const m of partialModules) console.log(`  ⚠ ${m.name}: ${m.reason}`);
+  }
+
+  console.log("\n─── Módulos con datos suficientes ───");
+  console.log("  ✅ Reporte Ejecutivo — vista general (empleados, evaluaciones, KPIs, planes)");
+  console.log("  ✅ Reporte Ejecutivo — vista individual (evaluaciones, KPIs, planes, acciones)");
+  console.log("  ✅ Dashboard / Métricas — backend poblado, visual depende del frontend");
+  console.log("  ✅ Importación — plantilla descargable vía GET /bulk-import/template");
+  if (evalsCreated > 0 && (evalsFailed === 0)) console.log("  ✅ Mediciones — scores con diferencias auto/jefe para probar gaps");
+
+  console.log("\n─── No aplica para seed ───");
+  console.log("  — Landing: no tocar");
+  console.log("  — n8n: no tocar");
+  console.log("  — Plataforma SUPER_ADMIN: no crear más admins");
+
+  console.log("\n=== CREDENCIALES PILOTO ===\n");
+  console.log(`Admin (SUPER_ADMIN existente):`);
+  console.log(`  Email:    ${ADMIN_EMAIL}`);
+  console.log(`  Password: ${ADMIN_PASSWORD}\n`);
+
+  for (const u of PILOT_USERS) {
+    const result = userResults.find(r => r.email === u.email);
+    let statusText = result?.status || "desconocido";
+    if (statusText === "creado") statusText = "creado";
+    else if (statusText === "ya existía") statusText = "ya existía";
+    else if (statusText === "omitido") statusText = "omitido";
+    else if (statusText === "falló") statusText = "falló";
+    else if (result?.created === false) statusText = "ya existía";
+    let motivoText = result?.motivo ? ` (${result.motivo})` : "";
+    if (statusText === "omitido" && !motivoText) motivoText = " (usar admin@demo.com)";
+    console.log(`${u.roleCode}:`);
+    console.log(`  Email:    ${u.email}`);
+    console.log(`  Password: ${DEMO_PASSWORD}`);
+    console.log(`  Estado:   ${statusText}${motivoText}\n`);
+  }
+
+  console.log(`API URL: ${API_URL}\n`);
+
+  console.log("Cómo ejecutar:");
+  console.log("  1. SEED_CONFIRM=1 node scripts/seed-pilot.mjs");
+  console.log("  2. Login con cualquier credencial de arriba");
+  console.log(`  3. Modo dry-run: node scripts/seed-pilot.mjs --dry-run`);
+  console.log(`  4. Para datos completos adicionales: SEED_CONFIRM=1 node scripts/seed-demo.mjs\n`);
+
+  const elapsed = Math.round((Date.now() - startTime) / 1000);
+  console.log(`Duration: ${elapsed}s`);
+}
+
+main().catch((err) => {
+  console.error("\nSeed failed:", err.message);
+  process.exit(1);
+});

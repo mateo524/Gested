@@ -1,30 +1,700 @@
 import express from "express";
 import bcrypt from "bcryptjs";
+import multer from "multer";
+import ExcelJS from "exceljs";
 import User from "../models/User.js";
+import Role from "../models/Role.js";
+import Company from "../models/Company.js";
+import Employee from "../models/Employee.js";
+import DatabaseFile from "../models/DatabaseFile.js";
+import Announcement from "../models/Announcement.js";
+import CompanySetting from "../models/CompanySetting.js";
+import UserRoleAssignment from "../models/UserRoleAssignment.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
+import { logAudit } from "../utils/audit.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
+import { generateTempPassword } from "../utils/password.js";
+import { uploadBufferToStorage } from "../utils/storageProvider.js";
+import {
+  buildAssignmentSyncPlanForLegacyRole,
+  syncPrimaryRoleAssignmentForUser,
+} from "../utils/accessControl.js";
+import { getPresetByLegacyRoleCode, getRolePreset } from "../utils/rolePresets.js";
+import {
+  normalizeEmail,
+  resolveDefaultActiveSchoolId,
+  syncEmployeeForUserCreation,
+} from "../utils/userEmployeeSync.js";
 
 const router = express.Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+function toBoolean(value, fallback = true) {
+  if (typeof value === "boolean") return value;
+  if (typeof value !== "string") return fallback;
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "si", "sí", "activo"].includes(normalized)) return true;
+  if (["false", "0", "no", "inactivo"].includes(normalized)) return false;
+  return fallback;
+}
+
+async function parseUploadedRows(file) {
+  const workbook = new ExcelJS.Workbook();
+  const fileName = file.originalname.toLowerCase();
+
+  if (fileName.endsWith(".csv")) {
+    await workbook.csv.readBuffer(file.buffer);
+  } else {
+    await workbook.xlsx.load(file.buffer);
+  }
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) return [];
+
+  const headers = worksheet
+    .getRow(1)
+    .values.slice(1)
+    .map((value) => String(value || "").trim().toLowerCase());
+
+  const rows = [];
+  worksheet.eachRow((row, rowNumber) => {
+    if (rowNumber === 1) return;
+    const values = row.values.slice(1);
+    const item = {};
+
+    headers.forEach((header, index) => {
+      item[header] = values[index];
+    });
+
+    rows.push({ ...item, _rowNumber: rowNumber });
+  });
+
+  return rows;
+}
+
+function normalizeText(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase();
+}
+
+function slugifyText(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ".")
+    .replace(/[^a-z0-9._-]/g, "");
+}
+
+async function buildUniqueEmail({ companySlug, baseLocalPart, companyId }) {
+  const safeCompany = slugifyText(companySlug || "empresa") || "empresa";
+  const safeLocal = slugifyText(baseLocalPart || "usuario") || "usuario";
+  const domain = `${safeCompany}.performia.app`;
+  let candidate = `${safeLocal}@${domain}`;
+  let index = 1;
+
+  while (await User.findOne({ companyId, email: candidate })) {
+    index += 1;
+    candidate = `${safeLocal}.${index}@${domain}`;
+  }
+
+  return candidate;
+}
+
+async function syncAssignmentFromRole({ user, role, roleKey }) {
+  if (!user || !role?.code) return;
+
+  const preset = roleKey
+    ? getRolePreset(roleKey)
+    : getPresetByLegacyRoleCode(role.code);
+
+  if (!preset || preset.roleKey === "SUPER_ADMIN") return;
+
+  await syncPrimaryRoleAssignmentForUser({
+    user,
+    companyId: user.companyId,
+    employeeId: user.employeeId || null,
+    roleKey: preset.roleKey,
+    scope: preset.allowedScopes[0],
+    roleLabel: role.nombre || preset.label,
+    departmentCode: "",
+    teamId: "",
+    active: true,
+  });
+}
+
+async function getAssignmentSyncPlanForUser({ user, role, preserveExistingScope = false }) {
+  if (!user || !role?.code) return null;
+
+  if (!preserveExistingScope) {
+    const preset = getPresetByLegacyRoleCode(role.code);
+    if (!preset || preset.roleKey === "SUPER_ADMIN") return null;
+    return {
+      roleKey: preset.roleKey,
+      scope: preset.allowedScopes[0],
+      departmentCode: "",
+      teamId: "",
+      active: true,
+    };
+  }
+
+  const currentAssignment = await UserRoleAssignment.findOne({
+    companyId: user.companyId,
+    userId: user._id,
+    active: true,
+  }).lean();
+
+  return buildAssignmentSyncPlanForLegacyRole({
+    currentAssignment,
+    targetLegacyRoleCode: role.code,
+  });
+}
 
 router.get("/", auth, permit("manage_users"), async (req, res) => {
-  const users = await User.find({ companyId: req.user.companyId }).select("-passwordHash");
+  const { companyId } = await resolveCompanyScope(req);
+  const search = req.query.q?.trim();
+  const onlyActive =
+    req.query.activo === "true" ? true : req.query.activo === "false" ? false : null;
+
+  const filters = { companyId, isSuperAdmin: false };
+
+  if (typeof onlyActive === "boolean") {
+    filters.activo = onlyActive;
+  }
+
+  if (search) {
+    filters.$or = [
+      { nombre: { $regex: search, $options: "i" } },
+      { email: { $regex: search, $options: "i" } },
+    ];
+  }
+
+  const users = await User.find(filters)
+    .select("-passwordHash")
+    .populate("roleId", "nombre permisos")
+    .sort({ nombre: 1 });
+
   res.json(users);
 });
 
 router.post("/", auth, permit("manage_users"), async (req, res) => {
-  const { nombre, email, password, roleId } = req.body;
+  const { nombre, email, password, roleId, roleKey, activo = true } = req.body;
+  const { companyId } = await resolveCompanyScope(req);
 
-  const passwordHash = await bcrypt.hash(password, 10);
+  if (!nombre || !email || !roleId) {
+    return res.status(400).json({ mensaje: "Faltan datos obligatorios del usuario" });
+  }
 
+  const normalizedEmail = normalizeEmail(email);
+  const existingUser = await User.findOne({ email: normalizedEmail, companyId });
+  if (existingUser) {
+    return res.status(409).json({ mensaje: "Ya existe un usuario con ese email" });
+  }
+
+  const role = await Role.findOne({ _id: roleId, companyId });
+  if (!role || String(role.companyId) !== String(companyId)) {
+    return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
+  }
+  if (String(role.code || "").toUpperCase() === "SUPER_ADMIN") {
+    return res.status(403).json({ mensaje: "SUPER_ADMIN solo puede gestionarse desde plataforma" });
+  }
+
+  const existingEmployee = await Employee.findOne({ companyId, email: normalizedEmail })
+    .select("_id schoolId")
+    .lean();
+  const effectiveSchoolId =
+    existingEmployee?.schoolId ||
+    (await resolveDefaultActiveSchoolId({
+      companyId,
+      preferredSchoolId: req.user.schoolId || null,
+    }));
+
+  if (!existingEmployee && !effectiveSchoolId) {
+    return res.status(400).json({
+      mensaje: "No hay un colegio o sede activa para crear el perfil del empleado asociado.",
+    });
+  }
+
+  const generatedPassword = password?.trim() || generateTempPassword();
+  const mustChangePassword = !password?.trim();
+
+  const passwordHash = await bcrypt.hash(generatedPassword, 10);
   const user = await User.create({
-    companyId: req.user.companyId,
-    nombre,
-    email,
+    companyId,
+    schoolId: effectiveSchoolId || null,
+    nombre: nombre.trim(),
+    email: normalizedEmail,
     passwordHash,
     roleId,
+    activo,
+    mustChangePassword,
+  });
+  const employeeLinkResult = await syncEmployeeForUserCreation({
+    user,
+    preferredSchoolId: effectiveSchoolId || null,
+    role,
+  });
+      await syncAssignmentFromRole({ user, role, roleKey });
+  await logAudit({
+    companyId,
+    userId: req.user.userId,
+    accion: "create",
+    modulo: "users",
+    detalle: `Usuario creado: ${user.email}`,
   });
 
-  res.json({ mensaje: "Usuario creado", user });
+  const hydratedUser = await User.findById(user._id)
+    .select("-passwordHash")
+    .populate("roleId", "nombre permisos");
+
+  res.status(201).json({
+    mensaje: "Usuario creado",
+    user: hydratedUser,
+    employee:
+      employeeLinkResult?.employee
+        ? {
+            _id: employeeLinkResult.employee._id,
+            email: employeeLinkResult.employee.email,
+            action: employeeLinkResult.action,
+          }
+        : null,
+    temporaryPassword: mustChangePassword ? generatedPassword : null,
+  });
+});
+
+router.post("/seed-demo-roles", auth, permit("manage_users"), async (req, res) => {
+  const { companyId, company } = await resolveCompanyScope(req);
+  const roles = await Role.find({ companyId }).lean();
+  const byCode = new Map(roles.map((role) => [normalizeText(role.code), role]));
+
+  const roleAdmin = byCode.get("admin_colegio");
+  const roleJefe = byCode.get("jefe");
+  const roleEmpleado = byCode.get("empleado");
+
+  if (!roleAdmin || !roleJefe || !roleEmpleado) {
+    return res.status(400).json({
+      mensaje: "Faltan roles requeridos: ADMIN_COLEGIO, JEFE o EMPLEADO",
+    });
+  }
+
+  const companySlug = slugifyText(company?.slug || company?.nombre || "empresa");
+  const specs = [
+    { key: "admin_colegio", nombre: "Admin Colegio Demo", roleId: roleAdmin._id },
+    { key: "jefe", nombre: "Jefe Demo", roleId: roleJefe._id },
+    { key: "empleado", nombre: "Empleado Demo", roleId: roleEmpleado._id },
+  ];
+
+  const created = [];
+
+  for (const spec of specs) {
+    const email = `${spec.key}.${companySlug}@performia.app`;
+    const tempPassword = generateTempPassword();
+    const hash = await bcrypt.hash(tempPassword, 10);
+    let user = await User.findOne({ companyId, email, isSuperAdmin: false });
+
+    if (user) {
+      user.nombre = spec.nombre;
+      user.roleId = spec.roleId;
+      user.passwordHash = hash;
+      user.mustChangePassword = true;
+      user.activo = true;
+      await user.save();
+    } else {
+      user = await User.create({
+        companyId,
+        nombre: spec.nombre,
+        email,
+        roleId: spec.roleId,
+        activo: true,
+        mustChangePassword: true,
+        passwordHash: hash,
+      });
+    }
+    const assignedRole = roles.find((role) => String(role._id) === String(spec.roleId)) || null;
+    await syncAssignmentFromRole({ user, role: assignedRole });
+
+    created.push({
+      _id: user._id,
+      nombre: user.nombre,
+      email: user.email,
+      roleKey: spec.key,
+      temporaryPassword: tempPassword,
+    });
+  }
+
+  await logAudit({
+    companyId,
+    userId: req.user.userId,
+    accion: "seed",
+    modulo: "users",
+    detalle: "Se generaron usuarios demo de roles para pruebas",
+  });
+
+  res.json({
+    mensaje: "Usuarios demo creados/actualizados",
+    users: created,
+  });
+});
+
+router.post(
+  "/import",
+  auth,
+  permit("manage_users"),
+  upload.single("file"),
+  async (req, res) => {
+    const { companyId } = await resolveCompanyScope(req);
+    if (!req.file) {
+      return res.status(400).json({ mensaje: "Debes subir un archivo CSV o Excel" });
+    }
+
+    const rows = await parseUploadedRows(req.file);
+    if (!rows.length) {
+      return res.status(400).json({ mensaje: "El archivo no contiene filas para importar" });
+    }
+
+    const [roles, company] = await Promise.all([
+      Role.find({ companyId }).lean(),
+      Company.findById(companyId).lean(),
+    ]);
+    const roleByKey = new Map();
+    roles.forEach((role) => {
+      roleByKey.set(normalizeText(role.nombre), role);
+      roleByKey.set(normalizeText(role.code), role);
+    });
+
+    const defaultRole =
+      roleByKey.get("empleado") ||
+      roleByKey.get("empleado/docente") ||
+      roleByKey.get("empleado_docente") ||
+      roleByKey.get("rrhh") ||
+      roles[0];
+
+    const result = {
+      total: rows.length,
+      created: 0,
+      updated: 0,
+      errors: [],
+      temporaryPasswords: [],
+    };
+
+    for (const row of rows) {
+      const nombreBase = String(row.nombre || row.name || "").trim();
+      const apellido = String(row.apellido || row.lastname || "").trim();
+      const nombre = [nombreBase, apellido].filter(Boolean).join(" ").trim();
+      let email = String(row.email || "").trim().toLowerCase();
+      const rolInput = normalizeText(row.rol || row.role || row.rolecode || "");
+      const role = roleByKey.get(rolInput) || defaultRole;
+
+      if (!nombre || !role) {
+        result.errors.push({
+          row: row._rowNumber,
+          message: "Faltan datos obligatorios o no hay roles disponibles",
+        });
+        continue;
+      }
+
+      if (!email) {
+        email = await buildUniqueEmail({
+          companySlug: company?.slug || company?.nombre,
+          baseLocalPart: nombre,
+          companyId,
+        });
+      }
+
+      const activo = toBoolean(row.activo, true);
+      const password = String(row.password || "").trim();
+      const existing = await User.findOne({ companyId, email, isSuperAdmin: false });
+
+      if (existing) {
+        existing.nombre = nombre;
+        existing.roleId = role._id;
+        existing.activo = activo;
+
+        if (password) {
+          existing.passwordHash = await bcrypt.hash(password, 10);
+          existing.mustChangePassword = false;
+        }
+
+        await existing.save();
+        await syncAssignmentFromRole({ user: existing, role });
+        result.updated += 1;
+        continue;
+      }
+
+      const generatedPassword = password || generateTempPassword();
+      const mustChangePassword = !password;
+      const user = await User.create({
+        companyId,
+        nombre,
+        email,
+        roleId: role._id,
+        activo,
+        passwordHash: await bcrypt.hash(generatedPassword, 10),
+        mustChangePassword,
+      });
+      await syncAssignmentFromRole({ user, role });
+
+      if (mustChangePassword) {
+        result.temporaryPasswords.push({
+          _id: user._id,
+          nombre: user.nombre,
+          email: user.email,
+          temporaryPassword: generatedPassword,
+        });
+      }
+
+      result.created += 1;
+    }
+
+    await logAudit({
+      companyId,
+      userId: req.user.userId,
+      accion: "import",
+      modulo: "users",
+      detalle: `Importacion de usuarios: ${result.created} creados, ${result.updated} actualizados`,
+    });
+
+    const uploaded = await uploadBufferToStorage({
+      buffer: req.file.buffer,
+      contentType: req.file.mimetype,
+      originalName: req.file.originalname,
+      folderPath: `performia/${company?.slug || companyId}/usuarios`,
+    });
+
+    await DatabaseFile.create({
+      companyId,
+      nombreVisible: `Importacion de usuarios (${new Date().toLocaleDateString("es-AR")})`,
+      nombreArchivo: req.file.originalname,
+      archivo: "",
+      extension: req.file.originalname.split(".").pop()?.toLowerCase() || "csv",
+      mimeType: req.file.mimetype,
+      tipoArchivo: "importacion-usuarios",
+      storageProvider: uploaded.provider,
+      storageKey: uploaded.key,
+      storageBucket: uploaded.bucket,
+      publicUrl: uploaded.publicUrl,
+      hoja: "usuarios",
+      registros: result.total,
+      activa: true,
+    });
+
+    const settings = await CompanySetting.findOne({ companyId }).lean();
+    if (result.errors.length && settings?.automations?.notifyOnImportErrors !== false) {
+      await Announcement.create({
+        companyId,
+        authorUserId: req.user.userId,
+        titulo: "Importacion masiva de usuarios con errores",
+        cuerpo: `Se detectaron ${result.errors.length} errores en la importacion de usuarios. Revisa el resumen y el CSV de errores.`,
+        prioridad: "importante",
+        categoria: "importacion",
+      });
+    }
+
+    res.json({
+      mensaje: "Importacion finalizada",
+      ...result,
+    });
+  }
+);
+
+router.post("/bulk", auth, permit("manage_users"), async (req, res) => {
+  const { action, userIds = [] } = req.body;
+  const { companyId } = await resolveCompanyScope(req);
+
+  if (!action || !Array.isArray(userIds) || userIds.length === 0) {
+    return res.status(400).json({ mensaje: "Debes indicar accion y usuarios" });
+  }
+
+  const users = await User.find({
+    _id: { $in: userIds },
+    companyId,
+    isSuperAdmin: false,
+  });
+
+  if (!users.length) {
+    return res.status(404).json({ mensaje: "No se encontraron usuarios para procesar" });
+  }
+
+  let temporaryPasswords = [];
+
+  const userIds_ = users.map((user) => user._id);
+
+  if (action === "activate") {
+    await User.updateMany({ _id: { $in: userIds_ }, companyId }, { activo: true });
+  } else if (action === "deactivate") {
+    const ownId = String(req.user.userId);
+    if (users.some((user) => String(user._id) === ownId)) {
+      return res.status(400).json({ mensaje: "No puedes desactivar tu propio usuario" });
+    }
+
+    await User.updateMany({ _id: { $in: userIds_ }, companyId }, { activo: false });
+  } else if (action === "delete") {
+    const ownId = String(req.user.userId);
+    if (users.some((user) => String(user._id) === ownId)) {
+      return res.status(400).json({ mensaje: "No puedes eliminar tu propio usuario" });
+    }
+
+    await User.deleteMany({ _id: { $in: userIds_ }, companyId });
+  } else if (action === "reset_password") {
+    temporaryPasswords = await Promise.all(
+      users.map(async (user) => {
+        const tempPassword = generateTempPassword();
+        user.passwordHash = await bcrypt.hash(tempPassword, 10);
+        user.mustChangePassword = true;
+        await user.save();
+
+        return {
+          _id: user._id,
+          nombre: user.nombre,
+          email: user.email,
+          temporaryPassword: tempPassword,
+        };
+      })
+    );
+  } else {
+    return res.status(400).json({ mensaje: "Accion masiva no valida" });
+  }
+
+  await logAudit({
+    companyId,
+    userId: req.user.userId,
+    accion: "bulk",
+    modulo: "users",
+    detalle: `Accion masiva ${action} sobre ${users.length} usuario(s)`,
+  });
+
+  res.json({
+    mensaje: "Accion masiva aplicada",
+    processed: users.length,
+    temporaryPasswords,
+  });
+});
+
+router.put("/:id", auth, permit("manage_users"), async (req, res) => {
+  const { nombre, email, password, roleId, activo } = req.body;
+  const update = {};
+  const { companyId } = await resolveCompanyScope(req);
+
+  const user = await User.findOne({
+    _id: req.params.id,
+    companyId,
+    isSuperAdmin: false,
+  });
+
+  if (!user) {
+    return res.status(404).json({ mensaje: "Usuario no encontrado" });
+  }
+
+  if (nombre) update.nombre = nombre.trim();
+  if (typeof activo === "boolean") update.activo = activo;
+
+  if (email) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const duplicated = await User.findOne({
+      email: normalizedEmail,
+      _id: { $ne: req.params.id },
+    });
+
+    if (duplicated) {
+      return res.status(409).json({ mensaje: "Ya existe un usuario con ese email" });
+    }
+
+    update.email = normalizedEmail;
+  }
+
+  let roleChanged = false;
+  let assignmentSyncPlan = null;
+  if (roleId) {
+    const role = await Role.findOne({ _id: roleId, companyId: user.companyId });
+    if (!role) {
+      return res.status(400).json({ mensaje: "El rol seleccionado no es valido" });
+    }
+    if (String(role.code || "").toUpperCase() === "SUPER_ADMIN") {
+      return res.status(403).json({ mensaje: "SUPER_ADMIN solo puede gestionarse desde plataforma" });
+    }
+
+    roleChanged = String(roleId) !== String(user.roleId || "");
+    update.roleId = roleId;
+
+    if (roleChanged) {
+      try {
+        assignmentSyncPlan = await getAssignmentSyncPlanForUser({
+          user,
+          role,
+          preserveExistingScope: true,
+        });
+      } catch (error) {
+        return res.status(error.status || 400).json({ mensaje: error.message });
+      }
+    }
+  }
+
+  if (password) {
+    update.passwordHash = await bcrypt.hash(password, 10);
+    update.mustChangePassword = false;
+  }
+
+  const updatedUser = await User.findOneAndUpdate(
+    { _id: req.params.id, companyId },
+    update,
+    { new: true }
+  )
+    .select("-passwordHash")
+    .populate("roleId", "nombre permisos");
+
+  if (roleChanged && assignmentSyncPlan) {
+    const rawUser = await User.findOne({ _id: req.params.id, companyId });
+    await syncPrimaryRoleAssignmentForUser({
+      user: rawUser,
+      companyId: rawUser.companyId,
+      employeeId: rawUser.employeeId || null,
+      roleKey: assignmentSyncPlan.roleKey,
+      scope: assignmentSyncPlan.scope,
+      departmentCode: assignmentSyncPlan.departmentCode,
+      teamId: assignmentSyncPlan.teamId,
+      active: assignmentSyncPlan.active,
+    });
+  }
+
+  await logAudit({
+    companyId: user.companyId,
+    userId: req.user.userId,
+    accion: "update",
+    modulo: "users",
+    detalle: `Usuario actualizado: ${updatedUser.email}`,
+  });
+
+  res.json({ mensaje: "Usuario actualizado", user: updatedUser });
+});
+
+router.delete("/:id", auth, permit("manage_users"), async (req, res) => {
+  if (String(req.params.id) === String(req.user.userId)) {
+    return res.status(400).json({ mensaje: "No puedes eliminar tu propio usuario" });
+  }
+
+  const { companyId } = await resolveCompanyScope(req);
+  const user = await User.findOneAndDelete({
+    _id: req.params.id,
+    companyId,
+    isSuperAdmin: false,
+  });
+
+  if (!user) {
+    return res.status(404).json({ mensaje: "Usuario no encontrado" });
+  }
+
+  await logAudit({
+    companyId: user.companyId,
+    userId: req.user.userId,
+    accion: "delete",
+    modulo: "users",
+    detalle: `Usuario eliminado: ${user.email}`,
+  });
+
+  res.json({ mensaje: "Usuario eliminado" });
 });
 
 export default router;

@@ -11,6 +11,39 @@ const CompanySettingSchema = new mongoose.Schema({
   logoUrl: { type: String, default: "" },
   primaryColor: { type: String, default: "#10b981" },
   maxUploadSizeMb: { type: Number, default: 10 },
+  defaultEmailDomain: { type: String, default: "performia.app" },
+  defaultEmployeeRoleCode: { type: String, default: "EMPLEADO" },
+  automations: {
+    nightlyDataCheck: { type: Boolean, default: true },
+    autoCreateUsersFromImport: { type: Boolean, default: false },
+    autoAssignDefaultRole: { type: Boolean, default: true },
+    notifyOnImportErrors: { type: Boolean, default: true },
+  },
+  slackWebhookUrl: { type: String, default: "" },
+  importProfiles: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {},
+  },
+  onboarding: {
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "School",
+      default: null,
+    },
+    steps: {
+      type: mongoose.Schema.Types.Mixed,
+      default: {},
+    },
+    updatedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
+    },
+    updatedAt: {
+      type: Date,
+      default: null,
+    },
+  },
 });
 
 export default mongoose.model("CompanySetting", CompanySettingSchema);

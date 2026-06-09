@@ -1,3 +1,7 @@
+# Graphify outputs
+graphify-out/
+graphify-tool/
+
 # Logs
 logs
 *.log
@@ -11,6 +15,12 @@ node_modules
 dist
 dist-ssr
 *.local
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
 
 # Editor directories and files
 .vscode/*
@@ -22,10 +32,5 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Environment
-.env
-.env.local
-
-# Vercel
 .vercel
+.claude/

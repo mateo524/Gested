@@ -1,20 +1,43 @@
 import Company from "../models/Company.js";
 
-export async function companyScope(req, res, next) {
-  try {
-    const companyId = req.user?.companyId;
-    if (!companyId) {
-      return res.status(400).json({ error: "companyId no encontrado en token" });
-    }
+export async function resolveCompanyScope(req) {
+  const requestedCompanyId = req?.headers?.["x-company-id"] || null;
 
-    const company = await Company.findById(companyId);
-    if (!company) {
-      return res.status(404).json({ error: "Empresa no encontrada" });
-    }
-
-    req.company = company;
-    next();
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+  if (!req.user) {
+    throw new Error("No autorizado");
   }
+
+  if (req.user.isSuperAdmin) {
+    const companyId = requestedCompanyId || req.user.companyId;
+    const company = await Company.findById(companyId).lean();
+
+    if (!company) {
+      const error = new Error("Empresa no encontrada");
+      error.status = 404;
+      throw error;
+    }
+
+    return { companyId: String(company._id), company };
+  }
+
+  if (requestedCompanyId && requestedCompanyId !== String(req.user.companyId)) {
+    const error = new Error("No tenés acceso a esa empresa");
+    error.status = 403;
+    throw error;
+  }
+
+  const company = await Company.findById(req.user.companyId).lean();
+  if (!company) {
+    const error = new Error("Empresa no encontrada");
+    error.status = 404;
+    throw error;
+  }
+
+  if (company.activa === false) {
+    const error = new Error("La empresa tiene el acceso suspendido");
+    error.status = 403;
+    throw error;
+  }
+
+  return { companyId: String(req.user.companyId), company };
 }

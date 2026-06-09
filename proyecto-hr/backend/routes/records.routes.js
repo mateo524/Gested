@@ -1,76 +1,64 @@
 import express from "express";
+import { Parser } from "json2csv";
 import Record from "../models/Record.js";
-import { requireAuth } from "../middleware/auth.js";
+import DatabaseFile from "../models/DatabaseFile.js";
+import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
-import { companyScope } from "../utils/companyScope.js";
+import { resolveCompanyScope } from "../utils/companyScope.js";
 
 const router = express.Router();
 
-// Obtener todos los registros de empleados de la empresa
-router.get("/", requireAuth, companyScope, async (req, res) => {
-  try {
-    const records = await Record.find({ companyId: req.company._id }).sort({
-      nombreCompleto: 1,
-    });
-    res.json(records);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
+function buildFilters(companyId, query) {
+  const q = query.q?.trim();
+  const rol = query.rol?.trim();
+  const databaseId = query.databaseId?.trim();
+
+  const filters = { companyId };
+  if (rol) filters.rol = rol;
+  if (databaseId) filters.databaseId = databaseId;
+  if (q) {
+    filters.$or = [
+      { nombreCompleto: { $regex: q, $options: "i" } },
+      { email: { $regex: q, $options: "i" } },
+      { rol: { $regex: q, $options: "i" } },
+    ];
   }
+
+  return filters;
+}
+
+router.get("/", auth, permit("export_reports"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const filters = buildFilters(companyId, req.query);
+
+  const [records, roles, files] = await Promise.all([
+    Record.find(filters).sort({ createdAt: -1 }).limit(300).lean(),
+    Record.distinct("rol", { companyId }),
+    DatabaseFile.find({ companyId }).select("nombreVisible").sort({ fechaSubida: -1 }).lean(),
+  ]);
+
+  res.json({
+    records,
+    filters: {
+      roles: roles.filter(Boolean).sort(),
+      files,
+    },
+  });
 });
 
-// Obtener un registro específico
-router.get("/:id", requireAuth, companyScope, async (req, res) => {
-  try {
-    const record = await Record.findOne({
-      _id: req.params.id,
-      companyId: req.company._id,
-    });
+router.get("/export", auth, permit("export_reports"), async (req, res) => {
+  const { companyId } = await resolveCompanyScope(req);
+  const filters = buildFilters(companyId, req.query);
+  const records = await Record.find(filters).lean();
 
-    if (!record) {
-      return res.status(404).json({ error: "Registro no encontrado" });
-    }
+  const parser = new Parser({
+    fields: ["nombreCompleto", "rol", "email"],
+  });
 
-    res.json(record);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Actualizar un registro (requiere permiso de manage_users)
-router.put("/:id", requireAuth, permit("manage_users"), companyScope, async (req, res) => {
-  try {
-    const record = await Record.findOneAndUpdate(
-      { _id: req.params.id, companyId: req.company._id },
-      { $set: req.body },
-      { new: true, runValidators: true }
-    );
-
-    if (!record) {
-      return res.status(404).json({ error: "Registro no encontrado" });
-    }
-
-    res.json(record);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Eliminar un registro (requiere permiso de manage_users)
-router.delete("/:id", requireAuth, permit("manage_users"), companyScope, async (req, res) => {
-  try {
-    const record = await Record.findOneAndDelete({
-      _id: req.params.id,
-      companyId: req.company._id,
-    });
-
-    if (!record) {
-      return res.status(404).json({ error: "Registro no encontrado" });
-    }
-
-    res.json({ message: "Registro eliminado correctamente" });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
+  const csv = parser.parse(records);
+  res.header("Content-Type", "text/csv");
+  res.attachment("registros-filtrados.csv");
+  res.send(csv);
 });
 
 export default router;
