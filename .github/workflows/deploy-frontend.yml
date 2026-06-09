@@ -22,7 +22,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: proyecto-hr
-        run: npm ci
+        run: npm install --no-audit --legacy-peer-deps
 
       - name: Build
         working-directory: proyecto-hr
