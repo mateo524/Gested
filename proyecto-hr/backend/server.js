@@ -2,68 +2,330 @@ import "dotenv/config";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import compression from "compression";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 import authRoutes from "./routes/auth.routes.js";
+import dashboardRoutes from "./routes/dashboard.routes.js";
+import companiesRoutes from "./routes/companies.routes.js";
 import usersRoutes from "./routes/users.routes.js";
 import rolesRoutes from "./routes/roles.routes.js";
 import auditRoutes from "./routes/audit.routes.js";
 import settingsRoutes from "./routes/settings.routes.js";
 import exportRoutes from "./routes/export.routes.js";
 import recordsRoutes from "./routes/records.routes.js";
+import storageRoutes from "./routes/storage.routes.js";
+import announcementsRoutes from "./routes/announcements.routes.js";
+import searchRoutes from "./routes/search.routes.js";
+import employeesRoutes from "./routes/employees.routes.js";
+import competenciesRoutes from "./routes/competencies.routes.js";
+import metricsRoutes from "./routes/metrics.routes.js";
+import schoolsRoutes from "./routes/schools.routes.js";
+import evaluationCyclesRoutes from "./routes/evaluationCycles.routes.js";
+import evaluationsRoutes from "./routes/evaluations.routes.js";
+import educationExportsRoutes from "./routes/educationExports.routes.js";
 import developmentPlansRoutes from "./routes/developmentPlans.routes.js";
+import automationRoutes from "./routes/automation.routes.js";
+import supportRoutes from "./routes/support.routes.js";
+import bulkImportRoutes from "./routes/bulkImport.routes.js";
+import reportsRoutes from "./routes/reports.routes.js";
+import onboardingRoutes from "./routes/onboarding.routes.js";
+import linkedinRoutes from "./routes/linkedin.routes.js";
+import notificationsRoutes from "./routes/notifications.routes.js";
+import notificationsFeedRoutes from "./routes/notifications-feed.routes.js";
+import calendlyRoutes from "./routes/calendly.routes.js";
+import webhooksConfigRoutes from "./routes/webhooks-config.routes.js";
+import analyticsRoutes from "./routes/analytics.routes.js";
+import dripRoutes from "./routes/drip.routes.js";
+import { ensureInitialAccess } from "./utils/bootstrap.js";
+import { ensureIndexes } from "./utils/ensureIndexes.js";
+import { buildHealthStatus } from "./utils/health.js";
+import { logger } from "./utils/logger.js";
 
 const app = express();
+app.set("trust proxy", 1);
 
-app.use(cors());
-app.use(express.json());
+function buildAllowedOrigins() {
+  const fromList = String(process.env.FRONTEND_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const fromCorsOrigins = String(process.env.CORS_ORIGINS || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+  const fromSingle = String(process.env.FRONTEND_URL || "").trim();
+  const allowed = new Set([...fromList, ...fromCorsOrigins]);
+  if (fromSingle) allowed.add(fromSingle);
 
-// Mantener MongoDB activo (evita cold start en Atlas free tier)
-const MONGO_OPTS = {
-  keepAlive: true,
-  keepAliveInitialDelay: 300000,
-  connectTimeoutMS: 10000,
-  socketTimeoutMS: 60000,
-  serverSelectionTimeoutMS: 15000,
-};
-
-mongoose
-  .connect(process.env.MONGO_URI, MONGO_OPTS)
-  .then(() => {
-    console.log("MongoDB conectado");
-    // Ping cada 4 minutos para evitar que Atlas suspenda la conexión
-    setInterval(() => {
-      mongoose.connection.db?.admin().ping();
-    }, 240000);
-  })
-  .catch((err) => console.log("Error MongoDB:", err));
-
-// Health check público (para que el frontend despierte la DB)
-app.get("/health", async (req, res) => {
-  try {
-    await mongoose.connection.db?.admin().ping();
-    res.json({ status: "ok", db: "connected" });
-  } catch {
-    res.status(503).json({ status: "error", db: "connecting" });
+  if (process.env.NODE_ENV !== "production") {
+    allowed.add("http://localhost:5173");
+    allowed.add("http://localhost:3000");
   }
+
+  return allowed;
+}
+
+function buildCorsOptions() {
+  const allowedOrigins = buildAllowedOrigins();
+  const allowVercelPreview =
+    process.env.NODE_ENV === "production" &&
+    String(process.env.ALLOW_VERCEL_PREVIEWS || "true").toLowerCase() !== "false";
+
+  function isAllowedOrigin(origin) {
+    if (allowedOrigins.has(origin)) return true;
+    if (!allowVercelPreview) return false;
+
+    try {
+      const parsed = new URL(origin);
+      return parsed.hostname.endsWith(".vercel.app");
+    } catch {
+      return false;
+    }
+  }
+
+  return {
+    origin(origin, callback) {
+      if (!origin) return callback(null, true);
+      if (isAllowedOrigin(origin)) return callback(null, true);
+      return callback(new Error("CORS: origen no permitido"));
+    },
+    credentials: true,
+  };
+}
+
+function assertRuntimeConfig() {
+  if (!process.env.MONGO_URI) {
+    throw new Error("Falta MONGO_URI");
+  }
+
+  if (!process.env.JWT_SECRET) {
+    throw new Error("Falta JWT_SECRET");
+  }
+
+  if (process.env.NODE_ENV === "production" && process.env.JWT_SECRET.length < 32) {
+    throw new Error("JWT_SECRET debe tener al menos 32 caracteres en producción.");
+  }
+}
+
+app.use(cors(buildCorsOptions()));
+app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(
+  compression({
+    threshold: "1kb",
+    level: 6,
+  })
+);
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    mensaje: "Demasiadas solicitudes. Intenta nuevamente en unos minutos.",
+  },
+  skip: (req) => req.path === "/health" && req.method === "GET",
+});
+
+app.use(generalLimiter);
+
+// Per-user rate limiter — applied only to authenticated routes
+// Stricter than IP limiter: prevents a single account from hammering the API
+const perUserLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 minutes
+  limit: 150,                  // 150 req per user per 15min (vs 300 by IP)
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use userId if authenticated, fall back to IP
+    const userId = req.user?._id || req.user?.userId;
+    return userId ? `user:${userId}` : req.ip;
+  },
+  message: { mensaje: "Demasiadas solicitudes desde esta cuenta. Intentá en unos minutos." },
+  skip: (req) => {
+    // Skip for unauthenticated routes and health check
+    if (req.path === "/health") return true;
+    if (req.path.startsWith("/auth/login")) return false; // apply to login (brute force)
+    return false;
+  },
+});
+
+app.use(perUserLimiter);
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10, // only 10 login attempts per 15 min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: "Demasiados intentos de login. Esperá 15 minutos." },
+});
+app.use("/auth/login", authLimiter);
+
+function isObject(val) {
+  return typeof val === "object" && val !== null;
+}
+
+function sanitizeObject(obj) {
+  if (!isObject(obj)) return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeObject);
+
+  const sanitized = {};
+  for (const key of Object.keys(obj)) {
+    const clean = key.replace(/^\$/, "").replace(/\./g, "");
+    if (clean !== key) {
+      sanitized[clean] = sanitizeObject(obj[key]);
+    } else {
+      sanitized[key] = sanitizeObject(obj[key]);
+    }
+  }
+  return sanitized;
+}
+
+function safeAssign(obj, prop, value) {
+  try {
+    obj[prop] = value;
+  } catch {
+    Object.defineProperty(obj, prop, {
+      value,
+      writable: true,
+      configurable: true,
+    });
+  }
+}
+
+app.use((req, _res, next) => {
+  if (req.body && isObject(req.body)) {
+    safeAssign(req, "body", sanitizeObject(req.body));
+  }
+  if (req.params && isObject(req.params)) {
+    safeAssign(req, "params", sanitizeObject(req.params));
+  }
+  if (req.query && isObject(req.query)) {
+    safeAssign(req, "query", sanitizeObject(req.query));
+  }
+  next();
+});
+
+app.use((req, res, next) => {
+  const method = req.method.toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return next();
+
+  if (req.path.startsWith("/auth")) {
+    res.setHeader("Cache-Control", "no-store");
+    return next();
+  }
+
+  res.setHeader("Cache-Control", "private, no-cache");
+  res.setHeader("Vary", "Authorization, X-Company-Id");
+  return next();
 });
 
 app.use("/auth", authRoutes);
+app.use("/dashboard", dashboardRoutes);
+app.use("/companies", companiesRoutes);
 app.use("/users", usersRoutes);
 app.use("/roles", rolesRoutes);
 app.use("/audit", auditRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/export", exportRoutes);
 app.use("/records", recordsRoutes);
+app.use("/storage", storageRoutes);
+app.use("/announcements", announcementsRoutes);
+app.use("/search", searchRoutes);
+app.use("/employees", employeesRoutes);
+app.use("/competencies", competenciesRoutes);
+app.use("/metrics", metricsRoutes);
+app.use("/schools", schoolsRoutes);
+app.use("/evaluation-cycles", evaluationCyclesRoutes);
+app.use("/evaluations", evaluationsRoutes);
+app.use("/education-exports", educationExportsRoutes);
 app.use("/development-plans", developmentPlansRoutes);
+app.use("/automation", automationRoutes);
+app.use("/support", supportRoutes);
+app.use("/bulk-import", bulkImportRoutes);
+app.use("/reports", reportsRoutes);
+app.use("/onboarding", onboardingRoutes);
+app.use("/api/linkedin", linkedinRoutes);
+app.use("/notifications", notificationsRoutes);
+app.use("/notifications-feed", notificationsFeedRoutes);
+app.use("/webhooks", calendlyRoutes);
+app.use("/webhooks-config", webhooksConfigRoutes);
+app.use("/analytics", analyticsRoutes);
+app.use("/drip", dripRoutes);
+
+// Request logging — emits one structured log line per completed request.
+// Skips /health to avoid noise in Cloud Logging dashboards.
+app.use((req, res, next) => {
+  if (req.path === "/health") return next();
+  const startedAt = Date.now();
+  res.on("finish", () => {
+    logger.info("request", {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+      durationMs: Date.now() - startedAt,
+    });
+  });
+  next();
+});
+
+app.get("/health", (_req, res) => {
+  const payload = buildHealthStatus("zentor-backend", {
+    databaseReadyState: mongoose.connection?.readyState,
+    nodeEnv: process.env.NODE_ENV || "development",
+  });
+
+  res.status(payload.ok ? 200 : 503).json(payload);
+});
 
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
 });
 
-if (!process.env.VERCEL) {
-  app.listen(process.env.PORT || 3000, () => {
-    console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
+app.use((err, _req, res, _next) => {
+  const status = err.status || err.statusCode || 500;
+
+  if (status >= 500) {
+    logger.error("Unhandled error", { message: err.message, stack: err.stack, status });
+  }
+
+  if (status >= 500 && process.env.NODE_ENV === "production") {
+    return res.status(500).json({ mensaje: "Error interno del servidor" });
+  }
+
+  res.status(status).json({
+    mensaje: err.mensaje || err.message || "Error interno del servidor",
+    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
   });
+});
+
+async function start() {
+  try {
+    assertRuntimeConfig();
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB conectado");
+    await ensureIndexes();
+
+    const { credentials } = await ensureInitialAccess();
+    if (credentials?.email) {
+      console.log(`Admin inicial listo: ${credentials.email}`);
+    } else {
+      console.log("Admin inicial no auto-creado (seed deshabilitado o no configurado)");
+    }
+
+    app.listen(process.env.PORT || 3000, () => {
+      console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
+    });
+  } catch (err) {
+    console.log("Error MongoDB:", err);
+    process.exit(1);
+  }
 }
 
-export default app;
+start();
+
+export { app };
