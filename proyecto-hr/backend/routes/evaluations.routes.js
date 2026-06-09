@@ -9,6 +9,7 @@ import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 import { runInBackground } from "../utils/background.js";
+import { triggerSheetSync } from "../utils/sheetSync.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 
@@ -287,6 +288,7 @@ router.post(
     });
 
     res.status(201).json({ mensaje: "Evaluacion creada", evaluation });
+    runInBackground(() => triggerSheetSync({ companyId: String(employee.companyId), schoolId: employee.schoolId ? String(employee.schoolId) : undefined }), "sheet-sync-eval-create");
   }
 );
 
@@ -351,6 +353,7 @@ router.put(
     }), "audit-evaluation-update");
 
     res.json({ mensaje: "Evaluacion actualizada", evaluation });
+    runInBackground(() => triggerSheetSync({ companyId: String(evaluation.companyId), schoolId: evaluation.schoolId ? String(evaluation.schoolId) : undefined }), "sheet-sync-eval-update");
   }
 );
 
@@ -390,6 +393,7 @@ router.delete(
     }), "audit-evaluation-delete");
 
     res.json({ mensaje: "Evaluacion eliminada" });
+    runInBackground(() => triggerSheetSync({ companyId: String(evaluation.companyId), schoolId: evaluation.schoolId ? String(evaluation.schoolId) : undefined }), "sheet-sync-eval-delete");
   }
 );
 

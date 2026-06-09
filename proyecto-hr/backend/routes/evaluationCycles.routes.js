@@ -13,6 +13,7 @@ import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 import { runInBackground } from "../utils/background.js";
+import { triggerSheetSync } from "../utils/sheetSync.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
 import { slack } from "../utils/slackNotifier.js";
 import { notifyClientSlack, clientSlack } from "../utils/clientSlack.js";
@@ -152,6 +153,7 @@ router.post(
     }
 
     res.status(201).json({ mensaje: "Ciclo creado", cycle });
+    runInBackground(() => triggerSheetSync({ companyId: String(companyId), schoolId: schoolId ? String(schoolId) : undefined }), "sheet-sync-cycle-create");
   }
 );
 
@@ -220,6 +222,7 @@ router.put(
     }
 
     res.json({ mensaje: "Ciclo actualizado", cycle });
+    runInBackground(() => triggerSheetSync({ companyId: String(cycle.companyId), schoolId: cycle.schoolId ? String(cycle.schoolId) : undefined }), "sheet-sync-cycle-update");
   }
 );
 
@@ -247,6 +250,7 @@ router.delete(
     }), "audit-cycle-delete");
 
     res.json({ mensaje: "Ciclo eliminado" });
+    runInBackground(() => triggerSheetSync({ companyId: String(cycle.companyId), schoolId: cycle.schoolId ? String(cycle.schoolId) : undefined }), "sheet-sync-cycle-delete");
   }
 );
 

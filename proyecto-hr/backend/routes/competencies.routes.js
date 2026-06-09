@@ -9,6 +9,8 @@ import { requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
 import { cacheGetOrFetch, cacheDelete } from "../utils/cache.js";
+import { runInBackground } from "../utils/background.js";
+import { triggerSheetSync } from "../utils/sheetSync.js";
 
 const router = express.Router();
 
@@ -110,6 +112,7 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_C
   });
 
   res.status(201).json({ mensaje: "Competencia creada", competency });
+  runInBackground(() => triggerSheetSync({ companyId: competency.companyId, schoolId: competency.schoolId }), "sheet-sync-competency-create");
 });
 
 router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_COMPETENCIES), async (req, res) => {
@@ -165,6 +168,7 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
   });
 
   res.json({ mensaje: "Competencia actualizada", competency });
+  runInBackground(() => triggerSheetSync({ companyId: String(competency.companyId), schoolId: competency.schoolId ? String(competency.schoolId) : undefined }), "sheet-sync-competency-update");
 });
 
 router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_COMPETENCIES), async (req, res) => {
@@ -197,6 +201,7 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
   });
 
   res.json({ mensaje: "Competencia eliminada" });
+  runInBackground(() => triggerSheetSync({ companyId: String(competency.companyId), schoolId: competency.schoolId ? String(competency.schoolId) : undefined }), "sheet-sync-competency-delete");
 });
 
 export default router;

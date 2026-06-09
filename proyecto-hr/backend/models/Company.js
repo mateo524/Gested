@@ -6,6 +6,9 @@ const CompanySchema = new mongoose.Schema({
   tipoCliente: { type: String, default: "general" },
   activa: { type: Boolean, default: true },
   fechaCreacion: { type: Date, default: Date.now },
+  spreadsheetId: { type: String, default: null },
+  spreadsheetUrl: { type: String, default: null },
+  spreadsheetLastSync: { type: Date, default: null },
 });
 
 export default mongoose.model("Company", CompanySchema);

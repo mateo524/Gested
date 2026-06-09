@@ -351,7 +351,7 @@ export default function AppShell({
       { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
     ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
     if (evalKids.length) {
-      items.push({ type: "group", key: "eval-group", label: L("Evaluación de desempeño", "Performance"), icon: "evaluaciones", children: evalKids });
+      items.push({ type: "group", key: "eval-group", label: L("Evaluaciones", "Evaluations"), icon: "evaluaciones", children: evalKids });
     }
 
     // Plataforma group (superadmin)

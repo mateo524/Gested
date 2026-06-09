@@ -16,6 +16,8 @@ import {
   resolveDefaultEmployeeRole,
   syncUserForEmployeeCreation,
 } from "../utils/userEmployeeSync.js";
+import { triggerSheetSync } from "../utils/sheetSync.js";
+import { runInBackground } from "../utils/background.js";
 
 const router = express.Router();
 
@@ -422,6 +424,7 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
         : null,
     temporaryPassword: userLinkResult?.temporaryPassword || null,
   });
+  runInBackground(() => triggerSheetSync({ companyId: safeEmployee.companyId, schoolId: safeEmployee.schoolId }), "sheet-sync-employee-create");
 });
 
 router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
@@ -481,6 +484,7 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
 
   const { __v: _vu, ...safeUpdated } = employee.toObject ? employee.toObject() : employee;
   res.json({ mensaje: "Empleado actualizado", employee: safeUpdated });
+  runInBackground(() => triggerSheetSync({ companyId: employee.companyId, schoolId: employee.schoolId }), "sheet-sync-employee-update");
 });
 
 router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
@@ -516,6 +520,7 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
   });
 
   res.json({ mensaje: "Empleado eliminado" });
+  runInBackground(() => triggerSheetSync({ companyId: employee.companyId, schoolId: employee.schoolId }), "sheet-sync-employee-delete");
 });
 
 export default router;

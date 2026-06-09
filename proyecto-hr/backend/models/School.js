@@ -14,6 +14,9 @@ const SchoolSchema = new mongoose.Schema(
     provincia: { type: String, trim: true },
     pais: { type: String, default: "Argentina" },
     activa: { type: Boolean, default: true },
+    spreadsheetId: { type: String, default: null },
+    spreadsheetUrl: { type: String, default: null },
+    spreadsheetLastSync: { type: Date, default: null },
   },
   { timestamps: true }
 );
