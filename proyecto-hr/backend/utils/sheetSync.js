@@ -6,6 +6,7 @@ import Company from "../models/Company.js";
 import School from "../models/School.js";
 import Employee from "../models/Employee.js";
 import Competency from "../models/Competency.js";
+import Metric from "../models/Metric.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Evaluation from "../models/Evaluation.js";
 import { syncCompanySpreadsheet, isGoogleSheetsEnabled } from "./googleSheets.js";
@@ -14,9 +15,10 @@ async function loadCompanyData(companyId, schoolId = null) {
   const baseFilter = { companyId };
   if (schoolId) baseFilter.schoolId = schoolId;
 
-  const [employees, competencies, cycles, evaluations] = await Promise.all([
+  const [employees, competencies, metrics, cycles, evaluations] = await Promise.all([
     Employee.find(baseFilter).lean(),
     Competency.find(baseFilter).lean(),
+    Metric.find({ ...baseFilter, activa: true }).lean(),
     EvaluationCycle.find(baseFilter).lean(),
     Evaluation.find(baseFilter)
       .populate("employeeId", "nombre apellido")
@@ -24,7 +26,7 @@ async function loadCompanyData(companyId, schoolId = null) {
       .lean(),
   ]);
 
-  return { employees, competencies, cycles, evaluations };
+  return { employees, competencies, metrics, cycles, evaluations };
 }
 
 /**

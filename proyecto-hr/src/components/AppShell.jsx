@@ -236,7 +236,7 @@ export default function AppShell({
     function handleKey(e) {
       if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA" || e.target.tagName === "SELECT") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const shortcuts = { i: "dashboard", p: "empleados", e: "evaluaciones", c: "ciclos", m: "metricas", r: "reporte-ejecutivo", d: "planes" };
+      const shortcuts = { i: "dashboard", p: "empleados", e: "evaluaciones", c: "ciclos", r: "reporte-ejecutivo", d: "planes" };
       const target = shortcuts[e.key.toLowerCase()];
       if (target && availableViews?.includes(target)) { e.preventDefault(); setView(target); return; }
       if (e.key === "?") { e.preventDefault(); setShowShortcuts(v => !v); }
@@ -291,10 +291,10 @@ export default function AppShell({
     { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee), keywords: ["ciclos", "periodo", "período"] },
     { key: "evaluaciones", label: "Evaluaciones", show: hasPermission("manage_evaluations") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("view_reports"), keywords: ["evaluaciones", "autoevaluacion", "feedback", "desempeño"] },
     { key: "competencias", label: "Habilidades", show: hasPermission("manage_competencies"), keywords: ["competencias", "habilidades", "skills"] },
-    { key: "metricas", label: "Mediciones", show: hasPermission("manage_metrics"), keywords: ["objetivos", "indicadores", "kpi", "okr", "metas", "mediciones"] },
+    { key: "metricas", label: "Mediciones", show: false, keywords: [] },
     { key: "planes", label: isEmployee ? "Mi desarrollo" : "Planes de acción", show: hasPermission("manage_development_plans") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("download_self_report") || hasPermission("view_reports"), keywords: ["desarrollo", "planes", "seguimiento"] },
     { key: "reporte-ejecutivo", label: "Reportes", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["reportes", "reporte ejecutivo", "insights"] },
-    { key: "carga-masiva", label: "Migración", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "excel", "carga", "plantilla", "migracion"] },
+    { key: "carga-masiva", label: "Importación", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "excel", "carga", "plantilla", "migracion"] },
     { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
     { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
     { key: "roles", label: "Accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "permisos"] },
@@ -354,7 +354,7 @@ export default function AppShell({
     // Standalone items: Novedades, Migración, Reportes
     [
       { key: "novedades", es: "Novedades", en: "Updates" },
-      { key: "carga-masiva", es: "Migración", en: "Migration" },
+      { key: "carga-masiva", es: "Importación", en: "Import" },
       { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
     ].forEach(item => {
       if (byKey[item.key]) items.push({ type: "item", key: item.key, label: L(item.es, item.en), icon: item.key });
@@ -394,7 +394,7 @@ export default function AppShell({
   const globalSearchItems = useMemo(() => visibleViews.map(item => ({
     viewKey: item.key,
     label: item.label,
-    group: item.key === "dashboard" ? "Inicio" : item.key === "carga-masiva" ? "Migración" : item.key === "reporte-ejecutivo" ? "Reportes" : "Módulo",
+    group: item.key === "dashboard" ? "Inicio" : item.key === "carga-masiva" ? "Importación" : item.key === "reporte-ejecutivo" ? "Reportes" : "Módulo",
     detail: `Abrir ${item.label.toLowerCase()}`,
     searchable: [item.label, ...(item.keywords || [])].join(" ").toLowerCase(),
   })), [visibleViews]);
@@ -752,7 +752,6 @@ export default function AppShell({
                   { key: "P", action: "Ir a Personas" },
                   { key: "E", action: "Ir a Evaluaciones" },
                   { key: "C", action: "Ir a Ciclos" },
-                  { key: "M", action: "Ir a Mediciones" },
                   { key: "R", action: "Ir a Reportes" },
                   { key: "D", action: "Ir a Desarrollo" },
                   { key: "?", action: "Mostrar/ocultar atajos" },

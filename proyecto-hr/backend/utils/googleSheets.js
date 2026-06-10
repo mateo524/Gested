@@ -23,16 +23,16 @@ function getAuth() {
 // Column headers for each sheet
 const SHEETS = {
   Empleados: [
-    "ID", "Apellido", "Nombre", "Email", "Cargo", "Área", "Activo", "Fecha ingreso", "Jefe (ID)",
+    "Apellido", "Nombre", "Email", "Cargo", "Área", "Activo",
   ],
   Habilidades: [
-    "ID", "Nombre", "Descripción", "Categoría", "Nivel", "Alcance", "Activa",
+    "Habilidad", "Competencia", "Descripción", "Activa",
   ],
   Ciclos: [
-    "ID", "Período", "Año", "Estado", "Etapa", "Fecha inicio", "Fecha fin",
+    "Período", "Año", "Estado", "Fecha inicio", "Fecha fin",
   ],
   Evaluaciones: [
-    "ID", "Empleado", "Evaluador (User ID)", "Ciclo", "Tipo", "Estado", "Resultado final", "Fecha creación",
+    "Empleado", "Ciclo", "Tipo", "Estado", "Resultado",
   ],
 };
 
@@ -51,41 +51,29 @@ function formatDate(d) {
 
 function rowsForEmployees(employees = []) {
   return employees.map(e => [
-    String(e._id),
     e.apellido || "",
     e.nombre || "",
     e.email || "",
     e.cargo || "",
     e.area || "",
     e.activo !== false ? "Sí" : "No",
-    formatDate(e.fechaIngreso),
-    e.managerId ? String(e.managerId) : "",
   ]);
 }
 
-function rowsForCompetencies(competencies = []) {
-  const TIPO_TO_CAT = {
-    TRANSVERSAL: "Blanda", DOCENTE: "Blanda", LIDERAZGO: "Blanda", PERSONALIZADA: "Técnica",
-  };
-  const COMP_TO_NIVEL = { C: "Básico", A: "Intermedio", H: "Avanzado" };
-  return competencies.map(c => [
-    String(c._id),
-    c.nombre || "",
-    c.descripcion || "",
-    TIPO_TO_CAT[c.tipo] || c.tipo || "",
-    COMP_TO_NIVEL[c.componente] || c.componente || "",
-    c.audienceType === "all" ? "Toda la organización" : c.audienceType === "department" ? `Área: ${(c.audienceDepartmentCodes || []).join(", ")}` : "Grupo",
-    c.activa !== false ? "Sí" : "No",
+function rowsForMetrics(metrics = [], competencyMap = new Map()) {
+  return metrics.map(m => [
+    m.nombre || "",
+    competencyMap.get(String(m.competencyId))?.nombre || "",
+    m.descripcion || "",
+    m.activa !== false ? "Sí" : "No",
   ]);
 }
 
 function rowsForCycles(cycles = []) {
   return cycles.map(c => [
-    String(c._id),
     c.periodo || "",
     String(c.anio || ""),
     c.estado || "",
-    c.etapa || "",
     formatDate(c.fechaInicio),
     formatDate(c.fechaFin),
   ]);
@@ -96,16 +84,16 @@ function rowsForEvaluations(evaluations = []) {
     const empName = e.employeeId?.apellido
       ? `${e.employeeId.apellido}, ${e.employeeId.nombre}`
       : String(e.employeeId?._id || e.employeeId || "");
-    const cycleName = e.cycleId?.periodo || String(e.cycleId?._id || e.cycleId || "");
+    const cycleName = e.cycleId?.periodo
+      ? `${e.cycleId.periodo} ${e.cycleId.anio || ""}`.trim()
+      : "";
+    const TIPO_LABEL = { AUTOEVALUACION: "Autoevaluación", JEFATURA: "Jefatura", FINAL: "Cierre final" };
     return [
-      String(e._id),
       empName,
-      String(e.evaluatorUserId || ""),
       cycleName,
-      e.tipo || "",
+      TIPO_LABEL[e.tipo] || e.tipo || "",
       e.estado || "",
       e.resultadoFinal != null ? String(e.resultadoFinal) : "",
-      formatDate(e.createdAt),
     ];
   });
 }
@@ -203,6 +191,7 @@ export async function syncCompanySpreadsheet({
   existingSpreadsheetId = null,
   employees = [],
   competencies = [],
+  metrics = [],
   cycles = [],
   evaluations = [],
 }) {
@@ -213,8 +202,10 @@ export async function syncCompanySpreadsheet({
   const spreadsheetId = await getOrCreateSpreadsheet(sheetsApi, driveApi, companyName, existingSpreadsheetId);
   const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`;
 
+  const competencyMap = new Map(competencies.map(c => [String(c._id), c]));
+
   await writeSheet(sheetsApi, spreadsheetId, "Empleados", SHEETS.Empleados, rowsForEmployees(employees));
-  await writeSheet(sheetsApi, spreadsheetId, "Habilidades", SHEETS.Habilidades, rowsForCompetencies(competencies));
+  await writeSheet(sheetsApi, spreadsheetId, "Habilidades", SHEETS.Habilidades, rowsForMetrics(metrics, competencyMap));
   await writeSheet(sheetsApi, spreadsheetId, "Ciclos", SHEETS.Ciclos, rowsForCycles(cycles));
   await writeSheet(sheetsApi, spreadsheetId, "Evaluaciones", SHEETS.Evaluaciones, rowsForEvaluations(evaluations));
 

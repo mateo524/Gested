@@ -464,6 +464,11 @@ function ManagerView({ token, user }) {
   const [form, setForm] = useState({ employeeId: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openEvalId, setOpenEvalId] = useState(null);
+  const [spreadsheetUrl, setSpreadsheetUrl] = useState(null);
+
+  useEffect(() => {
+    apiFetch("/companies/my-spreadsheet", { token }).then(d => setSpreadsheetUrl(d?.spreadsheetUrl || null)).catch(() => {});
+  }, [token]);
 
   const selfEmployeeId = String(user?.employeeId || "");
 
@@ -568,10 +573,22 @@ function ManagerView({ token, user }) {
             {activeCycle ? `Ciclo activo: ${activeCycle.periodo}` : "Sin ciclo activo."}
           </p>
         </div>
-        <button type="button" onClick={() => setNewModal(true)}
-          className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
-          + Nueva evaluación
-        </button>
+        <div className="flex items-center gap-2">
+          {spreadsheetUrl ? (
+            <a href={spreadsheetUrl} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/20 no-underline">
+              <svg viewBox="0 0 16 16" fill="none" className="h-3.5 w-3.5 shrink-0">
+                <rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M5 6h6M5 8h6M5 10h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+              </svg>
+              Ver Excel
+            </a>
+          ) : null}
+          <button type="button" onClick={() => setNewModal(true)}
+            className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
+            + Nueva evaluación
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

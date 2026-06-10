@@ -78,6 +78,15 @@ router.get("/", auth, requireSuperAdmin, permit("manage_companies"), async (req,
   );
 });
 
+// Any authenticated user can retrieve their own company's spreadsheet link
+router.get("/my-spreadsheet", auth, async (req, res) => {
+  const companyId = req.user.companyId;
+  if (!companyId) return res.status(404).json({ mensaje: "Sin empresa asignada" });
+  const company = await Company.findById(companyId).select("spreadsheetUrl spreadsheetLastSync").lean();
+  if (!company) return res.status(404).json({ mensaje: "Empresa no encontrada" });
+  res.json({ spreadsheetUrl: company.spreadsheetUrl || null, spreadsheetLastSync: company.spreadsheetLastSync || null });
+});
+
 router.get("/:id", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
   const company = await Company.findById(req.params.id).select("nombre slug tipoCliente activa spreadsheetId spreadsheetUrl spreadsheetLastSync").lean();
   if (!company) return res.status(404).json({ mensaje: "Empresa no encontrada" });
