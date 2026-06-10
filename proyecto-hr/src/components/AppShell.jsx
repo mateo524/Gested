@@ -365,7 +365,6 @@ export default function AppShell({
       const platKids = [
         { key: "organizaciones", es: "Organizaciones", en: "Organizations" },
         { key: "settings", es: "Configuración", en: "Settings" },
-        { key: "archivo-central", es: "Archivos", en: "Files" },
         { key: "analytics", es: "Analytics", en: "Analytics" },
       ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
       if (platKids.length) {

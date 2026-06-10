@@ -19,6 +19,7 @@ import KPIRecord from "../models/KPIRecord.js";
 import OKRRecord from "../models/OKRRecord.js";
 import DownloadLog from "../models/DownloadLog.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
+import { cacheGet, cacheSet, cacheClearByPrefix } from "../utils/cache.js";
 import { Parser } from "json2csv";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import { buildPredictiveInsights, buildLayer3Forecast, simulateTrainingImpact } from "../utils/predictiveInsights.js";
@@ -121,8 +122,20 @@ async function buildDashboardDataScope(req, company) {
   };
 }
 
+export function invalidateDashboardCache(companyId) {
+  cacheClearByPrefix(`dash:${companyId}:`);
+}
+
 router.get("/summary", auth, async (req, res) => {
   const { company } = await resolveCompanyScope(req);
+  const userId = req.user?.userId || req.user?._id || "anon";
+  const dashKey = `dash:${company._id}:${req.user?.schoolId || ""}:${userId}`;
+
+  const cached = cacheGet(dashKey);
+  if (cached) {
+    return res.json({ ...cached, security: { ...cached.security, permissionsInSession: req.user.permisos?.length || 0 } });
+  }
+
   const dataScope = await buildDashboardDataScope(req, company);
   const { baseFilter, employeeFilter, evaluationFilter, planFilter } = dataScope;
   const userFilter = { ...baseFilter };
@@ -400,7 +413,7 @@ router.get("/summary", auth, async (req, res) => {
     trainingRecommendations,
   });
 
-  res.json({
+  const dashPayload = {
     cards: [
       { label: "Empleados", value: employeesTotal, hint: `${docentesTotal} docentes registrados` },
       { label: "Evaluaciones", value: evaluationsTotal, hint: `${pendingEvaluations} pendientes o abiertas` },
@@ -469,7 +482,9 @@ router.get("/summary", auth, async (req, res) => {
         }
       : null,
     superAdmin,
-  });
+  };
+  cacheSet(dashKey, dashPayload, 60);
+  res.json({ ...dashPayload, security: { ...dashPayload.security, permissionsInSession: req.user.permisos?.length || 0 } });
 });
 
 router.get("/ops-status", auth, async (req, res) => {

@@ -1,5 +1,6 @@
 import express from "express";
 import ExcelJS from "exceljs";
+import { cacheGetOrFetch, cacheClearByPrefix } from "../utils/cache.js";
 import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
@@ -423,6 +424,10 @@ async function resolveExecutiveDataset(req, overrides = {}) {
   };
 }
 
+export function invalidateReportCache(companyId) {
+  cacheClearByPrefix(`report:${companyId}:`);
+}
+
 router.get(
   "/executive/overview",
   auth,
@@ -430,7 +435,10 @@ router.get(
   requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
   async (req, res) => {
     try {
-      const dataset = await resolveExecutiveDataset(req);
+      const companyId = req.user?.companyId || "global";
+      const schoolId = req.user?.schoolId || "";
+      const cacheKey = `report:${companyId}:${schoolId}:${req.query.cycleId || ""}:${req.query.department || ""}`;
+      const dataset = await cacheGetOrFetch(cacheKey, () => resolveExecutiveDataset(req), 90);
       const averageScoreBase = dataset.employees.filter((item) => item.averageScore > 0);
       const averageScore = averageScoreBase.length
         ? averageScoreBase.reduce((sum, item) => sum + item.averageScore, 0) / averageScoreBase.length
@@ -551,11 +559,14 @@ router.get(
   requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
   async (req, res) => {
     try {
-      const dataset = await resolveExecutiveDataset(req, {
-        query: {
-          employeeId: req.params.employeeId,
-        },
-      });
+      const companyId = req.user?.companyId || "global";
+      const schoolId = req.user?.schoolId || "";
+      const empCacheKey = `report:${companyId}:${schoolId}:emp:${req.params.employeeId}:${req.query.cycleId || ""}`;
+      const dataset = await cacheGetOrFetch(
+        empCacheKey,
+        () => resolveExecutiveDataset(req, { query: { employeeId: req.params.employeeId } }),
+        60
+      );
 
       const employee = dataset.selectedEmployee;
       if (!employee) {

@@ -13,6 +13,8 @@ import { runInBackground } from "../utils/background.js";
 import { triggerSheetSync } from "../utils/sheetSync.js";
 import { emitWebhook } from "../utils/webhookEmitter.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
+import { invalidateReportCache } from "./reports.routes.js";
+import { invalidateDashboardCache } from "./dashboard.routes.js";
 
 const router = express.Router();
 
@@ -305,6 +307,8 @@ router.post(
       estado: evaluation.estado,
     });
 
+    invalidateReportCache(String(employee.companyId));
+    invalidateDashboardCache(String(employee.companyId));
     res.status(201).json({ mensaje: "Evaluacion creada", evaluation });
     runInBackground(() => triggerSheetSync({ companyId: String(employee.companyId), schoolId: employee.schoolId ? String(employee.schoolId) : undefined }), "sheet-sync-eval-create");
   }
@@ -370,6 +374,8 @@ router.put(
       detalle: `Se actualizo la evaluacion ${evaluation._id}`,
     }), "audit-evaluation-update");
 
+    invalidateReportCache(String(evaluation.companyId));
+    invalidateDashboardCache(String(evaluation.companyId));
     res.json({ mensaje: "Evaluacion actualizada", evaluation });
     runInBackground(() => triggerSheetSync({ companyId: String(evaluation.companyId), schoolId: evaluation.schoolId ? String(evaluation.schoolId) : undefined }), "sheet-sync-eval-update");
   }
@@ -410,6 +416,8 @@ router.delete(
       detalle: `Se elimino la evaluacion ${evaluation._id}`,
     }), "audit-evaluation-delete");
 
+    invalidateReportCache(String(evaluation.companyId));
+    invalidateDashboardCache(String(evaluation.companyId));
     res.json({ mensaje: "Evaluacion eliminada" });
     runInBackground(() => triggerSheetSync({ companyId: String(evaluation.companyId), schoolId: evaluation.schoolId ? String(evaluation.schoolId) : undefined }), "sheet-sync-eval-delete");
   }

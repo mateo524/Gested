@@ -17,6 +17,12 @@ export function cacheSet(key, value, ttlSeconds = 60) {
 export function cacheDelete(key) { store.delete(key); }
 export function cacheClear() { store.clear(); }
 
+export function cacheClearByPrefix(prefix) {
+  for (const key of store.keys()) {
+    if (key.startsWith(prefix)) store.delete(key);
+  }
+}
+
 // Convenience: get or fetch
 export async function cacheGetOrFetch(key, fetchFn, ttlSeconds = 60) {
   const cached = cacheGet(key);
