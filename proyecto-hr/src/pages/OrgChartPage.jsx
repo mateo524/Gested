@@ -496,9 +496,9 @@ export default function OrgChartPage() {
             <SidePanel
               employee={selectedEmployee}
               onClose={() => setSelectedEmployee(null)}
-              onViewEvals={() => {
+              onViewEvals={(employeeId) => {
                 setSelectedEmployee(null);
-                window.dispatchEvent(new CustomEvent("performia:set-view", { detail: { view: "evaluaciones" } }));
+                window.dispatchEvent(new CustomEvent("performia:set-view", { detail: { view: "evaluaciones", employeeId } }));
               }}
             />,
             document.body

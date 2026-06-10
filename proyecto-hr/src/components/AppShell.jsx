@@ -446,8 +446,8 @@ export default function AppShell({
   async function handleMarkRead(item) {
     if (!token || item.isRead) return;
     if (item._notifType === "system") {
-      await apiFetch("/notifications-feed/feed/read", { method: "PATCH", token });
-      setNotifFeed(prev => ({ ...prev, notifications: prev.notifications.map(n => ({ ...n, read: true })), unreadCount: 0 }));
+      await apiFetch(`/notifications-feed/feed/${item._id}/read`, { method: "PATCH", token });
+      setNotifFeed(prev => ({ ...prev, notifications: prev.notifications.map(n => n._id === item._id ? { ...n, read: true } : n), unreadCount: Math.max(0, prev.unreadCount - 1) }));
     } else {
       await apiFetch(`/announcements/${item._id}/read`, { method: "POST", token });
       await refreshAnnouncementSummary();

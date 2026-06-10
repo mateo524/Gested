@@ -477,14 +477,14 @@ function ManagerView({ token, user }) {
   const [syncing, setSyncing] = useState(false);
 
   const isSuperAdminMgr = Boolean(user?.isSuperAdmin);
+  const derivedCompanyId = isSuperAdminMgr
+    ? (evaluations[0]?.companyId ? String(evaluations[0].companyId) : null)
+    : null;
   useEffect(() => {
     // For SuperAdmin derive companyId from loaded evaluations
-    const derivedCompanyId = isSuperAdminMgr
-      ? (evaluations[0]?.companyId ? String(evaluations[0].companyId) : null)
-      : null;
     const qs = derivedCompanyId ? `?companyId=${derivedCompanyId}` : "";
     apiFetch(`/companies/my-spreadsheet${qs}`, { token }).then(d => setSpreadsheetUrl(d?.spreadsheetUrl || null)).catch(() => {});
-  }, [token, isSuperAdminMgr, evaluations]);
+  }, [token, isSuperAdminMgr, derivedCompanyId]);
 
   async function handleSyncNow() {
     try {

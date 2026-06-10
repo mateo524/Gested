@@ -503,6 +503,15 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
     companyId: employee.companyId,
     schoolId: employee.schoolId,
   });
+  const evaluationsToDelete = await Evaluation.find({
+    employeeId: employee._id,
+    companyId: employee.companyId,
+    schoolId: employee.schoolId,
+  }, "_id");
+  const evaluationIds = evaluationsToDelete.map((e) => e._id);
+  if (evaluationIds.length > 0) {
+    await EvaluationScore.deleteMany({ evaluationId: { $in: evaluationIds } });
+  }
   await Evaluation.deleteMany({
     employeeId: employee._id,
     companyId: employee.companyId,

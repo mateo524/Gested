@@ -54,4 +54,9 @@ const EvaluationSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+EvaluationSchema.index(
+  { employeeId: 1, cycleId: 1, tipo: 1 },
+  { unique: true }
+);
+
 export default mongoose.model("Evaluation", EvaluationSchema);

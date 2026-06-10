@@ -253,11 +253,11 @@ export default function EvaluationCyclesPage() {
         token,
         body: { estado: "CERRADO" },
       });
-      addToast("Ciclo cerrado y resultados congelados.", "success");
+      addToast({ message: "Ciclo cerrado y resultados congelados.", type: "success" });
       setCloseConfirm({ open: false, cycle: null });
       loadData();
     } catch (err) {
-      addToast(err.message || "Error al cerrar el ciclo.", "error");
+      addToast({ message: err.message || "Error al cerrar el ciclo.", type: "error" });
     } finally {
       setIsClosing(false);
     }

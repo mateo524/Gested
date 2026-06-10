@@ -226,23 +226,28 @@ router.get(
     const empCargo = emp?.cargo || "";
     const allActive = await Metric.find({
       companyId: evaluation.companyId,
+      ...(evaluation.schoolId ? { schoolId: evaluation.schoolId } : {}),
       activa: true,
     }).select("_id cargoAplica").lean();
 
+    if (!empCargo) {
+      console.warn(`[evaluations] GET /:id auto-seed: employee ${emp?._id} has no cargo — cargo-specific metrics will not be seeded`);
+    }
     const seededIds = new Set(scores.map((s) => String(s.metricId?._id || s.metricId)));
     const missing = allActive.filter((m) => {
       if (seededIds.has(String(m._id))) return false;
-      const applies = !m.cargoAplica?.length || (empCargo && m.cargoAplica.includes(empCargo));
+      const applies = !m.cargoAplica?.length || (typeof empCargo === 'string' && empCargo.length > 0 && m.cargoAplica.includes(empCargo));
       return applies;
     });
 
     if (missing.length) {
-      await EvaluationScore.insertMany(
+      await EvaluationScore.bulkWrite(
         missing.map((m) => ({
-          evaluationId: evaluation._id,
-          metricId: m._id,
-          nivel: 0,
-          comentario: "",
+          updateOne: {
+            filter: { evaluationId: evaluation._id, metricId: m._id },
+            update: { $setOnInsert: { nivel: 0, comentario: "" } },
+            upsert: true,
+          },
         }))
       );
       // Re-fetch with new scores
@@ -278,19 +283,27 @@ router.post(
     const scores = Array.isArray(req.body.scores) ? req.body.scores : [];
     const result = calculateResult(scores);
 
-    const evaluation = await Evaluation.create({
-      companyId: employee.companyId,
-      schoolId: employee.schoolId,
-      employeeId: employee._id,
-      evaluatorUserId: req.user.userId,
-      cycleId: cycle._id,
-      tipo: req.body.tipo,
-      estado: req.body.estado || "BORRADOR",
-      comentariosGenerales: req.body.comentariosGenerales || "",
-      acuerdoEmpleado: req.body.acuerdoEmpleado || "PENDIENTE",
-      resultadoFinal: result,
-      evidenciaUrls: Array.isArray(req.body.evidenciaUrls) ? req.body.evidenciaUrls : [],
-    });
+    let evaluation;
+    try {
+      evaluation = await Evaluation.create({
+        companyId: employee.companyId,
+        schoolId: employee.schoolId,
+        employeeId: employee._id,
+        evaluatorUserId: req.user.userId,
+        cycleId: cycle._id,
+        tipo: req.body.tipo,
+        estado: req.body.estado || "BORRADOR",
+        comentariosGenerales: req.body.comentariosGenerales || "",
+        acuerdoEmpleado: req.body.acuerdoEmpleado || "PENDIENTE",
+        resultadoFinal: result,
+        evidenciaUrls: Array.isArray(req.body.evidenciaUrls) ? req.body.evidenciaUrls : [],
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(409).json({ mensaje: "Ya existe una evaluacion de este tipo para el empleado y ciclo indicados" });
+      }
+      throw err;
+    }
 
     if (scores.length) {
       await EvaluationScore.insertMany(
@@ -309,16 +322,20 @@ router.post(
         ...(employee.schoolId ? { schoolId: employee.schoolId } : {}),
         activa: true,
       }).select("_id cargoAplica").lean();
+      if (!employee.cargo) {
+        console.warn(`[evaluations] POST / seed: employee ${employee._id} has no cargo — cargo-specific metrics will not be seeded`);
+      }
       const applicable = activeMetrics.filter((m) => {
-        return !m.cargoAplica?.length || (employee.cargo && m.cargoAplica.includes(employee.cargo));
+        return !m.cargoAplica?.length || (typeof employee.cargo === 'string' && employee.cargo.length > 0 && m.cargoAplica.includes(employee.cargo));
       });
       if (applicable.length) {
-        await EvaluationScore.insertMany(
-          applicable.map(m => ({
-            evaluationId: evaluation._id,
-            metricId: m._id,
-            nivel: 0,
-            comentario: "",
+        await EvaluationScore.bulkWrite(
+          applicable.map((m) => ({
+            updateOne: {
+              filter: { evaluationId: evaluation._id, metricId: m._id },
+              update: { $setOnInsert: { nivel: 0, comentario: "" } },
+              upsert: true,
+            },
           }))
         );
       }

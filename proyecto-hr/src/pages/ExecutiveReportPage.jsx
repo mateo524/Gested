@@ -1312,6 +1312,7 @@ function ExecutiveReportPage() {
   useEffect(() => {
     clearTimeout(filterDebounceRef.current);
     filterDebounceRef.current = setTimeout(() => {
+      filtersRef.current = { ...draftFilters };
       setFilters({ ...draftFilters });
       loadOverview();
     }, 300);
@@ -1350,12 +1351,13 @@ function ExecutiveReportPage() {
       const blob = await response.blob();
       const a = document.createElement("a");
       const today = new Date().toISOString().slice(0, 10);
-      a.href = URL.createObjectURL(blob);
+      const objectUrl = URL.createObjectURL(blob);
+      a.href = objectUrl;
       a.download = `zentor-reporte-${today}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(a.href);
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
     } catch (err) {
       addToast({ message: err.message || "No se pudo exportar el Excel.", type: "error" });
     }

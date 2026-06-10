@@ -17,7 +17,10 @@ export function auth(req, res, next) {
     req.user = payload;
 
     next();
-  } catch {
-    return res.status(401).json({ mensaje: "Token inválido" });
+  } catch (err) {
+    if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ mensaje: "Token inválido" });
+    }
+    next(err);
   }
 }

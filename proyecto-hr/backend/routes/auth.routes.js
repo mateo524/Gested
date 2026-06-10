@@ -299,8 +299,8 @@ router.get("/me", auth, async (req, res) => {
     }
 
     res.json(safeUser);
-  } catch {
-    res.status(401).json({ mensaje: "Token invalido" });
+  } catch (err) {
+    res.status(500).json({ mensaje: "Error interno del servidor" });
   }
 });
 
@@ -425,8 +425,6 @@ router.post("/forgot-password", async (req, res) => {
       mailResult?.sent
         ? "email_sent"
         : "email_not_configured",
-    debugResetToken:
-      mailResult?.sent || process.env.NODE_ENV === "production" ? undefined : rawToken,
   });
 });
 

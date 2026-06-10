@@ -41,14 +41,18 @@ function withTimeout(fetcher, timeoutMs = DEFAULT_TIMEOUT_MS) {
 }
 
 function combineSignals(timeoutSignal, externalSignal) {
-  if (!externalSignal) return timeoutSignal;
-  if (externalSignal.aborted) return externalSignal;
+  if (!externalSignal) return { signal: timeoutSignal, cleanup: () => {} };
+  if (externalSignal.aborted) return { signal: externalSignal, cleanup: () => {} };
 
   const bridge = new AbortController();
-  const abortBridge = () => bridge.abort();
-  timeoutSignal.addEventListener("abort", abortBridge, { once: true });
-  externalSignal.addEventListener("abort", abortBridge, { once: true });
-  return bridge.signal;
+  const abort = () => bridge.abort();
+  timeoutSignal.addEventListener("abort", abort, { once: true });
+  externalSignal.addEventListener("abort", abort, { once: true });
+  function cleanup() {
+    timeoutSignal.removeEventListener("abort", abort);
+    externalSignal.removeEventListener("abort", abort);
+  }
+  return { signal: bridge.signal, cleanup };
 }
 
 function normalizeHeaders(headers) {
@@ -100,8 +104,10 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
 
   const doRequest = () =>
     withTimeout(
-      (timeoutSignal) =>
-        fetch(`${apiUrl}${path}`, requestInit(combineSignals(timeoutSignal, signal))),
+      (timeoutSignal) => {
+        const { signal: combinedSignal, cleanup } = combineSignals(timeoutSignal, signal);
+        return fetch(`${apiUrl}${path}`, requestInit(combinedSignal)).finally(cleanup);
+      },
       effectiveTimeout
     );
 

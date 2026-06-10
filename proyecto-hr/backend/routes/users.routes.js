@@ -273,7 +273,7 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
             action: employeeLinkResult.action,
           }
         : null,
-    temporaryPassword: mustChangePassword ? generatedPassword : null,
+    credentialsSent: mustChangePassword ? true : false,
   });
 });
 
