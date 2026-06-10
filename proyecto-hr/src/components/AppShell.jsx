@@ -11,13 +11,34 @@ function formatAnnouncementTime(value) {
   return new Date(value).toLocaleString("es-AR", { dateStyle: "short", timeStyle: "short" });
 }
 
-function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onViewAll, onOpenAnnouncement, t }) {
+function NotificationBell({ announcementSummary, notifFeed, onMarkRead, onMarkAllRead, onViewAll, onOpenAnnouncement, t }) {
   const [open, setOpen] = useState(false);
   const [busyId, setBusyId] = useState("");
   const [markingAll, setMarkingAll] = useState(false);
-  const unreadCount = announcementSummary?.unreadCount || 0;
   const containerRef = useRef(null);
   useClickOutside(containerRef, () => setOpen(false), open);
+
+  // Merge announcements + system notifications into one unified list
+  const announcements = (announcementSummary?.latest || []).map(a => ({
+    ...a,
+    _notifType: "announcement",
+    isRead: Boolean(a.isRead),
+    title: a.title || a.titulo,
+    body: a.body || a.cuerpo,
+  }));
+  const systemNotifs = (notifFeed?.notifications || []).map(n => ({
+    ...n,
+    _notifType: "system",
+    isRead: Boolean(n.read),
+    title: n.title || n.titulo || "Notificación",
+    body: n.body || n.mensaje || "",
+    type: n.type || n.tipo || "info",
+  }));
+  const allItems = [...announcements, ...systemNotifs]
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 15);
+
+  const unreadCount = allItems.filter(i => !i.isRead).length;
 
   async function handleMarkRead(item) {
     if (item.isRead || busyId) return;
@@ -35,67 +56,72 @@ function NotificationBell({ announcementSummary, onMarkRead, onMarkAllRead, onVi
         type="button"
         onClick={() => setOpen(v => !v)}
         className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-white transition hover:bg-[#172c39]"
-        aria-label={t("topbar.notifications", "Novedades")}
+        aria-label={t("topbar.notifications", "Notificaciones")}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
           <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V10a6 6 0 1 0-12 0v4.2a2 2 0 0 1-.6 1.4L4 17h5" />
           <path d="M9.5 19a2.5 2.5 0 0 0 5 0" />
         </svg>
-        {unreadCount ? (
-          <span className="absolute -right-1 -top-1 rounded-full bg-[#14b8a6] px-1 text-[10px] font-semibold text-white">{unreadCount}</span>
+        {unreadCount > 0 ? (
+          <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#14b8a6] px-1 text-[10px] font-semibold text-white">{unreadCount > 9 ? "9+" : unreadCount}</span>
         ) : null}
       </button>
       {open ? (
-        <div className="absolute right-0 z-30 mt-3 w-[22rem] rounded-2xl border border-white/10 bg-[#12222d] p-3 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
-          <div className="flex items-center justify-between gap-3 px-1 pb-2">
+        <div className="absolute right-0 z-30 mt-3 w-[22rem] rounded-2xl border border-white/10 bg-[#12222d] shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
+          <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
             <div>
-              <p className="text-sm font-semibold text-white">{t("nav.news", "Novedades")}</p>
-              <span className="text-xs text-[#89a3b1]">{unreadCount ? `${unreadCount} nuevas` : t("topbar.upToDate", "Al día")}</span>
+              <p className="text-sm font-semibold text-white">Notificaciones</p>
+              <span className="text-xs text-[#89a3b1]">{unreadCount > 0 ? `${unreadCount} sin leer` : "Todo al día"}</span>
             </div>
             <div className="flex items-center gap-2">
               <button type="button" disabled={!unreadCount || markingAll} onClick={handleMarkAllRead}
                 className="rounded-xl border border-white/10 px-2.5 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-50">
-                {markingAll ? "Marcando..." : "Marcar todas"}
+                {markingAll ? "..." : "Marcar todas"}
               </button>
               <button type="button" onClick={() => { onViewAll?.(); setOpen(false); }}
                 className="rounded-xl bg-[#14b8a6] px-2.5 py-1 text-xs font-medium text-[#0f172a] transition hover:bg-[#0d9488]">
-                Ver todas
+                Ver novedades
               </button>
             </div>
           </div>
-          <div className="space-y-1.5">
-            {announcementSummary?.latest?.length ? (
-              announcementSummary.latest.map(item => (
-                <div key={item._id} role="button" tabIndex={0}
-                  onClick={() => { onOpenAnnouncement?.(item); setOpen(false); }}
-                  onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpenAnnouncement?.(item); setOpen(false); } }}
-                  className={`block w-full rounded-xl border px-3 py-2.5 text-left ${item.isRead ? "border-white/10 bg-[#0f1d26]" : "border-[#14b8a6]/30 bg-[#0d1e22]"}`}>
+          <div className="max-h-[420px] overflow-y-auto p-2 space-y-1">
+            {allItems.length ? (
+              allItems.map(item => (
+                <div key={`${item._notifType}-${item._id}`}
+                  role={item._notifType === "announcement" ? "button" : undefined}
+                  tabIndex={item._notifType === "announcement" ? 0 : undefined}
+                  onClick={item._notifType === "announcement" ? () => { onOpenAnnouncement?.(item); setOpen(false); } : undefined}
+                  onKeyDown={item._notifType === "announcement" ? e => { if (e.key === "Enter") { onOpenAnnouncement?.(item); setOpen(false); } } : undefined}
+                  className={`rounded-xl border px-3 py-2.5 ${item._notifType === "announcement" ? "cursor-pointer" : ""} ${!item.isRead ? "border-[#14b8a6]/25 bg-[#0d1e22]" : "border-white/8 bg-[#0f1d26]"}`}>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="truncate text-sm font-medium text-white">{item.title || item.titulo}</p>
-                        {!item.isRead ? <span className="rounded-full bg-[#14b8a6] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-white">Nueva</span> : null}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        {item._notifType === "system" && (
+                          <span className="shrink-0 h-1.5 w-1.5 rounded-full bg-violet-400" />
+                        )}
+                        <p className="truncate text-sm font-medium text-white">{item.title}</p>
+                        {!item.isRead ? <span className="shrink-0 rounded-full bg-[#14b8a6] px-1.5 py-0.5 text-[9px] font-semibold text-white">Nueva</span> : null}
                       </div>
-                      <p className="mt-0.5 text-xs leading-relaxed text-[#8ea5b3]">{item.body || item.cuerpo}</p>
+                      {item.body ? <p className="mt-0.5 text-xs text-[#8ea5b3] line-clamp-2">{item.body}</p> : null}
                     </div>
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] ${item.type === "warning" ? "bg-amber-500/15 text-amber-200" : item.type === "success" ? "bg-emerald-500/15 text-emerald-200" : item.type === "update" ? "bg-violet-500/15 text-violet-200" : "bg-white/10 text-[#c7d5dc]"}`}>
-                      {item.type || "info"}
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-semibold uppercase ${item.type === "warning" ? "bg-amber-500/15 text-amber-200" : item.type === "success" ? "bg-emerald-500/15 text-emerald-200" : item._notifType === "system" ? "bg-violet-500/15 text-violet-200" : "bg-white/10 text-[#c7d5dc]"}`}>
+                      {item._notifType === "system" ? "sistema" : item.type || "info"}
                     </span>
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2">
+                  <div className="mt-1.5 flex items-center justify-between gap-2">
                     <span className="text-[10px] text-[#7f99a8]">{formatAnnouncementTime(item.createdAt)}</span>
-                    {!item.isRead ? (
+                    {!item.isRead && item._notifType === "announcement" ? (
                       <button type="button" disabled={busyId === item._id}
                         onClick={e => { e.stopPropagation(); handleMarkRead(item); }}
-                        className="rounded-lg border border-[#14b8a6]/30 px-2.5 py-1 text-[10px] font-medium text-[#ccfbf1] transition hover:bg-[#0d2826] disabled:cursor-not-allowed disabled:opacity-60">
-                        {busyId === item._id ? "Marcando..." : "Marcar vista"}
+                        className="rounded-lg border border-[#14b8a6]/30 px-2 py-0.5 text-[10px] text-[#ccfbf1] transition hover:bg-[#0d2826] disabled:opacity-60">
+                        {busyId === item._id ? "..." : "Marcar vista"}
                       </button>
-                    ) : <span className="text-[10px] text-[#7f99a8]">Vista</span>}
+                    ) : item.isRead ? <span className="text-[10px] text-[#7f99a8]">Vista</span> : null}
                   </div>
                 </div>
               ))
             ) : (
-              <div className="rounded-xl border border-white/10 bg-[#0f1d26] px-3 py-3 text-sm text-[#8ea5b3]">No hay novedades nuevas.</div>
+              <div className="px-3 py-5 text-center text-sm text-[#8ea5b3]">Sin notificaciones nuevas.</div>
             )}
           </div>
         </div>
@@ -211,6 +237,7 @@ export default function AppShell({
   const [apiSearchResults, setApiSearchResults] = useState(null);
   const [apiSearchLoading, setApiSearchLoading] = useState(false);
   const [activeGroup, setActiveGroup] = useState(null);
+  const [notifFeed, setNotifFeed] = useState({ notifications: [], unreadCount: 0 });
 
   const isSuperAdmin = Boolean(user?.isSuperAdmin);
   const isEmployee = isEmployeeUser(user);
@@ -404,16 +431,37 @@ export default function AppShell({
     return globalSearchItems.filter(item => item.searchable.includes(term)).slice(0, 8);
   }, [globalSearchItems, searchQuery]);
 
+  useEffect(() => {
+    if (!token) return;
+    function fetchNotifs() {
+      apiFetch("/notifications-feed/feed", { token })
+        .then(data => { if (data?.ok !== false) setNotifFeed(data); })
+        .catch(() => {});
+    }
+    fetchNotifs();
+    const iv = setInterval(fetchNotifs, 60000);
+    return () => clearInterval(iv);
+  }, [token]);
+
   async function handleMarkRead(item) {
     if (!token || item.isRead) return;
-    await apiFetch(`/announcements/${item._id}/read`, { method: "POST", token });
-    await refreshAnnouncementSummary();
+    if (item._notifType === "system") {
+      await apiFetch("/notifications-feed/feed/read", { method: "PATCH", token });
+      setNotifFeed(prev => ({ ...prev, notifications: prev.notifications.map(n => ({ ...n, read: true })), unreadCount: 0 }));
+    } else {
+      await apiFetch(`/announcements/${item._id}/read`, { method: "POST", token });
+      await refreshAnnouncementSummary();
+    }
   }
 
   async function handleMarkAllRead() {
     if (!token) return;
-    await apiFetch("/announcements/read-all", { method: "POST", token });
+    await Promise.all([
+      apiFetch("/announcements/read-all", { method: "POST", token }),
+      apiFetch("/notifications-feed/feed/read", { method: "PATCH", token }),
+    ]);
     await refreshAnnouncementSummary();
+    setNotifFeed(prev => ({ ...prev, notifications: prev.notifications.map(n => ({ ...n, read: true })), unreadCount: 0 }));
   }
 
   function handleSearchSelect(item) {
@@ -642,7 +690,15 @@ export default function AppShell({
 
               {/* Right actions */}
               <div className="flex items-center gap-2">
-                <NotificationBell announcementSummary={announcementSummary} onMarkRead={handleMarkRead} onMarkAllRead={handleMarkAllRead} onViewAll={() => setView("novedades")} onOpenAnnouncement={handleOpenAnnouncement} t={t}/>
+                <NotificationBell
+                  announcementSummary={announcementSummary}
+                  notifFeed={notifFeed}
+                  onMarkRead={handleMarkRead}
+                  onMarkAllRead={handleMarkAllRead}
+                  onViewAll={() => setView("novedades")}
+                  onOpenAnnouncement={handleOpenAnnouncement}
+                  t={t}
+                />
                 <button type="button" onClick={() => setShowShortcuts(true)}
                   className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:bg-[#172c39] hover:text-white"
                   aria-label="Atajos de teclado" title="Atajos (?)">

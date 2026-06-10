@@ -202,6 +202,61 @@ function useGreeting() {
   return "Buenas noches";
 }
 
+const QUICK_TOOLS = [
+  { label: "Nuevo ciclo", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z", view: "ciclos", color: "indigo", show: (isEmpleado, isLector) => !isEmpleado && !isLector },
+  { label: "Evaluar equipo", icon: "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z", view: "evaluaciones", color: "teal", show: () => true },
+  { label: "Reporte ejecutivo", icon: "M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z", view: "reporte-ejecutivo", color: "sky", show: (isEmpleado) => !isEmpleado },
+  { label: "Planes de desarrollo", icon: "M13 10V3L4 14h7v7l9-11h-7z", view: "planes", color: "amber", show: () => true },
+  { label: "Importar personas", icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12", view: "carga-masiva", color: "violet", show: (isEmpleado, isLector) => !isEmpleado && !isLector },
+  { label: "Organigrama", icon: "M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0", view: "organigrama", color: "rose", show: (isEmpleado) => !isEmpleado },
+];
+
+const TOOL_COLORS = {
+  teal: "border-[#14b8a6]/25 bg-[#14b8a6]/8 text-[#14b8a6] hover:bg-[#14b8a6]/15",
+  indigo: "border-indigo-400/25 bg-indigo-500/8 text-indigo-300 hover:bg-indigo-500/15",
+  sky: "border-sky-400/25 bg-sky-500/8 text-sky-300 hover:bg-sky-500/15",
+  amber: "border-amber-400/25 bg-amber-500/8 text-amber-300 hover:bg-amber-500/15",
+  violet: "border-violet-400/25 bg-violet-500/8 text-violet-300 hover:bg-violet-500/15",
+  rose: "border-rose-400/25 bg-rose-500/8 text-rose-300 hover:bg-rose-500/15",
+};
+
+function QuickToolsCard({ setView, isEmpleado, isLector, summary }) {
+  const pendingEvals = Number(summary?.educational?.pendingEvaluations || 0);
+  const activePlans = Number(summary?.educational?.activeUsers || 0);
+  const tools = QUICK_TOOLS.filter(t => t.show(isEmpleado, isLector));
+
+  return (
+    <section className="pf-card p-5 md:p-6">
+      <div className="mb-4">
+        <h3 className="text-sm font-semibold text-white">Herramientas</h3>
+        <p className="mt-0.5 text-xs text-[#7a98a8]">Acceso directo a las funciones principales</p>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {tools.map(t => (
+          <button
+            key={t.view}
+            type="button"
+            onClick={() => setView(t.view)}
+            className={`card-lift flex items-center gap-2.5 rounded-2xl border px-3 py-2.5 text-left text-xs font-medium transition ${TOOL_COLORS[t.color]}`}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0">
+              <path d={t.icon} strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
+      {(pendingEvals > 0) && (
+        <div className="mt-3 flex items-center gap-2 rounded-xl border border-amber-300/20 bg-amber-500/8 px-3 py-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 shrink-0" />
+          <p className="text-xs text-amber-200">{pendingEvals} evaluaciones pendientes de cierre</p>
+          <button type="button" onClick={() => setView("evaluaciones")} className="ml-auto text-[10px] font-semibold text-amber-300 hover:text-amber-100 whitespace-nowrap">Ver →</button>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function DashboardPage() {
   const { token, activeCompanyId, user } = useAuth();
   const { setView } = useView();
@@ -683,23 +738,7 @@ export default function DashboardPage() {
           </div>
         </SurfaceCard>
 
-        <SurfaceCard title="Alertas y notificaciones" subtitle="Solo alertas operativas visibles; no mostramos indicadores sensibles.">
-          <div className="space-y-3">
-            {alerts.length ? (
-              alerts.map((item, index) => (
-                <article key={`${item.title}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-white">{item.title}</p>
-                    {item.meta ? <span className="text-xs text-[#7f99a8]">{item.meta}</span> : null}
-                  </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{item.detail}</p>
-                </article>
-              ))
-            ) : (
-              <EmptyState text="Sin alertas activas. ZENTOR verifica automáticamente la calidad de los datos." />
-            )}
-          </div>
-        </SurfaceCard>
+        <QuickToolsCard setView={setView} isEmpleado={isEmpleado} isLector={isLector} summary={summary} />
       </section>
 
     </div>

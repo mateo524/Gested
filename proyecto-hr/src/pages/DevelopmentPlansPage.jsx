@@ -247,7 +247,7 @@ export default function DevelopmentPlansPage() {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
+      <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-x-auto">
         {isLoading ? (
           <LoadingState compact title={L("Cargando planes…", "Loading plans…")} description=""/>
         ) : error ? (
@@ -261,7 +261,7 @@ export default function DevelopmentPlansPage() {
           />
         ) : (
           <div>
-            <table className="w-full text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-white/10">
                   {[L("Plan", "Plan"), !isEmployeeOnly && L("Colaborador", "Collaborator"), L("Habilidad / acción", "Skill / action"), L("Fecha objetivo", "Target date"), L("Progreso", "Progress"), L("Estado", "Status"), canManage && L("Acciones", "Actions")].filter(Boolean).map(h => (

@@ -20,6 +20,7 @@ import {
 } from "recharts";
 import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
@@ -256,8 +257,11 @@ function buildPdfDocument({ orgName, execSummaryLines, execSignals, overview, pr
     <p>Generado por <strong>ZENTOR</strong> · Plataforma de gestión del desempeño</p>
     <p>${date}</p>
   </div>
+  <div style="text-align:center;margin:24px 0 8px;print-color-adjust:exact;">
+    <button id="print-btn" style="background:#14b8a6;color:#0f172a;border:none;padding:10px 28px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">Imprimir / Guardar PDF</button>
+  </div>
 
-  <script>window.onload = function() { window.print(); }<\/script>
+  <script>document.getElementById("print-btn").addEventListener("click",function(){window.print();});<\/script>
 </body>
 </html>`;
 }
@@ -655,8 +659,11 @@ ${slide(`
     </div>
   </div>
 `, true)}
+<div style="text-align:center;margin:32px 0 12px;print-color-adjust:exact;">
+  <button id="print-btn" style="background:#14b8a6;color:#0f172a;border:none;padding:10px 28px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;">Imprimir / Guardar PDF</button>
+</div>
 
-<script>window.onload = function() { window.print(); }<\/script>
+<script>document.getElementById("print-btn").addEventListener("click",function(){window.print();});<\/script>
 </body>
 </html>`;
 }
@@ -1156,6 +1163,7 @@ class ReportErrorBoundary extends Component {
 
 function ExecutiveReportPage() {
   const { token, user } = useAuth();
+  const { addToast } = useToast();
   const { setView, searchQuery } = useView();
   const [activeTab, setActiveTab] = useState("general");
   const [filters, setFilters] = useState({ cycleId: "", department: "", employeeId: "" });
@@ -1335,7 +1343,10 @@ function ExecutiveReportPage() {
             : {}),
         },
       });
-      if (!response.ok) throw new Error("No se pudo generar el Excel.");
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.message || "No se pudo generar el Excel.");
+      }
       const blob = await response.blob();
       const a = document.createElement("a");
       const today = new Date().toISOString().slice(0, 10);
@@ -1345,8 +1356,8 @@ function ExecutiveReportPage() {
       a.click();
       a.remove();
       URL.revokeObjectURL(a.href);
-    } catch {
-      // silently ignore — user will see no download
+    } catch (err) {
+      addToast(err.message || "No se pudo exportar el Excel.", "error");
     }
   }
 

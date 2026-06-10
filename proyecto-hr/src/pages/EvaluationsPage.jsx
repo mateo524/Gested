@@ -584,6 +584,10 @@ function ManagerView({ token, user }) {
     if (savedFilters.current) setFilters(savedFilters.current);
   }
 
+  useEffect(() => {
+    if (openEvalId) window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [openEvalId]);
+
   if (openEvalId) {
     return (
       <EvalDetailView
