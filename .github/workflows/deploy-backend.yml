@@ -78,7 +78,7 @@ jobs:
             --max-instances 3 \
             --memory 512Mi \
             --port 8080 \
-            --update-env-vars="NODE_ENV=production" \
+            --update-env-vars="NODE_ENV=production,MONGO_URI=${{ secrets.MONGO_URI }},JWT_SECRET=${{ secrets.JWT_SECRET }},SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }},SEED_ADMIN_EMAIL=${{ secrets.SEED_ADMIN_EMAIL }},SEED_ADMIN_PASSWORD=${{ secrets.SEED_ADMIN_PASSWORD }},SEED_COMPANY_NAME=${{ secrets.SEED_COMPANY_NAME }},SEED_COMPANY_SLUG=${{ secrets.SEED_COMPANY_SLUG }},FRONTEND_URL=${{ secrets.FRONTEND_URL }}" \
             --project ${{ env.PROJECT_ID }}
 
       - name: Print deployed URL
