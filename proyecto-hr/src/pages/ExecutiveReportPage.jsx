@@ -3,11 +3,20 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  PolarAngleAxis,
+  PolarGrid,
+  PolarRadiusAxis,
+  Radar,
+  RadarChart,
   ReferenceLine,
   ResponsiveContainer,
+  Scatter,
+  ScatterChart,
   Tooltip,
   XAxis,
   YAxis,
+  ZAxis,
 } from "recharts";
 import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
@@ -885,6 +894,198 @@ function buildMetricSignalRows(metricSignals = []) {
     }));
 }
 
+// ─── Premium chart components ──────────────────────────────────────────────────
+
+function SkillRadarChart({ metricSignals = [] }) {
+  const data = metricSignals.slice(0, 8).map(s => ({
+    subject: (s.competencyName || s.metricName || "").slice(0, 16),
+    score: Number((s.averageScore || 0).toFixed(1)),
+    fullMark: 5,
+  }));
+  if (!data.length || !data.some(d => d.score > 0)) {
+    return <div className="flex h-full items-center justify-center text-sm text-[#7a9aaa]">Sin datos de habilidades.</div>;
+  }
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <RadarChart data={data} margin={{ top: 10, right: 24, bottom: 10, left: 24 }}>
+        <defs>
+          <radialGradient id="radarFill" cx="50%" cy="50%" r="50%">
+            <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.4} />
+            <stop offset="100%" stopColor="#14b8a6" stopOpacity={0.04} />
+          </radialGradient>
+        </defs>
+        <PolarGrid stroke="rgba(255,255,255,0.08)" />
+        <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: "#9fb6c4" }} />
+        <PolarRadiusAxis domain={[0, 5]} tick={false} axisLine={false} tickCount={6} />
+        <Radar name="Puntaje" dataKey="score" stroke="#14b8a6" strokeWidth={2} fill="url(#radarFill)" dot={{ fill: "#14b8a6", r: 3, strokeWidth: 0 }} animationDuration={700} />
+        <Tooltip content={({ active, payload }) => {
+          if (!active || !payload?.length) return null;
+          return (
+            <div className="rounded-xl border border-white/15 bg-[#0b1d27] px-3 py-2 text-xs shadow-xl">
+              <p className="font-semibold text-white">{payload[0]?.payload?.subject}</p>
+              <p className="mt-0.5 text-[#14b8a6]">{payload[0]?.value} / 5</p>
+            </div>
+          );
+        }} />
+      </RadarChart>
+    </ResponsiveContainer>
+  );
+}
+
+function ScoreBand({ band }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setMounted(true), 120); return () => clearTimeout(t); }, []);
+  const radius = 30;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ - (mounted ? band.pct / 100 : 0) * circ;
+  return (
+    <div className="flex flex-col items-center gap-2 rounded-2xl border p-4 transition" style={{ background: band.bg, borderColor: band.border }}>
+      <div className="relative h-[72px] w-[72px]">
+        <svg viewBox="0 0 72 72" className="-rotate-90 h-full w-full">
+          <circle cx="36" cy="36" r={radius} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="5" />
+          <circle cx="36" cy="36" r={radius} fill="none" stroke={band.color} strokeWidth="5"
+            strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
+            style={{ transition: "stroke-dashoffset 950ms cubic-bezier(0.4,0,0.2,1)" }} />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-xl font-bold leading-none text-white">{band.count}</span>
+          <span className="text-[10px] text-[#9fb6c4]">{band.pct}%</span>
+        </div>
+      </div>
+      <div className="text-center">
+        <p className="text-xs font-semibold text-white">{band.label}</p>
+        <p className="text-[10px] text-[#7a9aaa]">{band.range}</p>
+      </div>
+    </div>
+  );
+}
+
+function ScoreDistributionPanel({ employees = [] }) {
+  const bands = useMemo(() => {
+    const b = [
+      { label: "Insuficiente", range: "1–2", minV: 0,    maxV: 2.005, color: "#f43f5e", bg: "rgba(244,63,94,0.10)",    border: "rgba(244,63,94,0.25)",   count: 0, pct: 0 },
+      { label: "En desarrollo", range: "2–3", minV: 2.005, maxV: 3.005, color: "#fb923c", bg: "rgba(251,146,60,0.10)", border: "rgba(251,146,60,0.25)",  count: 0, pct: 0 },
+      { label: "Esperado",     range: "3–4", minV: 3.005, maxV: 4.005, color: "#facc15", bg: "rgba(250,204,21,0.10)",  border: "rgba(250,204,21,0.25)",   count: 0, pct: 0 },
+      { label: "Destacado",    range: "4–5", minV: 4.005, maxV: 5.01,  color: "#34d399", bg: "rgba(52,211,153,0.10)",  border: "rgba(52,211,153,0.25)",  count: 0, pct: 0 },
+    ];
+    const scored = employees.filter(e => e.averageScore > 0);
+    scored.forEach(e => {
+      const band = b.find(bnd => e.averageScore >= bnd.minV - 0.005 && e.averageScore < bnd.maxV);
+      if (band) band.count++;
+    });
+    const total = scored.length || 1;
+    b.forEach(bnd => { bnd.pct = Math.round((bnd.count / total) * 100); });
+    return b;
+  }, [employees]);
+  if (!employees.some(e => e.averageScore > 0)) return <p className="text-sm text-[#7a9aaa]">Sin datos de puntaje todavía.</p>;
+  return (
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      {bands.map(band => <ScoreBand key={band.label} band={band} />)}
+    </div>
+  );
+}
+
+function TeamScatterPlot({ employees = [] }) {
+  const data = employees.filter(e => e.averageScore > 0).map(e => ({
+    x: Number(e.averageScore.toFixed(2)),
+    y: Number(e.planCount || 0),
+    name: e.fullName,
+    area: e.area || "",
+  }));
+  if (!data.length) return <p className="text-sm text-[#7a9aaa]">Sin datos suficientes.</p>;
+  const getColor = x => x >= 4 ? "#34d399" : x >= 3 ? "#facc15" : "#f43f5e";
+  return (
+    <ResponsiveContainer width="100%" height={220}>
+      <ScatterChart margin={{ top: 10, right: 10, bottom: 28, left: 0 }}>
+        <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.05)" />
+        <XAxis type="number" dataKey="x" domain={[0, 5]} name="Puntaje" tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} label={{ value: "Puntaje promedio", position: "insideBottom", offset: -14, fill: "#7a9aaa", fontSize: 10 }} />
+        <YAxis type="number" dataKey="y" name="Planes" allowDecimals={false} tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={28} label={{ value: "Planes", angle: -90, position: "insideLeft", fill: "#7a9aaa", fontSize: 10 }} />
+        <ZAxis range={[55, 55]} />
+        <Tooltip cursor={false} content={({ active, payload }) => {
+          if (!active || !payload?.length) return null;
+          const d = payload[0]?.payload;
+          return (
+            <div className="rounded-xl border border-white/15 bg-[#0b1d27] px-3 py-2 text-xs shadow-xl">
+              <p className="font-semibold text-white">{d.name}</p>
+              {d.area ? <p className="text-[#9fb6c4]">{d.area}</p> : null}
+              <div className="mt-1 flex gap-3">
+                <span className="text-[#14b8a6]">Puntaje: <b>{d.x}</b></span>
+                <span className="text-[#a78bfa]">Planes: <b>{d.y}</b></span>
+              </div>
+            </div>
+          );
+        }} />
+        <Scatter data={data} shape={({ cx, cy, payload }) => (
+          <circle cx={cx} cy={cy} r={6} fill={getColor(payload.x)} fillOpacity={0.85} stroke={getColor(payload.x)} strokeWidth={1.5} />
+        )} />
+      </ScatterChart>
+    </ResponsiveContainer>
+  );
+}
+
+function NineBoxCell({ label, sublabel, employees, color }) {
+  return (
+    <div className="flex flex-col gap-1 rounded-xl border border-white/10 p-2.5 min-h-[72px]" style={{ background: `${color}10`, borderColor: `${color}30` }}>
+      <p className="text-[10px] font-semibold leading-tight" style={{ color }}>{label}</p>
+      <p className="text-[9px] text-[#7a9aaa] leading-tight">{sublabel}</p>
+      <div className="mt-auto flex flex-wrap gap-1">
+        {employees.slice(0, 4).map((e, i) => (
+          <span key={i} className="rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ background: `${color}25` }} title={e.fullName}>
+            {(e.fullName || "").split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()}
+          </span>
+        ))}
+        {employees.length > 4 ? <span className="text-[9px] text-[#7a9aaa]">+{employees.length - 4}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function NineBoxGrid({ employees = [] }) {
+  const scored = employees.filter(e => e.averageScore > 0);
+  if (scored.length < 2) return <p className="text-sm text-[#7a9aaa]">Se necesitan al menos 2 personas con puntaje para mostrar el mapa.</p>;
+  const maxEvals = Math.max(...scored.map(e => e.evaluationCount || 0), 1);
+  const placed = scored.map(e => ({
+    ...e,
+    perfScore: e.averageScore,
+    growthScore: ((e.evaluationCount || 0) / maxEvals) * 5,
+  }));
+  const cell = (pMin, pMax, gMin, gMax) => placed.filter(e => e.perfScore >= pMin && e.perfScore < pMax && e.growthScore >= gMin && e.growthScore < gMax);
+  const cellAll = (pMin, pMax, gMin, gMax) => {
+    const arr = placed.filter(e => {
+      const p = e.perfScore >= pMin && (pMax === 5 ? e.perfScore <= 5 : e.perfScore < pMax);
+      const g = e.growthScore >= gMin && (gMax === 5 ? e.growthScore <= 5 : e.growthScore < gMax);
+      return p && g;
+    });
+    return arr;
+  };
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-1.5 text-xs text-[#7a9aaa]">
+          <span>↑ Potencial (participación)</span>
+        </div>
+        <div className="flex items-center gap-1.5 text-xs text-[#7a9aaa]">
+          <span>Desempeño →</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-3 gap-1.5">
+        {[
+          { pMin:0, pMax:2, gMin:3.33, gMax:5,   label:"Enigma",        sub:"Alto potencial,\nbajo desempeño",    color:"#a78bfa" },
+          { pMin:2, pMax:3.5, gMin:3.33, gMax:5,  label:"En desarrollo",  sub:"Potencial y perf.\ncreciendo",     color:"#38bdf8" },
+          { pMin:3.5,pMax:5, gMin:3.33, gMax:5,   label:"⭐ Estrella",    sub:"Rendimiento y\npotencial altos",   color:"#14b8a6" },
+          { pMin:0, pMax:2, gMin:1.66, gMax:3.33, label:"Bajo riesgo",    sub:"Necesita apoyo\nactivo",            color:"#f43f5e" },
+          { pMin:2, pMax:3.5, gMin:1.66, gMax:3.33,label:"Núcleo",        sub:"Confiable, estable",               color:"#facc15" },
+          { pMin:3.5,pMax:5, gMin:1.66, gMax:3.33, label:"Alto desempeño",sub:"Sólido, puede crecer\nmás",        color:"#34d399" },
+          { pMin:0, pMax:2, gMin:0, gMax:1.66,    label:"Riesgo crítico", sub:"Bajo en ambos\nejes",              color:"#fb923c" },
+          { pMin:2, pMax:3.5, gMin:0, gMax:1.66,  label:"Aprendiz",      sub:"Bajo engagement,\npotencial medio", color:"#94a3b8" },
+          { pMin:3.5,pMax:5, gMin:0, gMax:1.66,   label:"Experto",       sub:"Gran desempeño,\nbajo engagement",  color:"#818cf8" },
+        ].map(c => <NineBoxCell key={c.label} label={c.label} sublabel={c.sub} employees={cellAll(c.pMin, c.pMax, c.gMin, c.gMax)} color={c.color} />)}
+      </div>
+      <p className="mt-2 text-[10px] text-[#5e7d8e]">Potencial estimado a partir de participación en evaluaciones. El eje X refleja el puntaje promedio.</p>
+    </div>
+  );
+}
+
 function KpiCard({ item }) {
   const progress = item.targetValue > 0 ? pct(item.currentValue, item.targetValue) : 0;
   const tone = progress >= 80 ? "bg-emerald-500/10 border-emerald-300/20" :
@@ -1267,6 +1468,17 @@ export default function ExecutiveReportPage() {
       .sort((a, b) => (b.averageScore || 0) - (a.averageScore || 0))
       .slice(0, 3);
   }, [overview]);
+
+  const allEmployees = useMemo(() => overview?.catalogs?.employees || [], [overview]);
+
+  const radarData = useMemo(() => {
+    if (!detail?.metricSignals?.length) return [];
+    return detail.metricSignals.slice(0, 8).map(s => ({
+      subject: (s.competencyName || s.metricName || "Hab.").slice(0, 16),
+      score: Number((s.averageScore || 0).toFixed(1)),
+      fullMark: 5,
+    }));
+  }, [detail?.metricSignals]);
 
   const individualEvaluationChart = useMemo(
     () => buildEvaluationTypeChart(detail?.evaluations || []),
@@ -1708,6 +1920,11 @@ export default function ExecutiveReportPage() {
             </div>
           ) : null}
 
+          {/* Score distribution */}
+          <SurfaceCard title="Distribución de desempeño" subtitle="Cantidad de personas por banda de puntaje en el período visible.">
+            <ScoreDistributionPanel employees={allEmployees} />
+          </SurfaceCard>
+
           {/* Progress charts */}
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
             <MiniBarChart title="Estado de evaluaciones" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
@@ -1794,6 +2011,16 @@ export default function ExecutiveReportPage() {
               </div>
             </SurfaceCard>
           ) : null}
+
+          {/* Scatter + 9-box */}
+          <div className="grid gap-3 xl:grid-cols-2">
+            <SurfaceCard title="Mapa de personas" subtitle="Posición por puntaje vs planes de desarrollo activos.">
+              <TeamScatterPlot employees={allEmployees} />
+            </SurfaceCard>
+            <SurfaceCard title="Mapa 9-box" subtitle="Performance × potencial de crecimiento (estimado por participación).">
+              <NineBoxGrid employees={allEmployees} />
+            </SurfaceCard>
+          </div>
 
           {/* Department distribution */}
           <SurfaceCard title="Distribución por departamento / equipo" subtitle="Cómo se reparte el seguimiento entre áreas visibles.">
@@ -2012,13 +2239,15 @@ export default function ExecutiveReportPage() {
                       </article>
                     </div>
 
-                    {/* Charts: Competency + Auto vs Manager */}
+                    {/* Charts: Radar + Auto vs Manager */}
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                      <MiniBarChart
-                        title="Desempeño por competencia"
-                        items={individualMetricSignalChart}
-                        emptyText="Todavía no hay competencias con puntaje visible para esta persona."
-                      />
+                      <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
+                        <p className="text-sm font-semibold text-white">Radar de habilidades</p>
+                        <p className="mt-0.5 text-xs text-[#7a9aaa]">Perfil de competencias visible para este período.</p>
+                        <div className="mt-3 h-[220px]">
+                          <SkillRadarChart metricSignals={detail?.metricSignals || []} />
+                        </div>
+                      </article>
                       <MiniBarChart
                         title="Autoevaluación vs superior"
                         items={individualEvaluationChart}

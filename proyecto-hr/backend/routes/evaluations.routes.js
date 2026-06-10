@@ -3,6 +3,7 @@ import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import EvaluationScore from "../models/EvaluationScore.js";
+import Metric from "../models/Metric.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
@@ -269,6 +270,23 @@ router.post(
           evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [],
         }))
       );
+    } else {
+      // Pre-populate empty scores for all active metrics so the eval form shows all skills immediately
+      const activeMetrics = await Metric.find({
+        companyId: employee.companyId,
+        ...(employee.schoolId ? { schoolId: employee.schoolId } : {}),
+        activa: true,
+      }).lean();
+      if (activeMetrics.length) {
+        await EvaluationScore.insertMany(
+          activeMetrics.map(m => ({
+            evaluationId: evaluation._id,
+            metricId: m._id,
+            nivel: 0,
+            comentario: "",
+          }))
+        );
+      }
     }
 
     runInBackground(() => logAudit({

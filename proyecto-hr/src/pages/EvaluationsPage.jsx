@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
@@ -234,18 +234,26 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
         )}
       </div>
 
-      {!isReadOnly && (
-        <div className="flex gap-3 justify-end">
-          <button type="button" onClick={() => handleSave(false)} disabled={saving}
-            className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-[#c7d5dc] transition hover:bg-white/5 disabled:opacity-60">
-            {saving ? "Guardando…" : "Guardar borrador"}
-          </button>
-          <button type="button" onClick={() => handleSave(true)} disabled={saving}
-            className="rounded-xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:opacity-60">
-            {saving ? "Enviando…" : "Enviar evaluación"}
-          </button>
-        </div>
-      )}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button type="button"
+          onClick={() => window.dispatchEvent(new CustomEvent("performia:set-view", { detail: { view: "planes" } }))}
+          className="inline-flex items-center gap-2 rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/10 px-4 py-2.5 text-sm font-medium text-[#14b8a6] transition hover:bg-[#14b8a6]/20">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>
+          Crear plan de desarrollo
+        </button>
+        {!isReadOnly && (
+          <div className="flex gap-3">
+            <button type="button" onClick={() => handleSave(false)} disabled={saving}
+              className="rounded-xl border border-white/10 px-5 py-2.5 text-sm text-[#c7d5dc] transition hover:bg-white/5 disabled:opacity-60">
+              {saving ? "Guardando…" : "Guardar borrador"}
+            </button>
+            <button type="button" onClick={() => handleSave(true)} disabled={saving}
+              className="rounded-xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:opacity-60">
+              {saving ? "Enviando…" : "Enviar evaluación"}
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -464,11 +472,25 @@ function ManagerView({ token, user }) {
   const [form, setForm] = useState({ employeeId: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openEvalId, setOpenEvalId] = useState(null);
+  const savedFilters = useRef(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     apiFetch("/companies/my-spreadsheet", { token }).then(d => setSpreadsheetUrl(d?.spreadsheetUrl || null)).catch(() => {});
   }, [token]);
+
+  async function handleSyncNow() {
+    try {
+      setSyncing(true);
+      await apiFetch("/companies/sync-now", { method: "POST", token });
+      addToast({ message: "Excel actualizándose…", type: "success" });
+      setTimeout(() => {
+        apiFetch("/companies/my-spreadsheet", { token }).then(d => setSpreadsheetUrl(d?.spreadsheetUrl || null)).catch(() => {});
+      }, 4000);
+    } catch { addToast({ message: "No se pudo sincronizar.", type: "error" }); }
+    finally { setSyncing(false); }
+  }
 
   const selfEmployeeId = String(user?.employeeId || "");
 
@@ -544,7 +566,7 @@ function ManagerView({ token, user }) {
       const ctrl = new AbortController();
       await loadData(ctrl.signal);
       const newId = created?.evaluation?._id || created?._id;
-      if (newId) setOpenEvalId(newId);
+      if (newId) { savedFilters.current = filters; setOpenEvalId(newId); }
     } catch (err) {
       addToast({ message: err.message, type: "error" });
     } finally {
@@ -552,13 +574,23 @@ function ManagerView({ token, user }) {
     }
   }
 
+  function openDetail(id) {
+    savedFilters.current = filters;
+    setOpenEvalId(id);
+  }
+
+  function closeDetail() {
+    setOpenEvalId(null);
+    if (savedFilters.current) setFilters(savedFilters.current);
+  }
+
   if (openEvalId) {
     return (
       <EvalDetailView
         evalId={openEvalId}
         token={token}
-        onBack={() => setOpenEvalId(null)}
-        onSaved={() => { setOpenEvalId(null); const ctrl = new AbortController(); loadData(ctrl.signal); }}
+        onBack={closeDetail}
+        onSaved={() => { closeDetail(); const ctrl = new AbortController(); loadData(ctrl.signal); }}
       />
     );
   }
@@ -584,6 +616,11 @@ function ManagerView({ token, user }) {
               Ver Excel
             </a>
           ) : null}
+          <button type="button" onClick={handleSyncNow} disabled={syncing}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#9fb6c4] transition hover:bg-white/10 disabled:opacity-50">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`h-3.5 w-3.5 shrink-0 ${syncing ? "animate-spin" : ""}`}><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5M13.5 2.5v3h-3" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {syncing ? "Sincronizando…" : "Sincronizar Excel"}
+          </button>
           <button type="button" onClick={() => setNewModal(true)}
             className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
             + Nueva evaluación
@@ -658,7 +695,7 @@ function ManagerView({ token, user }) {
                 const isSelf = String(emp?._id || emp) === selfEmployeeId;
                 const cycleLabel = cycles.find(c => String(c._id) === String(ev.cycleId?._id || ev.cycleId))?.periodo || ev.cycleId?.periodo || "—";
                 return (
-                  <tr key={ev._id} className="hover:bg-white/[0.02] transition cursor-pointer" onClick={() => setOpenEvalId(ev._id)}>
+                  <tr key={ev._id} className="hover:bg-white/[0.02] transition cursor-pointer" onClick={() => openDetail(ev._id)}>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <p className="font-medium text-white">{name}</p>
@@ -676,7 +713,7 @@ function ManagerView({ token, user }) {
                     </td>
                     <td className="px-4 py-3">
                       <button type="button"
-                        onClick={e2 => { e2.stopPropagation(); setOpenEvalId(ev._id); }}
+                        onClick={e2 => { e2.stopPropagation(); openDetail(ev._id); }}
                         className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#9fb6c4] transition hover:bg-white/5 hover:text-white">
                         Ver →
                       </button>

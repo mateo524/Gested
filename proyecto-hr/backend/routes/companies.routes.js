@@ -18,6 +18,7 @@ import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
 import { isForbiddenPlatformRoleInput, mapRoleInputToLegacyRoleCode } from "../utils/legacyRoleMapping.js";
 import { slack } from "../utils/slackNotifier.js";
 import { runInBackground } from "../utils/background.js";
+import { triggerSheetSync } from "../utils/sheetSync.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
@@ -76,6 +77,15 @@ router.get("/", auth, requireSuperAdmin, permit("manage_companies"), async (req,
       ).length,
     }))
   );
+});
+
+// Any authenticated user can manually trigger a spreadsheet sync for their company
+router.post("/sync-now", auth, async (req, res) => {
+  const companyId = req.user.companyId;
+  const schoolId = req.user.schoolId;
+  if (!companyId) return res.status(400).json({ mensaje: "Sin empresa asignada" });
+  runInBackground(() => triggerSheetSync({ companyId: String(companyId), schoolId: schoolId ? String(schoolId) : undefined }), "sheet-sync-manual");
+  res.json({ mensaje: "Sincronización iniciada. El Excel se actualizará en unos segundos." });
 });
 
 // Any authenticated user can retrieve their own company's spreadsheet link
