@@ -6,6 +6,92 @@ import { apiFetch } from "../lib/api";
 import ConfirmDialog from "../components/ConfirmDialog";
 import CollapsibleList from "../components/CollapsibleList";
 
+function CycleProgressPanel({ cycleId, token, onClose }) {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!cycleId) return;
+    setLoading(true);
+    apiFetch(`/evaluation-cycles/${cycleId}/progress`, { token })
+      .then(setData)
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [cycleId, token]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-2xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#0c1e28] shadow-[0_24px_60px_rgba(2,8,23,0.6)]">
+        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+          <div>
+            <p className="text-[11px] uppercase tracking-[0.18em] text-[#14b8a6]">Progreso del ciclo</p>
+            {data ? <h3 className="mt-0.5 text-lg font-semibold text-white">{data.periodo}</h3> : null}
+          </div>
+          <button type="button" onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#8ea5b3] hover:text-white">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+              <path d="M3 3l10 10M13 3L3 13" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="max-h-[70vh] overflow-y-auto p-6">
+          {loading ? (
+            <p className="text-center text-sm text-[#8fa9b7]">Cargando estadísticas...</p>
+          ) : !data ? (
+            <p className="text-center text-sm text-rose-300">Error al cargar el progreso.</p>
+          ) : (
+            <div className="space-y-5">
+              {/* Summary */}
+              <div className="grid grid-cols-4 gap-3">
+                {[
+                  { label: "Personas", value: data.summary.total },
+                  { label: "Con evaluaciones", value: data.summary.withEvals },
+                  { label: "Completadas", value: data.summary.allDone },
+                  { label: "Completitud", value: `${data.summary.pct}%` },
+                ].map(({ label, value }) => (
+                  <div key={label} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-3 text-center">
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-[#5e7d8e]">{label}</p>
+                    <p className="mt-1.5 text-xl font-bold text-white">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {/* Progress bar */}
+              <div className="space-y-1.5">
+                <div className="h-2.5 w-full overflow-hidden rounded-full bg-white/8">
+                  <div
+                    className={`h-full rounded-full transition-all ${data.summary.pct >= 80 ? "bg-emerald-400" : data.summary.pct >= 50 ? "bg-amber-400" : "bg-rose-400"}`}
+                    style={{ width: `${data.summary.pct}%` }}
+                  />
+                </div>
+                <p className="text-xs text-[#6a8a9a]">{data.summary.allDone} de {data.summary.total} personas con evaluaciones cerradas</p>
+              </div>
+              {/* Employee table */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Por persona</p>
+                <div className="max-h-64 overflow-y-auto space-y-1.5">
+                  {data.rows.map((row) => (
+                    <div key={row.employeeId} className={`flex items-center gap-3 rounded-xl border px-3 py-2 text-sm ${row.done ? "border-emerald-300/20 bg-emerald-500/5" : row.total > 0 ? "border-amber-300/20 bg-amber-500/5" : "border-white/10 bg-[#0f1f28]"}`}>
+                      <span className={`h-2 w-2 rounded-full shrink-0 ${row.done ? "bg-emerald-400" : row.total > 0 ? "bg-amber-400" : "bg-[#3d5a6a]"}`} />
+                      <span className="flex-1 font-medium text-white truncate">{row.nombre}</span>
+                      <span className="text-[11px] text-[#7a9aaa] shrink-0">{row.area || "—"}</span>
+                      <span className="text-[11px] shrink-0">{row.done ? <span className="text-emerald-300">✓ Listo</span> : row.total > 0 ? <span className="text-amber-300">{row.pending} pend.</span> : <span className="text-[#5e7d8e]">Sin eval.</span>}</span>
+                      {row.avgScore !== null ? (
+                        <span className="text-[11px] font-semibold text-white shrink-0">{row.avgScore.toFixed(1)}</span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const emptyForm = {
   anio: new Date().getFullYear(),
   periodo: "",
@@ -35,6 +121,9 @@ export default function EvaluationCyclesPage() {
   const [confirmState, setConfirmState] = useState({ open: false, cycle: null });
   const [isDeleting, setIsDeleting] = useState(false);
   const [cloneMode, setCloneMode] = useState(false);
+  const [progressPanelId, setProgressPanelId] = useState(null);
+  const [closeConfirm, setCloseConfirm] = useState({ open: false, cycle: null });
+  const [isClosing, setIsClosing] = useState(false);
   const formRef = useRef(null);
   const listRef = useRef(null);
 
@@ -153,6 +242,25 @@ export default function EvaluationCyclesPage() {
     window.requestAnimationFrame(() => {
       formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
+  }
+
+  async function handleCloseCycle() {
+    if (!closeConfirm.cycle) return;
+    setIsClosing(true);
+    try {
+      await apiFetch(`/evaluation-cycles/${closeConfirm.cycle._id}`, {
+        method: "PUT",
+        token,
+        body: { estado: "CERRADO" },
+      });
+      addToast("Ciclo cerrado y resultados congelados.", "success");
+      setCloseConfirm({ open: false, cycle: null });
+      loadData();
+    } catch (err) {
+      addToast(err.message || "Error al cerrar el ciclo.", "error");
+    } finally {
+      setIsClosing(false);
+    }
   }
 
   async function confirmDeleteCycle() {
@@ -341,14 +449,17 @@ export default function EvaluationCyclesPage() {
                     const now = new Date();
                     const end = cycle.fechaFin ? new Date(cycle.fechaFin) : null;
                     const start = cycle.fechaInicio ? new Date(cycle.fechaInicio) : null;
-                    const isActive = start && end && now >= start && now <= end;
-                    const isExpired = end && now > end;
-                    const estadoLabel = isActive ? "Activo" : isExpired ? "Cerrado" : "Programado";
-                    const estadoCls = isActive
-                      ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
-                      : isExpired
-                        ? "border-white/10 bg-[#0c1e28] text-[#6a8a9a]"
-                        : "border-amber-300/25 bg-amber-500/8 text-amber-300";
+                    const isManuallyClosed = cycle.estado === "CERRADO";
+                    const isActive = !isManuallyClosed && start && end && now >= start && now <= end;
+                    const isExpired = !isManuallyClosed && end && now > end;
+                    const estadoLabel = isManuallyClosed ? "Cerrado" : isActive ? "Activo" : isExpired ? "Vencido" : "Programado";
+                    const estadoCls = isManuallyClosed
+                      ? "border-white/10 bg-[#0c1e28] text-[#6a8a9a]"
+                      : isActive
+                        ? "border-[#14b8a6]/30 bg-[#14b8a6]/10 text-[#14b8a6]"
+                        : isExpired
+                          ? "border-amber-300/25 bg-amber-500/8 text-amber-300"
+                          : "border-indigo-300/25 bg-indigo-500/8 text-indigo-300";
                     return (
                     <article key={cycle._id} className={`rounded-2xl border p-4 ${isActive ? "border-[#14b8a6]/15 bg-[#0d1e22]" : "border-white/10 bg-[#0f1f28]"}`}>
                       <div className="flex flex-wrap items-center gap-2">
@@ -361,7 +472,15 @@ export default function EvaluationCyclesPage() {
                         {" → "}
                         {end ? end.toLocaleDateString("es-AR", { dateStyle: "medium" }) : "—"}
                       </p>
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => setProgressPanelId(cycle._id)} className="rounded-xl border border-indigo-300/25 bg-indigo-500/8 px-4 py-2 text-sm text-indigo-300 transition hover:bg-indigo-500/15">
+                          Progreso
+                        </button>
+                        {!isManuallyClosed && (
+                          <button type="button" onClick={() => setCloseConfirm({ open: true, cycle })} className="rounded-xl border border-amber-300/30 bg-amber-500/8 px-4 py-2 text-sm text-amber-200 transition hover:bg-amber-500/15">
+                            Cerrar ciclo
+                          </button>
+                        )}
                         <button type="button" onClick={() => handleEdit(cycle)} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
                           Editar
                         </button>
@@ -418,6 +537,29 @@ export default function EvaluationCyclesPage() {
         onCancel={() => setConfirmState({ open: false, cycle: null })}
         onConfirm={confirmDeleteCycle}
       />
+
+      <ConfirmDialog
+        open={closeConfirm.open}
+        title="¿Cerrar este ciclo?"
+        message={
+          closeConfirm.cycle
+            ? `Vas a cerrar el ciclo "${closeConfirm.cycle.periodo} ${closeConfirm.cycle.anio}". Los resultados quedarán congelados y no se podrán agregar nuevas evaluaciones.`
+            : ""
+        }
+        confirmLabel="Cerrar ciclo"
+        cancelLabel="Cancelar"
+        loading={isClosing}
+        onCancel={() => setCloseConfirm({ open: false, cycle: null })}
+        onConfirm={handleCloseCycle}
+      />
+
+      {progressPanelId && (
+        <CycleProgressPanel
+          cycleId={progressPanelId}
+          token={token}
+          onClose={() => setProgressPanelId(null)}
+        />
+      )}
     </div>
   );
 }

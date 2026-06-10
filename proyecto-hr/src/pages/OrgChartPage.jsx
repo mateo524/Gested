@@ -46,6 +46,35 @@ function collectAllIds(nodes) {
 
 // ─── side panel ─────────────────────────────────────────────────────────────
 
+const TIPO_COLOR = {
+  DOCENTE: "#818cf8",
+  DIRECTIVO: "#f59e0b",
+  ADMINISTRATIVO: "#38bdf8",
+  JEFE: "#f59e0b",
+};
+
+function ScoreMeter({ score, max = 5 }) {
+  const pct = score > 0 ? Math.min(100, (score / max) * 100) : 0;
+  const color = score >= 4 ? "#34d399" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#3d5a6a";
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-baseline justify-between">
+        <span className="text-[11px] uppercase tracking-[0.14em] text-[#5e7d8e]">Puntaje promedio</span>
+        <span className="text-xl font-bold" style={{ color: score > 0 ? color : "#3d5a6a" }}>
+          {score > 0 ? score.toFixed(1) : "—"}
+          {score > 0 ? <span className="text-xs text-[#5e7d8e] font-normal"> / 5</span> : null}
+        </span>
+      </div>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-white/8">
+        <div
+          className="h-full rounded-full transition-all duration-500"
+          style={{ width: `${pct}%`, backgroundColor: color, boxShadow: score > 0 ? `0 0 8px ${color}60` : "none" }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function SidePanel({ employee, onClose, onViewEvals }) {
   useEffect(() => {
     function onKey(e) { if (e.key === "Escape") onClose(); }
@@ -55,50 +84,103 @@ function SidePanel({ employee, onClose, onViewEvals }) {
 
   if (!employee) return null;
 
+  const teamSize = employee.children?.length || 0;
+  const tipoColor = TIPO_COLOR[employee.tipoEmpleado] || "#14b8a6";
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
-      <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-      />
-      <aside className="relative flex w-full max-w-sm flex-col overflow-y-auto border-l border-white/10 bg-[#0c1e28] shadow-[−4px_0_32px_rgba(2,8,23,0.6)]">
-        <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
-          <p className="text-sm font-semibold text-white">Ficha del empleado</p>
-          <button
-            type="button"
-            onClick={onClose}
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
+      <aside className="relative flex w-full max-w-md flex-col overflow-y-auto border-l border-white/10 bg-[#091319] shadow-[-4px_0_40px_rgba(2,8,23,0.7)]">
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-[#5e7d8e]">Perfil del empleado</p>
+          <button type="button" onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:text-white"
-            aria-label="Cerrar panel"
-          >
+            aria-label="Cerrar panel">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
               <path d="M3 3l10 10M13 3L3 13" />
             </svg>
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-3 border-b border-white/10 px-5 py-6">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#14b8a6] text-xl font-bold text-[#0f172a]">
-            {initials(employee.nombre, employee.apellido)}
+        {/* Hero */}
+        <div className="relative mx-4 mb-4 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#0f2230] to-[#091319] p-6">
+          <div className="absolute inset-0 opacity-30"
+            style={{ background: `radial-gradient(circle at 80% 20%, ${tipoColor}22 0%, transparent 60%)` }} />
+          <div className="relative flex items-start gap-4">
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-bold text-[#0f172a]"
+              style={{ backgroundColor: tipoColor }}>
+              {initials(employee.nombre, employee.apellido)}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-bold text-white leading-tight">
+                {employee.nombre} {employee.apellido}
+              </p>
+              <p className="mt-0.5 text-sm font-medium" style={{ color: tipoColor }}>{employee.cargo || "Sin cargo"}</p>
+              {employee.area ? (
+                <p className="mt-1 text-xs text-[#7a9aaa]">{employee.area}</p>
+              ) : null}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {employee.tipoEmpleado ? (
+                  <span className="rounded-full px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]"
+                    style={{ backgroundColor: `${tipoColor}18`, color: tipoColor, border: `1px solid ${tipoColor}40` }}>
+                    {employee.tipoEmpleado}
+                  </span>
+                ) : null}
+                {teamSize > 0 ? (
+                  <span className="rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-0.5 text-[10px] font-semibold text-sky-300">
+                    {teamSize} {teamSize === 1 ? "reporte directo" : "reportes directos"}
+                  </span>
+                ) : null}
+              </div>
+            </div>
           </div>
-          <div className="text-center">
-            <p className="text-base font-semibold text-white">
-              {employee.nombre} {employee.apellido}
-            </p>
-            <p className="text-sm text-[#14b8a6]">{employee.cargo}</p>
+          {/* Score meter */}
+          <div className="relative mt-5 border-t border-white/8 pt-4">
+            <ScoreMeter score={employee.averageScore || 0} />
           </div>
         </div>
 
-        <div className="flex-1 space-y-4 px-5 py-5">
-          <Field label="Área" value={employee.area || "—"} />
-          <Field label="Tipo" value={employee.tipoEmpleado || "—"} />
+        {/* Stats grid */}
+        <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
+          <div className="rounded-2xl border border-white/10 bg-[#0c1e28] p-4">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[#5e7d8e]">Evaluaciones</p>
+            <p className="mt-1.5 text-2xl font-bold text-white">{employee.evaluationCount ?? "—"}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#0c1e28] p-4">
+            <p className="text-[10px] uppercase tracking-[0.14em] text-[#5e7d8e]">Planes activos</p>
+            <p className="mt-1.5 text-2xl font-bold text-white">{employee.planCount ?? "—"}</p>
+          </div>
+          {employee.needsAttention ? (
+            <div className="col-span-2 rounded-2xl border border-amber-300/25 bg-amber-500/8 p-3 flex items-center gap-2">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 text-amber-300 shrink-0">
+                <path d="M8 2l6 12H2L8 2z" /><path d="M8 7v3M8 12v.5" strokeLinecap="round" />
+              </svg>
+              <p className="text-xs text-amber-200">Requiere atención — puntaje bajo o evaluaciones pendientes</p>
+            </div>
+          ) : null}
         </div>
 
-        <div className="border-t border-white/10 px-5 py-4">
-          <button
-            type="button"
-            onClick={() => onViewEvals(employee._id)}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]"
-          >
+        {/* Fields */}
+        <div className="mx-4 mb-4 space-y-3">
+          {employee.email ? (
+            <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-[#0c1e28] px-4 py-3">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4 shrink-0 text-[#5e7d8e]">
+                <rect x="1" y="3" width="14" height="10" rx="2" /><path d="M1 5l7 5 7-5" />
+              </svg>
+              <p className="truncate text-sm text-[#c5d5de]">{employee.email}</p>
+            </div>
+          ) : null}
+        </div>
+
+        {/* Actions */}
+        <div className="mt-auto border-t border-white/10 p-4 space-y-2">
+          <button type="button" onClick={() => onViewEvals(employee._id)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-4 w-4">
+              <path d="M3 8h10M3 5h6M3 11h8" strokeLinecap="round" />
+            </svg>
             Ver evaluaciones
           </button>
         </div>

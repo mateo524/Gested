@@ -1160,6 +1160,7 @@ function ExecutiveReportPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [filters, setFilters] = useState({ cycleId: "", department: "", employeeId: "" });
   const [draftFilters, setDraftFilters] = useState({ cycleId: "", department: "", employeeId: "" });
+  const filtersRef = useRef(filters);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [overview, setOverview] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -1185,38 +1186,29 @@ function ExecutiveReportPage() {
     });
   }, []);
 
+  useEffect(() => { filtersRef.current = filters; }, [filters]);
+
   const loadOverview = useCallback(async () => {
     if (!token || !canViewExecutive || isEmployee) return;
     try {
       setLoadingOverview(true);
       setError("");
+      const f = filtersRef.current;
       const params = new URLSearchParams();
-      if (filters.cycleId) params.set("cycleId", filters.cycleId);
-      if (filters.department) params.set("department", filters.department);
-      if (filters.employeeId) params.set("employeeId", filters.employeeId);
+      if (f.cycleId) params.set("cycleId", f.cycleId);
+      if (f.department) params.set("department", f.department);
+      if (f.employeeId) params.set("employeeId", f.employeeId);
       const query = params.toString() ? `?${params.toString()}` : "";
       const data = await apiFetch(`/reports/executive/overview${query}`, { token, timeoutMs: 30000 });
       setOverview(data);
 
-      const normalizedFilters = {
-        cycleId: data?.filters?.selectedCycleId || filters.cycleId || "",
-        department: data?.filters?.selectedDepartment || filters.department || "",
-        employeeId: filters.employeeId || "",
-      };
-      setFilters((current) =>
-        current.cycleId === normalizedFilters.cycleId &&
-        current.department === normalizedFilters.department &&
-        current.employeeId === normalizedFilters.employeeId
-          ? current
-          : normalizedFilters
-      );
-      setDraftFilters((current) =>
-        current.cycleId === normalizedFilters.cycleId &&
-        current.department === normalizedFilters.department &&
-        current.employeeId === normalizedFilters.employeeId
-          ? current
-          : normalizedFilters
-      );
+      // Only sync the server-resolved cycleId once (first load when cycleId is empty).
+      // Never update draftFilters from here — that would trigger the debounce and re-fire loadOverview.
+      const serverCycleId = data?.filters?.selectedCycleId || "";
+      if (serverCycleId && !f.cycleId) {
+        setFilters((current) => current.cycleId ? current : { ...current, cycleId: serverCycleId });
+        setDraftFilters((current) => current.cycleId ? current : { ...current, cycleId: serverCycleId });
+      }
 
       if (!selectedEmployeeId) {
         setDetail(null);
@@ -1228,7 +1220,7 @@ function ExecutiveReportPage() {
     } finally {
       setLoadingOverview(false);
     }
-  }, [canViewExecutive, filters.cycleId, filters.department, filters.employeeId, isEmployee, selectedEmployeeId, token]);
+  }, [canViewExecutive, isEmployee, token]);
 
   const loadEmployeeDetail = useCallback(
     async (currentEmployeeId) => {
@@ -1309,14 +1301,11 @@ function ExecutiveReportPage() {
     [scrollDetailIntoView, selectedEmployeeId]
   );
 
-  function applyFilters() {
-    setFilters({ ...draftFilters });
-  }
-
   useEffect(() => {
     clearTimeout(filterDebounceRef.current);
     filterDebounceRef.current = setTimeout(() => {
-      applyFilters();
+      setFilters({ ...draftFilters });
+      loadOverview();
     }, 300);
     return () => clearTimeout(filterDebounceRef.current);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1473,7 +1462,7 @@ function ExecutiveReportPage() {
     const items = overview?.catalogs?.employees || [];
     const groups = {};
     items.forEach((employee) => {
-      const area = employee.area || "Sin \u00e1rea";
+      const area = employee.area || "Sin área";
       if (!groups[area]) groups[area] = { scores: [], count: 0 };
       if (employee.averageScore > 0) groups[area].scores.push(employee.averageScore);
       groups[area].count++;
@@ -1844,13 +1833,13 @@ function ExecutiveReportPage() {
           {priorityEmployees.length > 0 || topPerformers.length > 0 ? (
             <div className="grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
               {priorityEmployees.length > 0 ? (
-                <SurfaceCard title="Personas que necesitan atenci\u00f3n" subtitle="Ordenadas por puntaje m\u00e1s bajo. Estas personas se beneficiar\u00edan de una conversaci\u00f3n pronto.">
+                <SurfaceCard title="Personas que necesitan atención" subtitle="Ordenadas por puntaje más bajo. Estas personas se beneficiarían de una conversación pronto.">
                   <div className="grid gap-2">
                     {priorityEmployees.slice(0, 6).map((employee) => (
                       <article key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300/15 bg-amber-500/5 px-4 py-3">
                         <div className="min-w-0 flex-1">
                           <p className="text-sm font-semibold text-white truncate">{employee.fullName}</p>
-                          <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin \u00e1rea"} \u00b7 {employee.cargo || "Sin cargo"}</p>
+                          <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin área"} · {employee.cargo || "Sin cargo"}</p>
                         </div>
                         <div className="flex shrink-0 items-center gap-3">
                           {employee.pendingEvaluations > 0 ? (
@@ -1875,7 +1864,7 @@ function ExecutiveReportPage() {
 
               <div className="space-y-5">
                 {topPerformers.length > 0 ? (
-                  <SurfaceCard title="Mejores puntajes" subtitle="Personas con desempe\u00f1o destacado en el per\u00edodo visible.">
+                  <SurfaceCard title="Mejores puntajes" subtitle="Personas con desempeño destacado en el período visible.">
                     <div className="space-y-2">
                       {topPerformers.map((employee, index) => (
                         <div key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-500/5 px-4 py-3">
@@ -1883,7 +1872,7 @@ function ExecutiveReportPage() {
                             <span className="shrink-0 text-lg font-bold text-emerald-300">#{index + 1}</span>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-white truncate">{employee.fullName}</p>
-                              <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin \u00e1rea"}</p>
+                              <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin área"}</p>
                             </div>
                           </div>
                           <span className="shrink-0 text-sm font-bold text-white">{employee.averageScore.toFixed(1)}</span>
@@ -1894,7 +1883,7 @@ function ExecutiveReportPage() {
                 ) : null}
 
                 {departmentScores.length > 1 && departmentScores.some((d) => d.averageScore > 0) ? (
-                  <SurfaceCard title="Rendimiento por \u00e1rea" subtitle="Promedio visible por equipo, ordenado de menor a mayor.">
+                  <SurfaceCard title="Rendimiento por área" subtitle="Promedio visible por equipo, ordenado de menor a mayor.">
                     <div className="space-y-2">
                       {departmentScores.filter((d) => d.averageScore > 0).slice(0, 5).map((dept) => (
                         <div key={dept.name} className="flex items-center gap-3">

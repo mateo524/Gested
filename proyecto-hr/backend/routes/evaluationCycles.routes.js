@@ -254,6 +254,68 @@ router.delete(
   }
 );
 
+// GET /evaluation-cycles/:id/progress — completion stats for a cycle
+router.get(
+  "/:id/progress",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_EVALUATION_CYCLES, PERMISSIONS.MANAGE_EVALUATIONS, PERMISSIONS.VIEW_REPORTS),
+  async (req, res) => {
+    const scopedFilter = buildScopedFilter(req, { _id: req.params.id });
+    const cycle = await EvaluationCycle.findOne(scopedFilter).lean();
+    if (!cycle) return res.status(404).json({ mensaje: "Ciclo no encontrado" });
+
+    const companyFilter = buildScopedFilter(req, {});
+    const [employees, evaluations] = await Promise.all([
+      Employee.find({ ...companyFilter, activo: true }).select("_id nombre apellido cargo area").lean(),
+      Evaluation.find({ ...companyFilter, cycleId: cycle._id })
+        .select("employeeId tipo estado resultadoFinal")
+        .populate("employeeId", "nombre apellido")
+        .lean(),
+    ]);
+
+    const evalByEmployee = new Map();
+    evaluations.forEach((ev) => {
+      const key = String(ev.employeeId?._id || ev.employeeId);
+      if (!evalByEmployee.has(key)) evalByEmployee.set(key, []);
+      evalByEmployee.get(key).push(ev);
+    });
+
+    const rows = employees.map((emp) => {
+      const evs = evalByEmployee.get(String(emp._id)) || [];
+      const closed = evs.filter((e) => ["CERRADA", "REVISADA"].includes(e.estado));
+      const pending = evs.filter((e) => ["BORRADOR", "ENVIADA"].includes(e.estado));
+      const avgScore = closed.length
+        ? Number((closed.reduce((s, e) => s + Number(e.resultadoFinal || 0), 0) / closed.length).toFixed(2))
+        : null;
+      return {
+        employeeId: String(emp._id),
+        nombre: `${emp.apellido}, ${emp.nombre}`,
+        cargo: emp.cargo || "",
+        area: emp.area || "",
+        total: evs.length,
+        closed: closed.length,
+        pending: pending.length,
+        avgScore,
+        done: evs.length > 0 && pending.length === 0,
+      };
+    });
+
+    const total = rows.length;
+    const withEvals = rows.filter((r) => r.total > 0).length;
+    const allDone = rows.filter((r) => r.done).length;
+    const pct = total > 0 ? Math.round((allDone / total) * 100) : 0;
+
+    res.json({
+      cycleId: String(cycle._id),
+      periodo: cycle.periodo,
+      estado: cycle.estado,
+      summary: { total, withEvals, allDone, pct },
+      rows: rows.sort((a, b) => Number(a.done) - Number(b.done)),
+    });
+  }
+);
+
 // GET /evaluation-cycles/:id/calibration — calibration matrix for a cycle
 router.get(
   "/:id/calibration",

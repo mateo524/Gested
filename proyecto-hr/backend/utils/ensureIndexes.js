@@ -7,6 +7,7 @@ export async function ensureIndexes() {
   const { default: EvaluationCycle } = await import("../models/EvaluationCycle.js");
   const { default: DevelopmentPlan } = await import("../models/DevelopmentPlan.js");
   const { default: Notification } = await import("../models/Notification.js");
+  const EvaluationScore = await import("../models/EvaluationScore.js").then(m => m.default).catch(() => null);
 
   await Promise.all([
     // Users: login by email, list by company
@@ -33,6 +34,12 @@ export async function ensureIndexes() {
     // Notifications: user feed, sorted by date
     Notification.collection.createIndex({ userId: 1, createdAt: -1 }, { background: true }),
     Notification.collection.createIndex({ userId: 1, read: 1 }, { background: true }),
+
+    // EvaluationScore: lookup by evaluation and employee
+    ...(EvaluationScore ? [
+      EvaluationScore.collection.createIndex({ evaluationId: 1 }, { background: true }),
+      EvaluationScore.collection.createIndex({ companyId: 1, employeeId: 1 }, { background: true }),
+    ] : []),
   ]);
 
   console.log("[indexes] All indexes ensured");
