@@ -351,11 +351,11 @@ export default function AppShell({
       items.push({ type: "group", key: "eval-group", label: L("Evaluaciones", "Evaluations"), icon: "evaluaciones", children: evalKids });
     }
 
-    // Standalone items: Novedades, Migración, Reportes
+    // Standalone items: Reportes (right after Evaluaciones), then Importación, Novedades
     [
-      { key: "novedades", es: "Novedades", en: "Updates" },
-      { key: "carga-masiva", es: "Importación", en: "Import" },
       { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
+      { key: "carga-masiva", es: "Importación", en: "Import" },
+      { key: "novedades", es: "Novedades", en: "Updates" },
     ].forEach(item => {
       if (byKey[item.key]) items.push({ type: "item", key: item.key, label: L(item.es, item.en), icon: item.key });
     });
@@ -365,7 +365,7 @@ export default function AppShell({
       const platKids = [
         { key: "organizaciones", es: "Organizaciones", en: "Organizations" },
         { key: "settings", es: "Configuración", en: "Settings" },
-        { key: "archivo-central", es: "Plataforma", en: "Platform" },
+        { key: "archivo-central", es: "Archivos", en: "Files" },
         { key: "analytics", es: "Analytics", en: "Analytics" },
       ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
       if (platKids.length) {

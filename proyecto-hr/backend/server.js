@@ -120,6 +120,19 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
+// Request timeout — prevents slow-loris and hung DB connections from tying up workers
+app.use((req, res, next) => {
+  const TIMEOUT_MS = 30_000;
+  const timer = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({ mensaje: "La solicitud tardó demasiado. Reintentá en un momento." });
+    }
+  }, TIMEOUT_MS);
+  res.on("finish", () => clearTimeout(timer));
+  res.on("close", () => clearTimeout(timer));
+  next();
+});
+
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   limit: 300,
@@ -158,12 +171,24 @@ app.use(perUserLimiter);
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  limit: 10, // only 10 login attempts per 15 min per IP
+  limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
   message: { mensaje: "Demasiados intentos de login. Esperá 15 minutos." },
 });
 app.use("/auth/login", authLimiter);
+
+// Heavy endpoints limiter — bulk imports and report generation are CPU/DB intensive
+const heavyLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: "Demasiadas operaciones pesadas. Esperá un minuto antes de continuar." },
+});
+app.use("/bulk-import", heavyLimiter);
+app.use("/reports/export-excel", heavyLimiter);
+app.use("/education-exports", heavyLimiter);
 
 function isObject(val) {
   return typeof val === "object" && val !== null;

@@ -1,4 +1,4 @@
-﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { Component, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -1126,7 +1126,35 @@ function OkrCard({ item }) {
   );
 }
 
-export default function ExecutiveReportPage() {
+class ReportErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, errorMessage: "" };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, errorMessage: error?.message || "Error inesperado" };
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="rounded-[2rem] border border-rose-300/20 bg-rose-500/5 p-10 text-center">
+          <p className="text-lg font-semibold text-rose-200">Error al cargar el reporte</p>
+          <p className="mt-2 text-sm text-rose-300/70">{this.state.errorMessage}</p>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, errorMessage: "" })}
+            className="mt-5 rounded-2xl bg-[#14b8a6] px-6 py-2.5 text-sm font-semibold text-[#0f172a]"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function ExecutiveReportPage() {
   const { token, user } = useAuth();
   const { setView, searchQuery } = useView();
   const [activeTab, setActiveTab] = useState("general");
@@ -2408,5 +2436,13 @@ export default function ExecutiveReportPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function ExecutiveReportPageBounded() {
+  return (
+    <ReportErrorBoundary>
+      <ExecutiveReportPage />
+    </ReportErrorBoundary>
   );
 }
