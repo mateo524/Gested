@@ -573,58 +573,50 @@ router.get(
         throw createHttpError(404, "Empleado no encontrado en este alcance.");
       }
 
-      const [employeeDoc, employeeEvaluations, employeePlans, employeeKpis, employeeOkrs] = await Promise.all([
-        Employee.findById(employee._id).lean(),
-        Evaluation.find({
-          companyId: dataset.company._id,
-          ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
-          employeeId: employee._id,
-          ...(dataset.selectedCycleId ? { cycleId: dataset.selectedCycleId } : {}),
-        })
-          .sort({ createdAt: -1 })
-          .populate("cycleId", "anio periodo etapa estado fechaInicio fechaFin")
-          .lean(),
-        DevelopmentPlan.find({
-          companyId: dataset.company._id,
-          ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
-          employeeId: employee._id,
-        })
-          .sort({ createdAt: -1 })
-          .lean(),
-        KPIRecord.find({
-          companyId: dataset.company._id,
-          ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
-          employeeId: employee._id,
-        })
-          .sort({ updatedAt: -1, createdAt: -1 })
-          .lean(),
-        OKRRecord.find({
-          companyId: dataset.company._id,
-          ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
-          employeeId: employee._id,
-        })
-          .sort({ updatedAt: -1, createdAt: -1 })
-          .lean(),
-      ]);
+      const empIdStr = String(employee._id);
+      const cycleMap = new Map(dataset.cycles.map((c) => [String(c._id), c]));
 
+      // Reuse already-fetched dataset data — filter in memory instead of re-querying
+      const employeePlans = dataset.plans
+        .filter((p) => String(p.employeeId) === empIdStr)
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const employeeKpis = dataset.kpiRecords
+        .filter((k) => String(k.employeeId) === empIdStr)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+      const employeeOkrs = dataset.okrRecords
+        .filter((o) => String(o.employeeId) === empIdStr)
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+      // Attach cycle objects from cycle map (avoids extra populate round-trip)
+      const rawEvals = dataset.evaluations.filter((ev) => String(ev.employeeId) === empIdStr);
+      const employeeEvaluations = rawEvals
+        .map((ev) => ({ ...ev, cycleId: cycleMap.get(String(ev.cycleId)) || ev.cycleId }))
+        .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      // Still need the full employee document for extra fields not in the summary
+      const [employeeDoc] = await Promise.all([Employee.findById(employee._id).lean()]);
+
+      // Single query with nested populate — eliminates 2 sequential round-trips
       const scores = employeeEvaluations.length
         ? await EvaluationScore.find({ evaluationId: { $in: employeeEvaluations.map((item) => item._id) } })
-            .populate("metricId", "nombre competencyId")
+            .populate({
+              path: "metricId",
+              select: "nombre competencyId",
+              populate: { path: "competencyId", select: "nombre" },
+            })
             .lean()
         : [];
-      const metricIds = scores
-        .map((item) => item.metricId?._id || item.metricId)
-        .filter(Boolean);
-      const metrics = metricIds.length
-        ? await Metric.find({ _id: { $in: metricIds } }).select("_id nombre competencyId").lean()
-        : [];
-      const competencyIds = metrics.map((item) => item.competencyId).filter(Boolean);
-      const competencies = competencyIds.length
-        ? await Competency.find({ _id: { $in: competencyIds } }).select("_id nombre").lean()
-        : [];
 
-      const metricMap = new Map(metrics.map((item) => [String(item._id), item]));
-      const competencyMap = new Map(competencies.map((item) => [String(item._id), item.nombre]));
+      const metricMap = new Map();
+      const competencyMap = new Map();
+      for (const s of scores) {
+        const m = s.metricId;
+        if (!m) continue;
+        metricMap.set(String(m._id), m);
+        if (m.competencyId && typeof m.competencyId === "object") {
+          competencyMap.set(String(m.competencyId._id), m.competencyId.nombre);
+        }
+      }
       const metricSignalsMap = new Map();
       scores.forEach((item) => {
         const metric = metricMap.get(String(item.metricId?._id || item.metricId));

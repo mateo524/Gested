@@ -1357,7 +1357,7 @@ function ExecutiveReportPage() {
       a.remove();
       URL.revokeObjectURL(a.href);
     } catch (err) {
-      addToast(err.message || "No se pudo exportar el Excel.", "error");
+      addToast({ message: err.message || "No se pudo exportar el Excel.", type: "error" });
     }
   }
 

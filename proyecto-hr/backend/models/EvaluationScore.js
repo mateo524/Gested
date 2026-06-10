@@ -14,7 +14,7 @@ const EvaluationScoreSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    nivel: { type: Number, enum: [1, 2, 3, 4, 5], required: true },
+    nivel: { type: Number, enum: [0, 1, 2, 3, 4, 5], default: 0 },
     comentario: { type: String, trim: true },
     evidenciaUrls: [{ type: String }],
   },

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 
@@ -489,18 +490,20 @@ export default function OrgChartPage() {
         </div>
       )}
 
-      {/* Side panel */}
-      {selectedEmployee ? (
-        <SidePanel
-          employee={selectedEmployee}
-          onClose={() => setSelectedEmployee(null)}
-          onViewEvals={() => {
-            setSelectedEmployee(null);
-            // Navigate to evaluaciones — dispatch event for the shell to pick up
-            window.dispatchEvent(new CustomEvent("performia:set-view", { detail: { view: "evaluaciones" } }));
-          }}
-        />
-      ) : null}
+      {/* Side panel — rendered in a portal so fixed positioning works regardless of CSS transforms */}
+      {selectedEmployee
+        ? createPortal(
+            <SidePanel
+              employee={selectedEmployee}
+              onClose={() => setSelectedEmployee(null)}
+              onViewEvals={() => {
+                setSelectedEmployee(null);
+                window.dispatchEvent(new CustomEvent("performia:set-view", { detail: { view: "evaluaciones" } }));
+              }}
+            />,
+            document.body
+          )
+        : null}
     </div>
   );
 }
