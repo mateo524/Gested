@@ -68,6 +68,12 @@ export default function DevelopmentPlansPage() {
   const [confirmState, setConfirmState] = useState({ open: false, plan: null });
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Suggestion-from-evaluation state
+  const [closedEvals, setClosedEvals] = useState([]);
+  const [selectedEvalForSuggestion, setSelectedEvalForSuggestion] = useState("");
+  const [suggestions, setSuggestions] = useState([]);
+  const [isFetchingSuggestions, setIsFetchingSuggestions] = useState(false);
+
   const estadoLabels = language === "en" ? ESTADO_LABELS_EN : ESTADO_LABELS_ES;
   const roleScope = user?.roleCode || (user?.isSuperAdmin ? "SUPER_ADMIN" : "USER");
   const plansCacheKey = `pf_plans_list_${roleScope}_${filters.employeeId || "all"}_${filters.estado || "all"}`;
@@ -141,6 +147,9 @@ export default function DevelopmentPlansPage() {
 
   function openNew() {
     setForm(emptyForm);
+    setClosedEvals([]);
+    setSelectedEvalForSuggestion("");
+    setSuggestions([]);
     setModal({ open: true, editId: "" });
   }
 
@@ -156,6 +165,46 @@ export default function DevelopmentPlansPage() {
       progreso: plan.progreso || 0,
     });
     setModal({ open: true, editId: plan._id });
+  }
+
+  // Load closed evaluations when a new plan's employeeId changes
+  useEffect(() => {
+    if (!modal.open || modal.editId) return; // only for new plans
+    if (!form.employeeId) { setClosedEvals([]); setSelectedEvalForSuggestion(""); setSuggestions([]); return; }
+    const ctrl = new AbortController();
+    apiFetch(`/evaluations?estado=CERRADA&employeeId=${form.employeeId}`, { token, signal: ctrl.signal })
+      .then(data => setClosedEvals(Array.isArray(data) ? data : []))
+      .catch(() => setClosedEvals([]));
+    return () => ctrl.abort();
+  }, [form.employeeId, modal.open, modal.editId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function handleLoadSuggestions() {
+    if (!selectedEvalForSuggestion) return;
+    try {
+      setIsFetchingSuggestions(true);
+      setSuggestions([]);
+      const data = await apiFetch(`/development-plans/from-evaluation/${selectedEvalForSuggestion}`, { token });
+      if (!data.suggestions?.length) {
+        addToast({ message: L("No hay métricas débiles en esa evaluación.", "No weak metrics found in that evaluation."), type: "info" });
+        return;
+      }
+      setSuggestions(data.suggestions);
+    } catch (err) {
+      addToast({ message: err.message, type: "error" });
+    } finally {
+      setIsFetchingSuggestions(false);
+    }
+  }
+
+  function applySuggestion(suggestion) {
+    setForm(f => ({
+      ...f,
+      evaluationId: selectedEvalForSuggestion,
+      aspectoDesarrollar: suggestion.aspectoDesarrollar,
+      medicion: suggestion.medicion,
+    }));
+    setSuggestions([]);
+    addToast({ message: L("Campos precargados desde la evaluación.", "Fields pre-filled from evaluation."), type: "success" });
   }
 
   async function handleSubmit(e) {
@@ -334,6 +383,44 @@ export default function DevelopmentPlansPage() {
                   {employees.map(e => <option key={e._id} value={e._id}>{e.apellido}, {e.nombre}</option>)}
                 </select>
               </div>
+              {/* Suggest from evaluation — only visible when creating a new plan for a specific employee */}
+              {!modal.editId && form.employeeId && closedEvals.length > 0 ? (
+                <div className="rounded-xl border border-white/10 bg-[#091319] p-3 space-y-2">
+                  <p className="text-xs font-semibold text-[#14b8a6]">{L("Sugerir plan desde evaluación", "Suggest plan from evaluation")}</p>
+                  <div className="flex gap-2">
+                    <select
+                      className="flex-1 rounded-xl border border-white/10 bg-[#12222d] px-3 py-2 text-sm text-white outline-none"
+                      value={selectedEvalForSuggestion}
+                      onChange={e => { setSelectedEvalForSuggestion(e.target.value); setSuggestions([]); }}>
+                      <option value="">{L("Elegí una evaluación cerrada", "Select a closed evaluation")}</option>
+                      {closedEvals.map(ev => (
+                        <option key={ev._id} value={ev._id}>
+                          {ev.tipo || "Evaluación"} — {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString(language === "en" ? "en-US" : "es-AR", { day: "2-digit", month: "short", year: "numeric" }) : ev._id}
+                        </option>
+                      ))}
+                    </select>
+                    <button type="button" disabled={!selectedEvalForSuggestion || isFetchingSuggestions}
+                      onClick={handleLoadSuggestions}
+                      className="rounded-xl bg-[#14b8a6] px-3 py-2 text-xs font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:opacity-50 whitespace-nowrap">
+                      {isFetchingSuggestions ? L("Cargando…", "Loading…") : L("Cargar", "Load")}
+                    </button>
+                  </div>
+                  {suggestions.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-[#7f99a8]">{L("Métricas débiles — elegí una para precargar:", "Weak metrics — pick one to pre-fill:")}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {suggestions.map(s => (
+                          <button key={s.metricId} type="button" onClick={() => applySuggestion(s)}
+                            className="rounded-full border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1 text-xs text-[#14b8a6] transition hover:bg-[#14b8a6]/20">
+                            {s.metricNombre} <span className="text-white/40">({s.nivel}/5)</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <div>
                 <label className="mb-1 block text-xs text-[#7f99a8]">{L("Plan / aspecto a desarrollar *", "Plan / aspect to develop *")}</label>
                 <input className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none"

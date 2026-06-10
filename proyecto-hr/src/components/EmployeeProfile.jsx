@@ -1,12 +1,45 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
+import { apiFetch } from "../lib/api";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  CartesianGrid,
+} from "recharts";
 
 export default function EmployeeProfile({ empleado, onVolver }) {
   const { token } = useAuth();
+  const { addToast } = useToast();
   const [editando, setEditando] = useState(false);
   const [datosEdit, setDatosEdit] = useState(empleado);
   const [guardando, setGuardando] = useState(false);
   const [descargando, setDescargando] = useState(null);
+
+  // Evaluation history state
+  const [historialAbierto, setHistorialAbierto] = useState(false);
+  const [historial, setHistorial] = useState(null);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
+
+  useEffect(() => {
+    if (!historialAbierto || historial !== null) return;
+    const ctrl = new AbortController();
+    setCargandoHistorial(true);
+    apiFetch(`/employees/${empleado._id}/evaluation-history`, { token, signal: ctrl.signal })
+      .then((data) => setHistorial(data.history || []))
+      .catch((err) => {
+        if (!ctrl.signal.aborted) {
+          addToast({ message: err.message, type: "error" });
+          setHistorial([]);
+        }
+      })
+      .finally(() => setCargandoHistorial(false));
+    return () => ctrl.abort();
+  }, [historialAbierto]);
 
   const handleGuardar = async () => {
     try {
@@ -441,6 +474,121 @@ export default function EmployeeProfile({ empleado, onVolver }) {
             >
               {guardando ? "Guardando..." : "Guardar Cambios"}
             </button>
+          </div>
+        )}
+      </div>
+
+      {/* Historial de evaluaciones */}
+      <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
+        <button
+          onClick={() => setHistorialAbierto((v) => !v)}
+          className="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-white/5 transition"
+        >
+          <span className="text-white font-semibold text-base">
+            Historial de evaluaciones
+          </span>
+          <span className="text-[#14b8a6] text-lg font-bold">
+            {historialAbierto ? "▲" : "▼"}
+          </span>
+        </button>
+
+        {historialAbierto && (
+          <div className="px-6 pb-6">
+            {cargandoHistorial ? (
+              <p className="text-white/50 text-sm py-4">Cargando historial...</p>
+            ) : !historial || historial.length === 0 ? (
+              <p className="text-white/50 text-sm py-4">Sin evaluaciones cerradas aún.</p>
+            ) : (
+              <div className="space-y-6">
+                {/* Mini line chart */}
+                <div className="h-48 mt-2">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart
+                      data={historial.map((h) => ({
+                        name: h.cycleName,
+                        promedio: h.promedio,
+                      }))}
+                      margin={{ top: 4, right: 12, left: -10, bottom: 0 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                      <XAxis
+                        dataKey="name"
+                        tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[0, 5]}
+                        tick={{ fill: "rgba(255,255,255,0.5)", fontSize: 11 }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          background: "#091319",
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          borderRadius: "8px",
+                          color: "#fff",
+                        }}
+                        formatter={(val) => [val, "Promedio"]}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="promedio"
+                        stroke="#14b8a6"
+                        strokeWidth={2}
+                        dot={{ fill: "#14b8a6", r: 4 }}
+                        activeDot={{ r: 6 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Table */}
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10 text-white/50 text-left">
+                      <th className="pb-2 font-medium pr-4">Ciclo</th>
+                      <th className="pb-2 font-medium pr-4">Fecha</th>
+                      <th className="pb-2 font-medium pr-4">Promedio</th>
+                      <th className="pb-2 font-medium">Tipo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historial.map((row, i) => (
+                      <tr
+                        key={i}
+                        className="border-b border-white/5 hover:bg-white/5 transition"
+                      >
+                        <td className="py-2 pr-4 text-white font-medium">
+                          {row.cycleName}
+                        </td>
+                        <td className="py-2 pr-4 text-white/70">
+                          {row.fecha
+                            ? new Date(row.fecha).toLocaleDateString("es-ES")
+                            : "-"}
+                        </td>
+                        <td className="py-2 pr-4">
+                          <span className="text-[#14b8a6] font-semibold">
+                            {row.promedio.toFixed(2)}
+                          </span>
+                          <span className="text-white/30 text-xs"> / 5</span>
+                        </td>
+                        <td className="py-2">
+                          {row.tipo ? (
+                            <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-white/10 text-white/70 uppercase">
+                              {row.tipo}
+                            </span>
+                          ) : (
+                            <span className="text-white/30">-</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
       </div>

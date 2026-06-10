@@ -331,6 +331,101 @@ router.get(
   }
 );
 
+router.get(
+  "/:id/evaluation-history",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EMPLOYEES,
+    PERMISSIONS.VIEW_TEAM,
+    PERMISSIONS.VIEW_SELF_PROFILE,
+    PERMISSIONS.VIEW_REPORTS
+  ),
+  async (req, res) => {
+    const employee = await Employee.findOne(buildScopedFilter(req, { _id: req.params.id }))
+      .select("nombre apellido cargo companyId schoolId managerId area")
+      .lean();
+
+    if (!employee) {
+      return res.status(404).json({ mensaje: "Empleado no encontrado" });
+    }
+
+    if (isManagerScope(req.scope) && req.scope.employeeId) {
+      const isSelf = String(employee._id) === String(req.scope.employeeId);
+      const isTeam =
+        req.scope.roleScope === "DEPARTMENT" && req.scope.departmentCode
+          ? String(employee.area || "") === String(req.scope.departmentCode)
+          : String(employee.managerId || "") === String(req.scope.employeeId);
+      if (!isSelf && !isTeam) {
+        return res.status(403).json({ mensaje: "No tienes acceso a esta ficha" });
+      }
+    }
+
+    if (isEmployeeScope(req.scope) && req.scope.employeeId) {
+      if (String(employee._id) !== String(req.scope.employeeId)) {
+        return res.status(403).json({ mensaje: "Solo puedes ver tu propia ficha" });
+      }
+    }
+
+    const evaluations = await Evaluation.find({
+      companyId: employee.companyId,
+      schoolId: employee.schoolId,
+      employeeId: employee._id,
+      estado: "CERRADA",
+    })
+      .populate({ path: "cycleId", select: "periodo fechaInicio fechaFin anio" })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    if (!evaluations.length) {
+      return res.json({ history: [] });
+    }
+
+    const evaluationIds = evaluations.map((e) => e._id);
+    const allScores = await EvaluationScore.find({ evaluationId: { $in: evaluationIds } })
+      .populate({ path: "metricId", select: "nombre" })
+      .lean();
+
+    const scoresByEvalId = new Map();
+    for (const score of allScores) {
+      const key = String(score.evaluationId);
+      if (!scoresByEvalId.has(key)) scoresByEvalId.set(key, []);
+      scoresByEvalId.get(key).push(score);
+    }
+
+    const history = evaluations
+      .slice()
+      .sort((a, b) => {
+        const aDate = a.cycleId?.fechaInicio ? new Date(a.cycleId.fechaInicio) : new Date(0);
+        const bDate = b.cycleId?.fechaInicio ? new Date(b.cycleId.fechaInicio) : new Date(0);
+        return aDate - bDate;
+      })
+      .map((ev) => {
+        const scores = (scoresByEvalId.get(String(ev._id)) || []).map((s) => ({
+          metricName: s.metricId?.nombre || "Sin nombre",
+          nivel: s.nivel,
+        }));
+
+        const scoreValues = scores.map((s) => Number(s.nivel) || 0).filter((v) => v > 0);
+        const promedio =
+          scoreValues.length > 0
+            ? Number((scoreValues.reduce((a, b) => a + b, 0) / scoreValues.length).toFixed(2))
+            : Number(ev.resultadoFinal ?? 0);
+
+        return {
+          cycleId: ev.cycleId?._id || ev.cycleId,
+          cycleName: ev.cycleId?.periodo || ev.cycleId?.anio || "Sin ciclo",
+          fecha: ev.cycleId?.fechaFin || ev.cycleId?.fechaInicio || null,
+          scores,
+          promedio,
+          tipo: ev.tipo || "",
+        };
+      });
+
+    res.json({ history });
+  }
+);
+
 router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
   const { companyId, schoolId } = resolveTenantIds(req);
   let effectiveSchoolId = schoolId;

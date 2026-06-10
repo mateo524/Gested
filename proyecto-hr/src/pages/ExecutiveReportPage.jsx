@@ -45,7 +45,10 @@ function ExecChartTooltip({ active, payload, label }) {
 const PRIMARY_TABS = [
   { key: "general", label: "Reporte general" },
   { key: "individual", label: "Reporte individual" },
+  { key: "comparar", label: "Comparar ciclos" },
 ];
+
+const FILTERS_STORAGE_KEY = "exec_report_filters";
 
 const severityTone = {
   high: "border-rose-300/30 bg-rose-500/10 text-rose-100",
@@ -1166,9 +1169,34 @@ function ExecutiveReportPage() {
   const { addToast } = useToast();
   const { setView, searchQuery } = useView();
   const [activeTab, setActiveTab] = useState("general");
-  const [filters, setFilters] = useState({ cycleId: "", department: "", employeeId: "" });
-  const [draftFilters, setDraftFilters] = useState({ cycleId: "", department: "", employeeId: "" });
+
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") return { cycleId: parsed.cycleId || "", department: parsed.department || "", employeeId: parsed.employeeId || "" };
+      }
+    } catch (_) { /* ignore */ }
+    return { cycleId: "", department: "", employeeId: "" };
+  });
+  const [draftFilters, setDraftFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem(FILTERS_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object") return { cycleId: parsed.cycleId || "", department: parsed.department || "", employeeId: parsed.employeeId || "" };
+      }
+    } catch (_) { /* ignore */ }
+    return { cycleId: "", department: "", employeeId: "" };
+  });
   const filtersRef = useRef(filters);
+
+  // Comparar ciclos state
+  const [compareCycleA, setCompareCycleA] = useState("");
+  const [compareCycleB, setCompareCycleB] = useState("");
+  const [compareData, setCompareData] = useState(null);
+  const [loadingCompare, setLoadingCompare] = useState(false);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [overview, setOverview] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -1314,6 +1342,7 @@ function ExecutiveReportPage() {
     filterDebounceRef.current = setTimeout(() => {
       filtersRef.current = { ...draftFilters };
       setFilters({ ...draftFilters });
+      try { localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(draftFilters)); } catch (_) { /* ignore */ }
       loadOverview();
     }, 300);
     return () => clearTimeout(filterDebounceRef.current);
@@ -1330,6 +1359,36 @@ function ExecutiveReportPage() {
   }, [overview?.actions]);
 
   const actionPrioritySummary = useMemo(() => buildGeneralActionSummary(overviewActions), [overviewActions]);
+
+  function handleClearFilters() {
+    const empty = { cycleId: "", department: "", employeeId: "" };
+    setDraftFilters(empty);
+    try { localStorage.removeItem(FILTERS_STORAGE_KEY); } catch (_) { /* ignore */ }
+  }
+
+  async function handleCompare() {
+    if (!compareCycleA || !compareCycleB) {
+      addToast({ message: "Seleccioná dos ciclos para comparar.", type: "error" });
+      return;
+    }
+    if (compareCycleA === compareCycleB) {
+      addToast({ message: "Elegí dos ciclos distintos para comparar.", type: "error" });
+      return;
+    }
+    try {
+      setLoadingCompare(true);
+      setCompareData(null);
+      const [dataA, dataB] = await Promise.all([
+        apiFetch(`/reports/overview?cycleId=${compareCycleA}`, { token, timeoutMs: 30000 }),
+        apiFetch(`/reports/overview?cycleId=${compareCycleB}`, { token, timeoutMs: 30000 }),
+      ]);
+      setCompareData({ a: dataA, b: dataB });
+    } catch (err) {
+      addToast({ message: err.message || "No se pudo comparar los ciclos.", type: "error" });
+    } finally {
+      setLoadingCompare(false);
+    }
+  }
 
   async function handleExportExcel() {
     try {
@@ -1716,7 +1775,7 @@ function ExecutiveReportPage() {
             </select>
           </label>
 
-          <div className="flex items-end pb-1">
+          <div className="flex items-end gap-3 pb-1">
             {loadingOverview ? (
               <span className="text-sm text-[#9fb6c4]">Cargando...</span>
             ) : (
@@ -1725,6 +1784,14 @@ function ExecutiveReportPage() {
                 Actualizado
               </span>
             )}
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              title="Limpiar filtros guardados"
+              className="rounded-xl border border-white/10 bg-[#122530] px-3 py-2 text-xs text-[#9fb6c4] transition hover:bg-white/5 hover:text-white"
+            >
+              Limpiar filtros
+            </button>
           </div>
         </div>
       </SurfaceCard>
@@ -1735,6 +1802,112 @@ function ExecutiveReportPage() {
         <EmptyPanel text="Estamos preparando el reporte ejecutivo con el alcance visible para este perfil." />
       ) : !overview ? (
         <EmptyPanel text="No pudimos cargar el reporte en este momento." />
+      ) : activeTab === "comparar" ? (
+        <div className="space-y-5">
+          <SurfaceCard title="Comparar ciclos" subtitle="Seleccioná dos ciclos y compará sus métricas clave lado a lado.">
+            <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
+              <label className="block">
+                <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo A</span>
+                <select
+                  className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
+                  value={compareCycleA}
+                  onChange={(e) => setCompareCycleA(e.target.value)}
+                >
+                  <option value="">Elegí un ciclo</option>
+                  {cycles.map((cycle) => (
+                    <option key={cycle._id} value={cycle._id}>{cycle.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo B</span>
+                <select
+                  className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
+                  value={compareCycleB}
+                  onChange={(e) => setCompareCycleB(e.target.value)}
+                >
+                  <option value="">Elegí un ciclo</option>
+                  {cycles.map((cycle) => (
+                    <option key={cycle._id} value={cycle._id}>{cycle.label}</option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={handleCompare}
+                  disabled={loadingCompare || !compareCycleA || !compareCycleB}
+                  className="w-full rounded-2xl bg-[#14b8a6] px-5 py-3 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingCompare ? "Comparando..." : "Comparar"}
+                </button>
+              </div>
+            </div>
+          </SurfaceCard>
+
+          {compareData ? (() => {
+            const cycleALabel = cycles.find(c => c._id === compareCycleA)?.label || "Ciclo A";
+            const cycleBLabel = cycles.find(c => c._id === compareCycleB)?.label || "Ciclo B";
+            const aSum = compareData.a?.summary || {};
+            const bSum = compareData.b?.summary || {};
+            const aDev = compareData.a?.development || {};
+            const bDev = compareData.b?.development || {};
+            const aKpi = compareData.a?.kpis?.summaryByStatus || {};
+            const bKpi = compareData.b?.kpis?.summaryByStatus || {};
+            const aOkr = compareData.a?.okrs?.summaryByStatus || {};
+            const bOkr = compareData.b?.okrs?.summaryByStatus || {};
+
+            const rows = [
+              { label: "Promedio de desempeño", a: Number(aSum.averageScore || 0), b: Number(bSum.averageScore || 0), fmt: (v) => v > 0 ? v.toFixed(2) : "—" },
+              { label: "Evaluaciones totales", a: Number(aSum.evaluationsTotal || 0), b: Number(bSum.evaluationsTotal || 0), fmt: (v) => v.toLocaleString("es-AR") },
+              { label: "Evaluaciones pendientes", a: Number(aSum.evaluationsPending || 0), b: Number(bSum.evaluationsPending || 0), fmt: (v) => v.toLocaleString("es-AR"), invertDelta: true },
+              { label: "Planes de desarrollo activos", a: Number(aDev.active || 0), b: Number(bDev.active || 0), fmt: (v) => v.toLocaleString("es-AR") },
+              { label: "KPIs cumplidos", a: Number(aKpi.completed || 0), b: Number(bKpi.completed || 0), fmt: (v) => v.toLocaleString("es-AR") },
+              { label: "KPIs en riesgo", a: Number(aKpi.atRisk || 0), b: Number(bKpi.atRisk || 0), fmt: (v) => v.toLocaleString("es-AR"), invertDelta: true },
+              { label: "OKRs cumplidos", a: Number(aOkr.completed || 0), b: Number(bOkr.completed || 0), fmt: (v) => v.toLocaleString("es-AR") },
+              { label: "OKRs en riesgo", a: Number(aOkr.atRisk || 0), b: Number(bOkr.atRisk || 0), fmt: (v) => v.toLocaleString("es-AR"), invertDelta: true },
+            ];
+
+            return (
+              <SurfaceCard title="Resultado de la comparación" subtitle={`${cycleALabel} vs. ${cycleBLabel}`}>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10">
+                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#7f99a8]">Métrica</th>
+                        <th className="pb-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#14b8a6]">{cycleALabel}</th>
+                        <th className="pb-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#38bdf8]">{cycleBLabel}</th>
+                        <th className="pb-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#7f99a8]">Diferencia</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/6">
+                      {rows.map((row) => {
+                        const delta = row.b - row.a;
+                        const isPositive = row.invertDelta ? delta < 0 : delta > 0;
+                        const isNegative = row.invertDelta ? delta > 0 : delta < 0;
+                        const deltaColor = delta === 0 ? "text-[#7f99a8]" : isPositive ? "text-[#14b8a6]" : "text-rose-400";
+                        const deltaArrow = delta === 0 ? "—" : isPositive ? "↑" : "↓";
+                        const deltaDisplay = delta === 0 ? "Sin cambio" : `${deltaArrow} ${Math.abs(Number.isFinite(delta) ? (Number.isInteger(delta) ? delta : delta.toFixed(2)) : delta)}`;
+                        return (
+                          <tr key={row.label}>
+                            <td className="py-3 pr-4 text-[#c5d5de]">{row.label}</td>
+                            <td className="py-3 text-center font-semibold text-white">{row.fmt(row.a)}</td>
+                            <td className="py-3 text-center font-semibold text-white">{row.fmt(row.b)}</td>
+                            <td className={`py-3 text-center font-semibold ${deltaColor}`}>{deltaDisplay}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </SurfaceCard>
+            );
+          })() : null}
+
+          {!compareData && !loadingCompare ? (
+            <EmptyPanel text="Elegí dos ciclos y presioná Comparar para ver las diferencias." />
+          ) : null}
+        </div>
       ) : activeTab === "general" ? (
         <div className="space-y-3">
           {/* Executive summary */}

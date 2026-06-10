@@ -3,6 +3,7 @@ import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import Employee from "../models/Employee.js";
 import KPIRecord from "../models/KPIRecord.js";
 import OKRRecord from "../models/OKRRecord.js";
+import EvaluationScore from "../models/EvaluationScore.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
@@ -457,6 +458,62 @@ router.delete(
     });
 
     res.json({ mensaje: "Plan eliminado" });
+  }
+);
+
+router.get(
+  "/from-evaluation/:evaluationId",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_DEVELOPMENT_PLANS, PERMISSIONS.EVALUATE_TEAM),
+  async (req, res) => {
+    try {
+      const evalFilter = buildScopedFilter(req, { _id: req.params.evaluationId });
+      const evaluation = await Evaluation.findOne(evalFilter)
+        .populate("employeeId", "nombre apellido")
+        .lean();
+
+      if (!evaluation) {
+        return res.status(404).json({ mensaje: "Evaluación no encontrada" });
+      }
+
+      if (evaluation.estado !== "CERRADA") {
+        return res.status(400).json({ mensaje: "La evaluación debe estar cerrada para generar sugerencias" });
+      }
+
+      const scores = await EvaluationScore.find({ evaluationId: evaluation._id, nivel: { $lte: 2 } })
+        .populate("metricId", "nombre")
+        .lean();
+
+      const suggestions = scores
+        .filter((score) => score.metricId)
+        .map((score) => {
+          const metricNombre = score.metricId.nombre;
+          const nivel = score.nivel;
+          return {
+            metricId: score.metricId._id,
+            metricNombre,
+            nivel,
+            fortalezas: "",
+            aspectoDesarrollar: `Mejorar: ${metricNombre} (nivel actual: ${nivel}/5)`,
+            medicion: `Alcanzar nivel 3+ en ${metricNombre}`,
+          };
+        });
+
+      const employee = evaluation.employeeId;
+      const employeeName = employee
+        ? [employee.apellido, employee.nombre].filter(Boolean).join(", ")
+        : "";
+
+      res.json({
+        employeeId: employee?._id || evaluation.employeeId,
+        employeeName,
+        evaluationId: evaluation._id,
+        suggestions,
+      });
+    } catch (error) {
+      res.status(error.status || 500).json({ mensaje: error.message });
+    }
   }
 );
 

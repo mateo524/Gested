@@ -124,6 +124,8 @@ export default function EvaluationCyclesPage() {
   const [progressPanelId, setProgressPanelId] = useState(null);
   const [closeConfirm, setCloseConfirm] = useState({ open: false, cycle: null });
   const [isClosing, setIsClosing] = useState(false);
+  const [reminderState, setReminderState] = useState({ open: false, cycle: null });
+  const [isSendingReminders, setIsSendingReminders] = useState(false);
   const formRef = useRef(null);
   const listRef = useRef(null);
 
@@ -260,6 +262,24 @@ export default function EvaluationCyclesPage() {
       addToast({ message: err.message || "Error al cerrar el ciclo.", type: "error" });
     } finally {
       setIsClosing(false);
+    }
+  }
+
+  async function handleSendReminders() {
+    if (!reminderState.cycle) return;
+    setIsSendingReminders(true);
+    try {
+      const result = await apiFetch("/evaluations/send-reminders", {
+        method: "POST",
+        token,
+        body: { cycleId: reminderState.cycle._id },
+      });
+      addToast({ message: `Se enviaron ${result.sent} recordatorio${result.sent !== 1 ? "s" : ""}${result.failed ? ` (${result.failed} fallido${result.failed !== 1 ? "s" : ""})` : ""}.`, type: result.sent > 0 ? "success" : "info" });
+      setReminderState({ open: false, cycle: null });
+    } catch (err) {
+      addToast({ message: err.message || "Error al enviar recordatorios.", type: "error" });
+    } finally {
+      setIsSendingReminders(false);
     }
   }
 
@@ -476,6 +496,17 @@ export default function EvaluationCyclesPage() {
                         <button type="button" onClick={() => setProgressPanelId(cycle._id)} className="rounded-xl border border-indigo-300/25 bg-indigo-500/8 px-4 py-2 text-sm text-indigo-300 transition hover:bg-indigo-500/15">
                           Progreso
                         </button>
+                        <button
+                          type="button"
+                          onClick={() => setReminderState({ open: true, cycle })}
+                          className="inline-flex items-center gap-1.5 rounded-xl border border-[#14b8a6]/30 px-4 py-2 text-sm text-[#14b8a6] transition hover:bg-[#14b8a6]/10"
+                        >
+                          <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-3.5 w-3.5 shrink-0">
+                            <path d="M10 2a6 6 0 00-6 6c0 3.5-1.5 5-1.5 5h15S16 11.5 16 8a6 6 0 00-6-6z" />
+                            <path d="M8.5 17a1.5 1.5 0 003 0" />
+                          </svg>
+                          Recordatorios
+                        </button>
                         {!isManuallyClosed && (
                           <button type="button" onClick={() => setCloseConfirm({ open: true, cycle })} className="rounded-xl border border-amber-300/30 bg-amber-500/8 px-4 py-2 text-sm text-amber-200 transition hover:bg-amber-500/15">
                             Cerrar ciclo
@@ -551,6 +582,21 @@ export default function EvaluationCyclesPage() {
         loading={isClosing}
         onCancel={() => setCloseConfirm({ open: false, cycle: null })}
         onConfirm={handleCloseCycle}
+      />
+
+      <ConfirmDialog
+        open={reminderState.open}
+        title="¿Enviar recordatorios?"
+        message={
+          reminderState.cycle
+            ? `Se enviará un email a todos los empleados con evaluaciones en estado BORRADOR en el ciclo "${reminderState.cycle.periodo} ${reminderState.cycle.anio}".`
+            : ""
+        }
+        confirmLabel={isSendingReminders ? "Enviando..." : "Enviar recordatorios"}
+        cancelLabel="Cancelar"
+        loading={isSendingReminders}
+        onCancel={() => setReminderState({ open: false, cycle: null })}
+        onConfirm={handleSendReminders}
       />
 
       {progressPanelId && (

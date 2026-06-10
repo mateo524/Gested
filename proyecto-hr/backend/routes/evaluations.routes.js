@@ -15,6 +15,7 @@ import { emitWebhook } from "../utils/webhookEmitter.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
 import { invalidateReportCache } from "./reports.routes.js";
 import { invalidateDashboardCache } from "./dashboard.routes.js";
+import { dispatch as dispatchEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 
@@ -470,6 +471,103 @@ router.delete(
     invalidateDashboardCache(String(evaluation.companyId));
     res.json({ mensaje: "Evaluacion eliminada" });
     runInBackground(() => triggerSheetSync({ companyId: String(evaluation.companyId), schoolId: evaluation.schoolId ? String(evaluation.schoolId) : undefined }), "sheet-sync-eval-delete");
+  }
+);
+
+router.post(
+  "/send-reminders",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_EVALUATIONS),
+  async (req, res) => {
+    const { cycleId, message: customMessage } = req.body || {};
+    const scopeFilter = buildScopedFilter(req, {});
+
+    const evalFilter = { ...scopeFilter, estado: "BORRADOR" };
+    if (cycleId) evalFilter.cycleId = cycleId;
+
+    const evaluations = await Evaluation.find(evalFilter).lean();
+
+    // Group by employeeId to avoid duplicate emails
+    const byEmployee = new Map();
+    for (const ev of evaluations) {
+      const key = String(ev.employeeId);
+      if (!byEmployee.has(key)) {
+        byEmployee.set(key, { employeeId: ev.employeeId, cycleId: ev.cycleId, count: 0 });
+      }
+      byEmployee.get(key).count += 1;
+    }
+
+    // Load cycle info (use first cycleId if not specified)
+    let cycleName = "";
+    let cycleEndDate = null;
+    const firstCycleId = cycleId || (evaluations[0]?.cycleId);
+    if (firstCycleId) {
+      const cycle = await EvaluationCycle.findById(firstCycleId).lean();
+      if (cycle) {
+        cycleName = `${cycle.periodo}${cycle.anio ? ` ${cycle.anio}` : ""}`;
+        cycleEndDate = cycle.fechaFin || null;
+      }
+    }
+
+    let sent = 0;
+    let failed = 0;
+    const recipients = [];
+
+    for (const { employeeId, count } of byEmployee.values()) {
+      const employee = await Employee.findById(employeeId).lean();
+      if (!employee?.email) { failed++; continue; }
+
+      const nombre = `${employee.nombre || ""} ${employee.apellido || ""}`.trim();
+      const subject = `Recordatorio: Tenés una evaluación pendiente${cycleName ? ` — ${cycleName}` : ""}`;
+
+      const extraHtml = customMessage
+        ? `<p style="color:#475569;margin:16px 0 0">${customMessage}</p>`
+        : "";
+
+      const url = process.env.FRONTEND_URL || "https://gested-l6ej.vercel.app";
+      const dateStr = cycleEndDate
+        ? new Date(cycleEndDate).toLocaleDateString("es-AR", { day: "numeric", month: "long" })
+        : "";
+
+      const html = `
+<div style="font-family:Arial,sans-serif;max-width:600px;color:#1a1a1a;line-height:1.7;background:#fff;padding:32px;border-radius:12px">
+  <div style="margin-bottom:24px">
+    <span style="font-size:20px;font-weight:700;color:#0f172a">ZENTOR</span><span style="color:#14b8a6;font-weight:700">.</span>
+  </div>
+  <h1 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 8px">Tenés ${count} evaluación${count > 1 ? "es" : ""} pendiente${count > 1 ? "s" : ""}</h1>
+  <p style="color:#475569;margin:0 0 8px">Hola <strong>${nombre}</strong>${cycleName ? `, te recordamos que el ciclo <strong>${cycleName}</strong>` : ""}${dateStr ? ` cierra el <strong>${dateStr}</strong>` : " tiene evaluaciones pendientes"}.</p>
+  <p style="color:#475569;margin:0 0 24px">Completá tus evaluaciones para que el reporte ejecutivo quede completo.</p>
+  ${extraHtml}
+  <a href="${url}?view=evaluaciones" style="display:inline-block;background:#14b8a6;color:#0f172a;font-weight:700;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:15px;margin-top:${extraHtml ? "16px" : "0"}">
+    Completar evaluaciones →
+  </a>
+  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">¿Necesitás ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
+</div>`;
+
+      try {
+        const result = await dispatchEmail({ to: employee.email, subject, html });
+        if (result?.sent) {
+          sent++;
+          recipients.push(employee.email);
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      }
+    }
+
+    runInBackground(() => logAudit({
+      companyId: req.scope?.companyId,
+      schoolId: req.scope?.schoolId,
+      userId: req.user.userId,
+      accion: "send_reminders",
+      modulo: "evaluations",
+      detalle: `Recordatorios enviados: ${sent}, fallidos: ${failed}${cycleId ? `, ciclo: ${cycleId}` : ""}`,
+    }), "audit-send-reminders");
+
+    res.json({ sent, failed, recipients });
   }
 );
 
