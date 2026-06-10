@@ -135,7 +135,7 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
   const emp = ev.employeeId;
   const empName = emp ? `${emp.nombre || ""} ${emp.apellido || ""}`.trim() : "—";
   const isJefatura = ev.tipo === "JEFATURA";
-  const isReadOnly = ev.estado === "ENVIADA" || ev.estado === "CERRADA";
+  const isReadOnly = ev.estado === "CERRADA";
   const showSideBySide = isJefatura && autoData;
 
   return (
@@ -476,9 +476,15 @@ function ManagerView({ token, user }) {
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(null);
   const [syncing, setSyncing] = useState(false);
 
+  const isSuperAdminMgr = Boolean(user?.isSuperAdmin);
   useEffect(() => {
-    apiFetch("/companies/my-spreadsheet", { token }).then(d => setSpreadsheetUrl(d?.spreadsheetUrl || null)).catch(() => {});
-  }, [token]);
+    // For SuperAdmin derive companyId from loaded evaluations
+    const derivedCompanyId = isSuperAdminMgr
+      ? (evaluations[0]?.companyId ? String(evaluations[0].companyId) : null)
+      : null;
+    const qs = derivedCompanyId ? `?companyId=${derivedCompanyId}` : "";
+    apiFetch(`/companies/my-spreadsheet${qs}`, { token }).then(d => setSpreadsheetUrl(d?.spreadsheetUrl || null)).catch(() => {});
+  }, [token, isSuperAdminMgr, evaluations]);
 
   async function handleSyncNow() {
     try {

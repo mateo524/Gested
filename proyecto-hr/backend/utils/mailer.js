@@ -123,32 +123,23 @@ export async function sendEvaluationReminderEmail({ to, nombre, pendingCount, cy
 }
 
 export async function sendPasswordResetEmail({ to, resetUrl }) {
-  if (!smtpConfigured()) {
-    return { sent: false, reason: "smtp_not_configured" };
-  }
+  if (!canSend()) return { sent: false, reason: "no_transport" };
 
-  const transporter = createTransporter();
+  const html = `
+<div style="font-family:Arial,sans-serif;max-width:600px;color:#1a1a1a;line-height:1.7;background:#fff;padding:32px;border-radius:12px">
+  <div style="margin-bottom:24px">
+    <span style="font-size:20px;font-weight:700;color:#0f172a">ZENTOR</span><span style="color:#14b8a6;font-weight:700">.</span>
+  </div>
+  <h1 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 8px">Restablecer tu contraseña</h1>
+  <p style="color:#475569;margin:0 0 24px">Recibimos una solicitud para restablecer tu contraseña. Hacé click en el botón de abajo para crear una nueva.</p>
+  <a href="${resetUrl}" style="display:inline-block;background:#14b8a6;color:#0f172a;font-weight:700;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:15px">
+    Restablecer contraseña →
+  </a>
+  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">Si no solicitaste esto, podés ignorar este correo. El enlace expira en 1 hora.</p>
+  <p style="margin:8px 0 0;font-size:13px;color:#94a3b8">¿Necesitás ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
+</div>`;
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM,
-    to,
-    subject: "Performia - Recuperar contrasena",
-    text: `Recibimos una solicitud para restablecer tu contrasena.\n\nUsa este enlace:\n${resetUrl}\n\nSi no lo solicitaste, ignora este correo.`,
-    html: `
-      <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
-        <h2>Performia</h2>
-        <p>Recibimos una solicitud para restablecer tu contrasena.</p>
-        <p>
-          <a href="${resetUrl}" style="display:inline-block;padding:10px 14px;background:#1e3a8a;color:#fff;border-radius:8px;text-decoration:none">
-            Restablecer contrasena
-          </a>
-        </p>
-        <p>Si no lo solicitaste, ignora este correo.</p>
-      </div>
-    `,
-  });
-
-  return { sent: true };
+  return dispatch({ to, subject: "ZENTOR — Restablecer contraseña", html });
 }
 
 export async function sendContactRequestNotification(contactRequest) {

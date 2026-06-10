@@ -13,6 +13,7 @@ import UserRoleAssignment from "../models/UserRoleAssignment.js";
 import { auth } from "../middleware/auth.js";
 import { permit } from "../middleware/permit.js";
 import { logAudit } from "../utils/audit.js";
+import { sendWelcomeEmail } from "../utils/mailer.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { generateTempPassword } from "../utils/password.js";
 import { uploadBufferToStorage } from "../utils/storageProvider.js";
@@ -249,6 +250,17 @@ router.post("/", auth, permit("manage_users"), async (req, res) => {
   const hydratedUser = await User.findById(user._id)
     .select("-passwordHash")
     .populate("roleId", "nombre permisos");
+
+  // Send welcome email with credentials (fire-and-forget)
+  if (mustChangePassword) {
+    const company = await Company.findById(companyId).select("nombre").lean().catch(() => null);
+    sendWelcomeEmail({
+      to: normalizedEmail,
+      nombre: nombre.trim(),
+      companyName: company?.nombre || "tu organización",
+      password: generatedPassword,
+    }).catch(() => {});
+  }
 
   res.status(201).json({
     mensaje: "Usuario creado",

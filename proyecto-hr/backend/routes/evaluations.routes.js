@@ -217,9 +217,39 @@ router.get(
       return res.status(404).json({ mensaje: "Evaluacion no encontrada" });
     }
 
-    const scores = await EvaluationScore.find({ evaluationId: evaluation._id })
-      .populate("metricId", "nombre ponderacion competencyId")
+    let scores = await EvaluationScore.find({ evaluationId: evaluation._id })
+      .populate("metricId", "nombre ponderacion competencyId cargoAplica")
       .lean();
+
+    // Auto-seed missing scores for metrics that now apply to this employee
+    const emp = evaluation.employeeId;
+    const empCargo = emp?.cargo || "";
+    const allActive = await Metric.find({
+      companyId: evaluation.companyId,
+      activa: true,
+    }).select("_id cargoAplica").lean();
+
+    const seededIds = new Set(scores.map((s) => String(s.metricId?._id || s.metricId)));
+    const missing = allActive.filter((m) => {
+      if (seededIds.has(String(m._id))) return false;
+      const applies = !m.cargoAplica?.length || (empCargo && m.cargoAplica.includes(empCargo));
+      return applies;
+    });
+
+    if (missing.length) {
+      await EvaluationScore.insertMany(
+        missing.map((m) => ({
+          evaluationId: evaluation._id,
+          metricId: m._id,
+          nivel: 0,
+          comentario: "",
+        }))
+      );
+      // Re-fetch with new scores
+      scores = await EvaluationScore.find({ evaluationId: evaluation._id })
+        .populate("metricId", "nombre ponderacion competencyId cargoAplica")
+        .lean();
+    }
 
     res.json({ evaluation, scores });
   }
@@ -273,15 +303,18 @@ router.post(
         }))
       );
     } else {
-      // Pre-populate empty scores for all active metrics so the eval form shows all skills immediately
+      // Pre-populate empty scores for metrics that apply to this employee
       const activeMetrics = await Metric.find({
         companyId: employee.companyId,
         ...(employee.schoolId ? { schoolId: employee.schoolId } : {}),
         activa: true,
-      }).lean();
-      if (activeMetrics.length) {
+      }).select("_id cargoAplica").lean();
+      const applicable = activeMetrics.filter((m) => {
+        return !m.cargoAplica?.length || (employee.cargo && m.cargoAplica.includes(employee.cargo));
+      });
+      if (applicable.length) {
         await EvaluationScore.insertMany(
-          activeMetrics.map(m => ({
+          applicable.map(m => ({
             evaluationId: evaluation._id,
             metricId: m._id,
             nivel: 0,

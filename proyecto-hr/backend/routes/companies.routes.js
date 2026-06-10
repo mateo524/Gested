@@ -90,10 +90,14 @@ router.post("/sync-now", auth, async (req, res) => {
 
 // Any authenticated user can retrieve their own company's spreadsheet link
 router.get("/my-spreadsheet", auth, async (req, res) => {
-  const companyId = req.user.companyId;
-  if (!companyId) return res.status(404).json({ mensaje: "Sin empresa asignada" });
+  let companyId = req.user.companyId;
+  // SuperAdmin can pass a specific companyId as query param
+  if (!companyId && req.user.isSuperAdmin && req.query.companyId) {
+    companyId = req.query.companyId;
+  }
+  if (!companyId) return res.json({ spreadsheetUrl: null, spreadsheetLastSync: null });
   const company = await Company.findById(companyId).select("spreadsheetUrl spreadsheetLastSync").lean();
-  if (!company) return res.status(404).json({ mensaje: "Empresa no encontrada" });
+  if (!company) return res.json({ spreadsheetUrl: null, spreadsheetLastSync: null });
   res.json({ spreadsheetUrl: company.spreadsheetUrl || null, spreadsheetLastSync: company.spreadsheetLastSync || null });
 });
 

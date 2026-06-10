@@ -10,7 +10,6 @@ const ROLE_ORDER = [
   "HR",
   "MANAGER",
   "EMPLOYEE",
-  "VIEWER",
   "AUDITOR",
 ];
 
@@ -19,6 +18,39 @@ const SCOPE_LABELS = {
   DEPARTMENT: "Acceso limitado a un departamento o área.",
   TEAM: "Acceso limitado a un equipo.",
   SELF: "Acceso solo a la información propia.",
+};
+
+const ROLE_DESCRIPTIONS = {
+  ORG_OWNER: {
+    who: "Dueño o director de la organización",
+    can: ["Ver y editar todo sin restricciones", "Gestionar usuarios, roles y configuración global", "Acceder a reportes ejecutivos y exportaciones", "Cerrar ciclos y congelar resultados"],
+    cannot: ["No aplica — tiene acceso total"],
+  },
+  ORG_ADMIN: {
+    who: "Administrador operativo de la organización",
+    can: ["Gestionar personas, ciclos y evaluaciones", "Crear usuarios y asignar roles", "Acceder a reportes y métricas", "Configurar integraciones y plantillas"],
+    cannot: ["No puede gestionar otros superadministradores"],
+  },
+  HR: {
+    who: "Responsable de Recursos Humanos",
+    can: ["Gestionar personas y evaluaciones", "Importar y exportar datos", "Ver reportes de toda la organización", "Crear y cerrar planes de desarrollo"],
+    cannot: ["No puede cambiar configuración técnica de la plataforma", "No puede crear ni eliminar usuarios"],
+  },
+  MANAGER: {
+    who: "Jefe o líder de equipo",
+    can: ["Ver y evaluar a los empleados de su área/equipo", "Crear evaluaciones de jefatura", "Ver el progreso de su equipo en reportes", "Crear planes de desarrollo para su gente"],
+    cannot: ["No ve empleados ni evaluaciones de otras áreas", "No accede a configuración global", "No importa ni exporta datos masivos"],
+  },
+  EMPLOYEE: {
+    who: "Colaborador / empleado",
+    can: ["Completar su autoevaluación", "Ver sus propios resultados y planes de desarrollo", "Consultar sus evaluaciones pasadas"],
+    cannot: ["No ve información de otros empleados", "No accede a reportes ejecutivos", "No puede crear evaluaciones a otros"],
+  },
+  AUDITOR: {
+    who: "Auditor interno o externo",
+    can: ["Ver logs de auditoría y trazabilidad", "Consultar reportes ejecutivos en modo lectura", "Ver asignaciones de roles y accesos"],
+    cannot: ["No puede crear ni modificar datos", "No puede gestionar usuarios ni roles", "Solo lectura en todas las secciones"],
+  },
 };
 
 const ROLE_ICONS = {
@@ -76,18 +108,17 @@ const MATRIX_COLUMNS = [
   { key: "MANAGER", label: "Jefatura" },
   { key: "COORDINADOR", label: "Coordinador académico" },
   { key: "EMPLOYEE", label: "Empleado" },
-  { key: "VIEWER", label: "Lector" },
   { key: "AUDITOR", label: "Auditor" },
 ];
 
 const MATRIX_ROWS = [
-  { label: "Personas", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "limited", EMPLOYEE: "deny", VIEWER: "limited", AUDITOR: "limited" } },
-  { label: "Evaluaciones", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "allow", COORDINADOR: "allow", EMPLOYEE: "limited", VIEWER: "deny", AUDITOR: "limited" } },
-  { label: "Objetivos / Indicadores", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "allow", EMPLOYEE: "limited", VIEWER: "limited", AUDITOR: "limited" } },
-  { label: "Desarrollo", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "allow", COORDINADOR: "allow", EMPLOYEE: "limited", VIEWER: "deny", AUDITOR: "limited" } },
-  { label: "Reportes", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "limited", EMPLOYEE: "limited", VIEWER: "limited", AUDITOR: "allow" } },
-  { label: "Configuración", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", VIEWER: "deny", AUDITOR: "deny" } },
-  { label: "Datos / Importación", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", VIEWER: "deny", AUDITOR: "deny" } },
+  { label: "Personas", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "limited", EMPLOYEE: "deny", AUDITOR: "limited" } },
+  { label: "Evaluaciones", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "allow", COORDINADOR: "allow", EMPLOYEE: "limited", AUDITOR: "limited" } },
+  { label: "Objetivos / Indicadores", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "allow", EMPLOYEE: "limited", AUDITOR: "limited" } },
+  { label: "Desarrollo", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "allow", COORDINADOR: "allow", EMPLOYEE: "limited", AUDITOR: "limited" } },
+  { label: "Reportes", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "allow", MANAGER: "limited", COORDINADOR: "limited", EMPLOYEE: "limited", AUDITOR: "allow" } },
+  { label: "Configuración", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", AUDITOR: "deny" } },
+  { label: "Datos / Importación", values: { ORG_OWNER: "allow", ORG_ADMIN: "allow", HR: "limited", MANAGER: "deny", COORDINADOR: "deny", EMPLOYEE: "na", AUDITOR: "deny" } },
 ];
 
 const STATE_META = {
@@ -105,14 +136,12 @@ const PAGE_TABS = [
 ];
 
 const CONFIG_ITEMS = [
-  { key: "settings", label: "Organización" },
-  { key: "empleados", label: "Departamentos" },
-  { key: "ciclos", label: "Ciclos" },
-  { key: "carga-masiva", label: "Plantillas" },
-  { key: "roles", label: "Roles y accesos", active: true },
-  { key: "settings", label: "Integraciones" },
-  { key: "settings", label: "Seguridad" },
-  { key: "settings", label: "Auditoria" },
+  { key: "settings", label: "Organización", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" },
+  { key: "empleados", label: "Departamentos", icon: "M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" },
+  { key: "ciclos", label: "Ciclos de evaluación", icon: "M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" },
+  { key: "carga-masiva", label: "Plantillas / Importar", icon: "M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" },
+  { key: "roles", label: "Roles y accesos", icon: "M12 3l6 3v4c0 4.2-2.5 8.1-6 10-3.5-1.9-6-5.8-6-10V6l6-3z", active: true },
+  { key: "settings", label: "Integraciones", icon: "M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" },
 ];
 
 function normalizeList(value) {
@@ -401,20 +430,25 @@ export default function RolesPage() {
       <section className="grid gap-5 xl:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="pf-card p-4">
           <p className="pf-section-title">Configuración</p>
-          <div className="mt-4 space-y-1.5">
+          <div className="mt-4 space-y-1">
             {CONFIG_ITEMS.map((item) => (
               <button
                 key={`${item.label}-${item.key}`}
                 type="button"
                 onClick={() => setView(item.key)}
-                className={`flex w-full items-center justify-between rounded-2xl px-3 py-3 text-left text-sm transition ${
+                className={`flex w-full items-center gap-2.5 rounded-2xl px-3 py-2.5 text-left text-sm transition ${
                   item.active
-                    ? "bg-[#14b8a6] text-[#0f172a]"
+                    ? "bg-[#14b8a6] font-semibold text-[#0f172a]"
                     : "text-[#a9bfca] hover:bg-white/5 hover:text-white"
                 }`}
               >
-                <span>{item.label}</span>
-                {item.active ? <span className="h-2 w-2 rounded-full bg-white" /> : null}
+                {item.icon && (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0">
+                    <path d={item.icon} strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+                <span className="truncate">{item.label}</span>
+                {item.active ? <span className="ml-auto h-2 w-2 shrink-0 rounded-full bg-white" /> : null}
               </button>
             ))}
           </div>
@@ -480,40 +514,52 @@ export default function RolesPage() {
             <div className="mt-5 grid gap-3 xl:grid-cols-2 2xl:grid-cols-3">
               {presets.map((preset) => {
                 const count = (assignmentGroups[preset.roleKey] || []).length;
-                const highlights = summarizeCapabilities(preset);
+                const desc = ROLE_DESCRIPTIONS[preset.roleKey];
                 return (
                   <article key={preset.roleKey} className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
                     <div className="flex items-start gap-4">
                       <RoleIcon roleKey={preset.roleKey} />
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                          <h3 className="text-base font-semibold text-white">{preset.roleKey}</h3>
+                          <h3 className="text-base font-semibold text-white">{preset.label || preset.roleKey}</h3>
                           <span className="rounded-full border border-white/10 bg-[#132530] px-3 py-1 text-xs text-[#d6e2e8]">
-                            {count} usuarios
+                            {count} {count === 1 ? "usuario" : "usuarios"}
                           </span>
                         </div>
+                        {desc && (
+                          <p className="mt-1 text-xs text-[#14b8a6]">{desc.who}</p>
+                        )}
                         <p className="mt-2 text-sm text-[#c7d6de]">{preset.description || preset.label}</p>
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {normalizeList(preset.allowedScopes)
-                            .filter((scope) => ["ORGANIZATION", "DEPARTMENT", "TEAM", "SELF"].includes(scope))
-                            .map((scope) => (
-                              <IconBadge key={scope} tone={scope === "SELF" ? "success" : "default"}>
-                                {scope}
-                              </IconBadge>
-                            ))}
-                        </div>
-                        {highlights.length ? (
-                          <div className="mt-4 flex flex-wrap gap-2">
-                            {highlights.map((item) => (
-                              <span
-                                key={item}
-                                className="rounded-full border border-white/10 bg-[#132530] px-3 py-1 text-xs text-[#9fb6c4]"
-                              >
-                                {item}
-                              </span>
-                            ))}
+                        {desc && (
+                          <div className="mt-4 space-y-3">
+                            <div>
+                              <p className="mb-1.5 text-xs font-semibold text-emerald-400">Puede hacer</p>
+                              <ul className="space-y-1">
+                                {desc.can.map((item) => (
+                                  <li key={item} className="flex items-start gap-1.5 text-xs text-[#c7d6de]">
+                                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 h-3 w-3 shrink-0 text-emerald-400">
+                                      <path d="M3 8l3 3 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                            <div>
+                              <p className="mb-1.5 text-xs font-semibold text-rose-400">No puede</p>
+                              <ul className="space-y-1">
+                                {desc.cannot.map((item) => (
+                                  <li key={item} className="flex items-start gap-1.5 text-xs text-[#9fb6c4]">
+                                    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 h-3 w-3 shrink-0 text-rose-400">
+                                      <path d="M4 4l8 8M12 4l-8 8" strokeLinecap="round" strokeLinejoin="round" />
+                                    </svg>
+                                    {item}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
                           </div>
-                        ) : null}
+                        )}
                       </div>
                     </div>
                   </article>
@@ -595,7 +641,7 @@ export default function RolesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_260px]">
+                    <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                       <article className="rounded-2xl border border-white/10 bg-[#122530] p-4">
                         <p className="text-sm font-semibold text-white">Puede hacer</p>
                         <ul className="mt-3 space-y-2 text-sm text-[#d5e2e9]">
