@@ -20,13 +20,13 @@ const chartColors = ["#0d9488", "#8b5cf6", "#f59e0b", "#38bdf8", "#fb7185", "#10
 function ExportChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-lg">
-      {label ? <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p> : null}
+    <div className="rounded-xl border border-white/10 bg-[#0a1a22] px-4 py-3 shadow-lg">
+      {label ? <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[#9fb6c4]">{label}</p> : null}
       {payload.map((entry) => (
         <div key={entry.dataKey || entry.name} className="flex items-center gap-2 py-0.5 text-sm">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.fill || entry.color }} />
-          <span className="text-slate-500">{entry.name}:</span>
-          <span className="ml-auto pl-4 font-semibold text-slate-800">{entry.value}</span>
+          <span className="text-[#9fb6c4]">{entry.name}:</span>
+          <span className="ml-auto pl-4 font-semibold text-white">{entry.value}</span>
         </div>
       ))}
     </div>
@@ -38,7 +38,7 @@ function PieChartLegend({ payload }) {
   return (
     <div className="mt-4 flex flex-wrap justify-center gap-x-4 gap-y-2">
       {payload.map((entry) => (
-        <div key={entry.value} className="flex items-center gap-1.5 text-xs text-slate-500">
+        <div key={entry.value} className="flex items-center gap-1.5 text-xs text-[#9fb6c4]">
           <span className="h-2 w-3 rounded-full" style={{ background: entry.color }} />
           {entry.value}
         </div>
@@ -58,10 +58,10 @@ function formatDate(value) {
 
 function SummaryCard({ label, value, hint }) {
   return (
-    <article className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-      <p className="text-sm uppercase tracking-[0.18em] text-slate-400">{label}</p>
-      <h3 className="mt-4 text-4xl font-bold text-slate-950">{value}</h3>
-      <p className="mt-2 text-sm text-slate-500">{hint}</p>
+    <article className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-5">
+      <p className="text-xs uppercase tracking-widest text-[#14b8a6]">{label}</p>
+      <h3 className="mt-4 text-4xl font-bold text-white">{value}</h3>
+      <p className="mt-2 text-sm text-[#9fb6c4]">{hint}</p>
     </article>
   );
 }
@@ -186,18 +186,18 @@ export default function ExportPage() {
   };
 
   if (!overview) {
-    return <p className="text-slate-500">Cargando datos de la empresa...</p>;
+    return <p className="text-[#9fb6c4]">Cargando datos de la empresa...</p>;
   }
 
   return (
     <div className="space-y-6">
       <section className="grid gap-6 xl:grid-cols-[1.18fr_0.82fr]">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="text-sm uppercase tracking-[0.24em] text-emerald-500">Centro de datos ZENTOR</p>
-          <h3 className="mt-3 text-4xl font-bold text-slate-950">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-8">
+          <p className="text-sm uppercase tracking-[0.24em] text-[#14b8a6]">Centro de datos ZENTOR</p>
+          <h3 className="mt-3 text-4xl font-bold text-white">
             Importá, compará y explotá la información de {activeCompany?.nombre || "tu empresa"}
           </h3>
-          <p className="mt-4 max-w-3xl text-slate-500">
+          <p className="mt-4 max-w-3xl text-[#9fb6c4]">
             Este modulo sirve para subir bases, decidir cuales quedan activas para el analisis,
             comparar dos cargas entre si y exportar cortes listos para auditoria o gestion.
           </p>
@@ -205,33 +205,33 @@ export default function ExportPage() {
           <div className="mt-6 flex flex-wrap gap-3">
             <button
               onClick={() => download("csv")}
-              className="rounded-2xl bg-emerald-500 px-5 py-3 font-semibold text-white"
+              className="rounded-xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#022019]"
             >
               Descargar CSV operativo
             </button>
             <button
               onClick={() => download("excel")}
-              className="rounded-2xl bg-slate-950 px-5 py-3 font-semibold text-white"
+              className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-[#9fb6c4] hover:bg-white/[0.07]"
             >
               Descargar Excel ejecutivo
             </button>
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-slate-950 p-8 text-white shadow-sm">
-          <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Ultima actividad</p>
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-8">
+          <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Ultima actividad</p>
           <div className="mt-6 space-y-5">
             <div>
-              <p className="text-slate-400">Ultima importacion</p>
-              <p className="mt-2 text-2xl font-semibold">{formatDate(overview.summary.latestUploadAt)}</p>
+              <p className="text-[#9fb6c4]">Ultima importacion</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{formatDate(overview.summary.latestUploadAt)}</p>
             </div>
             <div>
-              <p className="text-slate-400">Tamano maximo configurado</p>
-              <p className="mt-2 text-2xl font-semibold">{overview.summary.maxUploadSizeMb} MB</p>
+              <p className="text-[#9fb6c4]">Tamano maximo configurado</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{overview.summary.maxUploadSizeMb} MB</p>
             </div>
             <div>
-              <p className="text-slate-400">Bases activas en uso</p>
-              <p className="mt-2 text-2xl font-semibold">{overview.summary.activeFiles}</p>
+              <p className="text-[#9fb6c4]">Bases activas en uso</p>
+              <p className="mt-2 text-2xl font-semibold text-white">{overview.summary.activeFiles}</p>
             </div>
           </div>
         </div>
@@ -261,18 +261,18 @@ export default function ExportPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Importacion guiada</p>
-            <h3 className="mt-2 text-2xl font-semibold">Subir nueva base</h3>
-            <p className="mt-2 text-slate-500">
+            <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Importacion guiada</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">Subir nueva base</h3>
+            <p className="mt-2 text-[#9fb6c4]">
               Carga un Excel y ZENTOR lo procesa para convertirlo en registros listos para usar.
             </p>
           </div>
 
           <form className="mt-6 space-y-4" onSubmit={handleImport}>
             <input
-              className="w-full rounded-2xl border border-slate-300 px-4 py-3"
+              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white placeholder:text-[#5a7a8e]"
               placeholder="Nombre visible de la base"
               value={form.nombreVisible}
               onChange={(event) =>
@@ -280,16 +280,16 @@ export default function ExportPage() {
               }
             />
 
-            <label className="block rounded-[1.75rem] border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-center">
-              <span className="block text-sm uppercase tracking-[0.18em] text-slate-400">Archivo Excel</span>
-              <span className="mt-2 block text-slate-600">
+            <label className="block rounded-xl border border-dashed border-white/10 bg-[#0f2030]/60 px-4 py-6 text-center">
+              <span className="block text-xs uppercase tracking-widest text-[#8fa9b7]">Archivo Excel</span>
+              <span className="mt-2 block text-[#9fb6c4]">
                 {form.file ? form.file.name : "Selecciona .xlsx o .xls"}
               </span>
               <input
                 id="zentor-import-file"
                 type="file"
                 accept=".xlsx,.xls"
-                className="mt-4 block w-full text-sm text-slate-500"
+                className="mt-4 block w-full text-sm text-[#9fb6c4]"
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
@@ -302,17 +302,17 @@ export default function ExportPage() {
             <button
               type="submit"
               disabled={isUploading}
-              className="w-full rounded-2xl bg-slate-950 py-3 font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              className="w-full rounded-xl bg-[#14b8a6] py-2.5 text-sm font-semibold text-[#022019] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {isUploading ? "Importando datos..." : "Importar base"}
             </button>
           </form>
 
           {uploadResult ? (
-            <div className="mt-6 rounded-[1.75rem] border border-emerald-200 bg-emerald-50 p-5">
-              <p className="text-sm uppercase tracking-[0.18em] text-emerald-700">Carga completada</p>
-              <h4 className="mt-2 text-lg font-semibold text-slate-950">{uploadResult.file.nombreVisible}</h4>
-              <div className="mt-4 grid gap-3 text-sm text-slate-600 md:grid-cols-2">
+            <div className="mt-6 rounded-xl border border-emerald-400/20 bg-emerald-500/8 p-5">
+              <p className="text-xs uppercase tracking-widest text-emerald-400">Carga completada</p>
+              <h4 className="mt-2 text-lg font-semibold text-white">{uploadResult.file.nombreVisible}</h4>
+              <div className="mt-4 grid gap-3 text-sm text-[#9fb6c4] md:grid-cols-2">
                 <p>Hoja detectada: {uploadResult.imported.hoja}</p>
                 <p>Registros procesados: {uploadResult.imported.registros}</p>
               </div>
@@ -320,53 +320,55 @@ export default function ExportPage() {
           ) : null}
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Fuentes disponibles</p>
-              <h3 className="mt-2 text-2xl font-semibold">Archivos de esta empresa</h3>
+              <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Fuentes disponibles</p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">Archivos de esta empresa</h3>
             </div>
-            <span className="rounded-full bg-slate-100 px-4 py-2 text-sm text-slate-600">
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-[#9fb6c4]">
               {overview.files.length} visibles
             </span>
           </div>
 
           <div className="mt-6 space-y-4">
-            {overview.files.length ? (
-              overview.files.map((file) => (
+            {(Array.isArray(overview?.files) ? overview.files : []).length ? (
+              (Array.isArray(overview?.files) ? overview.files : []).map((file) => (
                 <article
                   key={file._id}
-                  className="rounded-[1.75rem] border border-slate-200 p-5 transition hover:border-emerald-200"
+                  className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 p-4 transition hover:border-white/10"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                      <p className="text-lg font-semibold">{file.nombreVisible}</p>
-                      <p className="mt-1 text-sm text-slate-500">{file.nombreArchivo}</p>
+                      <p className="text-base font-semibold text-white">{file.nombreVisible}</p>
+                      <p className="mt-1 text-sm text-[#9fb6c4]">{file.nombreArchivo}</p>
                     </div>
 
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                        file.activa ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-600"
+                        file.activa
+                          ? "border border-emerald-400/20 bg-emerald-500/8 text-emerald-400"
+                          : "border border-white/10 bg-white/[0.04] text-[#9fb6c4]"
                       }`}
                     >
                       {file.activa ? "Activa" : "Inactiva"}
                     </span>
                   </div>
 
-                  <div className="mt-4 flex flex-wrap gap-2 text-sm text-slate-600">
-                    <span className="rounded-full bg-slate-100 px-3 py-1">Hoja: {file.hoja || "Principal"}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1">Registros: {file.registros || 0}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1">Subido: {formatDate(file.fechaSubida)}</span>
+                  <div className="mt-4 flex flex-wrap gap-2 text-sm text-[#9fb6c4]">
+                    <span className="rounded-full border border-white/[0.06] bg-white/[0.04] px-3 py-1">Hoja: {file.hoja || "Principal"}</span>
+                    <span className="rounded-full border border-white/[0.06] bg-white/[0.04] px-3 py-1">Registros: {file.registros || 0}</span>
+                    <span className="rounded-full border border-white/[0.06] bg-white/[0.04] px-3 py-1">Subido: {formatDate(file.fechaSubida)}</span>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-3">
                     <button
                       type="button"
                       onClick={() => toggleFile(file)}
-                      className={`rounded-2xl px-4 py-2 text-sm font-medium ${
+                      className={`rounded-xl px-4 py-2 text-sm font-medium ${
                         file.activa
-                          ? "border border-amber-200 text-amber-700"
-                          : "border border-emerald-200 text-emerald-700"
+                          ? "border border-amber-400/20 bg-amber-500/8 text-amber-300"
+                          : "border border-emerald-400/20 bg-emerald-500/8 text-emerald-400"
                       }`}
                     >
                       {file.activa ? "Desactivar para analisis" : "Activar para analisis"}
@@ -375,18 +377,18 @@ export default function ExportPage() {
                 </article>
               ))
             ) : (
-              <p className="text-slate-500">Todavía no se cargaron bases en esta empresa.</p>
+              <p className="text-[#9fb6c4]">Todavía no se cargaron bases en esta empresa.</p>
             )}
           </div>
         </div>
       </section>
 
       <section className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-6">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Lectura rapida</p>
-              <h3 className="mt-2 text-2xl font-semibold">Distribucion por rol</h3>
+              <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Lectura rapida</p>
+              <h3 className="mt-2 text-2xl font-semibold text-white">Distribucion por rol</h3>
             </div>
           </div>
 
@@ -400,33 +402,33 @@ export default function ExportPage() {
                       <stop offset="100%" stopColor="#0d9488" stopOpacity={0.5} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} />
-                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#64748b" }} tickLine={false} axisLine={false} width={32} />
-                  <Tooltip content={<ExportChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.04)", radius: 8 }} />
+                  <CartesianGrid strokeDasharray="4 4" stroke="#ffffff0d" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#9fb6c4" }} tickLine={false} axisLine={false} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: "#9fb6c4" }} tickLine={false} axisLine={false} width={32} />
+                  <Tooltip content={<ExportChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 8 }} />
                   <Bar dataKey="value" name="Personas" radius={[10, 10, 0, 0]} fill="url(#gradExportBar)" maxBarSize={52} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
+              <div className="grid h-full place-items-center rounded-xl border border-white/[0.06] bg-[#0f2030]/60 text-[#9fb6c4]">
                 Sin datos suficientes para graficar todavía.
               </div>
             )}
           </div>
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Calidad de base</p>
-            <h3 className="mt-2 text-2xl font-semibold">Dominios de correo detectados</h3>
+            <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Calidad de base</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">Dominios de correo detectados</h3>
           </div>
 
           <div className="mt-6 h-80">
-            {overview.domains.length ? (
+            {(Array.isArray(overview?.domains) ? overview.domains : []).length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={overview.domains}
+                    data={Array.isArray(overview?.domains) ? overview.domains : []}
                     dataKey="value"
                     nameKey="label"
                     innerRadius={70}
@@ -434,7 +436,7 @@ export default function ExportPage() {
                     paddingAngle={3}
                     strokeWidth={0}
                   >
-                    {overview.domains.map((item, index) => (
+                    {(Array.isArray(overview?.domains) ? overview.domains : []).map((item, index) => (
                       <Cell key={item.label} fill={chartColors[index % chartColors.length]} opacity={0.92} />
                     ))}
                   </Pie>
@@ -443,7 +445,7 @@ export default function ExportPage() {
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="grid h-full place-items-center rounded-[1.75rem] bg-slate-50 text-slate-500">
+              <div className="grid h-full place-items-center rounded-xl border border-white/[0.06] bg-[#0f2030]/60 text-[#9fb6c4]">
                 Cuando se importen registros con email, vas a ver la distribución acá.
               </div>
             )}
@@ -452,23 +454,23 @@ export default function ExportPage() {
       </section>
 
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Comparacion de bases</p>
-            <h3 className="mt-2 text-2xl font-semibold">Comparar dos cargas</h3>
-            <p className="mt-2 text-slate-500">
+            <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Comparacion de bases</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">Comparar dos cargas</h3>
+            <p className="mt-2 text-[#9fb6c4]">
               Ideal para validar diferencias entre períodos o cortes subidos por una misma empresa.
             </p>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <select
-              className="rounded-2xl border border-slate-300 px-4 py-3"
+              className="rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white"
               value={compare.left}
               onChange={(event) => setCompare((current) => ({ ...current, left: event.target.value }))}
             >
               <option value="">Selecciona base A</option>
-              {overview.files.map((file) => (
+              {(Array.isArray(overview?.files) ? overview.files : []).map((file) => (
                 <option key={file._id} value={file._id}>
                   {file.nombreVisible}
                 </option>
@@ -476,7 +478,7 @@ export default function ExportPage() {
             </select>
 
             <select
-              className="rounded-2xl border border-slate-300 px-4 py-3"
+              className="rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white"
               value={compare.right}
               onChange={(event) => setCompare((current) => ({ ...current, right: event.target.value }))}
             >
@@ -492,13 +494,13 @@ export default function ExportPage() {
       {comparison ? (
             <div className="mt-6 space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-[1.75rem] border border-slate-200 p-5">
-                  <p className="font-semibold text-slate-950">{comparison.left.nombreVisible}</p>
-                  <p className="mt-2 text-sm text-slate-500">{comparison.left.registros} registros</p>
+                <div className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 p-4">
+                  <p className="font-semibold text-white">{comparison.left.nombreVisible}</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{comparison.left.registros} registros</p>
                 </div>
-                <div className="rounded-[1.75rem] border border-slate-200 p-5">
-                  <p className="font-semibold text-slate-950">{comparison.right.nombreVisible}</p>
-                  <p className="mt-2 text-sm text-slate-500">{comparison.right.registros} registros</p>
+                <div className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 p-4">
+                  <p className="font-semibold text-white">{comparison.right.nombreVisible}</p>
+                  <p className="mt-2 text-sm text-[#9fb6c4]">{comparison.right.registros} registros</p>
                 </div>
               </div>
 
@@ -539,76 +541,76 @@ export default function ExportPage() {
               </div>
 
               <div className="grid gap-4 xl:grid-cols-3">
-                <div className="rounded-[1.5rem] border border-emerald-200 bg-emerald-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                <div className="rounded-xl border border-emerald-400/20 bg-emerald-500/8 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-emerald-400">
                     Altas detectadas
                   </p>
                   <div className="mt-3 space-y-3">
-                    {comparison.changes.added.length ? (
-                      comparison.changes.added.map((item) => (
-                        <div key={`added-${item.email}`} className="rounded-2xl bg-white px-3 py-3 text-sm">
-                          <p className="font-medium text-slate-900">{item.nombreCompleto || item.email}</p>
-                          <p className="text-slate-500">{item.rol || "Sin rol"} · {item.email}</p>
+                    {(Array.isArray(comparison?.changes?.added) ? comparison.changes.added : []).length ? (
+                      (Array.isArray(comparison?.changes?.added) ? comparison.changes.added : []).map((item) => (
+                        <div key={`added-${item.email}`} className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 px-3 py-3 text-sm">
+                          <p className="font-medium text-white">{item.nombreCompleto || item.email}</p>
+                          <p className="text-[#9fb6c4]">{item.rol || "Sin rol"} · {item.email}</p>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-600">No hay altas en la muestra comparada.</p>
+                      <p className="text-sm text-[#9fb6c4]">No hay altas en la muestra comparada.</p>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-amber-200 bg-amber-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">
+                <div className="rounded-xl border border-amber-400/20 bg-amber-500/8 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-amber-300">
                     Bajas detectadas
                   </p>
                   <div className="mt-3 space-y-3">
-                    {comparison.changes.removed.length ? (
-                      comparison.changes.removed.map((item) => (
-                        <div key={`removed-${item.email}`} className="rounded-2xl bg-white px-3 py-3 text-sm">
-                          <p className="font-medium text-slate-900">{item.nombreCompleto || item.email}</p>
-                          <p className="text-slate-500">{item.rol || "Sin rol"} · {item.email}</p>
+                    {(Array.isArray(comparison?.changes?.removed) ? comparison.changes.removed : []).length ? (
+                      (Array.isArray(comparison?.changes?.removed) ? comparison.changes.removed : []).map((item) => (
+                        <div key={`removed-${item.email}`} className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 px-3 py-3 text-sm">
+                          <p className="font-medium text-white">{item.nombreCompleto || item.email}</p>
+                          <p className="text-[#9fb6c4]">{item.rol || "Sin rol"} · {item.email}</p>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-600">No hay bajas en la muestra comparada.</p>
+                      <p className="text-sm text-[#9fb6c4]">No hay bajas en la muestra comparada.</p>
                     )}
                   </div>
                 </div>
 
-                <div className="rounded-[1.5rem] border border-sky-200 bg-sky-50 p-4">
-                  <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sky-700">
+                <div className="rounded-xl border border-rose-400/20 bg-rose-500/8 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-widest text-rose-400">
                     Cambios detectados
                   </p>
                   <div className="mt-3 space-y-3">
-                    {comparison.changes.changed.length ? (
-                      comparison.changes.changed.map((item) => (
-                        <div key={`changed-${item.email}`} className="rounded-2xl bg-white px-3 py-3 text-sm">
-                          <p className="font-medium text-slate-900">{item.email}</p>
-                          <p className="text-slate-500">
+                    {(Array.isArray(comparison?.changes?.modified) ? comparison.changes.modified : (Array.isArray(comparison?.changes?.changed) ? comparison.changes.changed : [])).length ? (
+                      (Array.isArray(comparison?.changes?.modified) ? comparison.changes.modified : (Array.isArray(comparison?.changes?.changed) ? comparison.changes.changed : [])).map((item) => (
+                        <div key={`changed-${item.email}`} className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 px-3 py-3 text-sm">
+                          <p className="font-medium text-white">{item.email}</p>
+                          <p className="text-[#9fb6c4]">
                             {item.before.nombreCompleto || "Sin nombre"} / {item.before.rol || "Sin rol"}
                           </p>
-                          <p className="text-slate-700">
+                          <p className="text-[#7a9aaa]">
                             {item.after.nombreCompleto || "Sin nombre"} / {item.after.rol || "Sin rol"}
                           </p>
                         </div>
                       ))
                     ) : (
-                      <p className="text-sm text-slate-600">No hay cambios en la muestra comparada.</p>
+                      <p className="text-sm text-[#9fb6c4]">No hay cambios en la muestra comparada.</p>
                     )}
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="mt-6 text-slate-500">Selecciona dos bases distintas para ver la comparacion.</p>
+            <p className="mt-6 text-[#9fb6c4]">Selecciona dos bases distintas para ver la comparacion.</p>
           )}
         </div>
 
-        <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+        <div className="rounded-2xl border border-white/[0.07] bg-[#0c1e28] p-6">
           <div>
-            <p className="text-sm uppercase tracking-[0.22em] text-slate-400">Vista previa</p>
-            <h3 className="mt-2 text-2xl font-semibold">Registros recientes</h3>
-            <p className="mt-2 text-slate-500">
+            <p className="text-xs uppercase tracking-widest text-[#8fa9b7]">Vista previa</p>
+            <h3 className="mt-2 text-2xl font-semibold text-white">Registros recientes</h3>
+            <p className="mt-2 text-[#9fb6c4]">
               Muestra de los ultimos datos disponibles para validar consistencia y lectura.
             </p>
           </div>
@@ -616,7 +618,7 @@ export default function ExportPage() {
           <div className="mt-6 overflow-x-auto">
             <table className="min-w-full text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-500">
+                <tr className="border-b border-white/[0.06] text-[#9fb6c4]">
                   <th className="px-4 py-3 font-medium">Nombre</th>
                   <th className="px-4 py-3 font-medium">Rol</th>
                   <th className="px-4 py-3 font-medium">Email</th>
@@ -625,15 +627,15 @@ export default function ExportPage() {
               <tbody>
                 {overview.recentRecords.length ? (
                   overview.recentRecords.map((record) => (
-                    <tr key={record._id} className="border-b border-slate-100">
-                      <td className="px-4 py-3 text-slate-900">{record.nombreCompleto || "-"}</td>
-                      <td className="px-4 py-3 text-slate-600">{record.rol || "-"}</td>
-                      <td className="px-4 py-3 text-slate-600">{record.email || "-"}</td>
+                    <tr key={record._id} className="border-b border-white/[0.04]">
+                      <td className="px-4 py-3 text-white">{record.nombreCompleto || "-"}</td>
+                      <td className="px-4 py-3 text-[#9fb6c4]">{record.rol || "-"}</td>
+                      <td className="px-4 py-3 text-[#9fb6c4]">{record.email || "-"}</td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td className="px-4 py-6 text-slate-500" colSpan="3">
+                    <td className="px-4 py-6 text-[#9fb6c4]" colSpan="3">
                       Todavía no hay registros importados para mostrar.
                     </td>
                   </tr>
@@ -645,7 +647,7 @@ export default function ExportPage() {
       </section>
 
       {message ? (
-        <div className="rounded-[1.75rem] border border-slate-200 bg-white px-5 py-4 text-slate-700 shadow-sm">
+        <div className="rounded-xl border border-white/10 bg-[#0c1e28] px-5 py-4 text-[#9fb6c4]">
           {message}
         </div>
       ) : null}

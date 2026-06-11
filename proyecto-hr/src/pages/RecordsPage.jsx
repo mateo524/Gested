@@ -156,7 +156,7 @@ export default function RecordsPage() {
               </tr>
             </thead>
             <tbody>
-              {records.length ? (
+              {Array.isArray(records) && records.length ? (
                 records.map((record) => (
                   <tr key={record._id} className="border-b border-white/5">
                     <td className="px-4 py-3 text-white">{record.nombreCompleto || "-"}</td>

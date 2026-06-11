@@ -465,7 +465,7 @@ export default function EmployeesPage() {
               <label className="mb-1 block text-xs text-[#9fb6c4]">Responsable directo</label>
               <select className="pf-select" value={form.managerId} onChange={(event) => setForm({ ...form, managerId: event.target.value })}>
                 <option value="">Sin jefe asignado</option>
-                {employees.map((employee) => (
+                {(Array.isArray(employees) ? employees : []).map((employee) => (
                   <option key={employee._id} value={employee._id}>
                     {employee.apellido}, {employee.nombre}
                   </option>
@@ -499,7 +499,7 @@ export default function EmployeesPage() {
             <input className="pf-input min-w-56 flex-1" placeholder="Buscar por nombre, cargo o mail" value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} />
             <select className="pf-select min-w-56" value={filters.schoolId} onChange={(event) => setFilters({ ...filters, schoolId: event.target.value })}>
               <option value="">Todos los colegios</option>
-              {schools.map((school) => (
+              {(Array.isArray(schools) ? schools : []).map((school) => (
                 <option key={school._id} value={school._id}>
                   {school.nombre}
                 </option>
