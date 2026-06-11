@@ -73,8 +73,14 @@ function ActionBadge({ priority }) {
   return <span className={`rounded-full border px-3 py-1 text-xs font-semibold ${classes}`}>{priority}</span>;
 }
 
-function EmptyState({ text }) {
-  return <div className="rounded-2xl border border-dashed border-white/10 bg-[#0f1f28] px-4 py-3 text-sm text-[#8ea5b3]">{text}</div>;
+function EmptyState({ icon, text, action }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-[#0a1720] px-6 py-10 text-center">
+      {icon && <div className="mb-3 flex size-12 items-center justify-center rounded-2xl bg-white/5 text-[#7a9aaa]">{icon}</div>}
+      <p className="text-sm text-[#7a9aaa]">{text}</p>
+      {action && <div className="mt-4">{action}</div>}
+    </div>
+  );
 }
 
 function Bone({ className }) {
@@ -767,7 +773,14 @@ export default function DashboardPage() {
                 )}
               />
             ) : (
-              <EmptyState text="Sin acciones pendientes por ahora. Todo está en orden." />
+              <EmptyState
+                icon={
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                }
+                text="Sin acciones pendientes por ahora. Todo está en orden."
+              />
             )}
           </div>
         </SurfaceCard>
