@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Search } from "lucide-react";
+
+function SearchIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+    </svg>
+  );
+}
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
@@ -666,7 +673,7 @@ function ManagerView({ token, user }) {
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#7f99a8]" />
+          <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#7f99a8]" />
           <input
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
