@@ -152,13 +152,22 @@ router.get(
     } catch (error) {
       return res.status(error.status || 400).json({ mensaje: error.message });
     }
-    const evaluations = await Evaluation.find(filter)
-      .sort({ createdAt: -1 })
-      .populate("employeeId", "nombre apellido cargo area")
-      .populate("cycleId", "anio periodo etapa estado")
-      .lean();
+    const skip = Math.max(0, parseInt(req.query.skip) || 0);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
 
-    res.json(filterEvaluationsForScope(req, evaluations));
+    const [allEvaluations, total] = await Promise.all([
+      Evaluation.find(filter)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .populate("employeeId", "nombre apellido cargo area")
+        .populate("cycleId", "anio periodo etapa estado")
+        .lean(),
+      Evaluation.countDocuments(filter),
+    ]);
+
+    const evaluations = filterEvaluationsForScope(req, allEvaluations);
+    res.json({ data: evaluations, total, skip, limit });
   }
 );
 

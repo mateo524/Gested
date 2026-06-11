@@ -86,10 +86,10 @@ export default function CompetenciesPage() {
       setIsLoading(true); setError("");
       const [comp, emp] = await Promise.all([
         apiFetch("/competencies", { token }),
-        apiFetch("/employees", { token }).catch(() => []),
+        apiFetch("/employees", { token }).catch(() => ({})),
       ]);
       setCompetencies(comp);
-      setEmployees(emp || []);
+      setEmployees(emp?.data ?? emp ?? []);
     } catch (err) {
       setError(err.message);
     } finally {

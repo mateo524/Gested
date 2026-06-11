@@ -101,11 +101,11 @@ export default function DevelopmentPlansPage() {
       try {
         setIsLoading(true); setError("");
         const [emp, evals] = await Promise.all([
-          apiFetch("/employees", { token, signal: ctrl.signal }).catch(() => []),
-          apiFetch("/evaluations", { token, signal: ctrl.signal }).catch(() => []),
+          apiFetch("/employees", { token, signal: ctrl.signal }).catch(() => ({})),
+          apiFetch("/evaluations", { token, signal: ctrl.signal }).catch(() => ({})),
         ]);
-        setEmployees(emp || []);
-        setEvaluations(evals || []);
+        setEmployees(emp?.data ?? emp ?? []);
+        setEvaluations(evals?.data ?? evals ?? []);
         await loadPlans(ctrl.signal);
       } catch (err) {
         if (!ctrl.signal.aborted) setError(err.message);

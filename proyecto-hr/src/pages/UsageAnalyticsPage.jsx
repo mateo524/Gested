@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import StatCard from "../components/StatCard";
 import {
   BarChart,
   Bar,
@@ -24,29 +25,6 @@ function StatCardSkeleton() {
       <Bone className="h-7 w-16" />
       <Bone className="h-3 w-32" />
     </div>
-  );
-}
-
-// ─── Stat card ────────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, hint, accent = "teal" }) {
-  const accentClass =
-    accent === "green"
-      ? "from-emerald-500/10 to-[#0c1920] border-emerald-400/15"
-      : accent === "amber"
-        ? "from-amber-500/10 to-[#0c1920] border-amber-300/15"
-        : "from-[#14b8a6]/10 to-[#0c1920] border-[#14b8a6]/20";
-
-  return (
-    <article
-      className={`rounded-2xl border bg-gradient-to-br p-4 ${accentClass}`}
-    >
-      <p className="text-[11px] text-[#7a98a8] uppercase tracking-[.1em] font-medium">{label}</p>
-      <p className="mt-2 text-2xl font-bold tracking-tight text-white">
-        {typeof value === "number" ? value.toLocaleString("es-AR") : value}
-      </p>
-      {hint ? <p className="mt-1 text-[11px] text-[#7a98a8]">{hint}</p> : null}
-    </article>
   );
 }
 
@@ -152,34 +130,34 @@ export default function UsageAnalyticsPage() {
           <StatCard
             label="Organizaciones totales"
             value={data.overview.totalOrgs}
-            hint={`${data.overview.activeOrgs} activas en los últimos 30 días`}
+            sub={`${data.overview.activeOrgs} activas en los últimos 30 días`}
           />
           <StatCard
             label="Organizaciones activas"
             value={data.overview.activeOrgs}
-            hint="Con al menos 1 evaluación en los últimos 30 días"
-            accent="green"
+            sub="Con al menos 1 evaluación en los últimos 30 días"
+            accent
           />
           <StatCard
             label="Usuarios totales"
             value={data.overview.totalUsers}
-            hint="En todas las organizaciones"
+            sub="En todas las organizaciones"
           />
           <StatCard
             label="Empleados totales"
             value={data.overview.totalEmployees}
-            hint="Perfiles cargados en la plataforma"
+            sub="Perfiles cargados en la plataforma"
           />
           <StatCard
             label="Evaluaciones totales"
             value={data.overview.totalEvaluations}
-            hint="Históricas en toda la plataforma"
+            sub="Históricas en toda la plataforma"
           />
           <StatCard
             label="Evaluaciones este mes"
             value={data.overview.evaluationsThisMonth}
-            hint="Creadas en el mes en curso"
-            accent="amber"
+            sub="Creadas en el mes en curso"
+            accent
           />
         </div>
       ) : null}

@@ -274,11 +274,12 @@ function EmployeeView({ token, language, searchQuery, user }) {
   const loadEvals = useCallback(async (signal) => {
     try {
       setIsLoading(true); setError("");
-      const [evals, met, cyc] = await Promise.all([
+      const [evalsRes, met, cyc] = await Promise.all([
         apiFetch("/evaluations", { token, signal }),
         apiFetch("/metrics", { token, signal }).catch(() => []),
         apiFetch("/evaluation-cycles", { token, signal }).catch(() => []),
       ]);
+      const evals = evalsRes?.data ?? evalsRes ?? [];
       setEvaluations(evals);
       setMetrics(met || []);
       setCycles(cyc || []);
@@ -506,14 +507,14 @@ function ManagerView({ token, user }) {
   const loadData = useCallback(async (signal) => {
     try {
       setIsLoading(true); setError("");
-      const [emp, cyc, evals] = await Promise.all([
+      const [empRes, cyc, evalsRes] = await Promise.all([
         apiFetch("/employees?includeSelf=true", { token, signal }),
         apiFetch("/evaluation-cycles", { token, signal }),
         apiFetch("/evaluations", { token, signal }),
       ]);
-      setEmployees(emp);
+      setEmployees(empRes?.data ?? empRes ?? []);
       setCycles(cyc);
-      setEvaluations(evals);
+      setEvaluations(evalsRes?.data ?? evalsRes ?? []);
     } catch (err) {
       if (!signal?.aborted) setError(err.message);
     } finally {

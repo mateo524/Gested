@@ -17,6 +17,9 @@ import {
   syncPrimaryRoleAssignmentForUser,
   validateRoleAssignmentInput,
 } from "../utils/accessControl.js";
+import { runInBackground } from "../utils/background.js";
+import { invalidateReportCache } from "./reports.routes.js";
+import { invalidateDashboardCache } from "./dashboard.routes.js";
 
 const router = express.Router();
 
@@ -319,6 +322,13 @@ router.post("/", auth, permit("manage_roles"), async (req, res) => {
   });
 
   res.status(201).json({ mensaje: "Rol creado", role: { ...role.toObject(), usersCount: 0 } });
+  runInBackground(async () => {
+    const cId = String(companyId || "");
+    if (cId) {
+      invalidateReportCache(cId);
+      invalidateDashboardCache(cId);
+    }
+  }, "invalidate-roles-cache");
 });
 
 router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
@@ -374,6 +384,13 @@ router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
   });
 
   res.json({ mensaje: "Rol actualizado", role: { ...role.toObject(), usersCount } });
+  runInBackground(async () => {
+    const cId = String(role.companyId || "");
+    if (cId) {
+      invalidateReportCache(cId);
+      invalidateDashboardCache(cId);
+    }
+  }, "invalidate-roles-cache");
 });
 
 router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
@@ -414,6 +431,13 @@ router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
   });
 
   res.json({ mensaje: "Rol eliminado" });
+  runInBackground(async () => {
+    const cId = String(companyId || "");
+    if (cId) {
+      invalidateReportCache(cId);
+      invalidateDashboardCache(cId);
+    }
+  }, "invalidate-roles-cache");
 });
 
 router.post("/sync-defaults", auth, permit("manage_roles"), async (req, res) => {

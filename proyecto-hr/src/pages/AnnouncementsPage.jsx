@@ -205,8 +205,8 @@ export default function AnnouncementsPage() {
   const loadEmployees = useCallback(async () => {
     if (!token || !canManage) return;
     try {
-      const data = await apiFetch("/employees", { token });
-      setEmployees(data || []);
+      const res = await apiFetch("/employees", { token });
+      setEmployees(res?.data ?? res ?? []);
     } catch {
       setEmployees([]);
     }

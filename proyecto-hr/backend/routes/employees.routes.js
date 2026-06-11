@@ -110,11 +110,19 @@ router.get(
     filter.$or = [{ nombre: regex }, { apellido: regex }, { email: regex }, { cargo: regex }];
   }
 
-  const employees = await Employee.find(filter)
-    .select("-__v")
-    .sort({ apellido: 1, nombre: 1 })
-    .lean();
-  res.json(employees);
+  const skip = Math.max(0, parseInt(req.query.skip) || 0);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+
+  const [employees, total] = await Promise.all([
+    Employee.find(filter)
+      .select("-__v")
+      .sort({ apellido: 1, nombre: 1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    Employee.countDocuments(filter),
+  ]);
+  res.json({ data: employees, total, skip, limit });
 });
 
 router.get(

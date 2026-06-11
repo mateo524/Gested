@@ -560,9 +560,9 @@ export default function MetricsPage() {
 
       if (metricsResult.status === "fulfilled") setMetrics(metricsResult.value || []);
       if (competenciesResult.status === "fulfilled") setCompetencies(competenciesResult.value || []);
-      if (employeesResult.status === "fulfilled") setEmployees(employeesResult.value || []);
+      if (employeesResult.status === "fulfilled") setEmployees(employeesResult.value?.data ?? employeesResult.value ?? []);
       if (cyclesResult.status === "fulfilled") setCycles(cyclesResult.value || []);
-      if (evaluationsResult.status === "fulfilled") setEvaluations(evaluationsResult.value || []);
+      if (evaluationsResult.status === "fulfilled") setEvaluations(evaluationsResult.value?.data ?? evaluationsResult.value ?? []);
       if (kpisResult.status === "fulfilled") setKpis(kpisResult.value || []);
       if (okrsResult.status === "fulfilled") setOkrs(okrsResult.value || []);
 
@@ -848,8 +848,8 @@ export default function MetricsPage() {
   }
 
   async function refreshEvaluationsAfterSave() {
-    const nextEvaluations = await apiFetch("/evaluations", { token });
-    setEvaluations(nextEvaluations);
+    const nextEvaluationsRes = await apiFetch("/evaluations", { token });
+    setEvaluations(nextEvaluationsRes?.data ?? nextEvaluationsRes ?? []);
   }
 
   async function handleSaveEditor(event) {

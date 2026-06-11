@@ -196,14 +196,17 @@ function OnboardingChecklistInner({ token, user, activeCompanyId, setView }) {
     async function fetchAll() {
       setLoading(true);
       try {
-        const [employees, competencies, cycles, evaluations] = await Promise.all([
-          apiFetch("/employees", { token }).catch(() => []),
+        const [employeesRes, competencies, cycles, evaluationsRes] = await Promise.all([
+          apiFetch("/employees", { token }).catch(() => ({})),
           apiFetch("/competencies", { token }).catch(() => []),
           apiFetch("/evaluation-cycles", { token }).catch(() => []),
-          apiFetch("/evaluations", { token }).catch(() => []),
+          apiFetch("/evaluations", { token }).catch(() => ({})),
         ]);
 
         if (cancelled) return;
+
+        const employees = employeesRes?.data ?? employeesRes ?? [];
+        const evaluations = evaluationsRes?.data ?? evaluationsRes ?? [];
 
         const data = {
           employees: Array.isArray(employees) ? employees : [],

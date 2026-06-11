@@ -13,6 +13,9 @@ import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/
 import { buildEvaluationFilter } from "./evaluations.routes.js";
 import { buildOperationalRecordFilter } from "./metrics.routes.js";
 import Evaluation from "../models/Evaluation.js";
+import { runInBackground } from "../utils/background.js";
+import { invalidateReportCache } from "./reports.routes.js";
+import { invalidateDashboardCache } from "./dashboard.routes.js";
 
 const router = express.Router();
 
@@ -246,8 +249,9 @@ router.get(
       const dataset = await loadSuggestionDataset(req);
       const suggestions = buildDevelopmentSuggestionsFromData(dataset);
       res.json({ suggestions });
-    } catch (error) {
-      res.status(error.status || 400).json({ mensaje: error.message });
+    } catch (err) {
+      const status = err.status || (err.name === 'ValidationError' ? 400 : 500);
+      return res.status(status).json({ mensaje: err.message || "Error interno del servidor" });
     }
   }
 );
@@ -374,6 +378,13 @@ router.post(
     });
 
     res.status(201).json({ mensaje: "Plan de desarrollo creado", plan });
+    runInBackground(async () => {
+      const cId = String(employee.companyId || req.tenantScope?.companyId || "");
+      if (cId) {
+        invalidateReportCache(cId);
+        invalidateDashboardCache(cId);
+      }
+    }, "invalidate-dev-plans-cache");
   }
 );
 
@@ -424,6 +435,13 @@ router.put(
     });
 
     res.json({ mensaje: "Plan actualizado", plan });
+    runInBackground(async () => {
+      const cId = String(plan.companyId || req.tenantScope?.companyId || "");
+      if (cId) {
+        invalidateReportCache(cId);
+        invalidateDashboardCache(cId);
+      }
+    }, "invalidate-dev-plans-cache");
   }
 );
 
@@ -458,6 +476,13 @@ router.delete(
     });
 
     res.json({ mensaje: "Plan eliminado" });
+    runInBackground(async () => {
+      const cId = String(plan.companyId || req.tenantScope?.companyId || "");
+      if (cId) {
+        invalidateReportCache(cId);
+        invalidateDashboardCache(cId);
+      }
+    }, "invalidate-dev-plans-cache");
   }
 );
 
@@ -511,8 +536,9 @@ router.get(
         evaluationId: evaluation._id,
         suggestions,
       });
-    } catch (error) {
-      res.status(error.status || 500).json({ mensaje: error.message });
+    } catch (err) {
+      const status = err.status || (err.name === 'ValidationError' ? 400 : 500);
+      return res.status(status).json({ mensaje: err.message || "Error interno del servidor" });
     }
   }
 );
