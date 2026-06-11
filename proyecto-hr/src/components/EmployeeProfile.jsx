@@ -83,28 +83,23 @@ export default function EmployeeProfile({ empleado, onVolver }) {
           setHistorial([]);
         }
       })
-      .finally(() => setCargandoHistorial(false));
+      .finally(() => { if (!ctrl.signal.aborted) setCargandoHistorial(false); });
     return () => ctrl.abort();
   }, [openTab]);
 
   const handleGuardar = async () => {
     try {
       setGuardando(true);
-      const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/records/${empleado._id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(datosEdit),
-        }
-      );
-      if (!response.ok) throw new Error("Error al guardar");
+      await apiFetch(`/records/${empleado._id}`, {
+        token,
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(datosEdit),
+      });
       setEditando(false);
+      onVolver();
     } catch (err) {
-      alert("Error: " + err.message);
+      addToast({ message: err.message, type: "error" });
     } finally {
       setGuardando(false);
     }
@@ -128,7 +123,7 @@ export default function EmployeeProfile({ empleado, onVolver }) {
       a.click();
       window.URL.revokeObjectURL(url);
     } catch (err) {
-      alert("Error: " + err.message);
+      addToast({ message: err.message, type: "error" });
     } finally {
       setDescargando(null);
     }
@@ -143,11 +138,11 @@ export default function EmployeeProfile({ empleado, onVolver }) {
   // Shared input style helpers
   // ---------------------------------------------------------------------------
   const inputCls =
-    "w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500";
+    "w-full px-3 py-2 border border-white/10 rounded-lg focus:ring-2 focus:ring-[#14b8a6]/50 bg-[#091319] text-white";
 
   const Field = ({ label, children }) => (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label className="block text-sm font-medium text-[#9ab3be] mb-1">
         {label}
       </label>
       {children}
@@ -162,18 +157,18 @@ export default function EmployeeProfile({ empleado, onVolver }) {
       {/* Back button */}
       <button
         onClick={onVolver}
-        className="text-emerald-600 hover:text-emerald-800 font-semibold text-sm"
+        className="text-[#14b8a6] hover:text-[#0d9488] font-semibold text-sm"
       >
         ← Volver
       </button>
 
       {/* ── Header card (name + action buttons — always visible) ── */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-sm px-8 py-6 flex justify-between items-center">
+      <div className="bg-[#0c1e28] rounded-3xl border border-white/[0.08] shadow-sm px-8 py-6 flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-slate-900">
+          <h2 className="text-3xl font-bold text-white">
             {datosEdit.nombreCompleto}
           </h2>
-          <p className="text-slate-600 mt-1">{datosEdit.rol}</p>
+          <p className="text-[#7f99a8] mt-1">{datosEdit.rol}</p>
         </div>
         {!editando && (
           <div className="flex gap-2">
