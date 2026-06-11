@@ -307,7 +307,7 @@ export default function StorageCenterPage() {
           <p className="mt-1 text-[#9fb6c4]">Listado central con empresa, tipo, estado y fecha de carga.</p>
 
           <div className="mt-6 space-y-4">
-            {data.files.length ? data.files.map((file) => (
+            {Array.isArray(data?.files) && data.files.length ? data.files.map((file) => (
               <article key={file._id} className="rounded-[1.75rem] border border-white/10 bg-[#0f1f28] p-5">
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div>
@@ -387,7 +387,7 @@ export default function StorageCenterPage() {
               <div className="rounded-[1.75rem] border border-white/10 bg-[#0f1f28] p-5">
                 <h4 className="font-semibold text-white">Registros recientes</h4>
                 <div className="mt-4 space-y-3">
-                  {detail.preview.length ? (
+                  {Array.isArray(detail?.preview) && detail.preview.length ? (
                     detail.preview.map((record) => (
                       <div key={record._id} className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3 text-sm">
                         <p className="font-medium text-white">{record.nombreCompleto || "-"}</p>
