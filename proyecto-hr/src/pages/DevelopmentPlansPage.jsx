@@ -85,8 +85,9 @@ export default function DevelopmentPlansPage() {
     const q = params.toString() ? `?${params.toString()}` : "";
     try {
       const data = await apiFetch(`/development-plans${q}`, { token, signal });
-      setPlans(data);
-      sessionStorage.setItem(plansCacheKey, JSON.stringify(data));
+      const plans = Array.isArray(data) ? data : (data?.data ?? []);
+      setPlans(plans);
+      sessionStorage.setItem(plansCacheKey, JSON.stringify(plans));
     } catch (err) {
       if (!signal?.aborted) setError(err.message);
     }
