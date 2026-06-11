@@ -81,6 +81,36 @@ function Bone({ className }) {
   return <div className={`skeleton ${className}`} />;
 }
 
+function SkeletonCard({ className = "" }) {
+  return (
+    <div className={`rounded-2xl border border-white/10 bg-[#0c1e28] animate-pulse ${className}`}>
+      <div className="p-5 space-y-3">
+        <div className="h-3 w-24 rounded bg-white/10" />
+        <div className="h-7 w-16 rounded bg-white/10" />
+        <div className="h-2 w-32 rounded bg-white/10" />
+      </div>
+    </div>
+  )
+}
+
+function SkeletonTable({ rows = 5 }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
+      <div className="h-12 border-b border-white/10 bg-white/5 animate-pulse" />
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4 px-5 py-3.5 border-b border-white/[0.05] animate-pulse">
+          <div className="h-8 w-8 rounded-full bg-white/10 shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <div className="h-3 w-1/3 rounded bg-white/10" />
+            <div className="h-2 w-1/4 rounded bg-white/[0.07]" />
+          </div>
+          <div className="h-6 w-16 rounded-full bg-white/10" />
+        </div>
+      ))}
+    </div>
+  )
+}
+
 function DashboardSkeleton() {
   return (
     <div className="space-y-4">
@@ -610,6 +640,10 @@ export default function DashboardPage() {
     return (
       <div className="space-y-4">
         <DashboardSkeleton />
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {[...Array(4)].map((_, i) => <SkeletonCard key={i} />)}
+        </section>
+        <SkeletonTable rows={5} />
         {loadSlow ? (
           <div className="flex items-center gap-3 rounded-2xl border border-amber-300/20 bg-amber-500/8 px-4 py-3 text-sm text-amber-200">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 animate-spin">

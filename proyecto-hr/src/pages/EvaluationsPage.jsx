@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
@@ -469,6 +470,7 @@ function ManagerView({ token, user }) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [filters, setFilters] = useState({ cicloId: "", area: "", estado: "" });
+  const [searchQuery, setSearchQuery] = useState("");
   const [newModal, setNewModal] = useState(false);
   const [form, setForm] = useState({ employeeId: "" });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -553,8 +555,17 @@ function ManagerView({ token, user }) {
       return emp?.area === filters.area;
     });
     if (filters.estado) list = list.filter(e => e.estado === filters.estado);
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      list = list.filter(ev => {
+        const emp = ev.employeeId;
+        const nombre = emp ? `${emp.nombre || ""} ${emp.apellido || ""}`.toLowerCase() : "";
+        const nombreAlt = ev.empleadoNombre?.toLowerCase() || "";
+        return nombre.includes(q) || nombreAlt.includes(q) || ev.empleadoId?.nombre?.toLowerCase().includes(q);
+      });
+    }
     return list;
-  }, [evaluations, filters, employees]);
+  }, [evaluations, filters, employees, searchQuery]);
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -654,6 +665,15 @@ function ManagerView({ token, user }) {
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-[#7f99a8]" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder="Buscar por empleado..."
+            className="w-full sm:w-72 rounded-xl border border-white/10 bg-[#0c1e28] pl-9 pr-4 py-2 text-sm text-white placeholder-[#7f99a8] focus:border-[#14b8a6]/50 focus:outline-none"
+          />
+        </div>
         <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
           value={filters.cicloId} onChange={e => setFilters(f => ({ ...f, cicloId: e.target.value }))}>
           <option value="">Todos los ciclos</option>
