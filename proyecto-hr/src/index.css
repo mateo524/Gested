@@ -81,12 +81,8 @@ button:active:not(:disabled),
   transform: scale(0.985);
 }
 
-button:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[role='button']:focus-visible {
-  outline: 2px solid rgba(20, 184, 166, 0.7);
+:focus-visible {
+  outline: 2px solid rgba(20, 184, 166, 0.6);
   outline-offset: 2px;
 }
 
@@ -116,6 +112,7 @@ select optgroup {
 
   .pf-card {
     @apply rounded-2xl border border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028] text-[#E8EEF1] shadow-[0_8px_28px_rgba(2,8,23,0.4),inset_0_1px_0_rgba(255,255,255,0.05)];
+    transition: border-color 180ms, box-shadow 180ms;
   }
 
   .pf-card-muted {
@@ -206,6 +203,53 @@ select optgroup {
     @apply min-w-full text-left text-sm;
   }
 }
+
+/* ─── Global dark scrollbar ─────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(20,184,166,0.3); }
+
+/* Sidebar narrower scrollbar */
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 4px; }
+
+/* ─── Page enter animation ───────────────────────────────── */
+.pf-page-enter {
+  animation: pageEnter 0.25s ease both;
+}
+
+/* (pageEnter keyframes already defined below — reuse) */
+
+/* ─── Utility button classes ─────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #14b8a6;
+  color: #022019;
+  font-weight: 600;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  transition: background-color 150ms, transform 120ms;
+}
+.btn-primary:hover { background-color: #0d9488; }
+.btn-primary:active { transform: scale(0.98); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255,255,255,0.10);
+  background-color: rgba(255,255,255,0.05);
+  color: #fff;
+  border-radius: 0.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  transition: background-color 150ms;
+}
+.btn-ghost:hover { background-color: rgba(255,255,255,0.10); }
 
 /* fallback puntual para legibilidad legacy sin forzar todos los componentes */
 @layer utilities {

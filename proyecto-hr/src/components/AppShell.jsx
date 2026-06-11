@@ -479,7 +479,7 @@ export default function AppShell({
     return (
       <button key={item.key} type="button"
         onClick={() => { setView(item.key); setActiveGroup(null); onClickOverride?.(); }}
-        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition ${active ? "bg-[#14b8a6] text-[#0f172a] shadow-[0_4px_14px_rgba(20,184,166,0.28)]" : "text-[#8fa8b6] hover:bg-white/[0.06] hover:text-white"}`}>
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ${active ? "bg-[#14b8a6]/10 border-l-2 border-[#14b8a6] text-[#14b8a6] pl-[10px]" : "border-l-2 border-transparent text-[#8fa8b6] hover:bg-white/5 hover:text-white"}`}>
         <AppIcon name={item.icon || item.key} active={active} />
         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
       </button>
@@ -497,13 +497,13 @@ export default function AppShell({
           if (first) setView(first.key);
           onClickOverride?.();
         }}
-        className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 text-left text-sm font-semibold transition ${isActive ? "bg-white/10 text-white ring-1 ring-white/20" : "text-[#8fa8b6] hover:bg-white/[0.06] hover:text-white"}`}>
+        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ${isActive ? "bg-[#14b8a6]/10 border-l-2 border-[#14b8a6] text-[#14b8a6] pl-[10px]" : "border-l-2 border-transparent text-[#8fa8b6] hover:bg-white/5 hover:text-white"}`}>
         <AppIcon name={group.icon} active={isActive} />
         {!sidebarCollapsed && (
           <>
             <span className="flex-1 truncate">{group.label}</span>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
-              className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isActive ? "rotate-90 text-white" : "text-[#5e7d8e]"}`}>
+              className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isActive ? "rotate-90 text-[#14b8a6]" : "text-[#5e7d8e]"}`}>
               <path d="M6 3l5 5-5 5"/>
             </svg>
           </>
@@ -552,12 +552,30 @@ export default function AppShell({
             </div>
           ) : null}
 
-          <div className="flex-1 overflow-y-auto px-2.5 py-3">
+          <div className="flex-1 overflow-y-auto px-2.5 py-3 sidebar-scroll">
             {!sidebarCollapsed ? (
               <nav className="space-y-0.5">
-                {sidebarNav.map(item =>
-                  item.type === "item" ? renderNavItem(item) : renderNavGroup(item)
-                )}
+                {sidebarNav.map((item, idx) => {
+                  // Insert section label before first item of each named group
+                  const groupLabels = {
+                    "personas-group": "Personas",
+                    "eval-group": "Evaluaciones",
+                    "reporte-ejecutivo": "Reportes",
+                    "plataforma-group": "Plataforma",
+                  };
+                  const labelKey = item.key === "reporte-ejecutivo" ? "reporte-ejecutivo" : item.type === "group" ? item.key : null;
+                  const sectionLabel = labelKey && groupLabels[labelKey] ? groupLabels[labelKey] : null;
+                  const prevItem = sidebarNav[idx - 1];
+                  const showLabel = sectionLabel && prevItem; // don't show for very first item
+                  return (
+                    <div key={item.key}>
+                      {showLabel ? (
+                        <p className="text-[9px] uppercase tracking-[.15em] text-white/25 px-3 pt-3 pb-1.5">{sectionLabel}</p>
+                      ) : null}
+                      {item.type === "item" ? renderNavItem(item) : renderNavGroup(item)}
+                    </div>
+                  );
+                })}
               </nav>
             ) : (
               <nav className="space-y-1">
@@ -571,9 +589,9 @@ export default function AppShell({
               <button type="button" onClick={() => setView("perfil")}
                 className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]">
                 {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-lg object-cover"/>
+                  <img src={user.avatarUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-lg object-cover ring-1 ring-transparent hover:ring-2 hover:ring-[#14b8a6]/40 transition-all"/>
                 ) : (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#14b8a6] text-[11px] font-semibold text-[#0f172a]">{userInitials}</div>
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#14b8a6] text-[11px] font-semibold text-[#0f172a] ring-1 ring-transparent hover:ring-2 hover:ring-[#14b8a6]/40 transition-all">{userInitials}</div>
                 )}
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-xs font-semibold text-white">{displayName}</p>
@@ -620,9 +638,28 @@ export default function AppShell({
                 </div>
               )}
 
+              {/* Breadcrumb */}
+              {(() => {
+                const currentView = allViews.find(v => v.key === view);
+                const parentGroup = activeGroupDef;
+                return (
+                  <div className="hidden md:flex items-center gap-1.5 text-sm shrink-0">
+                    <span className="text-[#5e7d8e] font-medium">ZENTOR</span>
+                    <span className="text-[#14b8a6]/40 font-medium">›</span>
+                    {parentGroup ? (
+                      <>
+                        <span className="text-[#7f99a8]">{parentGroup.label}</span>
+                        <span className="text-[#14b8a6]/40 font-medium">›</span>
+                      </>
+                    ) : null}
+                    <span className="text-white font-semibold">{currentView?.label || view}</span>
+                  </div>
+                );
+              })()}
+
               {/* Search */}
               <div ref={searchRef} className="relative flex-1 max-w-xl mx-auto">
-                <div className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#12222d] px-3 py-2">
+                <div className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#12222d] px-3 py-2 transition-all duration-150 focus-within:border-[#14b8a6]/50 focus-within:shadow-[0_0_0_3px_rgba(20,184,166,0.1)]">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 text-[#7f99a8]">
                     <path d="M11 19a8 8 0 1 1 5.3-14l4.2 4.2"/><path d="M21 21l-4.35-4.35"/>
                   </svg>
@@ -733,7 +770,7 @@ export default function AppShell({
           ) : null}
 
           <main className="flex-1 overflow-y-auto px-4 py-5 md:px-5">
-            <div className="mx-auto w-full max-w-[1440px]">
+            <div key={view} className="mx-auto w-full max-w-[1440px] pf-page-enter">
               {backendDown ? (
                 <div className="mb-4 flex items-center gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                   <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0"><path d="M8 5v3M8 10h.01"/><path d="M7.1 2.5L1.5 13h13L9 2.5a1.1 1.1 0 00-1.9 0z"/></svg>
