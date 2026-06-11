@@ -1224,6 +1224,11 @@ function ExecutiveReportPage() {
 
   useEffect(() => { filtersRef.current = filters; }, [filters]);
 
+  // Mark onboarding "visited reports" step as done
+  useEffect(() => {
+    localStorage.setItem("onboarding_visited_reports", "true");
+  }, []);
+
   const loadOverview = useCallback(async () => {
     if (!token || !canViewExecutive || isEmployee) return;
     try {

@@ -9,13 +9,17 @@ import Competency from "../models/Competency.js";
 import Metric from "../models/Metric.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import Evaluation from "../models/Evaluation.js";
+import DevelopmentPlan from "../models/DevelopmentPlan.js";
+import KPIRecord from "../models/KPIRecord.js";
+import OKRRecord from "../models/OKRRecord.js";
+import EvaluationScore from "../models/EvaluationScore.js";
 import { syncCompanySpreadsheet, isGoogleSheetsEnabled } from "./googleSheets.js";
 
 async function loadCompanyData(companyId, schoolId = null) {
   const baseFilter = { companyId };
   if (schoolId) baseFilter.schoolId = schoolId;
 
-  const [employees, competencies, metrics, cycles, evaluations] = await Promise.all([
+  const [employees, competencies, metrics, cycles, evaluations, plans, kpis, okrs] = await Promise.all([
     Employee.find(baseFilter).lean(),
     Competency.find(baseFilter).lean(),
     Metric.find({ ...baseFilter, activa: true }).lean(),
@@ -24,9 +28,28 @@ async function loadCompanyData(companyId, schoolId = null) {
       .populate("employeeId", "nombre apellido")
       .populate("cycleId", "periodo anio")
       .lean(),
+    DevelopmentPlan.find(baseFilter).lean(),
+    KPIRecord.find(baseFilter).lean(),
+    OKRRecord.find(baseFilter).lean(),
   ]);
 
-  return { employees, competencies, metrics, cycles, evaluations };
+  // Load EvaluationScores keyed to the evaluations fetched above
+  const evalIds = evaluations.map(e => e._id);
+  const scores = evalIds.length > 0
+    ? await EvaluationScore.find({ evaluationId: { $in: evalIds } })
+        .populate({
+          path: "metricId",
+          select: "nombre competencyId",
+          populate: { path: "competencyId", select: "nombre" },
+        })
+        .lean()
+    : [];
+
+  // Attach evaluation context to each score so the formatter can access it
+  const evalMap = new Map(evaluations.map(e => [String(e._id), e]));
+  scores.forEach(s => { s._evalObj = evalMap.get(String(s.evaluationId)) || {}; });
+
+  return { employees, competencies, metrics, cycles, evaluations, plans, kpis, okrs, scores };
 }
 
 /**

@@ -88,7 +88,7 @@ function computeDone(key, data) {
     case "evaluations":
       return evaluations.length > 0;
     case "report":
-      return evaluations.filter((e) => e.estado === "CERRADA").length > 0;
+      return localStorage.getItem("onboarding_visited_reports") === "true";
     default:
       return false;
   }
