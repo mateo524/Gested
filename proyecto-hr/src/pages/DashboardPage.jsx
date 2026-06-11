@@ -22,11 +22,11 @@ function formatDate(value) {
 
 function SurfaceCard({ title, subtitle, children, actions }) {
   return (
-    <section className="pf-card p-5 md:p-6">
+    <section className="pf-card-premium p-5 md:p-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-white">{title}</h3>
-          {subtitle ? <p className="mt-0.5 text-xs text-[#7a98a8]">{subtitle}</p> : null}
+          <h3 className="text-sm font-semibold text-white/95 tracking-tight">{title}</h3>
+          {subtitle ? <p className="mt-0.5 text-xs text-[#6a8ea0]">{subtitle}</p> : null}
         </div>
         {actions}
       </div>
@@ -35,29 +35,94 @@ function SurfaceCard({ title, subtitle, children, actions }) {
   );
 }
 
+const STAT_ICONS = {
+  teal: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+  ),
+  green: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M17 20H7m10 0v-2a3 3 0 00-3-3H7a3 3 0 00-3 3v2M12 11a4 4 0 100-8 4 4 0 000 8z"/>
+    </svg>
+  ),
+  amber: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+    </svg>
+  ),
+  blue: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+    </svg>
+  ),
+};
+
 function StatCard({ label, value, hint, accent = "teal", onClick }) {
   const animated = useCountUp(typeof value === "number" ? value : Number(value));
   const display = Number.isFinite(Number(value)) ? animated : value;
 
-  const accentClass =
-    accent === "green"
-      ? "from-emerald-500/10 to-[#0c1920] border-emerald-400/15 shadow-[0_4px_20px_rgba(34,197,94,0.07)]"
-      : accent === "amber"
-        ? "from-amber-500/10 to-[#0c1920] border-amber-300/15 shadow-[0_4px_20px_rgba(251,191,36,0.07)]"
-        : "from-[#14b8a6]/10 to-[#0c1920] border-[#14b8a6]/20 shadow-[0_4px_20px_rgba(20,184,166,0.09)]";
+  const styles = {
+    green: {
+      border: "border-emerald-400/[0.15]",
+      bg: "from-emerald-500/[0.08] to-[#0b1c22]",
+      shadow: "0 4px 24px rgba(34,197,94,0.08), inset 0 1px 0 rgba(52,211,153,0.07)",
+      iconBg: "rgba(52,211,153,0.1)",
+      iconColor: "#34d399",
+      numColor: "#6ee7b7",
+    },
+    amber: {
+      border: "border-amber-300/[0.18]",
+      bg: "from-amber-500/[0.08] to-[#0b1c22]",
+      shadow: "0 4px 24px rgba(251,191,36,0.08), inset 0 1px 0 rgba(251,191,36,0.07)",
+      iconBg: "rgba(251,191,36,0.1)",
+      iconColor: "#fbbf24",
+      numColor: "#fcd34d",
+    },
+    blue: {
+      border: "border-sky-400/[0.15]",
+      bg: "from-sky-500/[0.07] to-[#0b1c22]",
+      shadow: "0 4px 24px rgba(56,189,248,0.07), inset 0 1px 0 rgba(56,189,248,0.06)",
+      iconBg: "rgba(56,189,248,0.1)",
+      iconColor: "#38bdf8",
+      numColor: "#7dd3fc",
+    },
+    teal: {
+      border: "border-[#14b8a6]/[0.2]",
+      bg: "from-[#14b8a6]/[0.08] to-[#0b1c22]",
+      shadow: "0 4px 24px rgba(20,184,166,0.1), inset 0 1px 0 rgba(20,184,166,0.08)",
+      iconBg: "rgba(20,184,166,0.1)",
+      iconColor: "#14b8a6",
+      numColor: "#2dd4bf",
+    },
+  };
+  const s = styles[accent] || styles.teal;
+  const icon = STAT_ICONS[accent] || STAT_ICONS.teal;
 
   const Tag = onClick ? "button" : "article";
   return (
     <Tag
       type={onClick ? "button" : undefined}
       onClick={onClick}
-      className={`card-lift w-full rounded-2xl border bg-gradient-to-br p-4 text-left ${accentClass} ${onClick ? "group cursor-pointer ring-inset hover:ring-1 hover:ring-white/15 hover:scale-[1.01] transition-transform" : ""}`}
+      className={`card-lift group w-full rounded-2xl border bg-gradient-to-br p-4 text-left transition-all ${s.border} ${s.bg} ${onClick ? "cursor-pointer" : ""}`}
+      style={{ boxShadow: s.shadow }}
     >
-      <p className="text-[11px] text-[#7a98a8] uppercase tracking-[.1em] font-medium">{label}</p>
-      <p className="stat-num mt-2 text-2xl font-bold tracking-tight text-white">{display}</p>
-      <p className="mt-1 text-[11px] text-[#7a98a8]">{hint}</p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-[11px] font-medium text-[#7a98a8] uppercase tracking-[.1em]">{label}</p>
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110"
+          style={{ background: s.iconBg, color: s.iconColor, boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1)" }}>
+          {icon}
+        </span>
+      </div>
+      <p className="stat-num mt-3 text-[1.75rem] font-bold tracking-tight leading-none" style={{ color: s.numColor }}>{display}</p>
+      <p className="mt-1.5 text-[11px] text-[#6a8898]">{hint}</p>
       {onClick ? (
-        <p className="mt-2 text-[10px] text-[#14b8a6] font-medium tracking-wide transition-colors group-hover:text-white">Ver →</p>
+        <div className="mt-3 flex items-center gap-1 text-[10px] font-semibold transition-all" style={{ color: s.iconColor, opacity: 0.7 }}>
+          <span>Ver detalle</span>
+          <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5">
+            <path d="M2 6h8M6 2l4 4-4 4"/>
+          </svg>
+        </div>
       ) : null}
     </Tag>
   );
@@ -681,46 +746,67 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            {greeting}{user?.nombre ? `, ${user.nombre}` : ""}
-          </h1>
-          <p className="mt-0.5 text-sm text-[#7a9aaa]">
-            {user?.isSuperAdmin ? "Vista general de plataforma" : isEmpleado ? "Tu espacio personal" : isJefe ? "Vista de tu equipo" : "Vista general de la organización"}
-          </p>
+    <div className="space-y-3.5">
+      {/* Header */}
+      <div className="rounded-2xl border border-white/[0.07] p-5 md:p-6"
+        style={{ background: "linear-gradient(135deg, #132230 0%, #0d1e2b 50%, #091520 100%)", boxShadow: "0 8px 32px rgba(2,8,23,0.4), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#14b8a6] shadow-[0_0_6px_rgba(20,184,166,0.8)]" />
+              <p className="text-[10px] uppercase tracking-[.18em] font-semibold text-[#14b8a6]/70">Panel principal</p>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white leading-tight">
+              {greeting}{user?.nombre ? `, ${user.nombre}` : ""}
+            </h1>
+            <p className="mt-1 text-sm text-[#6a8898]">
+              {user?.isSuperAdmin ? "Vista general de plataforma" : isEmpleado ? "Tu espacio personal" : isJefe ? "Vista de tu equipo" : "Vista general de la organización"}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setView("reporte-ejecutivo")}
+              className="inline-flex items-center gap-2 rounded-xl border border-white/12 bg-white/[0.04] px-4 py-2.5 text-sm font-medium text-white/80 transition hover:bg-white/[0.07] hover:text-white hover:border-white/20">
+              <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5 text-[#14b8a6]">
+                <path d="M4 12V7M8 12V4M12 12V9"/>
+              </svg>
+              Reporte ejecutivo
+            </button>
+            <button type="button" onClick={downloadDecisionReport} disabled={isDownloadingReport}
+              className="btn-primary inline-flex items-center gap-2 px-4 py-2.5 text-sm disabled:opacity-60">
+              {isDownloadingReport ? (
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5 animate-spin">
+                  <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="10"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3.5 w-3.5">
+                  <path d="M8 3v8M5 8l3 3 3-3M3 13h10"/>
+                </svg>
+              )}
+              {isDownloadingReport ? "Descargando..." : "Descargar resumen"}
+            </button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => setView("reporte-ejecutivo")} className="rounded-2xl border border-white/15 bg-[#122530] px-4 py-2.5 text-sm font-medium text-white">
-            Reporte ejecutivo
-          </button>
-          <button type="button" onClick={downloadDecisionReport} disabled={isDownloadingReport} className="rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] disabled:opacity-60">
-            {isDownloadingReport ? "Descargando..." : "Descargar resumen"}
-          </button>
-        </div>
+
+        {quickLinks.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-1.5">
+            {quickLinks.map((link) => (
+              <button
+                key={link.view}
+                type="button"
+                onClick={() => setView(link.view)}
+                className="rounded-full border border-white/[0.08] bg-white/[0.03] px-3.5 py-1.5 text-xs font-medium text-[#9ab8c8] transition hover:border-[#14b8a6]/30 hover:bg-[#14b8a6]/8 hover:text-[#14b8a6]"
+              >
+                {link.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {quickLinks.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {quickLinks.map((link) => (
-            <button
-              key={link.view}
-              type="button"
-              onClick={() => setView(link.view)}
-              className="rounded-full border border-white/10 bg-[#122530] px-4 py-1.5 text-xs font-medium text-[#c5d5de] transition hover:bg-white/5 hover:text-white"
-            >
-              {link.label}
-            </button>
-          ))}
-        </div>
-      )}
-
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
-
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <DemoTourCard setView={setView} /> : null}
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {statCards.map((card) => (
           <StatCard
             key={card.label}
@@ -756,18 +842,21 @@ export default function DashboardPage() {
                 initialCount={3}
                 className="space-y-3"
                 renderItem={(item, index) => (
-                <article key={`${item.title}-${index}`} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <article key={`${item.title}-${index}`}
+                  className="group rounded-2xl border border-white/[0.08] p-4 transition-all hover:border-white/[0.13]"
+                  style={{ background: "linear-gradient(135deg, #102030 0%, #0c1c28 100%)", boxShadow: "0 2px 12px rgba(2,8,23,0.3)" }}>
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-white md:text-base">{item.title}</p>
+                    <p className="text-sm font-semibold text-white/90 tracking-tight">{item.title}</p>
                     <ActionBadge priority={item.priority} />
                   </div>
-                  <p className="mt-2 text-sm text-[#9fb6c4]">{item.detail}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-[#8aacbc]">{item.detail}</p>
                   <button
                     type="button"
                     onClick={() => setView(item.goTo)}
-                    className="mt-3 rounded-xl border border-white/15 px-3 py-2 text-xs font-semibold text-[#d6e2e8]"
+                    className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-[#c5d5de] transition hover:border-[#14b8a6]/30 hover:bg-[#14b8a6]/8 hover:text-[#14b8a6]"
                   >
                     {item.actionLabel}
+                    <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-2.5 w-2.5 transition-transform group-hover:translate-x-0.5"><path d="M2 6h8M6 2l4 4-4 4"/></svg>
                   </button>
                 </article>
                 )}

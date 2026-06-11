@@ -479,7 +479,16 @@ export default function AppShell({
     return (
       <button key={item.key} type="button"
         onClick={() => { setView(item.key); setActiveGroup(null); onClickOverride?.(); }}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ${active ? "bg-[#14b8a6]/10 border-l-2 border-[#14b8a6] text-[#14b8a6] pl-[10px]" : "border-l-2 border-transparent text-[#8fa8b6] hover:bg-white/5 hover:text-white"}`}>
+        className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ${
+          active
+            ? "text-[#14b8a6]"
+            : "text-[#8fa8b6] hover:text-white"
+        }`}
+        style={active ? {
+          background: "linear-gradient(90deg, rgba(20,184,166,0.12) 0%, rgba(20,184,166,0.04) 100%)",
+          boxShadow: "inset 2px 0 0 #14b8a6",
+        } : {}}>
+        {!active && <span className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-150 hover:opacity-100" style={{ background: "rgba(255,255,255,0.04)" }} />}
         <AppIcon name={item.icon || item.key} active={active} />
         {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
       </button>
@@ -497,13 +506,22 @@ export default function AppShell({
           if (first) setView(first.key);
           onClickOverride?.();
         }}
-        className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ${isActive ? "bg-[#14b8a6]/10 border-l-2 border-[#14b8a6] text-[#14b8a6] pl-[10px]" : "border-l-2 border-transparent text-[#8fa8b6] hover:bg-white/5 hover:text-white"}`}>
+        className={`relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-all duration-150 ${
+          isActive
+            ? "text-[#14b8a6]"
+            : "text-[#8fa8b6] hover:text-white"
+        }`}
+        style={isActive ? {
+          background: "linear-gradient(90deg, rgba(20,184,166,0.12) 0%, rgba(20,184,166,0.04) 100%)",
+          boxShadow: "inset 2px 0 0 #14b8a6",
+        } : {}}>
+        {!isActive && <span className="pointer-events-none absolute inset-0 rounded-xl opacity-0 transition-opacity duration-150 hover:opacity-100" style={{ background: "rgba(255,255,255,0.04)" }} />}
         <AppIcon name={group.icon} active={isActive} />
         {!sidebarCollapsed && (
           <>
             <span className="flex-1 truncate">{group.label}</span>
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2"
-              className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isActive ? "rotate-90 text-[#14b8a6]" : "text-[#5e7d8e]"}`}>
+              className={`h-3 w-3 shrink-0 transition-transform duration-200 ${isActive ? "rotate-90 text-[#14b8a6]" : "text-[#4a6878]"}`}>
               <path d="M6 3l5 5-5 5"/>
             </svg>
           </>
@@ -531,15 +549,19 @@ export default function AppShell({
     <div className="h-screen overflow-hidden bg-[#091319] text-[#E8EEF1]">
       <div className="flex h-full">
         {/* Sidebar */}
-        <aside className={`hidden h-screen shrink-0 border-r border-white/10 bg-[#0b1620] transition-all lg:flex lg:flex-col ${sidebarCollapsed ? "w-[72px]" : "w-[256px]"}`}>
-          <div className="flex items-center justify-between border-b border-white/10 px-3 py-3.5">
+        <aside className={`hidden h-screen shrink-0 border-r border-white/[0.07] transition-all lg:flex lg:flex-col ${sidebarCollapsed ? "w-[72px]" : "w-[256px]"}`}
+          style={{ background: "linear-gradient(180deg, #0d1e2b 0%, #091520 60%, #071219 100%)" }}>
+          {/* Top glow accent */}
+          <div className="pointer-events-none absolute left-0 top-0 h-[180px] w-full opacity-40"
+            style={{ background: "radial-gradient(ellipse 120% 60% at 50% 0%, rgba(20,184,166,0.12) 0%, transparent 70%)" }} />
+          <div className="flex items-center justify-between border-b border-white/[0.07] px-3 py-3.5 relative">
             {!sidebarCollapsed ? (
               <div className="min-w-0 overflow-hidden">
                 <AppLogo variant="dark" compact={false} />
               </div>
             ) : null}
             <button type="button" onClick={() => setSidebarCollapsed(v => !v)}
-              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#c7d5dc] transition hover:bg-[#172c39] ${sidebarCollapsed ? "mx-auto" : ""}`}
+              className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-white/[0.08] bg-white/[0.04] text-[#8fb0c2] transition hover:bg-white/[0.08] hover:text-white hover:border-white/15 ${sidebarCollapsed ? "mx-auto" : ""}`}
               aria-label="Colapsar sidebar">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
                 {sidebarCollapsed ? <path d="M9 6l6 6-6 6"/> : <path d="M15 6l-6 6 6 6"/>}
@@ -547,16 +569,15 @@ export default function AppShell({
             </button>
           </div>
           {!sidebarCollapsed && contextualSubtitle ? (
-            <div className="px-4 py-2 border-b border-white/5">
-              <p className="text-[11px] text-[#5e7d8e] truncate">{contextualSubtitle}</p>
+            <div className="px-4 py-2 border-b border-white/[0.05]">
+              <p className="text-[10px] font-medium text-[#4a6878] truncate tracking-wide">{contextualSubtitle}</p>
             </div>
           ) : null}
 
-          <div className="flex-1 overflow-y-auto px-2.5 py-3 sidebar-scroll">
+          <div className="flex-1 overflow-y-auto px-2 py-3 sidebar-scroll relative">
             {!sidebarCollapsed ? (
               <nav className="space-y-0.5">
                 {sidebarNav.map((item, idx) => {
-                  // Insert section label before first item of each named group
                   const groupLabels = {
                     "personas-group": "Personas",
                     "eval-group": "Evaluaciones",
@@ -566,11 +587,15 @@ export default function AppShell({
                   const labelKey = item.key === "reporte-ejecutivo" ? "reporte-ejecutivo" : item.type === "group" ? item.key : null;
                   const sectionLabel = labelKey && groupLabels[labelKey] ? groupLabels[labelKey] : null;
                   const prevItem = sidebarNav[idx - 1];
-                  const showLabel = sectionLabel && prevItem; // don't show for very first item
+                  const showLabel = sectionLabel && prevItem;
                   return (
                     <div key={item.key}>
                       {showLabel ? (
-                        <p className="text-[9px] uppercase tracking-[.15em] text-white/25 px-3 pt-3 pb-1.5">{sectionLabel}</p>
+                        <div className="flex items-center gap-2 px-3 pt-4 pb-1.5">
+                          <span className="h-px flex-1 bg-white/[0.06]" />
+                          <p className="text-[9px] uppercase tracking-[.18em] text-white/20 font-semibold">{sectionLabel}</p>
+                          <span className="h-px flex-1 bg-white/[0.06]" />
+                        </div>
                       ) : null}
                       {item.type === "item" ? renderNavItem(item) : renderNavGroup(item)}
                     </div>
@@ -584,25 +609,26 @@ export default function AppShell({
             )}
           </div>
 
-          <div className="border-t border-white/10 px-2.5 py-2.5">
+          <div className="border-t border-white/[0.07] px-2 py-2.5">
             {!sidebarCollapsed ? (
               <button type="button" onClick={() => setView("perfil")}
-                className="flex w-full items-center gap-2.5 rounded-xl border border-white/10 bg-[#101d25] px-3 py-2.5 text-left transition hover:bg-[#13232d]">
+                className="group flex w-full items-center gap-2.5 rounded-xl border border-white/[0.08] px-3 py-2.5 text-left transition-all hover:border-white/15 hover:bg-white/[0.04]"
+                style={{ background: "rgba(255,255,255,0.02)" }}>
                 {user?.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-lg object-cover ring-1 ring-transparent hover:ring-2 hover:ring-[#14b8a6]/40 transition-all"/>
+                  <img src={user.avatarUrl} alt={displayName} className="h-7 w-7 shrink-0 rounded-lg object-cover ring-1 ring-white/10 group-hover:ring-[#14b8a6]/40 transition-all"/>
                 ) : (
-                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#14b8a6] text-[11px] font-semibold text-[#0f172a] ring-1 ring-transparent hover:ring-2 hover:ring-[#14b8a6]/40 transition-all">{userInitials}</div>
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-[#14b8a6] to-[#0d9488] text-[11px] font-bold text-[#0f172a] shadow-[0_0_12px_rgba(20,184,166,0.25)] transition-all group-hover:shadow-[0_0_16px_rgba(20,184,166,0.35)]">{userInitials}</div>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-semibold text-white">{displayName}</p>
-                  <p className="truncate text-[10px] text-[#14b8a6]">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
+                  <p className="truncate text-xs font-semibold text-white/90">{displayName}</p>
+                  <p className="truncate text-[10px] text-[#14b8a6]/80 font-medium">{user?.roleLabel || user?.roleName || user?.roleKey || user?.roleCode}</p>
                 </div>
-                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3 shrink-0 text-[#7c97a6]"><path d="M6 3l5 5-5 5"/></svg>
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3 shrink-0 text-[#5e7d8e] group-hover:text-[#14b8a6] transition-colors"><path d="M6 3l5 5-5 5"/></svg>
               </button>
             ) : (
               <div className="flex justify-center">
                 <button type="button" onClick={() => setView("perfil")}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#101d25] text-xs font-semibold text-white"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-xs font-semibold text-white"
                   aria-label="Mi perfil">
                   {user?.avatarUrl ? <img src={user.avatarUrl} alt={displayName} className="h-9 w-9 rounded-xl object-cover"/> : userInitials.slice(0, 1)}
                 </button>
@@ -613,7 +639,7 @@ export default function AppShell({
 
         {/* Main content */}
         <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-[#091319]/95 backdrop-blur-md">
+          <header className="sticky top-0 z-20 border-b border-white/[0.06]" style={{ background: "rgba(9,19,25,0.97)", backdropFilter: "blur(20px)", WebkitBackdropFilter: "blur(20px)" }}>
             <div className="flex items-center gap-3 px-4 py-3 md:px-5">
               {/* Mobile menu */}
               <button type="button" onClick={() => setMobileMenuOpen(true)}
