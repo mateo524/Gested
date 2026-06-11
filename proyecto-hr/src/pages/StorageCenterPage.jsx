@@ -204,7 +204,7 @@ export default function StorageCenterPage() {
               onChange={(event) => setUploadForm({ ...uploadForm, companyId: event.target.value })}
             >
               <option value="">Selecciona empresa</option>
-              {data.filters.companies.map((company) => (
+              {(Array.isArray(data?.filters?.companies) ? data.filters.companies : []).map((company) => (
                 <option key={company._id} value={company._id}>
                   {company.nombre}
                 </option>
@@ -256,7 +256,7 @@ export default function StorageCenterPage() {
                 onChange={(event) => setFilters({ ...filters, companyId: event.target.value })}
               >
                 <option value="">Todas</option>
-                {data.filters.companies.map((company) => (
+                {(Array.isArray(data?.filters?.companies) ? data.filters.companies : []).map((company) => (
                   <option key={company._id} value={company._id}>
                     {company.nombre}
                   </option>
