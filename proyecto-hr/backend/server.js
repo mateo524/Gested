@@ -184,6 +184,10 @@ const heavyLimiter = rateLimit({
   limit: 5,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    const userId = req.user?._id || req.user?.userId;
+    return userId ? `user:${userId}` : req.ip;
+  },
   message: { mensaje: "Demasiadas operaciones pesadas. Esperá un minuto antes de continuar." },
 });
 app.use("/bulk-import", heavyLimiter);
