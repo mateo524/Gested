@@ -21,6 +21,9 @@ COPY --from=deps /app/node_modules ./node_modules
 # Copy application source
 COPY . .
 
+# Pre-create uploads dir with correct ownership so the non-root user can write
+RUN mkdir -p uploads/storage && chown -R zentor:zentor uploads
+
 # Cloud Run injects PORT (default 8080); expose it for documentation
 EXPOSE 8080
 
