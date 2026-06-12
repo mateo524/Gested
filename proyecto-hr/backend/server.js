@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import cors from "cors";
 import compression from "compression";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 
 import authRoutes from "./routes/auth.routes.js";
 import dashboardRoutes from "./routes/dashboard.routes.js";
@@ -154,9 +154,8 @@ const perUserLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    // Use userId if authenticated, fall back to IP
     const userId = req.user?._id || req.user?.userId;
-    return userId ? `user:${userId}` : req.ip;
+    return userId ? `user:${userId}` : ipKeyGenerator(req);
   },
   message: { mensaje: "Demasiadas solicitudes desde esta cuenta. Intentá en unos minutos." },
   skip: (req) => {
@@ -186,7 +185,7 @@ const heavyLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     const userId = req.user?._id || req.user?.userId;
-    return userId ? `user:${userId}` : req.ip;
+    return userId ? `user:${userId}` : ipKeyGenerator(req);
   },
   message: { mensaje: "Demasiadas operaciones pesadas. Esperá un minuto antes de continuar." },
 });
