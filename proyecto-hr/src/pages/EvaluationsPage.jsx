@@ -430,6 +430,7 @@ function EmployeeView({ token, language, searchQuery, user }) {
           ) : !evalDetail || !scores.length ? (
             <EmptyState compact title="Sin habilidades asignadas" description="No hay habilidades en este ciclo todavía."/>
           ) : (
+            <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
@@ -459,6 +460,7 @@ function EmployeeView({ token, language, searchQuery, user }) {
                 })}
               </tbody>
             </table>
+            </div>
           )}
         </div>
       ) : evaluations.length === 0 ? (
@@ -485,6 +487,8 @@ function ManagerView({ token, user }) {
   const savedFilters = useRef(null);
   const [spreadsheetUrl, setSpreadsheetUrl] = useState(null);
   const [syncing, setSyncing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [bulkCreating, setBulkCreating] = useState(false);
 
   const isSuperAdminMgr = Boolean(user?.isSuperAdmin);
   const derivedCompanyId = isSuperAdminMgr
@@ -599,6 +603,64 @@ function ManagerView({ token, user }) {
     }
   }
 
+  async function handleExport() {
+    try {
+      setExporting(true);
+      const params = new URLSearchParams();
+      if (filters.cicloId) params.set("cycleId", filters.cicloId);
+      if (filters.area) params.set("area", filters.area);
+      if (filters.estado) params.set("estado", filters.estado);
+      const qs = params.toString() ? `?${params.toString()}` : "";
+      const blob = await apiFetch(`/evaluations/export${qs}`, { token, rawBlob: true });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `evaluaciones_export.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      addToast({ message: "Exportación descargada.", type: "success" });
+    } catch (err) {
+      addToast({ message: err.message || "No se pudo exportar.", type: "error" });
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleBulkCreate() {
+    if (!activeCycle) { addToast({ message: "No hay un ciclo activo.", type: "warning" }); return; }
+    const existingEmployeeIds = new Set(
+      evaluations
+        .filter(ev => String(ev.cycleId?._id || ev.cycleId) === String(activeCycle._id) && ev.tipo === "JEFATURA")
+        .map(ev => String(ev.employeeId?._id || ev.employeeId))
+    );
+    const directReports = employees.filter(emp => String(emp._id) !== selfEmployeeId && !existingEmployeeIds.has(String(emp._id)));
+    if (directReports.length === 0) {
+      addToast({ message: "Todos los empleados ya tienen evaluación en este ciclo.", type: "info" });
+      return;
+    }
+    try {
+      setBulkCreating(true);
+      await apiFetch("/evaluations/bulk", {
+        method: "POST", token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          cycleId: activeCycle._id,
+          tipo: "JEFATURA",
+          employeeIds: directReports.map(emp => emp._id),
+        }),
+      });
+      addToast({ message: `${directReports.length} evaluación(es) creada(s).`, type: "success" });
+      const ctrl = new AbortController();
+      await loadData(ctrl.signal);
+    } catch (err) {
+      addToast({ message: err.message || "No se pudo crear evaluaciones en lote.", type: "error" });
+    } finally {
+      setBulkCreating(false);
+    }
+  }
+
   function openDetail(id) {
     savedFilters.current = filters;
     setOpenEvalId(id);
@@ -649,6 +711,16 @@ function ManagerView({ token, user }) {
             className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#9fb6c4] transition hover:bg-white/10 disabled:opacity-50">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className={`h-3.5 w-3.5 shrink-0 ${syncing ? "animate-spin" : ""}`}><path d="M13.5 8A5.5 5.5 0 1 1 8 2.5M13.5 2.5v3h-3" strokeLinecap="round" strokeLinejoin="round"/></svg>
             {syncing ? "Sincronizando…" : "Sincronizar Excel"}
+          </button>
+          <button type="button" onClick={handleExport} disabled={exporting}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#9fb6c4] transition hover:bg-white/10 disabled:opacity-50">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5 shrink-0"><path d="M8 2v8M5 7l3 3 3-3M3 12h10" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            {exporting ? "Exportando…" : "Exportar"}
+          </button>
+          <button type="button" onClick={handleBulkCreate} disabled={bulkCreating || !activeCycle}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/10 px-3 py-2 text-sm font-medium text-[#14b8a6] transition hover:bg-[#14b8a6]/20 disabled:opacity-50">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5 shrink-0"><path d="M8 3v10M3 8h10" strokeLinecap="round"/></svg>
+            {bulkCreating ? "Creando…" : "Crear para todo el equipo"}
           </button>
           <button type="button" onClick={() => setNewModal(true)}
             className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
@@ -718,6 +790,7 @@ function ManagerView({ token, user }) {
             onAction={evaluations.length === 0 ? () => setNewModal(true) : undefined}
           />
         ) : (
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-white/10">
@@ -761,6 +834,7 @@ function ManagerView({ token, user }) {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 

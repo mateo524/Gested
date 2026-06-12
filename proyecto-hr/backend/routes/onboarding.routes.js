@@ -1,5 +1,8 @@
 import express from "express";
 import CompanySetting from "../models/CompanySetting.js";
+import Employee from "../models/Employee.js";
+import Competency from "../models/Competency.js";
+import EvaluationCycle from "../models/EvaluationCycle.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope } from "../middleware/tenantScope.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
@@ -261,6 +264,78 @@ router.post(
       ok: true,
       message: "Paso reabierto.",
       ...buildOnboardingStatusPayload(updated),
+    });
+  }
+);
+
+const DEMO_EMPLOYEES = [
+  { nombre: "Laura", apellido: "Gomez", cargo: "Docente", area: "Primaria", tipoEmpleado: "DOCENTE" },
+  { nombre: "Martin", apellido: "Perez", cargo: "Coordinador", area: "Secundaria", tipoEmpleado: "DIRECTIVO" },
+  { nombre: "Sofia", apellido: "Lopez", cargo: "Profesora", area: "Matematica", tipoEmpleado: "DOCENTE" },
+  { nombre: "Carlos", apellido: "Rodriguez", cargo: "Jefe de Area", area: "Ciencias", tipoEmpleado: "DIRECTIVO" },
+  { nombre: "Ana", apellido: "Martinez", cargo: "Administrativa", area: "Gestion", tipoEmpleado: "NO_DOCENTE" },
+];
+
+const DEMO_COMPETENCIES = [
+  { nombre: "Comunicacion efectiva", descripcion: "Capacidad para transmitir ideas con claridad.", tipo: "TRANSVERSAL", componente: "H" },
+  { nombre: "Trabajo en equipo", descripcion: "Colaboracion y apoyo mutuo entre colegas.", tipo: "TRANSVERSAL", componente: "A" },
+  { nombre: "Planificacion pedagogica", descripcion: "Diseno de clases y contenidos con objetivos claros.", tipo: "DOCENTE", componente: "C" },
+  { nombre: "Liderazgo institucional", descripcion: "Capacidad para guiar equipos hacia metas comunes.", tipo: "LIDERAZGO", componente: "A" },
+];
+
+router.post(
+  "/seed-demo",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_EMPLOYEES, PERMISSIONS.MANAGE_SETTINGS),
+  async (req, res) => {
+    const { companyId } = await resolveCompanyScope(req);
+    const schoolId = req.scope.schoolId || null;
+
+    const existingCount = await Employee.countDocuments({ companyId });
+    if (existingCount > 0) {
+      const error = new Error("La organizacion ya tiene empleados cargados. Los datos de demo solo se cargan en organizaciones vacias.");
+      error.status = 409;
+      throw error;
+    }
+
+    const employees = await Employee.insertMany(
+      DEMO_EMPLOYEES.map((emp) => ({ ...emp, companyId, schoolId: schoolId || undefined }))
+    );
+
+    const competencies = await Competency.insertMany(
+      DEMO_COMPETENCIES.map((comp) => ({ ...comp, companyId, schoolId, activa: true }))
+    );
+
+    const now = new Date();
+    const cycle = await EvaluationCycle.create({
+      companyId,
+      schoolId,
+      anio: now.getFullYear(),
+      periodo: "Demo",
+      etapa: "INICIO",
+      estado: "BORRADOR",
+      fechaInicio: now,
+      fechaFin: new Date(now.getFullYear(), now.getMonth() + 3, now.getDate()),
+    });
+
+    await logAudit({
+      companyId,
+      schoolId,
+      userId: req.user.userId || req.user._id || null,
+      accion: "create",
+      modulo: "onboarding",
+      detalle: `Datos de demo sembrados: ${employees.length} empleados, ${competencies.length} competencias, 1 ciclo`,
+    });
+
+    res.status(201).json({
+      ok: true,
+      message: "Datos de demo cargados correctamente.",
+      seeded: {
+        employees: employees.length,
+        competencies: competencies.length,
+        cycles: 1,
+      },
     });
   }
 );

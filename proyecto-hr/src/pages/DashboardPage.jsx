@@ -1,6 +1,7 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import { useView } from "../context/ViewContext";
@@ -358,6 +359,48 @@ function QuickToolsCard({ setView, isEmpleado, isLector, summary }) {
   );
 }
 
+function SeedDemoBanner({ token, onSeeded }) {
+  const { addToast } = useToast();
+  const [loading, setLoading] = useState(false);
+
+  async function handleSeed() {
+    try {
+      setLoading(true);
+      const data = await apiFetch("/onboarding/seed-demo", { token, method: "POST" });
+      addToast({ message: `Datos de demo cargados: ${data.seeded.employees} empleados, ${data.seeded.competencies} competencias.`, type: "success" });
+      if (onSeeded) onSeeded();
+    } catch (err) {
+      addToast({ message: err.message || "No se pudieron cargar los datos de demo.", type: "error" });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 px-5 py-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#14b8a6]/15">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 text-[#14b8a6]" aria-hidden="true">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </span>
+        <div>
+          <p className="text-sm font-semibold text-white">Empeza con datos de ejemplo</p>
+          <p className="mt-0.5 text-xs text-[#7a9aaa]">Carga empleados, competencias y un ciclo de prueba para explorar la plataforma sin configurar nada.</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={handleSeed}
+        disabled={loading}
+        className="shrink-0 rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#022019] transition hover:bg-[#0d9488] disabled:opacity-60"
+      >
+        {loading ? "Cargando..." : "Cargar datos de demo"}
+      </button>
+    </div>
+  );
+}
+
 export default function DashboardPage() {
   const { token, activeCompanyId, user } = useAuth();
   const { setView } = useView();
@@ -366,6 +409,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadSlow, setLoadSlow] = useState(false);
   const [isDownloadingReport, setIsDownloadingReport] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   const greeting = useGreeting();
 
   const isSuperOrDirector =
@@ -420,7 +464,7 @@ export default function DashboardPage() {
       controller.abort();
       clearTimeout(slowTimer);
     };
-  }, [token, activeCompanyId, user]);
+  }, [token, activeCompanyId, user, retryCount]);
 
   const training = useMemo(() => summary?.decisionInsights?.trainingRecommendations || [], [summary]);
   const alerts = useMemo(() => {
@@ -698,7 +742,9 @@ export default function DashboardPage() {
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = "reporte-decisiones.csv";
+      document.body.appendChild(anchor);
       anchor.click();
+      document.body.removeChild(anchor);
       window.URL.revokeObjectURL(url);
     } catch (error) {
       setMessage(error.message);
@@ -735,7 +781,7 @@ export default function DashboardPage() {
           <span>{message}</span>
           <button
             type="button"
-            onClick={() => { setMessage(""); setIsLoading(true); setLoadSlow(false); }}
+            onClick={() => { setMessage(""); setIsLoading(true); setLoadSlow(false); setRetryCount((c) => c + 1); }}
             className="shrink-0 rounded-xl border border-rose-300/30 px-3 py-1.5 text-xs font-semibold transition hover:bg-rose-500/15"
           >
             Reintentar
@@ -804,6 +850,9 @@ export default function DashboardPage() {
       </div>
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
+      {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) && Number(summary?.cards?.[0]?.value || 0) === 0 ? (
+        <SeedDemoBanner token={token} onSeeded={() => { setSummary(null); setRetryCount((c) => c + 1); }} />
+      ) : null}
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <DemoTourCard setView={setView} /> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
@@ -818,6 +867,25 @@ export default function DashboardPage() {
           />
         ))}
       </section>
+
+      {upcomingMilestones.length > 0 && (
+        <SurfaceCard title="Próximos hitos" subtitle="Puntos de atención relevantes para el período actual.">
+          <div className="space-y-2">
+            {upcomingMilestones.map((m, i) => (
+              <div
+                key={`${m.title}-${i}`}
+                className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-[#0c1e28] px-4 py-3"
+              >
+                <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[#14b8a6]" />
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-white/90">{m.title}</p>
+                  <p className="mt-0.5 text-xs text-[#7a9aaa]">{m.detail}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SurfaceCard>
+      )}
 
       <section className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
         <SurfaceCard
