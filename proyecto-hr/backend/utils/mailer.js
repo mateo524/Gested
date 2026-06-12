@@ -22,7 +22,7 @@ async function sendViaSendGrid({ to, subject, html }) {
 }
 
 function canSend() {
-  return Boolean(process.env.SENDGRID_API_KEY) || Boolean(process.env.SMTP_HOST);
+  return Boolean(process.env.SENDGRID_API_KEY) || smtpConfigured();
 }
 
 export async function dispatch({ to, subject, html, text }) {
@@ -143,19 +143,18 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
 }
 
 export async function sendContactRequestNotification(contactRequest) {
-  if (!smtpConfigured()) {
-    return { sent: false, reason: "smtp_not_configured" };
+  if (!canSend()) {
+    return { sent: false, reason: "no_transport" };
   }
 
-  const transporter = createTransporter();
-  const to = process.env.CONTACT_NOTIFICATIONS_TO || process.env.SUPPORT_CONTACT_TO || process.env.SMTP_FROM;
+  const to = process.env.CONTACT_NOTIFICATIONS_TO;
+  if (!to) return { sent: false, reason: "no_recipient" };
 
-  await transporter.sendMail({
-    from: process.env.SMTP_FROM,
+  return dispatch({
     to,
-    subject: `Performia - Nueva solicitud comercial (${contactRequest.source || "landing"})`,
+    subject: `ZENTOR - Nueva solicitud comercial (${contactRequest.source || "landing"})`,
     text: [
-      "Nueva solicitud comercial en Performia",
+      "Nueva solicitud comercial en ZENTOR",
       `Nombre: ${contactRequest.name}`,
       `Email: ${contactRequest.email}`,
       `Institucion: ${contactRequest.institution || "-"}`,
@@ -168,7 +167,7 @@ export async function sendContactRequestNotification(contactRequest) {
     ].join("\n"),
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
-        <h2>Nueva solicitud comercial</h2>
+        <h2>Nueva solicitud comercial — ZENTOR</h2>
         <p><strong>Nombre:</strong> ${contactRequest.name}</p>
         <p><strong>Email:</strong> ${contactRequest.email}</p>
         <p><strong>Institucion:</strong> ${contactRequest.institution || "-"}</p>
@@ -180,6 +179,4 @@ export async function sendContactRequestNotification(contactRequest) {
       </div>
     `,
   });
-
-  return { sent: true };
 }
