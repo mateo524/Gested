@@ -1,11 +1,10 @@
-﻿import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiUrl } from "../lib/api";
 import { useView } from "../context/ViewContext";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
-import CollapsibleList from "../components/CollapsibleList";
 import {
   LineChart,
   Line,
@@ -30,6 +29,8 @@ const CHART_COLORS = [
   "#fbbf24", // amber
   "#f87171", // red
 ];
+
+const PAGE_SIZE = 10;
 
 function CustomEvolutionTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -75,7 +76,7 @@ function EvolutionPanel({ employeeId, token }) {
   }
   if (!state.data) return null;
 
-  const { cycles } = state.data;
+  const cycles = Array.isArray(state.data?.cycles) ? state.data.cycles : [];
 
   if (!cycles.length) {
     return (
@@ -111,7 +112,7 @@ function EvolutionPanel({ employeeId, token }) {
     : "—";
 
   let tendencia = "→";
-  if (prevCycle) {
+  if (prevCycle && lastCycle.resultadoFinal != null && prevCycle.resultadoFinal != null) {
     const diff = lastCycle.resultadoFinal - prevCycle.resultadoFinal;
     if (diff > 0.05) tendencia = "↑";
     else if (diff < -0.05) tendencia = "↓";
@@ -210,6 +211,8 @@ export default function EmployeesPage() {
   const { addToast } = useToast();
   const { setView, searchQuery } = useView();
   const [employees, setEmployees] = useState([]);
+  const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [schools, setSchools] = useState([]);
   const [roles, setRoles] = useState([]);
   const [filters, setFilters] = useState({ q: "", schoolId: "" });
@@ -218,17 +221,23 @@ export default function EmployeesPage() {
   const [messageType, setMessageType] = useState("info");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [editingId, setEditingId] = useState("");
   const [fieldErrors, setFieldErrors] = useState({});
-  const [confirmState, setConfirmState] = useState({ open: false, employee: null });
+  const [confirmState, setConfirmState] = useState({ open: false, mode: "", employee: null, count: 0 });
   const [isDeleting, setIsDeleting] = useState(false);
   const [temporaryPassword, setTemporaryPassword] = useState("");
   const [evolutionOpenId, setEvolutionOpenId] = useState(null);
+  const [isError, setIsError] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const initialSchoolSet = useRef(false);
+
   const deferredSearch = useDeferredValue(filters.q);
   const appliedFilters = useMemo(
     () => ({ ...filters, q: deferredSearch }),
     [filters, deferredSearch]
   );
+
   const filteredEmployees = useMemo(() => {
     const term = String(searchQuery || "").trim().toLowerCase();
     if (!term) return employees;
@@ -239,6 +248,12 @@ export default function EmployeesPage() {
     );
   }, [employees, searchQuery]);
 
+  const allVisibleSelected =
+    filteredEmployees.length > 0 &&
+    filteredEmployees.every((emp) => selectedIds.includes(emp._id));
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+
   const employeesById = useMemo(
     () => new Map(employees.map((employee) => [employee._id, employee])),
     [employees]
@@ -248,7 +263,16 @@ export default function EmployeesPage() {
     [roles]
   );
 
-  function buildEmployeeQuery(nextFilters) {
+  function buildEmployeeQuery(nextFilters, page) {
+    const params = new URLSearchParams();
+    if (nextFilters.q.trim()) params.set("q", nextFilters.q.trim());
+    if (nextFilters.schoolId) params.set("schoolId", nextFilters.schoolId);
+    params.set("page", String(page || 1));
+    params.set("limit", String(PAGE_SIZE));
+    return `?${params.toString()}`;
+  }
+
+  function buildExportQuery(nextFilters) {
     const params = new URLSearchParams();
     if (nextFilters.q.trim()) params.set("q", nextFilters.q.trim());
     if (nextFilters.schoolId) params.set("schoolId", nextFilters.schoolId);
@@ -256,31 +280,120 @@ export default function EmployeesPage() {
     return query ? `?${query}` : "";
   }
 
-  const loadBase = useCallback(async () => {
+  const loadBase = useCallback(async (page) => {
     try {
       setIsLoading(true);
-      const [schoolsData, employeesData, rolesData] = await Promise.all([
+      setIsError(false);
+      const pageToLoad = page || currentPage;
+      const [schoolsData, employeesResponse, rolesData] = await Promise.all([
         apiFetch("/schools", { token }),
-        apiFetch(`/employees${buildEmployeeQuery(appliedFilters)}`, { token }),
+        apiFetch(`/employees${buildEmployeeQuery(appliedFilters, pageToLoad)}`, { token }),
         apiFetch("/roles", { token }),
       ]);
-      setSchools(schoolsData);
-      setEmployees(employeesData);
-      setRoles(rolesData);
-      if (!form.schoolId && schoolsData[0]?._id) {
+      const safeSchools = Array.isArray(schoolsData) ? schoolsData : [];
+      setSchools(safeSchools);
+      // Support both a plain array response and a { employees, total } envelope
+      if (Array.isArray(employeesResponse)) {
+        setEmployees(employeesResponse);
+        setTotalCount(employeesResponse.length);
+      } else {
+        setEmployees(Array.isArray(employeesResponse.employees) ? employeesResponse.employees : []);
+        setTotalCount(typeof employeesResponse.total === "number" ? employeesResponse.total : 0);
+      }
+      setRoles(Array.isArray(rolesData) ? rolesData : []);
+      if (!initialSchoolSet.current && safeSchools[0]?._id) {
+        initialSchoolSet.current = true;
         setForm((current) => ({ ...current, schoolId: schoolsData[0]._id }));
       }
+    } catch (error) {
+      setIsError(true);
+      setMessageType("error");
+      setMessage(error.message);
     } finally {
       setIsLoading(false);
     }
-  }, [appliedFilters, form.schoolId, token]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appliedFilters, token]);
+
+  // Reset to page 1 whenever filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [appliedFilters]);
 
   useEffect(() => {
-    loadBase().catch((error) => {
-      setMessageType("error");
-      setMessage(error.message);
+    loadBase(currentPage);
+  }, [loadBase, currentPage]);
+
+  async function exportEmployeesCsv() {
+    try {
+      setIsExporting(true);
+      const queryString = buildExportQuery(appliedFilters);
+      const response = await fetch(`${apiUrl}/employees/export${queryString}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!response.ok) {
+        throw new Error("No se pudo exportar la lista de empleados");
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = "empleados.csv";
+      anchor.click();
+      window.URL.revokeObjectURL(url);
+      addToast({ message: "Exportación generada correctamente.", type: "success" });
+    } catch (error) {
+      addToast({ message: error.message, type: "error" });
+    } finally {
+      setIsExporting(false);
+    }
+  }
+
+  function toggleSelection(employeeId) {
+    setSelectedIds((current) =>
+      current.includes(employeeId)
+        ? current.filter((id) => id !== employeeId)
+        : [...current, employeeId]
+    );
+  }
+
+  function toggleSelectAll() {
+    if (allVisibleSelected) {
+      setSelectedIds((current) =>
+        current.filter((id) => !filteredEmployees.some((emp) => emp._id === id))
+      );
+      return;
+    }
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      filteredEmployees.forEach((emp) => next.add(emp._id));
+      return [...next];
     });
-  }, [loadBase]);
+  }
+
+  async function runBulkAction(action) {
+    if (!selectedIds.length) {
+      addToast({ message: "Selecciona al menos un empleado.", type: "warning" });
+      return;
+    }
+    if (action === "delete") {
+      setConfirmState({ open: true, mode: "bulk-delete", employee: null, count: selectedIds.length });
+      return;
+    }
+    try {
+      const data = await apiFetch("/employees/bulk", {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, employeeIds: selectedIds }),
+      });
+      addToast({ message: data.mensaje || "Acción masiva aplicada.", type: "success" });
+      setSelectedIds([]);
+      await loadBase(currentPage);
+    } catch (error) {
+      addToast({ message: error.message, type: "error" });
+    }
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -314,7 +427,7 @@ export default function EmployeesPage() {
       if (!isEditing && data?.temporaryPassword) {
         setTemporaryPassword(data.temporaryPassword);
       }
-      await loadBase();
+      await loadBase(currentPage);
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
@@ -360,17 +473,42 @@ export default function EmployeesPage() {
       if (editingId === employee._id) {
         cancelEdit();
       }
-      setConfirmState({ open: false, employee: null });
+      setConfirmState({ open: false, mode: "", employee: null, count: 0 });
       setMessageType("success");
       setMessage("Empleado eliminado.");
       addToast({ message: "Empleado eliminado.", type: "success" });
-      await loadBase();
+      await loadBase(currentPage);
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
     } finally {
       setIsDeleting(false);
     }
+  }
+
+  async function confirmBulkDelete() {
+    try {
+      setIsDeleting(true);
+      const data = await apiFetch("/employees/bulk", {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "delete", employeeIds: selectedIds }),
+      });
+      addToast({ message: data.mensaje || "Empleados eliminados.", type: "success" });
+      setSelectedIds([]);
+      setConfirmState({ open: false, mode: "", employee: null, count: 0 });
+      await loadBase(currentPage);
+    } catch (error) {
+      addToast({ message: error.message, type: "error" });
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  function handleConfirmAction() {
+    if (confirmState.mode === "bulk-delete") return confirmBulkDelete();
+    return confirmDeleteEmployee();
   }
 
   return (
@@ -495,9 +633,19 @@ export default function EmployeesPage() {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-end gap-4">
-            <input className="pf-input min-w-56 flex-1" placeholder="Buscar por nombre, cargo o mail" value={filters.q} onChange={(event) => setFilters({ ...filters, q: event.target.value })} />
-            <select className="pf-select min-w-56" value={filters.schoolId} onChange={(event) => setFilters({ ...filters, schoolId: event.target.value })}>
+          {/* Filters row + Export CSV button */}
+          <div className="flex flex-wrap items-end gap-3">
+            <input
+              className="pf-input min-w-48 flex-1"
+              placeholder="Buscar por nombre, cargo o mail"
+              value={filters.q}
+              onChange={(event) => setFilters({ ...filters, q: event.target.value })}
+            />
+            <select
+              className="pf-select min-w-48"
+              value={filters.schoolId}
+              onChange={(event) => setFilters({ ...filters, schoolId: event.target.value })}
+            >
               <option value="">Todos los colegios</option>
               {(Array.isArray(schools) ? schools : []).map((school) => (
                 <option key={school._id} value={school._id}>
@@ -505,10 +653,45 @@ export default function EmployeesPage() {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              onClick={exportEmployeesCsv}
+              disabled={isExporting}
+              className="flex shrink-0 items-center gap-2 rounded-2xl border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-4 py-2.5 text-sm font-medium text-[#14b8a6] transition hover:bg-[#14b8a6]/20 disabled:cursor-wait disabled:opacity-60"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {isExporting ? "Exportando..." : "Exportar CSV"}
+            </button>
           </div>
           {filters.q !== deferredSearch ? (
             <p className="mt-2 text-xs text-[#9fb6c4]">Actualizando búsqueda...</p>
           ) : null}
+
+          {/* Bulk action bar */}
+          <div className="mt-4 rounded-xl border border-white/10 bg-[#0f1f28] p-3">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="flex items-center gap-2 text-sm text-[#9fb6c4]">
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
+                Seleccionar visibles
+              </label>
+              <span className="text-sm text-[#9fb6c4]">{selectedIds.length} seleccionados</span>
+            </div>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <button type="button" onClick={() => runBulkAction("activate")} className="rounded-xl border border-white/15 px-4 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5">
+                Activar
+              </button>
+              <button type="button" onClick={() => runBulkAction("deactivate")} className="rounded-xl border border-amber-300/40 px-4 py-2 text-sm text-amber-200">
+                Desactivar
+              </button>
+              <button type="button" onClick={() => runBulkAction("delete")} className="rounded-xl border border-rose-300/40 px-4 py-2 text-sm text-rose-200">
+                Eliminar seleccionados
+              </button>
+            </div>
+          </div>
 
           <div className="mt-5 space-y-3">
             {isLoading ? (
@@ -518,30 +701,29 @@ export default function EmployeesPage() {
                 description="Estamos actualizando la nomina y sus responsables."
               />
             ) : null}
-            {!isLoading && messageType === "error" && !employees.length ? (
+            {!isLoading && isError ? (
               <ErrorState
                 compact
                 title="No pudimos cargar los empleados"
-                description="Reintenta para recuperar la lista de personas."
+                description={employees.length ? "Los datos mostrados pueden estar desactualizados. Reintenta para actualizar la lista." : "Reintenta para recuperar la lista de personas."}
                 actionLabel="Reintentar"
-                onAction={() =>
-                  loadBase().catch((error) => {
-                    setMessageType("error");
-                    setMessage(error.message);
-                  })
-                }
+                onAction={() => loadBase(currentPage)}
               />
             ) : null}
             {!isLoading && filteredEmployees.length ? (
-              <CollapsibleList
-                items={filteredEmployees}
-                initialCount={3}
-                buttonLabelMore={`Ver más (${filteredEmployees.length - 3})`}
-                renderItem={(employee) => {
+              <>
+                {filteredEmployees.map((employee) => {
                   const manager = employeesById.get(employee.managerId);
                   return (
                     <article key={employee._id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
                       <div className="flex items-start gap-3">
+                        <label className="mt-1 flex shrink-0 items-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.includes(employee._id)}
+                            onChange={() => toggleSelection(employee._id)}
+                          />
+                        </label>
                         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[#14b8a6]/15 text-sm font-bold text-[#14b8a6]">
                           {(employee.nombre?.[0] || "").toUpperCase()}{(employee.apellido?.[0] || "").toUpperCase()}
                         </div>
@@ -567,7 +749,11 @@ export default function EmployeesPage() {
                         >
                           {evolutionOpenId === employee._id ? "Ocultar evolución" : "Evolución"}
                         </button>
-                        <button type="button" onClick={() => setConfirmState({ open: true, employee })} className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20">
+                        <button
+                          type="button"
+                          onClick={() => setConfirmState({ open: true, mode: "delete", employee, count: 0 })}
+                          className="rounded-xl border border-rose-400/50 bg-rose-500/10 px-4 py-2 text-sm font-medium text-rose-200 transition hover:bg-rose-500/20"
+                        >
                           Eliminar
                         </button>
                       </div>
@@ -576,10 +762,66 @@ export default function EmployeesPage() {
                       ) : null}
                     </article>
                   );
-                }}
-              />
+                })}
+
+                {/* Pagination */}
+                {totalPages > 1 ? (
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <p className="text-xs text-[#9fb6c4]">
+                      Página {currentPage} de {totalPages} &middot; {totalCount} empleados
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={currentPage <= 1}
+                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                        className="rounded-xl border border-white/15 px-3 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="15 18 9 12 15 6" />
+                        </svg>
+                      </button>
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                        .reduce((acc, p, idx, arr) => {
+                          if (idx > 0 && p - arr[idx - 1] > 1) acc.push("...");
+                          acc.push(p);
+                          return acc;
+                        }, [])
+                        .map((item, idx) =>
+                          item === "..." ? (
+                            <span key={`ellipsis-${idx}`} className="px-1 text-xs text-[#9fb6c4]">...</span>
+                          ) : (
+                            <button
+                              key={item}
+                              type="button"
+                              onClick={() => setCurrentPage(item)}
+                              className={`rounded-xl border px-3 py-2 text-sm transition ${
+                                item === currentPage
+                                  ? "border-[#14b8a6]/60 bg-[#14b8a6]/15 text-[#14b8a6]"
+                                  : "border-white/15 text-[#c5d5de] hover:bg-white/5"
+                              }`}
+                            >
+                              {item}
+                            </button>
+                          )
+                        )}
+                      <button
+                        type="button"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                        className="rounded-xl border border-white/15 px-3 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </>
             ) : null}
-            {!isLoading && messageType !== "error" && !filteredEmployees.length ? (
+            {!isLoading && !isError && !filteredEmployees.length ? (
               <EmptyState
                 compact
                 title="No hay empleados cargados todavía"
@@ -612,9 +854,11 @@ export default function EmployeesPage() {
 
       <ConfirmDialog
         open={confirmState.open}
-        title="¿Eliminar este empleado?"
+        title={confirmState.mode === "bulk-delete" ? "¿Eliminar empleados seleccionados?" : "¿Eliminar este empleado?"}
         message={
-          confirmState.employee
+          confirmState.mode === "bulk-delete"
+            ? `Vas a eliminar ${confirmState.count} empleado(s). Esta acción no se puede deshacer.`
+            : confirmState.employee
             ? `Vas a eliminar a ${confirmState.employee.apellido}, ${confirmState.employee.nombre}. Esta acción no se puede deshacer.`
             : ""
         }
@@ -622,8 +866,8 @@ export default function EmployeesPage() {
         cancelLabel="Cancelar"
         destructive
         loading={isDeleting}
-        onCancel={() => setConfirmState({ open: false, employee: null })}
-        onConfirm={confirmDeleteEmployee}
+        onCancel={() => setConfirmState({ open: false, mode: "", employee: null, count: 0 })}
+        onConfirm={handleConfirmAction}
       />
     </div>
   );
