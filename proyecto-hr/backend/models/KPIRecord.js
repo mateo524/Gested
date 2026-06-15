@@ -50,6 +50,9 @@ const KPIRecordSchema = new mongoose.Schema(
       enum: ["manual", "bulk_import", "system"],
       default: "manual",
     },
+    // importJobId: the import job that last wrote/upserted this record (used for deduplication and re-import queries).
+    // sourceImportJobId: the original import job that first created this record (preserved across subsequent re-imports).
+    // Both reference ImportJob; keeping them separate allows distinguishing "who owns it now" vs. "who created it".
     importJobId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "ImportJob",
@@ -60,6 +63,7 @@ const KPIRecordSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "ImportJob",
       default: null,
+      index: true,
     },
     lastImportedAt: { type: Date, default: null },
     createdBy: {

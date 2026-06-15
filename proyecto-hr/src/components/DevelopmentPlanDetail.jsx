@@ -150,13 +150,13 @@ export default function DevelopmentPlanDetail({ plan, onVolver, onDelete, onUpda
           <div>
             <p className="text-[#7a9aaa] text-xs mb-1">Fecha de Inicio</p>
             <p className="text-[#c7d5dc] text-sm">
-              {new Date(datosEdit.fechaInicio).toLocaleDateString("es-ES")}
+              {datosEdit.fechaInicio ? new Date(datosEdit.fechaInicio).toLocaleDateString("es-ES") : "-"}
             </p>
           </div>
           <div>
             <p className="text-[#7a9aaa] text-xs mb-1">Fecha de Fin</p>
             <p className="text-[#c7d5dc] text-sm">
-              {new Date(datosEdit.fechaFin).toLocaleDateString("es-ES")}
+              {datosEdit.fechaFin ? new Date(datosEdit.fechaFin).toLocaleDateString("es-ES") : "-"}
             </p>
           </div>
         </div>
@@ -182,7 +182,7 @@ export default function DevelopmentPlanDetail({ plan, onVolver, onDelete, onUpda
         <div className="border-t border-white/[0.06] pt-6">
           <h3 className="text-white font-semibold mb-4">Objetivos</h3>
           <div className="space-y-3">
-            {datosEdit.objetivos.map((objetivo, index) => (
+            {Array.isArray(datosEdit.objetivos) && datosEdit.objetivos.map((objetivo, index) => (
               <div
                 key={index}
                 className="rounded-xl border border-white/[0.06] bg-[#091319]/50 p-4"
@@ -215,7 +215,7 @@ export default function DevelopmentPlanDetail({ plan, onVolver, onDelete, onUpda
                 </p>
               </div>
             ))}
-            {datosEdit.objetivos.length === 0 && (
+            {(!Array.isArray(datosEdit.objetivos) || datosEdit.objetivos.length === 0) && (
               <p className="text-[#7a9aaa] text-sm">No hay objetivos definidos</p>
             )}
           </div>
@@ -225,7 +225,7 @@ export default function DevelopmentPlanDetail({ plan, onVolver, onDelete, onUpda
         <div className="border-t border-white/[0.06] pt-6">
           <h3 className="text-white font-semibold mb-4">Competencias a Desarrollar</h3>
           <div className="space-y-4">
-            {datosEdit.competencias.map((comp, index) => (
+            {Array.isArray(datosEdit.competencias) && datosEdit.competencias.map((comp, index) => (
               <div key={index} className="rounded-xl border border-white/[0.06] bg-[#091319]/50 p-4">
                 <p className="text-white font-medium mb-3">{comp.nombre}</p>
 
@@ -279,7 +279,7 @@ export default function DevelopmentPlanDetail({ plan, onVolver, onDelete, onUpda
                 )}
               </div>
             ))}
-            {datosEdit.competencias.length === 0 && (
+            {(!Array.isArray(datosEdit.competencias) || datosEdit.competencias.length === 0) && (
               <p className="text-[#7a9aaa] text-sm">No hay competencias definidas</p>
             )}
           </div>

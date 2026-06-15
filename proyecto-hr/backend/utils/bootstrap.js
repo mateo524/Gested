@@ -33,14 +33,21 @@ export const SUPER_ADMIN_PERMISSIONS = [
   PERMISSIONS.MANAGE_GLOBAL_USERS,
 ];
 
-const DEMO_ADMIN = {
-  email: "admin@demo.com",
-  password: "123456",
+const SEED_DEFAULTS = {
   nombre: "Administrador General",
   companyName: "Empresa Demo",
   companySlug: "empresa-demo",
   schoolName: "Colegio Demo",
 };
+
+function generateRandomPassword() {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let pwd = "";
+  for (let i = 0; i < 20; i++) {
+    pwd += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return pwd;
+}
 
 function resolveSeedAdminConfig() {
   const isProduction = process.env.NODE_ENV === "production";
@@ -56,10 +63,10 @@ function resolveSeedAdminConfig() {
     return {
       email,
       password,
-      nombre: nombre || DEMO_ADMIN.nombre,
-      companyName: companyName || DEMO_ADMIN.companyName,
-      companySlug: companySlug || DEMO_ADMIN.companySlug,
-      schoolName: schoolName || DEMO_ADMIN.schoolName,
+      nombre: nombre || SEED_DEFAULTS.nombre,
+      companyName: companyName || SEED_DEFAULTS.companyName,
+      companySlug: companySlug || SEED_DEFAULTS.companySlug,
+      schoolName: schoolName || SEED_DEFAULTS.schoolName,
     };
   }
 
@@ -68,15 +75,38 @@ function resolveSeedAdminConfig() {
     return {
       email,
       password,
-      nombre: nombre || DEMO_ADMIN.nombre,
-      companyName: companyName || DEMO_ADMIN.companyName,
-      companySlug: companySlug || DEMO_ADMIN.companySlug,
-      schoolName: schoolName || DEMO_ADMIN.schoolName,
+      nombre: nombre || SEED_DEFAULTS.nombre,
+      companyName: companyName || SEED_DEFAULTS.companyName,
+      companySlug: companySlug || SEED_DEFAULTS.companySlug,
+      schoolName: schoolName || SEED_DEFAULTS.schoolName,
     };
   }
 
   if (allowDemoSeed) {
-    return { ...DEMO_ADMIN };
+    if (!email) {
+      console.warn("Bootstrap: ALLOW_DEMO_SEED=true pero SEED_ADMIN_EMAIL no definido. Seed omitido.");
+      return null;
+    }
+    if (!password) {
+      const generated = generateRandomPassword();
+      console.log(`Bootstrap: SEED_ADMIN_PASSWORD no definido — contrasena generada para ${email}: ${generated}`);
+      return {
+        email,
+        password: generated,
+        nombre: nombre || SEED_DEFAULTS.nombre,
+        companyName: companyName || SEED_DEFAULTS.companyName,
+        companySlug: companySlug || SEED_DEFAULTS.companySlug,
+        schoolName: schoolName || SEED_DEFAULTS.schoolName,
+      };
+    }
+    return {
+      email,
+      password,
+      nombre: nombre || SEED_DEFAULTS.nombre,
+      companyName: companyName || SEED_DEFAULTS.companyName,
+      companySlug: companySlug || SEED_DEFAULTS.companySlug,
+      schoolName: schoolName || SEED_DEFAULTS.schoolName,
+    };
   }
 
   return null;
@@ -110,7 +140,7 @@ async function ensureRole({ companyId, nombre, permisos }) {
   return role;
 }
 
-export async function ensureCompanyStructure({ companyName, companySlug, schoolName = DEMO_ADMIN.schoolName }) {
+export async function ensureCompanyStructure({ companyName, companySlug, schoolName = SEED_DEFAULTS.schoolName }) {
   let company = await Company.findOne({ nombre: companyName });
 
   if (!company) {
@@ -121,7 +151,7 @@ export async function ensureCompanyStructure({ companyName, companySlug, schoolN
     });
   }
 
-  const requestedSchoolName = schoolName?.trim() || DEMO_ADMIN.schoolName;
+  const requestedSchoolName = schoolName?.trim() || SEED_DEFAULTS.schoolName;
   let school = await School.findOne({ companyId: company._id, nombre: requestedSchoolName });
   if (!school) {
     school = await School.create({
@@ -163,10 +193,7 @@ export async function ensureInitialAccess() {
       adminRole: null,
       superAdminRole: null,
       adminUser: null,
-      credentials: {
-        email: null,
-        password: null,
-      },
+      seeded: false,
     };
   }
 
@@ -195,7 +222,7 @@ export async function ensureInitialAccess() {
       activo: true,
       isSuperAdmin: true,
     });
-    console.log("Bootstrap: super admin inicial creado");
+    console.log(`Bootstrap: super admin inicial creado — email: ${seedAdmin.email}`);
   } else {
     let changed = false;
 
@@ -224,9 +251,6 @@ export async function ensureInitialAccess() {
     adminRole,
     superAdminRole,
     adminUser: superAdmin,
-    credentials: {
-      email: seedAdmin.email,
-      password: seedAdmin.password,
-    },
+    seeded: true,
   };
 }

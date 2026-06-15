@@ -34,4 +34,7 @@ const RecordSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+RecordSchema.index({ companyId: 1, databaseId: 1 });
+RecordSchema.index({ companyId: 1, email: 1 }, { sparse: true });
+
 export default mongoose.model("Record", RecordSchema);

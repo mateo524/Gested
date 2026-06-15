@@ -38,5 +38,6 @@ const EmployeeSchema = new mongoose.Schema(
 );
 
 EmployeeSchema.index({ companyId: 1, schoolId: 1, email: 1 });
+EmployeeSchema.index({ companyId: 1, email: 1 }, { unique: true, sparse: true });
 
 export default mongoose.model("Employee", EmployeeSchema);

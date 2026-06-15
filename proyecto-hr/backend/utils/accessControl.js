@@ -396,13 +396,6 @@ export async function syncPrimaryRoleAssignmentForUser({
 }) {
   if (!user?._id || !companyId || !roleKey || !scope) return null;
 
-  const deactivateQuery = UserRoleAssignment.updateMany(
-    { companyId, userId: user._id, _id: { $ne: user.activeRoleAssignment?._id || null } },
-    { $set: { active: false } }
-  );
-  if (session) deactivateQuery.session(session);
-  await deactivateQuery;
-
   const upsertQuery = UserRoleAssignment.findOneAndUpdate(
     { companyId, userId: user._id },
     {
@@ -422,6 +415,17 @@ export async function syncPrimaryRoleAssignmentForUser({
   );
   if (session) upsertQuery.session(session);
   const assignment = await upsertQuery;
+
+  // Deactivate all other assignments after we know the upserted _id,
+  // avoiding the undefined/null exclusion bug that could wipe all assignments.
+  if (assignment?._id) {
+    const deactivateQuery = UserRoleAssignment.updateMany(
+      { companyId, userId: user._id, _id: { $ne: assignment._id } },
+      { $set: { active: false } }
+    );
+    if (session) deactivateQuery.session(session);
+    await deactivateQuery;
+  }
 
   const legacyRole = await resolveLegacyRoleForPreset({ companyId, roleKey });
   if (legacyRole && String(user.roleId || "") !== String(legacyRole._id)) {

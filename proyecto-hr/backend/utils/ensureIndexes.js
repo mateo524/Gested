@@ -35,10 +35,9 @@ export async function ensureIndexes() {
     Notification.collection.createIndex({ userId: 1, createdAt: -1 }, { background: true }),
     Notification.collection.createIndex({ userId: 1, read: 1 }, { background: true }),
 
-    // EvaluationScore: lookup by evaluation and employee
+    // EvaluationScore: lookup by evaluation (metricId uniqueness is enforced in schema)
     ...(EvaluationScore ? [
       EvaluationScore.collection.createIndex({ evaluationId: 1 }, { background: true }),
-      EvaluationScore.collection.createIndex({ companyId: 1, employeeId: 1 }, { background: true }),
     ] : []),
   ]);
 

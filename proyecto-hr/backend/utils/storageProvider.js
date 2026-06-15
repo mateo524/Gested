@@ -124,6 +124,31 @@ export async function uploadBufferToStorage({
     };
   }
 
+  if (isS3Enabled()) {
+    const safeName = (folderPath || "performia").replace(/\s+/g, "-").toLowerCase();
+    const key = `${process.env.S3_KEY_PREFIX || safeName}/${Date.now()}-buffer`;
+    const client = getS3Client();
+
+    await client.send(
+      new PutObjectCommand({
+        Bucket: process.env.S3_BUCKET,
+        Key: key,
+        Body: buffer,
+        ContentType: "application/octet-stream",
+      })
+    );
+
+    const publicBase = process.env.S3_PUBLIC_BASE_URL?.trim();
+    const publicUrl = publicBase ? `${publicBase.replace(/\/$/, "")}/${key}` : null;
+
+    return {
+      provider: "s3",
+      key,
+      bucket: process.env.S3_BUCKET,
+      publicUrl,
+    };
+  }
+
   return {
     provider: "local",
     key: null,

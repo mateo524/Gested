@@ -344,13 +344,10 @@ router.post("/", auth, attachTenantScope, async (req, res, next) => {
       audienceType,
       audienceDepartmentCodes,
       audienceEmployeeIds,
-      createdBy: req.user.userId,
       expiresAt: req.body.expiresAt ? new Date(req.body.expiresAt) : null,
       isActive: toBoolean(req.body.isActive, true),
       pinned: toBoolean(req.body.pinned, false),
       authorUserId: req.user.userId,
-      titulo: title,
-      cuerpo: body,
       prioridad: normalizeLegacyPriority(type),
       categoria: normalizeText(req.body.categoria || "general") || "general",
       visible: toBoolean(req.body.isActive, true),
@@ -387,8 +384,8 @@ router.put("/:id", auth, attachTenantScope, async (req, res, next) => {
       return res.status(404).json({ mensaje: "Novedad no encontrada" });
     }
 
-    const title = normalizeText(req.body.title || req.body.titulo || announcement.title || announcement.titulo);
-    const body = normalizeText(req.body.body || req.body.cuerpo || announcement.body || announcement.cuerpo);
+    const title = normalizeText(req.body.title || req.body.titulo || announcement.title);
+    const body = normalizeText(req.body.body || req.body.cuerpo || announcement.body);
     const type = normalizeAnnouncementType(req.body.type || req.body.prioridad || announcement.type || announcement.prioridad, announcement.type || "info");
     const audienceEmployeeIds = await resolveAudienceEmployeeIds(
       req,
@@ -412,8 +409,6 @@ router.put("/:id", auth, attachTenantScope, async (req, res, next) => {
     announcement.expiresAt = req.body.expiresAt ? new Date(req.body.expiresAt) : null;
     announcement.isActive = toBoolean(req.body.isActive, announcement.isActive !== false);
     announcement.pinned = toBoolean(req.body.pinned, announcement.pinned === true);
-    announcement.titulo = title;
-    announcement.cuerpo = body;
     announcement.prioridad = normalizeLegacyPriority(type);
     announcement.visible = announcement.isActive;
 
@@ -458,7 +453,7 @@ router.delete("/:id", auth, attachTenantScope, async (req, res, next) => {
       userId: req.user.userId,
       accion: "delete",
       modulo: "novedades",
-      detalle: `Se desactivo la novedad ${announcement.title || announcement.titulo}`,
+      detalle: `Se desactivo la novedad ${announcement.title}`,
     });
 
     res.json({ ok: true, mensaje: "Novedad desactivada" });

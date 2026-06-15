@@ -31,14 +31,26 @@ router.get("/", auth, permit("export_reports"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
   const filters = buildFilters(companyId, req.query);
 
-  const [records, roles, files] = await Promise.all([
-    Record.find(filters).sort({ createdAt: -1 }).limit(300).lean(),
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const skip = (page - 1) * limit;
+
+  const allowedSortFields = ["nombreCompleto", "rol", "email", "createdAt"];
+  const sortBy = allowedSortFields.includes(req.query.sortBy) ? req.query.sortBy : "createdAt";
+  const sortDir = req.query.sortDir === "asc" ? 1 : -1;
+
+  const [records, total, roles, files] = await Promise.all([
+    Record.find(filters).sort({ [sortBy]: sortDir }).skip(skip).limit(limit).lean(),
+    Record.countDocuments(filters),
     Record.distinct("rol", { companyId }),
     DatabaseFile.find({ companyId }).select("nombreVisible").sort({ fechaSubida: -1 }).lean(),
   ]);
 
   res.json({
     records,
+    total,
+    page,
+    totalPages: Math.ceil(total / limit),
     filters: {
       roles: roles.filter(Boolean).sort(),
       files,

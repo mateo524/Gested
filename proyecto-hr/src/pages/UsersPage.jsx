@@ -31,6 +31,7 @@ export default function UsersPage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [confirmState, setConfirmState] = useState({ open: false, mode: "", userId: "", count: 0 });
   const [isConfirming, setIsConfirming] = useState(false);
+  const [deletingUserId, setDeletingUserId] = useState("");
   const deferredQuery = useDeferredValue(query);
   const availableRoles = useMemo(
     () =>
@@ -61,8 +62,8 @@ export default function UsersPage() {
         apiFetch("/users", { token, cache: "no-cache" }),
         apiFetch("/roles", { token, cache: "no-cache" }),
       ]);
-      setUsers(usersData);
-      setRoles(rolesData);
+      setUsers(Array.isArray(usersData) ? usersData : (usersData?.data ?? []));
+      setRoles(Array.isArray(rolesData) ? rolesData : (rolesData?.data ?? []));
       setMessage("");
       setMessageType("info");
     } finally {
@@ -213,6 +214,7 @@ export default function UsersPage() {
 
   async function performUserDelete(userId) {
     try {
+      setDeletingUserId(userId);
       await apiFetch(`/users/${userId}`, { method: "DELETE", token });
       await loadData();
       if (editingId === userId) resetForm();
@@ -221,6 +223,8 @@ export default function UsersPage() {
     } catch (error) {
       setMessageType("error");
       setMessage(error.message);
+    } finally {
+      setDeletingUserId("");
     }
   }
 
@@ -286,15 +290,24 @@ export default function UsersPage() {
               <span className="mb-1 block text-xs text-[#8fa9b7]">{editingId ? "Nueva contraseña (opcional)" : "Contraseña inicial (opcional)"}</span>
               <input aria-label="Contraseña" className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white" type="password" placeholder={editingId ? "Dejar vacío para no cambiar" : "Se genera automáticamente si está vacío"} value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} />
             </label>
-            <select className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.roleId ? "border-rose-400/70" : "border-white/15"}`} value={form.roleId} onChange={(event) => setForm({ ...form, roleId: event.target.value })}>
-              <option value="">Selecciona un rol</option>
-              {(Array.isArray(availableRoles) ? availableRoles : []).map((role) => (
-                <option key={role._id} value={role._id}>
-                  {role.nombre}
-                </option>
-              ))}
-            </select>
-            {fieldErrors.roleId ? <p className="text-xs text-rose-300">{fieldErrors.roleId}</p> : null}
+            <label htmlFor="roleId" className="block">
+              <span className="mb-1 block text-xs text-[#8fa9b7]">Rol</span>
+              <select
+                id="roleId"
+                aria-describedby={fieldErrors.roleId ? "roleId-error" : undefined}
+                className={`w-full rounded-2xl border bg-[#0f1f28] px-4 py-3 text-white ${fieldErrors.roleId ? "border-rose-400/70" : "border-white/15"}`}
+                value={form.roleId}
+                onChange={(event) => setForm({ ...form, roleId: event.target.value })}
+              >
+                <option value="">Selecciona un rol</option>
+                {(Array.isArray(availableRoles) ? availableRoles : []).map((role) => (
+                  <option key={role._id} value={role._id}>
+                    {role.nombre}
+                  </option>
+                ))}
+              </select>
+              {fieldErrors.roleId ? <p id="roleId-error" className="mt-1 text-xs text-rose-300">{fieldErrors.roleId}</p> : null}
+            </label>
             <label className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-3 text-[#c5d5de]">
               <input type="checkbox" checked={form.activo} onChange={(event) => setForm({ ...form, activo: event.target.checked })} />
               <span>Usuario activo</span>
@@ -397,7 +410,14 @@ export default function UsersPage() {
                       </label>
                       <div className="flex gap-2">
                         <button type="button" onClick={() => startEdit(user)} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-[#c5d5de] transition hover:bg-white/5">Editar</button>
-                        <button type="button" onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })} className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200">Eliminar</button>
+                        <button
+                          type="button"
+                          disabled={deletingUserId === user._id || isConfirming}
+                          onClick={() => setConfirmState({ open: true, mode: "delete-user", userId: user._id, count: 0 })}
+                          className="rounded-lg border border-rose-300/40 px-3 py-1.5 text-xs text-rose-200 disabled:cursor-wait disabled:opacity-50"
+                        >
+                          {deletingUserId === user._id ? "Eliminando..." : "Eliminar"}
+                        </button>
                       </div>
                     </div>
                   </article>

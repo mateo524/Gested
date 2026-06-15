@@ -397,32 +397,57 @@ router.put(
       return res.status(404).json({ mensaje: "Evaluacion no encontrada" });
     }
 
-    ["tipo", "estado", "comentariosGenerales", "acuerdoEmpleado", "evidenciaUrls"].forEach((field) => {
+    const ALLOWED_TIPOS = ["AUTOEVALUACION", "JEFATURA", "EVALUACION_360"];
+    ["estado", "comentariosGenerales", "acuerdoEmpleado", "evidenciaUrls"].forEach((field) => {
       if (field in req.body) {
         evaluation[field] = req.body[field];
       }
     });
+    // `tipo` is intentionally excluded from the editable fields to prevent
+    // unauthorised type escalation or retroactive audit-trail modification.
+    // Only MANAGE_EVALUATIONS admins may change tipo, and only to a known value.
+    if ("tipo" in req.body) {
+      if (!req.user?.permissions?.includes(PERMISSIONS.MANAGE_EVALUATIONS)) {
+        return res.status(403).json({ mensaje: "No tienes permiso para cambiar el tipo de evaluacion" });
+      }
+      if (!ALLOWED_TIPOS.includes(req.body.tipo)) {
+        return res.status(400).json({ mensaje: "Tipo de evaluacion invalido" });
+      }
+      evaluation.tipo = req.body.tipo;
+    }
 
     const scores = Array.isArray(req.body.scores) ? req.body.scores : null;
     if (scores) {
       evaluation.resultadoFinal = calculateResult(scores);
     }
 
-    await evaluation.save();
-
     if (scores) {
-      await EvaluationScore.deleteMany({ evaluationId: evaluation._id });
-      if (scores.length) {
-        await EvaluationScore.insertMany(
-          scores.map((score) => ({
-            evaluationId: evaluation._id,
-            metricId: score.metricId,
-            nivel: score.nivel,
-            comentario: score.comentario || "",
-            evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [],
-          }))
-        );
+      // Use a transaction so the delete + insert are atomic — a mid-flight
+      // failure cannot leave the evaluation with no scores.
+      const mongoose = (await import("mongoose")).default;
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          await evaluation.save({ session });
+          await EvaluationScore.deleteMany({ evaluationId: evaluation._id }, { session });
+          if (scores.length) {
+            await EvaluationScore.insertMany(
+              scores.map((score) => ({
+                evaluationId: evaluation._id,
+                metricId: score.metricId,
+                nivel: score.nivel,
+                comentario: score.comentario || "",
+                evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [],
+              })),
+              { session }
+            );
+          }
+        });
+      } finally {
+        await session.endSession();
       }
+    } else {
+      await evaluation.save();
     }
 
     runInBackground(() => logAudit({
@@ -519,12 +544,17 @@ router.post(
       }
     }
 
+    // Batch-fetch all employees in a single query to avoid N+1 round-trips.
+    const employeeIds = [...byEmployee.keys()];
+    const employeeList = await Employee.find({ _id: { $in: employeeIds } }).lean();
+    const employeeMap = new Map(employeeList.map((e) => [String(e._id), e]));
+
     let sent = 0;
     let failed = 0;
     const recipients = [];
 
     for (const { employeeId, count } of byEmployee.values()) {
-      const employee = await Employee.findById(employeeId).lean();
+      const employee = employeeMap.get(String(employeeId));
       if (!employee?.email) { failed++; continue; }
 
       const nombre = `${employee.nombre || ""} ${employee.apellido || ""}`.trim();

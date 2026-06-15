@@ -32,4 +32,6 @@ const RoleSchema = new mongoose.Schema({
   isSystem: { type: Boolean, default: false },
 });
 
+RoleSchema.index({ companyId: 1, code: 1 }, { unique: true, sparse: true });
+
 export default mongoose.model("Role", RoleSchema);

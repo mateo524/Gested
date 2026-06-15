@@ -139,11 +139,14 @@ export default function EvaluationCyclesPage() {
     );
   }, [cycles, searchQuery]);
 
+  const [isError, setIsError] = useState(false);
+
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
+      setIsError(false);
       const cyclesData = await apiFetch("/evaluation-cycles", { token });
-      setCycles(cyclesData);
+      setCycles(Array.isArray(cyclesData) ? cyclesData : []);
     } finally {
       setIsLoading(false);
     }
@@ -151,6 +154,7 @@ export default function EvaluationCyclesPage() {
 
   useEffect(() => {
     loadData().catch((error) => {
+      setIsError(true);
       setMessageType("error");
       setMessage(error.message);
     });
@@ -179,7 +183,7 @@ export default function EvaluationCyclesPage() {
         method: isEditing ? "PUT" : "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, estado: "BORRADOR" }),
+        body: JSON.stringify(isEditing ? { ...form } : { ...form, estado: "BORRADOR" }),
       });
       setForm({ ...emptyForm, anio: new Date().getFullYear() });
       setEditingId("");
@@ -253,11 +257,12 @@ export default function EvaluationCyclesPage() {
       await apiFetch(`/evaluation-cycles/${closeConfirm.cycle._id}`, {
         method: "PUT",
         token,
-        body: { estado: "CERRADO" },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estado: "CERRADO" }),
       });
       addToast({ message: "Ciclo cerrado y resultados congelados.", type: "success" });
       setCloseConfirm({ open: false, cycle: null });
-      loadData();
+      await loadData().catch((err) => addToast({ message: err.message, type: "error" }));
     } catch (err) {
       addToast({ message: err.message || "Error al cerrar el ciclo.", type: "error" });
     } finally {
@@ -272,7 +277,8 @@ export default function EvaluationCyclesPage() {
       const result = await apiFetch("/evaluations/send-reminders", {
         method: "POST",
         token,
-        body: { cycleId: reminderState.cycle._id },
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cycleId: reminderState.cycle._id }),
       });
       addToast({ message: `Se enviaron ${result.sent} recordatorio${result.sent !== 1 ? "s" : ""}${result.failed ? ` (${result.failed} fallido${result.failed !== 1 ? "s" : ""})` : ""}.`, type: result.sent > 0 ? "success" : "info" });
       setReminderState({ open: false, cycle: null });
@@ -448,6 +454,27 @@ export default function EvaluationCyclesPage() {
           </div>
 
           <div className="mt-5 space-y-4">
+            {isLoading ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-10">
+                <svg className="h-7 w-7 animate-spin text-[#14b8a6]" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                <p className="text-sm text-[#8fa9b7]">Cargando ciclos...</p>
+              </div>
+            ) : isError && cycles.length === 0 ? (
+              <div className="rounded-2xl border border-rose-400/25 bg-rose-500/8 px-5 py-6 text-center">
+                <p className="text-sm font-semibold text-rose-200">Error al cargar los ciclos</p>
+                <p className="mt-1 text-xs text-rose-300">{message}</p>
+                <button
+                  type="button"
+                  onClick={() => loadData().catch((err) => { setIsError(true); setMessage(err.message); setMessageType("error"); })}
+                  className="mt-3 rounded-xl border border-rose-400/40 px-4 py-2 text-xs font-semibold text-rose-200 hover:bg-rose-500/15 transition"
+                >
+                  Reintentar
+                </button>
+              </div>
+            ) : null}
             {searchQuery ? (
               <div className="pf-alert-info flex flex-wrap items-center justify-between gap-3">
                 <span>Hay una búsqueda activa. Limpiála para ver todos los ciclos cargados.</span>
@@ -527,7 +554,7 @@ export default function EvaluationCyclesPage() {
                   }}
                 />
               : null}
-            {!isLoading && !visibleCycles.length ? (
+            {!isLoading && !isError && !visibleCycles.length ? (
               <div className="rounded-2xl border border-dashed border-white/10 bg-[#0c1e28] px-5 py-6 text-center">
                 <p className="text-sm font-semibold text-white">{searchQuery ? "Sin ciclos para la búsqueda actual" : "Todavía no hay ciclos definidos"}</p>
                 <p className="mt-1 text-xs text-[#7a9aaa]">{searchQuery ? "Limpiá la búsqueda para ver todos." : "Creá el primer ciclo para empezar a organizar evaluaciones."}</p>

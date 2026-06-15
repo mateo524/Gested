@@ -22,13 +22,46 @@ function slugify(value) {
     .replace(/[^a-z0-9-]/g, "");
 }
 
+function LoadingState() {
+  return (
+    <div className="flex items-center justify-center py-12 text-[#9fb6c4]">
+      <svg className="mr-3 h-5 w-5 animate-spin text-[#14b8a6]" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+      </svg>
+      <span className="text-sm">Cargando empresas...</span>
+    </div>
+  );
+}
+
+function ErrorState({ onRetry }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+      <svg className="h-8 w-8 text-rose-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 9v4m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+      <p className="text-sm text-rose-400">No se pudieron cargar las empresas.</p>
+      <button
+        type="button"
+        onClick={onRetry}
+        className="rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-[#9fb6c4] hover:bg-white/[0.07] transition"
+      >
+        Reintentar
+      </button>
+    </div>
+  );
+}
+
 export default function CompaniesPage() {
   const { token, refreshCompanies } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState(emptyCompany);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
   const [provisionedAccess, setProvisionedAccess] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
   const [query, setQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState([]);
   const [seedFile, setSeedFile] = useState(null);
@@ -37,6 +70,15 @@ export default function CompaniesPage() {
   const [confirmSingleDeactivateOpen, setConfirmSingleDeactivateOpen] = useState(false);
   const [singleTargetCompany, setSingleTargetCompany] = useState(null);
   const [isSingleConfirming, setIsSingleConfirming] = useState(false);
+  // For the per-company toggle deactivation confirm dialog
+  const [confirmToggleDeactivateOpen, setConfirmToggleDeactivateOpen] = useState(false);
+  const [toggleTargetCompany, setToggleTargetCompany] = useState(null);
+  const [isToggleConfirming, setIsToggleConfirming] = useState(false);
+
+  function showMessage(msg, type = "info") {
+    setMessage(msg);
+    setMessageType(type);
+  }
 
   function downloadInitialTemplate() {
     const csv = [
@@ -69,13 +111,23 @@ export default function CompaniesPage() {
     filteredCompanies.length > 0 &&
     filteredCompanies.every((company) => selectedIds.includes(company._id));
 
+  // Fix #1: `query` removed from dependency array — filtering is done client-side via filteredCompanies
   const loadCompanies = useCallback(async () => {
-    const data = await apiFetch(`/companies${query.trim() ? `?q=${encodeURIComponent(query.trim())}` : ""}`, { token });
-    setCompanies(data);
-  }, [query, token]);
+    setIsLoading(true);
+    setIsError(false);
+    try {
+      const data = await apiFetch("/companies", { token });
+      setCompanies(Array.isArray(data) ? data : []);
+    } catch (error) {
+      setIsError(true);
+      showMessage(error.message, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [token]);
 
   useEffect(() => {
-    loadCompanies().catch((error) => setMessage(error.message));
+    loadCompanies();
   }, [loadCompanies]);
 
   function toggleSelection(companyId) {
@@ -103,7 +155,7 @@ export default function CompaniesPage() {
 
   async function runBulkAction(action) {
     if (!selectedIds.length) {
-      setMessage("Selecciona al menos una empresa");
+      showMessage("Selecciona al menos una empresa", "info");
       return;
     }
 
@@ -122,12 +174,12 @@ export default function CompaniesPage() {
         body: JSON.stringify({ action, companyIds: selectedIds }),
       });
 
-      setMessage(data.mensaje);
+      showMessage(data.mensaje, "success");
       setSelectedIds([]);
       await loadCompanies();
       await refreshCompanies();
     } catch (error) {
-      setMessage(error.message);
+      showMessage(error.message, "error");
     }
   }
 
@@ -143,13 +195,13 @@ export default function CompaniesPage() {
         body: JSON.stringify({ action: "deactivate", companyIds: selectedIds }),
       });
 
-      setMessage(data.mensaje);
+      showMessage(data.mensaje, "success");
       setSelectedIds([]);
       setConfirmDeactivateOpen(false);
       await loadCompanies();
       await refreshCompanies();
     } catch (error) {
-      setMessage(error.message);
+      showMessage(error.message, "error");
     } finally {
       setIsConfirming(false);
     }
@@ -189,26 +241,36 @@ export default function CompaniesPage() {
         });
       }
 
+      // Fix #6: clear adminPassword from state immediately after POST; never fall back to it
       setForm(emptyCompany);
       setSeedFile(null);
       setProvisionedAccess({
         empresa: data.company?.nombre,
         admin: data.adminUser?.nombre,
         email: data.adminUser?.email,
-        temporaryPassword: data.adminUser?.temporaryPassword || form.adminPassword,
+        // If the API doesn't return a temporaryPassword, tell the user to use the one they typed — but don't store/repeat it
+        temporaryPassword: data.adminUser?.temporaryPassword || null,
         imported: data.imported || null,
       });
-      setMessage("Empresa creada y acceso inicial generado.");
+      showMessage("Empresa creada y acceso inicial generado.", "success");
       await loadCompanies();
       await refreshCompanies();
     } catch (error) {
-      setMessage(error.message);
+      showMessage(error.message, "error");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  // Fix #4: toggleCompany now only performs reactivation directly; deactivation goes through ConfirmDialog
   async function toggleCompany(company) {
+    if (company.activa) {
+      // Deactivating — require confirmation
+      setToggleTargetCompany(company);
+      setConfirmToggleDeactivateOpen(true);
+      return;
+    }
+    // Reactivating — safe, no confirmation needed
     try {
       setMessage("");
       await apiFetch(`/companies/${company._id}`, {
@@ -217,12 +279,37 @@ export default function CompaniesPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ activa: !company.activa }),
+        body: JSON.stringify({ activa: true }),
       });
       await loadCompanies();
       await refreshCompanies();
     } catch (error) {
-      setMessage(error.message);
+      showMessage(error.message, "error");
+    }
+  }
+
+  async function confirmToggleDeactivate() {
+    if (!toggleTargetCompany) return;
+    try {
+      setIsToggleConfirming(true);
+      setMessage("");
+      await apiFetch(`/companies/${toggleTargetCompany._id}`, {
+        method: "PUT",
+        token,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ activa: false }),
+      });
+      showMessage(`Acceso de "${toggleTargetCompany.nombre}" desactivado`, "success");
+      setConfirmToggleDeactivateOpen(false);
+      setToggleTargetCompany(null);
+      await loadCompanies();
+      await refreshCompanies();
+    } catch (error) {
+      showMessage(error.message, "error");
+    } finally {
+      setIsToggleConfirming(false);
     }
   }
 
@@ -245,19 +332,27 @@ export default function CompaniesPage() {
         },
         body: JSON.stringify({ activa: false }),
       });
-      setMessage(`"${singleTargetCompany.nombre}" desactivada`);
+      showMessage(`"${singleTargetCompany.nombre}" desactivada`, "success");
       setConfirmSingleDeactivateOpen(false);
       setSingleTargetCompany(null);
       await loadCompanies();
       await refreshCompanies();
     } catch (error) {
-      setMessage(error.message);
+      showMessage(error.message, "error");
     } finally {
       setIsSingleConfirming(false);
     }
   }
 
   const activeCount = companies.filter((company) => company.activa).length;
+
+  // Fix #2: message styling based on messageType state, not string inspection
+  const messageClass =
+    messageType === "error"
+      ? "border-rose-400/20 bg-rose-500/8 text-rose-400"
+      : messageType === "success"
+      ? "border-emerald-400/20 bg-emerald-500/8 text-emerald-400"
+      : "border-[#14b8a6]/20 bg-[#14b8a6]/8 text-[#14b8a6]";
 
   return (
     <div className="space-y-6">
@@ -290,61 +385,97 @@ export default function CompaniesPage() {
           <h4 className="text-2xl font-bold text-white">Nueva empresa</h4>
           <p className="mt-1 text-sm text-[#9fb6c4]">Completa los datos del cliente y deja provisionado su acceso.</p>
 
+          {/* Fix #5: aria-label on all inputs */}
           <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
-            <input
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              placeholder="Nombre de la empresa"
-              value={form.nombre}
-              onChange={(event) =>
-                setForm({
-                  ...form,
-                  nombre: event.target.value,
-                  slug: slugify(event.target.value),
-                })
-              }
-            />
-            <input
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              placeholder="Slug"
-              value={form.slug}
-              onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })}
-            />
-            <select
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              value={form.tipoCliente}
-              onChange={(event) => setForm({ ...form, tipoCliente: event.target.value })}
-            >
-              <option value="general">General</option>
-              <option value="educacion">Educacion</option>
-              <option value="salud">Salud</option>
-              <option value="operacion">Operacion</option>
-              <option value="servicios">Servicios</option>
-            </select>
-            <input
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              placeholder="Nombre del colegio principal"
-              value={form.schoolName}
-              onChange={(event) => setForm({ ...form, schoolName: event.target.value })}
-            />
-            <input
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              placeholder="Nombre del admin de empresa"
-              value={form.adminNombre}
-              onChange={(event) => setForm({ ...form, adminNombre: event.target.value })}
-            />
-            <input
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              placeholder="Correo del administrador"
-              value={form.adminEmail}
-              onChange={(event) => setForm({ ...form, adminEmail: event.target.value })}
-            />
-            <input
-              className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              type="password"
-              placeholder="Password inicial (opcional)"
-              value={form.adminPassword}
-              onChange={(event) => setForm({ ...form, adminPassword: event.target.value })}
-            />
+            <div>
+              <label htmlFor="cp-nombre" className="sr-only">Nombre de la empresa</label>
+              <input
+                id="cp-nombre"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                placeholder="Nombre de la empresa"
+                aria-label="Nombre de la empresa"
+                value={form.nombre}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    nombre: event.target.value,
+                    slug: slugify(event.target.value),
+                  })
+                }
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-slug" className="sr-only">Slug</label>
+              <input
+                id="cp-slug"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                placeholder="Slug"
+                aria-label="Slug"
+                value={form.slug}
+                onChange={(event) => setForm({ ...form, slug: slugify(event.target.value) })}
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-tipo" className="sr-only">Tipo de cliente</label>
+              <select
+                id="cp-tipo"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                aria-label="Tipo de cliente"
+                value={form.tipoCliente}
+                onChange={(event) => setForm({ ...form, tipoCliente: event.target.value })}
+              >
+                <option value="general">General</option>
+                <option value="educacion">Educacion</option>
+                <option value="salud">Salud</option>
+                <option value="operacion">Operacion</option>
+                <option value="servicios">Servicios</option>
+              </select>
+            </div>
+            <div>
+              <label htmlFor="cp-school" className="sr-only">Nombre del colegio principal</label>
+              <input
+                id="cp-school"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                placeholder="Nombre del colegio principal"
+                aria-label="Nombre del colegio principal"
+                value={form.schoolName}
+                onChange={(event) => setForm({ ...form, schoolName: event.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-admin-nombre" className="sr-only">Nombre del administrador de empresa</label>
+              <input
+                id="cp-admin-nombre"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                placeholder="Nombre del admin de empresa"
+                aria-label="Nombre del administrador de empresa"
+                value={form.adminNombre}
+                onChange={(event) => setForm({ ...form, adminNombre: event.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-admin-email" className="sr-only">Correo del administrador</label>
+              <input
+                id="cp-admin-email"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                placeholder="Correo del administrador"
+                aria-label="Correo del administrador"
+                value={form.adminEmail}
+                onChange={(event) => setForm({ ...form, adminEmail: event.target.value })}
+              />
+            </div>
+            <div>
+              <label htmlFor="cp-admin-password" className="sr-only">Password inicial (opcional)</label>
+              <input
+                id="cp-admin-password"
+                className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                type="password"
+                placeholder="Password inicial (opcional)"
+                aria-label="Password inicial (opcional)"
+                value={form.adminPassword}
+                onChange={(event) => setForm({ ...form, adminPassword: event.target.value })}
+              />
+            </div>
             <label className="block">
               <span className="mb-1.5 block text-xs font-medium text-[#8fa9b7]">
                 Archivo inicial de estructura (opcional): empleados + roles
@@ -352,6 +483,7 @@ export default function CompaniesPage() {
               <input
                 type="file"
                 accept=".csv,.xlsx,.xls"
+                aria-label="Archivo inicial de estructura"
                 onChange={(event) => setSeedFile(event.target.files?.[0] || null)}
                 className="w-full rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-[#9fb6c4] focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
               />
@@ -376,8 +508,9 @@ export default function CompaniesPage() {
             </button>
           </form>
 
+          {/* Fix #2: messageClass driven by messageType state */}
           {message ? (
-            <p className={`mt-4 rounded-xl border p-3 text-sm ${message.toLowerCase().includes("error") || message.toLowerCase().includes("fail") ? "border-rose-400/20 bg-rose-500/8 text-rose-400" : "border-emerald-400/20 bg-emerald-500/8 text-emerald-400"}`}>
+            <p className={`mt-4 rounded-xl border p-3 text-sm ${messageClass}`}>
               {message}
             </p>
           ) : null}
@@ -389,10 +522,16 @@ export default function CompaniesPage() {
                 <p>Empresa: {provisionedAccess.empresa}</p>
                 <p>Director (admin colegio): {provisionedAccess.admin}</p>
                 <p>Email: {provisionedAccess.email}</p>
-                <p>Password temporal: {provisionedAccess.temporaryPassword}</p>
+                {/* Fix #6: only show the temporaryPassword returned by the API; never fall back to the form value */}
+                <p>
+                  Password temporal:{" "}
+                  {provisionedAccess.temporaryPassword
+                    ? provisionedAccess.temporaryPassword
+                    : "Usa la contraseña que ingresaste"}
+                </p>
                 {provisionedAccess.imported ? (
                   <p>
-                    Importación inicial: {provisionedAccess.imported.rows} filas, {provisionedAccess.imported.employees} empleados, {provisionedAccess.imported.users} usuarios, {provisionedAccess.imported.errors} errores.
+                    Importacion inicial: {provisionedAccess.imported.rows} filas, {provisionedAccess.imported.employees} empleados, {provisionedAccess.imported.users} usuarios, {provisionedAccess.imported.errors} errores.
                   </p>
                 ) : null}
               </div>
@@ -407,18 +546,24 @@ export default function CompaniesPage() {
               <p className="mt-1 text-sm text-[#9fb6c4]">Cada empresa mantiene aislados sus usuarios, roles, trazabilidad y contenido.</p>
             </div>
 
-            <input
-              className="w-full max-w-xs rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
-              placeholder="Buscar por empresa o slug"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-            />
+            {/* Fix #5: aria-label on search input */}
+            <div>
+              <label htmlFor="cp-search" className="sr-only">Buscar por empresa o slug</label>
+              <input
+                id="cp-search"
+                className="w-full max-w-xs rounded-xl border border-white/10 bg-[#0c1e28] px-3.5 py-2.5 text-sm text-white focus:border-[#14b8a6]/50 focus:outline-none focus:ring-1 focus:ring-[#14b8a6]/30 transition"
+                placeholder="Buscar por empresa o slug"
+                aria-label="Buscar por empresa o slug"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+              />
+            </div>
           </div>
 
           <div className="mt-6 rounded-xl border border-white/[0.06] bg-[#0f2030]/60 p-4">
             <div className="flex flex-wrap items-center gap-3">
               <label className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-[#c5d5de]">
-                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} />
+                <input type="checkbox" checked={allVisibleSelected} onChange={toggleSelectAll} aria-label="Seleccionar todas las empresas visibles" />
                 Seleccionar visibles
               </label>
               <span className="text-sm text-[#9fb6c4]">{selectedIds.length} seleccionadas</span>
@@ -441,69 +586,80 @@ export default function CompaniesPage() {
             </div>
           </div>
 
+          {/* Fix #3: loading and error states in the list section */}
           <div className="mt-6 space-y-4">
-            {filteredCompanies.map((company) => (
-              <article key={company._id} className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 p-4 transition hover:border-[#14b8a6]/20">
-                <div className="flex flex-wrap items-start gap-4">
-                  <label className="mt-1">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.includes(company._id)}
-                      onChange={() => toggleSelection(company._id)}
-                    />
-                  </label>
+            {isLoading ? (
+              <LoadingState />
+            ) : isError ? (
+              <ErrorState onRetry={loadCompanies} />
+            ) : filteredCompanies.length === 0 ? (
+              <p className="py-8 text-center text-sm text-[#9fb6c4]">No hay empresas para mostrar.</p>
+            ) : (
+              filteredCompanies.map((company) => (
+                <article key={company._id} className="rounded-xl border border-white/[0.06] bg-[#0f2030]/60 p-4 transition hover:border-[#14b8a6]/20">
+                  <div className="flex flex-wrap items-start gap-4">
+                    <label className="mt-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.includes(company._id)}
+                        onChange={() => toggleSelection(company._id)}
+                        aria-label={`Seleccionar ${company.nombre}`}
+                      />
+                    </label>
 
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <p className="text-lg font-semibold text-white">{company.nombre}</p>
-                          <span
-                            className={
-                              company.activa
-                                ? "rounded-full border border-emerald-400/20 bg-emerald-500/8 px-2.5 py-0.5 text-xs font-semibold text-emerald-400"
-                                : "rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-semibold text-[#7a9aaa]"
-                            }
-                          >
-                            {company.activa ? "Activa" : "Inactiva"}
-                          </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-start justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <p className="text-lg font-semibold text-white">{company.nombre}</p>
+                            <span
+                              className={
+                                company.activa
+                                  ? "rounded-full border border-emerald-400/20 bg-emerald-500/8 px-2.5 py-0.5 text-xs font-semibold text-emerald-400"
+                                  : "rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-0.5 text-xs font-semibold text-[#7a9aaa]"
+                              }
+                            >
+                              {company.activa ? "Activa" : "Inactiva"}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-sm text-[#9fb6c4]">Slug: {company.slug}</p>
+                          <p className="mt-1 text-sm text-[#9fb6c4]">Tipo: {company.tipoCliente || "general"}</p>
+                          <p className="mt-1 text-sm text-[#9fb6c4]">Usuarios asignados: {company.usersCount || 0}</p>
                         </div>
-                        <p className="mt-2 text-sm text-[#9fb6c4]">Slug: {company.slug}</p>
-                        <p className="mt-1 text-sm text-[#9fb6c4]">Tipo: {company.tipoCliente || "general"}</p>
-                        <p className="mt-1 text-sm text-[#9fb6c4]">Usuarios asignados: {company.usersCount || 0}</p>
-                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => toggleCompany(company)}
-                        className={
-                          company.activa
-                            ? "rounded-xl border border-amber-400/30 bg-amber-500/8 px-4 py-2 text-sm text-amber-300 hover:bg-amber-500/12 transition"
-                            : "rounded-xl border border-emerald-400/20 bg-emerald-500/8 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-500/12 transition"
-                        }
-                      >
-                        {company.activa ? "Desactivar acceso" : "Reactivar acceso"}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => requestDeactivateCompany(company)}
-                        className="rounded-xl border border-rose-400/30 bg-rose-500/8 px-4 py-2 text-sm text-rose-400 hover:bg-rose-500/12 transition"
-                      >
-                        Desactivar empresa
-                      </button>
+                        {/* Fix #4: deactivation via toggleCompany now opens ConfirmDialog; reactivation is direct */}
+                        <button
+                          type="button"
+                          onClick={() => toggleCompany(company)}
+                          className={
+                            company.activa
+                              ? "rounded-xl border border-amber-400/30 bg-amber-500/8 px-4 py-2 text-sm text-amber-300 hover:bg-amber-500/12 transition"
+                              : "rounded-xl border border-emerald-400/20 bg-emerald-500/8 px-4 py-2 text-sm text-emerald-400 hover:bg-emerald-500/12 transition"
+                          }
+                        >
+                          {company.activa ? "Desactivar acceso" : "Reactivar acceso"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => requestDeactivateCompany(company)}
+                          className="rounded-xl border border-rose-400/30 bg-rose-500/8 px-4 py-2 text-sm text-rose-400 hover:bg-rose-500/12 transition"
+                        >
+                          Desactivar empresa
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
+                </article>
+              ))
+            )}
           </div>
         </section>
       </div>
 
       <ConfirmDialog
         open={confirmDeactivateOpen}
-        title="¿Desactivar estas empresas?"
-        message={`Vas a desactivar ${selectedIds.length} empresa(s). Confirmá para continuar.`}
+        title="Desactivar estas empresas?"
+        message={`Vas a desactivar ${selectedIds.length} empresa(s). Confirma para continuar.`}
         confirmLabel="Desactivar"
         cancelLabel="Cancelar"
         destructive
@@ -517,7 +673,7 @@ export default function CompaniesPage() {
         title="Desactivar empresa"
         message={
           singleTargetCompany
-            ? `Vas a desactivar "${singleTargetCompany.nombre}". Los usuarios de esta empresa no podrán acceder hasta que la reactives.`
+            ? `Vas a desactivar "${singleTargetCompany.nombre}". Los usuarios de esta empresa no podran acceder hasta que la reactives.`
             : ""
         }
         confirmLabel="Desactivar"
@@ -529,6 +685,26 @@ export default function CompaniesPage() {
           setSingleTargetCompany(null);
         }}
         onConfirm={confirmSingleDeactivate}
+      />
+
+      {/* Fix #4: new ConfirmDialog for toggle-deactivation from the per-company button */}
+      <ConfirmDialog
+        open={confirmToggleDeactivateOpen}
+        title="Desactivar acceso"
+        message={
+          toggleTargetCompany
+            ? `Vas a desactivar el acceso de "${toggleTargetCompany.nombre}". Los usuarios de esta empresa no podran ingresar hasta que lo reactives.`
+            : ""
+        }
+        confirmLabel="Desactivar"
+        cancelLabel="Cancelar"
+        destructive
+        loading={isToggleConfirming}
+        onCancel={() => {
+          setConfirmToggleDeactivateOpen(false);
+          setToggleTargetCompany(null);
+        }}
+        onConfirm={confirmToggleDeactivate}
       />
     </div>
   );

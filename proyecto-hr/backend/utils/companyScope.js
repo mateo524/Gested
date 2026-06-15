@@ -9,6 +9,9 @@ export async function resolveCompanyScope(req) {
 
   if (req.user.isSuperAdmin) {
     const companyId = requestedCompanyId || req.user.companyId;
+    if (!companyId) {
+      throw Object.assign(new Error('Se requiere companyId'), { status: 400 });
+    }
     const company = await Company.findById(companyId).lean();
 
     if (!company) {

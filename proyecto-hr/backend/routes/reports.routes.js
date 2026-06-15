@@ -321,7 +321,7 @@ async function resolveExecutiveDataset(req, overrides = {}) {
     employeeId: { $in: allowedEmployeeIds },
   };
 
-  const [evaluations, plans, managerRefs, kpiRecords, okrRecords] = await Promise.all([
+  const [evaluations, plans, kpiRecords, okrRecords] = await Promise.all([
     allowedEmployeeIds.length
       ? Evaluation.find(evaluationFilter)
           .sort({ createdAt: -1 })
@@ -333,12 +333,6 @@ async function resolveExecutiveDataset(req, overrides = {}) {
           .sort({ createdAt: -1 })
           .lean()
       : [],
-    Employee.find({
-      companyId: company._id,
-      ...(req.scope.schoolId ? { schoolId: req.scope.schoolId } : {}),
-    })
-      .select("_id nombre apellido")
-      .lean(),
     allowedEmployeeIds.length
       ? KPIRecord.find(recordFilter)
           .sort({ updatedAt: -1, createdAt: -1 })
@@ -351,7 +345,7 @@ async function resolveExecutiveDataset(req, overrides = {}) {
       : [],
   ]);
 
-  const managerMap = new Map(managerRefs.map((item) => [String(item._id), formatEmployeeName(item)]));
+  const managerMap = new Map(employeesRaw.map((item) => [String(item._id), formatEmployeeName(item)]));
   const evaluationMap = evaluations.reduce((acc, item) => {
     const key = String(item.employeeId);
     const current = acc.get(key) || { total: 0, pending: 0, totalScore: 0, scoreCount: 0, latestAt: null };
@@ -437,7 +431,10 @@ router.get(
     try {
       const companyId = req.user?.companyId || "global";
       const schoolId = req.user?.schoolId || "";
-      const cacheKey = `report:${companyId}:${schoolId}:${req.query.cycleId || ""}:${req.query.department || ""}`;
+      const roleScope = req.scope?.roleScope || "";
+      const departmentCode = req.scope?.departmentCode || "";
+      const teamId = req.scope?.teamId || "";
+      const cacheKey = `report:${companyId}:${schoolId}:${roleScope}:${departmentCode}:${teamId}:${req.query.cycleId || ""}:${req.query.department || ""}`;
       const dataset = await cacheGetOrFetch(cacheKey, () => resolveExecutiveDataset(req), 90);
       const averageScoreBase = dataset.employees.filter((item) => item.averageScore > 0);
       const averageScore = averageScoreBase.length

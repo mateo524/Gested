@@ -32,7 +32,7 @@ export function splitFullName(fullName) {
   }
 
   if (parts.length === 1) {
-    return { nombre: parts[0], apellido: parts[0] };
+    return { nombre: parts[0], apellido: "" };
   }
 
   return {

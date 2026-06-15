@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { apiFetch } from "../lib/api";
 
 const AuthContext = createContext(null);
@@ -41,6 +41,11 @@ export function AuthProvider({ children }) {
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
   );
   const [sessionHydrating, setSessionHydrating] = useState(false);
+
+  const userRef = useRef(user);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   const setActiveCompanyId = useCallback((companyId) => {
     if (!companyId) {
@@ -145,7 +150,11 @@ export function AuthProvider({ children }) {
   const login = useCallback(async ({ token: nextToken, user: nextUser }) => {
     applySession(nextToken, nextUser);
     setSessionHydrating(true);
-    hydrateSessionData(nextToken, nextUser).finally(() => setSessionHydrating(false));
+    try {
+      await hydrateSessionData(nextToken, nextUser);
+    } finally {
+      setSessionHydrating(false);
+    }
   }, [applySession, hydrateSessionData]);
 
   const updateSession = useCallback(async ({ token: nextToken, user: nextUser }) => {
@@ -175,7 +184,7 @@ export function AuthProvider({ children }) {
       .then(async (nextUser) => {
         localStorage.setItem("user", JSON.stringify(nextUser));
         setUser(nextUser);
-        if (!user) {
+        if (!userRef.current) {
           await hydrateSessionData(token, nextUser);
         }
       })
@@ -205,8 +214,32 @@ export function AuthProvider({ children }) {
     () => (tokenPayload?.exp ? new Date(tokenPayload.exp * 1000) : null),
     [tokenPayload]
   );
-  const tokenRemainingMs = tokenExpiresAt ? tokenExpiresAt.getTime() - Date.now() : 0;
-  const tokenNearExpiry = tokenExpiresAt ? tokenRemainingMs <= 60 * 60 * 1000 : false;
+
+  const computeTokenTimes = useCallback(() => {
+    if (!tokenExpiresAt) return { remainingMs: 0, nearExpiry: false };
+    const remainingMs = tokenExpiresAt.getTime() - Date.now();
+    return { remainingMs, nearExpiry: remainingMs <= 60 * 60 * 1000 };
+  }, [tokenExpiresAt]);
+
+  const [tokenTimes, setTokenTimes] = useState(computeTokenTimes);
+
+  useEffect(() => {
+    setTokenTimes(computeTokenTimes());
+    const interval = setInterval(() => setTokenTimes(computeTokenTimes()), 60 * 1000);
+    return () => clearInterval(interval);
+  }, [computeTokenTimes]);
+
+  useEffect(() => {
+    if (!tokenExpiresAt) return;
+    const nearExpiryThreshold = 60 * 60 * 1000;
+    const msUntilNearExpiry = tokenExpiresAt.getTime() - Date.now() - nearExpiryThreshold;
+    if (msUntilNearExpiry <= 0) return;
+    const id = setTimeout(() => setTokenTimes(computeTokenTimes()), msUntilNearExpiry);
+    return () => clearTimeout(id);
+  }, [tokenExpiresAt, computeTokenTimes]);
+
+  const tokenRemainingMs = tokenTimes.remainingMs;
+  const tokenNearExpiry = tokenTimes.nearExpiry;
 
   const value = useMemo(
     () => ({
@@ -219,6 +252,7 @@ export function AuthProvider({ children }) {
       activeCompany,
       tokenExpiresAt,
       tokenNearExpiry,
+      tokenRemainingMs,
       activeCompanyId,
       setActiveCompanyId,
       refreshCompanies: () => fetchCompanies(token, user),
@@ -249,6 +283,7 @@ export function AuthProvider({ children }) {
       token,
       tokenExpiresAt,
       tokenNearExpiry,
+      tokenRemainingMs,
       updateSession,
       user,
       sessionHydrating,

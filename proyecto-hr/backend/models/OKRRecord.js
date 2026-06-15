@@ -62,6 +62,7 @@ const OKRRecordSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "ImportJob",
       default: null,
+      index: true,
     },
     lastImportedAt: { type: Date, default: null },
     createdBy: {

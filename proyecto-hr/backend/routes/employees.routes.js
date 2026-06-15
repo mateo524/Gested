@@ -71,59 +71,65 @@ router.get(
     PERMISSIONS.VIEW_REPORTS,
   ),
   async (req, res) => {
-    const filter = buildScopedFilter(req, {});
+    try {
+      const filter = buildScopedFilter(req, {});
 
-    if (isManagerScope(req.scope)) {
-      const teamIds = await getScopedEmployeeIds(req.scope);
-      const ids = teamIds || [];
-      // ?includeSelf=true → include the manager's own employee record
-      if (req.query.includeSelf === "true" && req.scope.employeeId) {
-        const selfId = req.scope.employeeId;
-        const alreadyIncluded = ids.some((id) => String(id) === String(selfId));
-        if (!alreadyIncluded) ids.push(selfId);
+      if (isManagerScope(req.scope)) {
+        const teamIds = await getScopedEmployeeIds(req.scope);
+        const ids = teamIds || [];
+        // ?includeSelf=true → include the manager's own employee record
+        if (req.query.includeSelf === "true" && req.scope.employeeId) {
+          const selfId = req.scope.employeeId;
+          const alreadyIncluded = ids.some((id) => String(id) === String(selfId));
+          if (!alreadyIncluded) ids.push(selfId);
+        }
+        if (ids.length) filter._id = { $in: ids };
       }
-      if (ids.length) filter._id = { $in: ids };
+
+      if (isEmployeeScope(req.scope)) {
+        filter._id = req.scope.employeeId;
+      }
+
+      if (req.query.schoolId && req.scope.isSuperAdmin) {
+        filter.schoolId = req.query.schoolId;
+      }
+
+      if (req.query.area) {
+        filter.area = req.query.area;
+      }
+
+      if (req.query.cargo) {
+        filter.cargo = req.query.cargo;
+      }
+
+      if (req.query.managerId) {
+        filter.managerId = req.query.managerId;
+      }
+
+      if (req.query.q?.trim()) {
+        const escaped = req.query.q.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regex = { $regex: escaped, $options: "i" };
+        filter.$or = [{ nombre: regex }, { apellido: regex }, { email: regex }, { cargo: regex }];
+      }
+
+      const skip = Math.max(0, parseInt(req.query.skip) || 0);
+      const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
+
+      const [employees, total] = await Promise.all([
+        Employee.find(filter)
+          .select("-__v")
+          .sort({ apellido: 1, nombre: 1 })
+          .skip(skip)
+          .limit(limit)
+          .lean(),
+        Employee.countDocuments(filter),
+      ]);
+      res.json({ data: employees, total, skip, limit });
+    } catch (err) {
+      console.error("GET /employees error:", err);
+      res.status(500).json({ mensaje: "Error interno" });
     }
-
-    if (isEmployeeScope(req.scope)) {
-      filter._id = req.scope.employeeId;
-    }
-
-  if (req.query.schoolId && req.scope.isSuperAdmin) {
-    filter.schoolId = req.query.schoolId;
-  }
-
-  if (req.query.area) {
-    filter.area = req.query.area;
-  }
-
-  if (req.query.cargo) {
-    filter.cargo = req.query.cargo;
-  }
-
-  if (req.query.managerId) {
-    filter.managerId = req.query.managerId;
-  }
-
-  if (req.query.q?.trim()) {
-    const regex = { $regex: req.query.q.trim(), $options: "i" };
-    filter.$or = [{ nombre: regex }, { apellido: regex }, { email: regex }, { cargo: regex }];
-  }
-
-  const skip = Math.max(0, parseInt(req.query.skip) || 0);
-  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit) || 50));
-
-  const [employees, total] = await Promise.all([
-    Employee.find(filter)
-      .select("-__v")
-      .sort({ apellido: 1, nombre: 1 })
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    Employee.countDocuments(filter),
-  ]);
-  res.json({ data: employees, total, skip, limit });
-});
+  });
 
 router.get(
   "/org-chart",
@@ -131,24 +137,29 @@ router.get(
   attachTenantScope,
   requirePermission(PERMISSIONS.MANAGE_EMPLOYEES),
   async (req, res) => {
-    const filter = buildScopedFilter(req, { activo: true });
-    const employees = await Employee.find(filter)
-      .select("_id nombre apellido cargo area managerId tipoEmpleado")
-      .sort({ apellido: 1, nombre: 1 })
-      .lean();
+    try {
+      const filter = buildScopedFilter(req, { activo: true });
+      const employees = await Employee.find(filter)
+        .select("_id nombre apellido cargo area managerId tipoEmpleado")
+        .sort({ apellido: 1, nombre: 1 })
+        .lean();
 
-    const nodes = employees.map((emp) => ({
-      _id: String(emp._id),
-      nombre: emp.nombre,
-      apellido: emp.apellido,
-      cargo: emp.cargo,
-      area: emp.area || "",
-      tipoEmpleado: emp.tipoEmpleado || "",
-      managerId: emp.managerId ? String(emp.managerId) : null,
-      avatarUrl: null,
-    }));
+      const nodes = employees.map((emp) => ({
+        _id: String(emp._id),
+        nombre: emp.nombre,
+        apellido: emp.apellido,
+        cargo: emp.cargo,
+        area: emp.area || "",
+        tipoEmpleado: emp.tipoEmpleado || "",
+        managerId: emp.managerId ? String(emp.managerId) : null,
+        avatarUrl: null,
+      }));
 
-    res.json({ nodes });
+      res.json({ nodes });
+    } catch (err) {
+      console.error("GET /employees/org-chart error:", err);
+      res.status(500).json({ mensaje: "Error interno" });
+    }
   }
 );
 

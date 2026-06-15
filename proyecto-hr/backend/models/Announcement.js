@@ -35,8 +35,8 @@ const AnnouncementSchema = new mongoose.Schema(
       ref: "School",
       default: null,
     },
-    title: { type: String, trim: true },
-    body: { type: String, trim: true },
+    title: { type: String, trim: true, required: true },
+    body: { type: String, trim: true, required: true },
     type: {
       type: String,
       enum: ["info", "warning", "success", "update"],
@@ -59,11 +59,6 @@ const AnnouncementSchema = new mongoose.Schema(
       ],
       default: [],
     },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      default: null,
-    },
     expiresAt: { type: Date, default: null },
     isActive: { type: Boolean, default: true },
     pinned: { type: Boolean, default: false },
@@ -72,8 +67,6 @@ const AnnouncementSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
-    titulo: { type: String, required: true },
-    cuerpo: { type: String, required: true },
     prioridad: {
       type: String,
       enum: ["informativa", "importante", "urgente"],

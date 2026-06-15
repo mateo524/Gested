@@ -43,4 +43,6 @@ const DevelopmentPlanSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+DevelopmentPlanSchema.index({ companyId: 1, schoolId: 1, employeeId: 1, estado: 1 });
+
 export default mongoose.model("DevelopmentPlan", DevelopmentPlanSchema);

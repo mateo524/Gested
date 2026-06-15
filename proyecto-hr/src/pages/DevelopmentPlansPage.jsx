@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiUrl } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
 import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
@@ -42,7 +42,7 @@ function ProgressBar({ value }) {
   );
 }
 
-const emptyForm = { employeeId: "", evaluationId: "", fortalezas: "", aspectoDesarrollar: "", medicion: "", fechaSeguimiento: "", estado: "PENDIENTE", progreso: 0 };
+const emptyForm = { employeeId: "", evaluationId: "", fortalezas: "", aspectoDesarrollar: "", medicion: "", fechaSeguimiento: "", estado: "PENDIENTE", progreso: 0, notify: false };
 
 export default function DevelopmentPlansPage() {
   const { token, user, hasPermission } = useAuth();
@@ -67,6 +67,7 @@ export default function DevelopmentPlansPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [confirmState, setConfirmState] = useState({ open: false, plan: null });
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Suggestion-from-evaluation state
   const [closedEvals, setClosedEvals] = useState([]);
@@ -216,7 +217,7 @@ export default function DevelopmentPlansPage() {
     }
     try {
       setIsSubmitting(true);
-      const body = { ...form, fortalezas: form.fortalezas.split(",").map(s => s.trim()).filter(Boolean), evaluationId: form.evaluationId || null, fechaSeguimiento: form.fechaSeguimiento || null };
+      const body = { ...form, fortalezas: form.fortalezas.split(",").map(s => s.trim()).filter(Boolean), evaluationId: form.evaluationId || null, fechaSeguimiento: form.fechaSeguimiento || null, notify: !modal.editId ? Boolean(form.notify) : undefined };
       await apiFetch(modal.editId ? `/development-plans/${modal.editId}` : "/development-plans", {
         method: modal.editId ? "PUT" : "POST", token,
         headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
@@ -229,6 +230,38 @@ export default function DevelopmentPlansPage() {
       addToast({ message: err.message, type: "error" });
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  async function handleExportCSV() {
+    try {
+      setIsExporting(true);
+      const params = new URLSearchParams();
+      if (filters.employeeId) params.set("employeeId", filters.employeeId);
+      if (filters.estado) params.set("estado", filters.estado);
+      const q = params.toString() ? `?${params.toString()}` : "";
+      const activeCompanyId = localStorage.getItem("active_company_id");
+      const response = await fetch(`${apiUrl}/development-plans/export${q}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}),
+        },
+      });
+      if (!response.ok) throw new Error(L("Error al exportar.", "Export failed."));
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "planes-de-desarrollo.csv";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      addToast({ message: L("Exportación completada.", "Export complete."), type: "success" });
+    } catch (err) {
+      addToast({ message: err.message, type: "error" });
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -258,12 +291,21 @@ export default function DevelopmentPlansPage() {
           <h2 className="mt-0.5 text-xl font-semibold text-white">{L("Planes de acción", "Action Plans")}</h2>
           <p className="mt-1 text-sm text-[#7f99a8]">{L("Definí y hacé seguimiento de las acciones de mejora.", "Define and track improvement actions.")}</p>
         </div>
-        {canManage ? (
-          <button type="button" onClick={openNew}
-            className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
-            + {L("Nuevo plan", "New plan")}
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={handleExportCSV} disabled={isExporting}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2 text-sm text-[#c7d5dc] transition hover:bg-white/5 disabled:opacity-50">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" className="h-3.5 w-3.5">
+              <path d="M8 2v8m0 0-3-3m3 3 3-3M3 12h10" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            {isExporting ? L("Exportando…", "Exporting…") : L("Exportar CSV", "Export CSV")}
           </button>
-        ) : null}
+          {canManage ? (
+            <button type="button" onClick={openNew}
+              className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
+              + {L("Nuevo plan", "New plan")}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {/* Stats */}
@@ -457,6 +499,13 @@ export default function DevelopmentPlansPage() {
                   className="w-full accent-[#14b8a6]"
                   value={form.progreso} onChange={e => setForm(f => ({ ...f, progreso: Number(e.target.value) }))}/>
               </div>
+              {!modal.editId ? (
+                <label className="flex cursor-pointer items-center gap-2.5 rounded-xl border border-white/10 bg-[#091319] px-3 py-2.5">
+                  <input type="checkbox" className="h-4 w-4 accent-[#14b8a6]"
+                    checked={form.notify} onChange={e => setForm(f => ({ ...f, notify: e.target.checked }))}/>
+                  <span className="text-sm text-[#c7d5dc]">{L("Notificar al empleado por email", "Notify employee by email")}</span>
+                </label>
+              ) : null}
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setModal({ open: false, editId: "" })}
                   className="flex-1 rounded-xl border border-white/10 py-2.5 text-sm text-[#c7d5dc] transition hover:bg-white/5">

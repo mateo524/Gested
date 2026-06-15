@@ -560,7 +560,10 @@ export default function MetricsPage() {
 
       if (metricsResult.status === "fulfilled") setMetrics(metricsResult.value || []);
       if (competenciesResult.status === "fulfilled") setCompetencies(competenciesResult.value || []);
-      if (employeesResult.status === "fulfilled") setEmployees(employeesResult.value?.data ?? employeesResult.value ?? []);
+      if (employeesResult.status === "fulfilled") {
+        const empList = employeesResult.value?.data ?? employeesResult.value ?? [];
+        setEmployees(Array.isArray(empList) ? empList : []);
+      }
       if (cyclesResult.status === "fulfilled") setCycles(cyclesResult.value || []);
       if (evaluationsResult.status === "fulfilled") setEvaluations(evaluationsResult.value?.data ?? evaluationsResult.value ?? []);
       if (kpisResult.status === "fulfilled") setKpis(kpisResult.value || []);
@@ -572,6 +575,21 @@ export default function MetricsPage() {
 
       if (fatal) {
         throw new Error(evaluationsResult.reason?.message || metricsResult.reason?.message || "No pudimos cargar la evaluación de desempeño.");
+      }
+
+      const loadedEmployees = employeesResult.status === "fulfilled"
+        ? (employeesResult.value?.data ?? employeesResult.value ?? [])
+        : [];
+      const loadedEvaluations = evaluationsResult.status === "fulfilled"
+        ? (evaluationsResult.value?.data ?? evaluationsResult.value ?? [])
+        : [];
+      const derivedEmployees = [...new Map(
+        loadedEvaluations
+          .filter((ev) => ev.employeeId?._id)
+          .map((ev) => [String(ev.employeeId._id), ev.employeeId])
+      ).values()];
+      if (!Array.isArray(loadedEmployees) || (!loadedEmployees.length && !derivedEmployees.length)) {
+        setMessage({ type: "warning", text: "No se encontraron empleados dentro de tu alcance. Verificá los permisos o el ciclo activo." });
       }
     } catch (nextError) {
       setError(nextError.message);
@@ -664,10 +682,11 @@ export default function MetricsPage() {
         return;
       }
       const data = await apiFetch(`/evaluations/${evaluation._id}`, { token });
-      setter({
-        ...data.evaluation,
-        scores: mapDetailScores(data.scores),
-      });
+      if (data?.evaluation) {
+        setter({ ...data.evaluation, scores: mapDetailScores(data.scores) });
+      } else {
+        setter(null);
+      }
     },
     [token]
   );
@@ -991,7 +1010,7 @@ export default function MetricsPage() {
         </div>
       ) : null}
 
-      <div className="sticky top-0 z-10 bg-[#060f14] pb-3 pt-1 flex flex-wrap gap-3 items-center">
+      <div className="sticky top-0 z-10 bg-[#091319] pb-3 pt-1 flex flex-wrap gap-3 items-center">
         <div className="relative min-w-[180px] flex-1">
           <select
             className="pf-select w-full"
@@ -1355,10 +1374,10 @@ export default function MetricsPage() {
               ) : autoDetail?.scores?.length || managerDetail?.scores?.length ? (
                 <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-4 py-4 text-sm text-[#9fb6c4] space-y-1">
                   {autoDetail?.scores?.length ? (
-                    <p>Autoevaluación: {currentAutoAverage.toFixed(1)}/5 ({autoDetail.scores.length} descriptores)</p>
+                    <p>Autoevaluación: {currentAutoAverage != null ? currentAutoAverage.toFixed(1) : '-'}/5 ({autoDetail.scores.length} descriptores)</p>
                   ) : null}
                   {managerDetail?.scores?.length ? (
-                    <p>Jefatura: {currentManagerAverage.toFixed(1)}/5 ({managerDetail.scores.length} descriptores)</p>
+                    <p>Jefatura: {currentManagerAverage != null ? currentManagerAverage.toFixed(1) : '-'}/5 ({managerDetail.scores.length} descriptores)</p>
                   ) : null}
                   <p className="text-xs text-[#7f99a8]">No se cargó observación final.</p>
                 </div>

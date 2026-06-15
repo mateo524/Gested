@@ -32,4 +32,6 @@ const EvaluationCycleSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+EvaluationCycleSchema.index({ companyId: 1, schoolId: 1, anio: 1, periodo: 1, etapa: 1 }, { unique: true });
+
 export default mongoose.model("EvaluationCycle", EvaluationCycleSchema);

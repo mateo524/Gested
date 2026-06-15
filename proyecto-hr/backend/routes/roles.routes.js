@@ -394,12 +394,12 @@ router.put("/:id", auth, permit("manage_roles"), async (req, res) => {
 });
 
 router.delete("/:id", auth, permit("manage_roles"), async (req, res) => {
-  const roleToDelete = await Role.findById(req.params.id);
+  const { companyId } = await resolveCompanyScope(req);
+
+  const roleToDelete = await Role.findOne({ _id: req.params.id, companyId });
   if (roleToDelete?.isSystem) {
     return res.status(400).json({ mensaje: "No se puede eliminar un rol base del sistema" });
   }
-
-  const { companyId } = await resolveCompanyScope(req);
   const usersCount = await User.countDocuments({
     companyId,
     roleId: req.params.id,

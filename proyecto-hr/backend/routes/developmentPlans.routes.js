@@ -16,6 +16,7 @@ import Evaluation from "../models/Evaluation.js";
 import { runInBackground } from "../utils/background.js";
 import { invalidateReportCache } from "./reports.routes.js";
 import { invalidateDashboardCache } from "./dashboard.routes.js";
+import { dispatch as dispatchEmail } from "../utils/mailer.js";
 
 const router = express.Router();
 
@@ -336,6 +337,63 @@ router.get(
   }
 );
 
+router.get(
+  "/export",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_DEVELOPMENT_PLANS,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.EVALUATE_TEAM
+  ),
+  async (req, res) => {
+    let filter;
+    try {
+      filter = await buildPlansFilter(req);
+    } catch (error) {
+      return res.status(error.status || 400).json({ mensaje: error.message });
+    }
+    const plans = await DevelopmentPlan.find(filter)
+      .sort({ createdAt: -1 })
+      .populate("employeeId", "nombre apellido cargo area")
+      .lean();
+
+    const ESTADO_LABELS = {
+      PENDIENTE: "Pendiente",
+      EN_CURSO: "En curso",
+      EN_SEGUIMIENTO: "En seguimiento",
+      COMPLETADO: "Completado",
+      VENCIDO: "Vencido",
+    };
+
+    const rows = plans.map((plan) => {
+      const emp = plan.employeeId || {};
+      const nombre = [emp.apellido, emp.nombre].filter(Boolean).join(", ") || "";
+      const fechaSeguimiento = plan.fechaSeguimiento
+        ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" })
+        : "";
+      return [
+        `"${nombre.replace(/"/g, '""')}"`,
+        `"${String(plan.aspectoDesarrollar || "").replace(/"/g, '""')}"`,
+        `"${String(plan.medicion || "").replace(/"/g, '""')}"`,
+        `"${ESTADO_LABELS[plan.estado] || plan.estado || ""}"`,
+        `"${plan.progreso ?? 0}%"`,
+        `"${fechaSeguimiento}"`,
+      ].join(",");
+    });
+
+    const header = ["Colaborador", "Aspecto a desarrollar", "Descripcion / habilidad", "Estado", "Progreso", "Fecha objetivo"]
+      .map((h) => `"${h}"`)
+      .join(",");
+
+    const csv = [header, ...rows].join("\n");
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", 'attachment; filename="planes-de-desarrollo.csv"');
+    res.send(csv);
+  }
+);
+
 router.post(
   "/",
   auth,
@@ -378,6 +436,29 @@ router.post(
     });
 
     res.status(201).json({ mensaje: "Plan de desarrollo creado", plan });
+    runInBackground(async () => {
+      if (req.body.notify && employee.email) {
+        const empName = [employee.apellido, employee.nombre].filter(Boolean).join(", ") || employee.nombre || "Empleado";
+        const fechaStr = plan.fechaSeguimiento
+          ? new Date(plan.fechaSeguimiento).toLocaleDateString("es-AR", { day: "2-digit", month: "long", year: "numeric" })
+          : "Sin fecha asignada";
+        const subject = `Se te asigno un nuevo plan de desarrollo: ${plan.aspectoDesarrollar}`;
+        const html = `<div style="font-family:sans-serif;max-width:560px;margin:0 auto;background:#0c1e28;color:#c7d5dc;padding:32px;border-radius:12px">
+  <h2 style="color:#14b8a6;margin:0 0 16px">Nuevo plan de desarrollo asignado</h2>
+  <p style="margin:0 0 8px">Hola <strong>${empName}</strong>,</p>
+  <p style="margin:0 0 16px">Se te asigno el siguiente plan de accion:</p>
+  <div style="background:#091319;border-radius:8px;padding:16px;margin:0 0 16px">
+    <p style="margin:0 0 6px"><strong style="color:#14b8a6">Aspecto a desarrollar:</strong> ${plan.aspectoDesarrollar}</p>
+    ${plan.medicion ? `<p style="margin:0 0 6px"><strong style="color:#14b8a6">Descripcion:</strong> ${plan.medicion}</p>` : ""}
+    <p style="margin:0 0 6px"><strong style="color:#14b8a6">Fecha objetivo:</strong> ${fechaStr}</p>
+    <p style="margin:0"><strong style="color:#14b8a6">Estado inicial:</strong> ${plan.estado}</p>
+  </div>
+  <p style="margin:0 0 24px;font-size:13px;color:#7f99a8">Ingresa a la plataforma para ver todos los detalles y hacer seguimiento de tu progreso.</p>
+  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">¿Necesitas ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
+</div>`;
+        await dispatchEmail({ to: employee.email, subject, html });
+      }
+    }, "dev-plan-notify-employee");
     runInBackground(async () => {
       const cId = String(employee.companyId || req.tenantScope?.companyId || "");
       if (cId) {

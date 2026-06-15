@@ -1,4 +1,5 @@
 import express from "express";
+import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import ExcelJS from "exceljs";
@@ -99,6 +100,7 @@ async function buildUniqueEmail({ companySlug, baseLocalPart, companyId }) {
 
   while (await User.findOne({ companyId, email: candidate })) {
     index += 1;
+    if (index > 100) throw new Error('Could not generate unique email');
     candidate = `${safeLocal}.${index}@${domain}`;
   }
 
@@ -392,11 +394,13 @@ router.post(
       temporaryPasswords: [],
     };
 
+    // --- Pre-process rows to resolve names/roles and collect known emails ---
+    const processedRows = [];
     for (const row of rows) {
       const nombreBase = String(row.nombre || row.name || "").trim();
       const apellido = String(row.apellido || row.lastname || "").trim();
       const nombre = [nombreBase, apellido].filter(Boolean).join(" ").trim();
-      let email = String(row.email || "").trim().toLowerCase();
+      const emailRaw = String(row.email || "").trim().toLowerCase();
       const rolInput = normalizeText(row.rol || row.role || row.rolecode || "");
       const role = roleByKey.get(rolInput) || defaultRole;
 
@@ -408,57 +412,90 @@ router.post(
         continue;
       }
 
+      processedRows.push({ row, nombre, emailRaw, role });
+    }
+
+    // Resolve emails that need auto-generation (must be done sequentially to avoid duplicates)
+    const resolvedRows = [];
+    for (const item of processedRows) {
+      let email = item.emailRaw;
       if (!email) {
         email = await buildUniqueEmail({
           companySlug: company?.slug || company?.nombre,
-          baseLocalPart: nombre,
+          baseLocalPart: item.nombre,
           companyId,
         });
       }
+      resolvedRows.push({ ...item, email });
+    }
 
+    // Batch-fetch all existing users by email in a single query
+    const allEmails = resolvedRows.map((item) => item.email);
+    const existingUsers = await User.find({ companyId, email: { $in: allEmails }, isSuperAdmin: false }).lean();
+    const existingByEmail = new Map(existingUsers.map((u) => [u.email, u]));
+
+    // Build bulkWrite operations
+    const bulkOps = [];
+    const assignmentTasks = []; // { userId, role } pairs for post-write sync
+
+    for (const { row, nombre, email, role } of resolvedRows) {
       const activo = toBoolean(row.activo, true);
       const password = String(row.password || "").trim();
-      const existing = await User.findOne({ companyId, email, isSuperAdmin: false });
+      const existing = existingByEmail.get(email);
 
       if (existing) {
-        existing.nombre = nombre;
-        existing.roleId = role._id;
-        existing.activo = activo;
-
+        const setFields = { nombre, roleId: role._id, activo };
         if (password) {
-          existing.passwordHash = await bcrypt.hash(password, 10);
-          existing.mustChangePassword = false;
+          setFields.passwordHash = await bcrypt.hash(password, 10);
+          setFields.mustChangePassword = false;
+        }
+        bulkOps.push({ updateOne: { filter: { _id: existing._id }, update: { $set: setFields } } });
+        assignmentTasks.push({ userId: existing._id, role, isNew: false });
+        result.updated += 1;
+      } else {
+        const generatedPassword = password || generateTempPassword();
+        const mustChangePassword = !password;
+        const passwordHash = await bcrypt.hash(generatedPassword, 10);
+        const tempId = new mongoose.Types.ObjectId();
+        bulkOps.push({
+          insertOne: {
+            document: {
+              _id: tempId,
+              companyId,
+              nombre,
+              email,
+              roleId: role._id,
+              activo,
+              passwordHash,
+              mustChangePassword,
+            },
+          },
+        });
+        assignmentTasks.push({ userId: tempId, role, isNew: true });
+
+        if (mustChangePassword) {
+          result.temporaryPasswords.push({
+            _id: tempId,
+            nombre,
+            email,
+            temporaryPassword: generatedPassword,
+          });
         }
 
-        await existing.save();
-        await syncAssignmentFromRole({ user: existing, role });
-        result.updated += 1;
-        continue;
+        result.created += 1;
       }
+    }
 
-      const generatedPassword = password || generateTempPassword();
-      const mustChangePassword = !password;
-      const user = await User.create({
-        companyId,
-        nombre,
-        email,
-        roleId: role._id,
-        activo,
-        passwordHash: await bcrypt.hash(generatedPassword, 10),
-        mustChangePassword,
-      });
-      await syncAssignmentFromRole({ user, role });
+    if (bulkOps.length > 0) {
+      await User.bulkWrite(bulkOps, { ordered: false });
+    }
 
-      if (mustChangePassword) {
-        result.temporaryPasswords.push({
-          _id: user._id,
-          nombre: user.nombre,
-          email: user.email,
-          temporaryPassword: generatedPassword,
-        });
+    // Sync role assignments after writes
+    for (const { userId, role } of assignmentTasks) {
+      const userDoc = await User.findById(userId).lean();
+      if (userDoc) {
+        await syncAssignmentFromRole({ user: userDoc, role });
       }
-
-      result.created += 1;
     }
 
     await logAudit({
@@ -607,6 +644,7 @@ router.put("/:id", auth, permit("manage_users"), async (req, res) => {
     const normalizedEmail = email.trim().toLowerCase();
     const duplicated = await User.findOne({
       email: normalizedEmail,
+      companyId,
       _id: { $ne: req.params.id },
     });
 

@@ -17,6 +17,11 @@ const router = express.Router();
 const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOCK_TIME_MS = 15 * 60 * 1000;
+const PASSWORD_MIN_LENGTH = 8;
+// WARNING: loginAttempts/loginLocks are in-process Maps. They reset on restart and
+// do NOT work across multiple instances (PM2 clusters, containers, load balancers).
+// For multi-instance deployments, replace with a shared Redis store using
+// rate-limit-redis or store state in the DB.
 const loginAttempts = new Map();
 const loginLocks = new Map();
 
@@ -137,8 +142,8 @@ export function validatePasswordChangePayload(body = {}) {
     throw createRouteError(400, "Debes indicar password actual y nueva");
   }
 
-  if (newPassword.length < 6) {
-    throw createRouteError(400, "La nueva password debe tener al menos 6 caracteres");
+  if (newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw createRouteError(400, `La nueva password debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres`);
   }
 
   if (confirmPassword !== undefined && confirmPassword !== newPassword) {
@@ -272,7 +277,8 @@ router.post("/login", loginLimiter, async (req, res) => {
     });
 
     res.json({ mensaje: "Login correcto", token, user: safeUser });
-  } catch {
+  } catch (err) {
+    console.error('[auth] login error', err);
     res.status(500).json({ mensaje: "Error en login" });
   }
 });
@@ -386,86 +392,96 @@ router.put("/me/password", auth, passwordChangeLimiter, handleChangeOwnPassword)
 router.post("/change-password", auth, passwordChangeLimiter, handleChangeOwnPassword);
 
 router.post("/forgot-password", async (req, res) => {
-  const email = req.body.email?.trim().toLowerCase();
+  try {
+    const email = req.body.email?.trim().toLowerCase();
 
-  if (!email) {
-    return res.status(400).json({ mensaje: "Debes indicar un email" });
-  }
+    if (!email) {
+      return res.status(400).json({ mensaje: "Debes indicar un email" });
+    }
 
-  const user = await User.findOne({ email, activo: true });
+    const user = await User.findOne({ email, activo: true });
 
-  if (!user) {
-    return res.json({
+    if (!user) {
+      return res.json({
+        mensaje:
+          "Si el correo existe, enviaremos un enlace para restablecer la contrasena.",
+      });
+    }
+
+    const rawToken = crypto.randomBytes(32).toString("hex");
+    user.passwordResetTokenHash = hashResetToken(rawToken);
+    user.passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await user.save();
+
+    const resetUrl = buildResetUrl(rawToken);
+    const mailResult = await sendPasswordResetEmail({ to: user.email, resetUrl });
+
+    await logAudit({
+      companyId: user.companyId,
+      userId: user._id,
+      accion: "password_reset_requested",
+      modulo: "seguridad",
+      detalle: "Se solicito recuperacion de contrasena",
+      metadata: { email: user.email, sentByEmail: !!mailResult?.sent },
+    });
+
+    res.json({
       mensaje:
         "Si el correo existe, enviaremos un enlace para restablecer la contrasena.",
+      delivery:
+        mailResult?.sent
+          ? "email_sent"
+          : "email_not_configured",
     });
+  } catch (err) {
+    console.error('[auth] forgot-password error', err);
+    res.status(500).json({ mensaje: "Error interno" });
   }
-
-  const rawToken = crypto.randomBytes(32).toString("hex");
-  user.passwordResetTokenHash = hashResetToken(rawToken);
-  user.passwordResetExpiresAt = new Date(Date.now() + 60 * 60 * 1000);
-  await user.save();
-
-  const resetUrl = buildResetUrl(rawToken);
-  const mailResult = await sendPasswordResetEmail({ to: user.email, resetUrl });
-
-  await logAudit({
-    companyId: user.companyId,
-    userId: user._id,
-    accion: "password_reset_requested",
-    modulo: "seguridad",
-    detalle: "Se solicito recuperacion de contrasena",
-    metadata: { email: user.email, sentByEmail: !!mailResult?.sent },
-  });
-
-  res.json({
-    mensaje:
-      "Si el correo existe, enviaremos un enlace para restablecer la contrasena.",
-    delivery:
-      mailResult?.sent
-        ? "email_sent"
-        : "email_not_configured",
-  });
 });
 
 router.post("/reset-password", async (req, res) => {
-  const rawToken = req.body.token?.trim();
-  const newPassword = req.body.newPassword?.trim();
+  try {
+    const rawToken = req.body.token?.trim();
+    const newPassword = req.body.newPassword?.trim();
 
-  if (!rawToken || !newPassword) {
-    return res.status(400).json({ mensaje: "Debes indicar token y nueva contrasena" });
+    if (!rawToken || !newPassword) {
+      return res.status(400).json({ mensaje: "Debes indicar token y nueva contrasena" });
+    }
+
+    if (newPassword.length < PASSWORD_MIN_LENGTH) {
+      return res.status(400).json({ mensaje: `La nueva contrasena debe tener al menos ${PASSWORD_MIN_LENGTH} caracteres` });
+    }
+
+    const tokenHash = hashResetToken(rawToken);
+    const user = await User.findOne({
+      passwordResetTokenHash: tokenHash,
+      passwordResetExpiresAt: { $gt: new Date() },
+      activo: true,
+    });
+
+    if (!user) {
+      return res.status(400).json({ mensaje: "El token no es valido o expiro" });
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    user.mustChangePassword = false;
+    user.passwordResetTokenHash = null;
+    user.passwordResetExpiresAt = null;
+    await user.save();
+
+    await logAudit({
+      companyId: user.companyId,
+      userId: user._id,
+      accion: "password_reset_completed",
+      modulo: "seguridad",
+      detalle: "Contrasena restablecida por token",
+    });
+
+    res.json({ mensaje: "Contrasena actualizada correctamente" });
+  } catch (err) {
+    console.error('[auth] reset-password error', err);
+    res.status(500).json({ mensaje: "Error interno" });
   }
-
-  if (newPassword.length < 8) {
-    return res.status(400).json({ mensaje: "La nueva contrasena debe tener al menos 8 caracteres" });
-  }
-
-  const tokenHash = hashResetToken(rawToken);
-  const user = await User.findOne({
-    passwordResetTokenHash: tokenHash,
-    passwordResetExpiresAt: { $gt: new Date() },
-    activo: true,
-  });
-
-  if (!user) {
-    return res.status(400).json({ mensaje: "El token no es valido o expiro" });
-  }
-
-  user.passwordHash = await bcrypt.hash(newPassword, 10);
-  user.mustChangePassword = false;
-  user.passwordResetTokenHash = null;
-  user.passwordResetExpiresAt = null;
-  await user.save();
-
-  await logAudit({
-    companyId: user.companyId,
-    userId: user._id,
-    accion: "password_reset_completed",
-    modulo: "seguridad",
-    detalle: "Contrasena restablecida por token",
-  });
-
-  res.json({ mensaje: "Contrasena actualizada correctamente" });
 });
 
 router.get("/security-status", auth, async (req, res) => {

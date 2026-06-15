@@ -113,4 +113,32 @@ router.put(
   }
 );
 
+router.delete(
+  "/:id",
+  auth,
+  attachTenantScope,
+  requirePermission(PERMISSIONS.MANAGE_SCHOOLS),
+  async (req, res) => {
+    const filter = buildScopedFilter(req, { _id: req.params.id });
+    const school = await School.findOne(filter);
+
+    if (!school) {
+      return res.status(404).json({ mensaje: "Colegio no encontrado" });
+    }
+
+    await school.deleteOne();
+
+    await logAudit({
+      companyId: school.companyId,
+      schoolId: school._id,
+      userId: req.user.userId,
+      accion: "delete",
+      modulo: "schools",
+      detalle: `Se elimino el colegio ${school.nombre}`,
+    });
+
+    res.json({ mensaje: "Colegio eliminado" });
+  }
+);
+
 export default router;

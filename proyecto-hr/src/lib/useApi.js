@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { apiFetch } from "../lib/api";
 
 const cache = new Map();
 const CACHE_TTL = 30000;
@@ -37,14 +38,12 @@ export function useApi(url, token, options = {}) {
       setError(null);
 
       try {
-        const headers = { Authorization: `Bearer ${token}` };
-        const res = await fetch(url, { headers });
-        if (!res.ok) throw new Error(res.statusText || `Error ${res.status}`);
-        const json = await res.json();
+        const json = await apiFetch(url, { token });
         if (useCache) cache.set(cacheKey, { data: json, ts: Date.now() });
         if (!cancelled) { setData(json); setLoading(false); }
       } catch (err) {
         if (attempt < retries && !cancelled) {
+          if (cancelled) return;
           await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)));
           return fetchData(attempt + 1);
         }
