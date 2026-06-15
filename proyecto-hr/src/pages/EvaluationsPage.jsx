@@ -17,6 +17,19 @@ import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
 const TIPO_LABELS = { AUTOEVALUACION: "Autoevaluación", JEFATURA: "Jefatura", FINAL: "Cierre final", EVALUACION_360: "360°" };
 const ESTADO_LABELS = { BORRADOR: "Borrador", ENVIADA: "Enviada", REVISADA: "Revisada", CERRADA: "Cerrada" };
 
+function CycleBadge({ cycle }) {
+  const now = new Date();
+  const end = cycle.fechaFin ? new Date(cycle.fechaFin) : null;
+  const start = cycle.fechaInicio ? new Date(cycle.fechaInicio) : null;
+  const manuallyClosed = cycle.estado === "CERRADO" || cycle.estado === "Cerrado";
+  const active = !manuallyClosed && start && end && now >= start && now <= end;
+  const expired = !manuallyClosed && end && now > end;
+  if (manuallyClosed) return <span className="ml-1.5 inline-flex rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-[#6a8a9a]">CERRADO</span>;
+  if (active) return <span className="ml-1.5 inline-flex rounded-full bg-[#14b8a6]/15 px-2 py-0.5 text-[10px] font-medium text-[#14b8a6]">ABIERTO</span>;
+  if (expired) return <span className="ml-1.5 inline-flex rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-300">EN PROCESO</span>;
+  return <span className="ml-1.5 inline-flex rounded-full bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-300">PROGRAMADO</span>;
+}
+
 function StatusBadge({ estado }) {
   const label = ESTADO_LABELS[estado] || estado;
   const cls = estado === "CERRADA" ? "bg-emerald-500/15 text-emerald-200"
@@ -289,8 +302,8 @@ function EmployeeView({ token, language, searchQuery, user }) {
       ]);
       const evals = evalsRes?.data ?? evalsRes ?? [];
       setEvaluations(evals);
-      setMetrics(met || []);
-      setCycles(cyc || []);
+      setMetrics(Array.isArray(met) ? met : []);
+      setCycles(Array.isArray(cyc) ? cyc : []);
       const self = evals.find(e => e.tipo === "AUTOEVALUACION");
       setSelectedEvalId(prev => prev || self?._id || evals[0]?._id || null);
     } catch (err) {
@@ -369,8 +382,10 @@ function EmployeeView({ token, language, searchQuery, user }) {
       <div>
         <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Ciclo activo</p>
         <h2 className="mt-0.5 text-xl font-semibold text-white">Mi evaluación</h2>
-        <p className="mt-1 text-sm text-[#7f99a8]">
-          {activeCycle ? `${activeCycle.periodo} — ${activeCycle.estado}` : "Sin ciclo activo"}
+        <p className="mt-1 flex items-center gap-1.5 text-sm text-[#7f99a8]">
+          {activeCycle
+            ? <><span>{activeCycle.periodo}</span><CycleBadge cycle={activeCycle}/></>
+            : <span>Sin ciclo activo — aguardá que RRHH abra uno nuevo.</span>}
         </p>
       </div>
 
@@ -464,7 +479,12 @@ function EmployeeView({ token, language, searchQuery, user }) {
           )}
         </div>
       ) : evaluations.length === 0 ? (
-        <EmptyState compact title="Sin evaluaciones aún" description="Cuando tu jefe cree una evaluación aparecerá aquí."/>
+        <EmptyState compact
+          title="Todavía no tenés evaluaciones asignadas"
+          description={activeCycle
+            ? `El ciclo ${activeCycle.periodo} está activo. Tu jefe habilitará tu evaluación en breve.`
+            : "Cuando tu jefe abra un ciclo y cree tu evaluación, aparecerá aquí."}
+        />
       ) : null}
     </div>
   );
@@ -526,7 +546,7 @@ function ManagerView({ token, user }) {
         apiFetch("/evaluations", { token, signal }),
       ]);
       setEmployees(empRes?.data ?? empRes ?? []);
-      setCycles(cyc);
+      setCycles(Array.isArray(cyc) ? cyc : []);
       setEvaluations(evalsRes?.data ?? evalsRes ?? []);
     } catch (err) {
       if (!signal?.aborted) setError(err.message);
@@ -692,8 +712,10 @@ function ManagerView({ token, user }) {
         <div>
           <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Ciclos de evaluación</p>
           <h2 className="mt-0.5 text-xl font-semibold text-white">Evaluaciones</h2>
-          <p className="mt-1 text-sm text-[#7f99a8]">
-            {activeCycle ? `Ciclo activo: ${activeCycle.periodo}` : "Sin ciclo activo."}
+          <p className="mt-1 flex items-center gap-1.5 text-sm text-[#7f99a8]">
+            {activeCycle
+              ? <><span>Ciclo activo: {activeCycle.periodo}</span><CycleBadge cycle={activeCycle}/></>
+              : <span>Sin ciclo activo — creá uno en Ciclos de evaluación.</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -756,7 +778,16 @@ function ManagerView({ token, user }) {
         <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
           value={filters.cicloId} onChange={e => setFilters(f => ({ ...f, cicloId: e.target.value }))}>
           <option value="">Todos los ciclos</option>
-          {cycles.map(c => <option key={c._id} value={c._id}>{c.periodo} — {c.estado}</option>)}
+          {cycles.map(c => {
+            const now = new Date();
+            const end = c.fechaFin ? new Date(c.fechaFin) : null;
+            const start = c.fechaInicio ? new Date(c.fechaInicio) : null;
+            const manuallyClosed = c.estado === "CERRADO" || c.estado === "Cerrado";
+            const active = !manuallyClosed && start && end && now >= start && now <= end;
+            const expired = !manuallyClosed && end && now > end;
+            const tag = manuallyClosed ? "CERRADO" : active ? "ABIERTO" : expired ? "EN PROCESO" : "PROGRAMADO";
+            return <option key={c._id} value={c._id}>{c.periodo} [{tag}]</option>;
+          })}
         </select>
         <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
           value={filters.area} onChange={e => setFilters(f => ({ ...f, area: e.target.value }))}>
@@ -784,10 +815,20 @@ function ManagerView({ token, user }) {
             actionLabel="Reintentar" onAction={() => { const ctrl = new AbortController(); loadData(ctrl.signal); }}/>
         ) : filtered.length === 0 ? (
           <EmptyState compact
-            title={evaluations.length === 0 ? "Sin evaluaciones aún" : "Sin resultados"}
-            description={evaluations.length === 0 ? "Creá la primera evaluación." : "Ajustá los filtros."}
-            actionLabel={evaluations.length === 0 ? "+ Nueva evaluación" : ""}
-            onAction={evaluations.length === 0 ? () => setNewModal(true) : undefined}
+            title={
+              evaluations.length === 0
+                ? activeCycle ? "Este ciclo todavía no tiene evaluaciones" : "No hay evaluaciones ni ciclos activos"
+                : "Sin resultados para los filtros aplicados"
+            }
+            description={
+              evaluations.length === 0
+                ? activeCycle
+                  ? `Podés crear evaluaciones individuales o usar "Crear para todo el equipo" para el ciclo ${activeCycle.periodo}.`
+                  : "Primero creá un ciclo de evaluación en la sección Ciclos, luego volvé aquí para crear evaluaciones."
+                : "Probá limpiando los filtros de ciclo, área o estado para ver más resultados."
+            }
+            actionLabel={evaluations.length === 0 && activeCycle ? "+ Nueva evaluación" : ""}
+            onAction={evaluations.length === 0 && activeCycle ? () => setNewModal(true) : undefined}
           />
         ) : (
           <div className="overflow-x-auto">

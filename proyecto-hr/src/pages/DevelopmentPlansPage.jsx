@@ -346,8 +346,12 @@ export default function DevelopmentPlansPage() {
           <ErrorState compact title={L("Error al cargar", "Failed to load")} description={error} actionLabel={L("Reintentar", "Retry")} onAction={() => { const ctrl = new AbortController(); loadPlans(ctrl.signal); }}/>
         ) : filtered.length === 0 ? (
           <EmptyState compact
-            title={plans.length === 0 ? L("Sin planes aún", "No plans yet") : L("Sin resultados", "No results")}
-            description={plans.length === 0 ? L("Creá el primer plan de acción.", "Create the first action plan.") : L("Ajustá los filtros.", "Adjust the filters.")}
+            title={plans.length === 0 ? L("Todavía no hay planes de acción", "No action plans yet") : L("Ningún plan coincide con los filtros", "No plans match the filters")}
+            description={
+              plans.length === 0
+                ? L("Los planes de acción acompañan el cierre de cada evaluación. Creá el primero para registrar compromisos de desarrollo y hacer seguimiento del progreso.", "Action plans accompany each evaluation close. Create the first one to record development commitments and track progress.")
+                : L("Probá cambiando el colaborador o el estado para ampliar los resultados.", "Try changing the collaborator or status to broaden the results.")
+            }
             actionLabel={canManage && plans.length === 0 ? L("+ Nuevo plan", "+ New plan") : ""}
             onAction={canManage && plans.length === 0 ? openNew : undefined}
           />

@@ -32,6 +32,33 @@ const CHART_COLORS = [
 
 const PAGE_SIZE = 10;
 
+const AREA_BADGE_STYLES = {
+  ventas:      "bg-blue-500/15 text-blue-300 border-blue-400/30",
+  comercial:   "bg-blue-500/15 text-blue-300 border-blue-400/30",
+  tecnología:  "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
+  tecnologia:  "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
+  tech:        "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
+  sistemas:    "bg-emerald-500/15 text-emerald-300 border-emerald-400/30",
+  rrhh:        "bg-purple-500/15 text-purple-300 border-purple-400/30",
+  "recursos humanos": "bg-purple-500/15 text-purple-300 border-purple-400/30",
+  marketing:   "bg-pink-500/15 text-pink-300 border-pink-400/30",
+  finanzas:    "bg-amber-500/15 text-amber-300 border-amber-400/30",
+  administración: "bg-amber-500/15 text-amber-300 border-amber-400/30",
+  administracion: "bg-amber-500/15 text-amber-300 border-amber-400/30",
+  operaciones: "bg-orange-500/15 text-orange-300 border-orange-400/30",
+  dirección:   "bg-violet-500/15 text-violet-300 border-violet-400/30",
+  direccion:   "bg-violet-500/15 text-violet-300 border-violet-400/30",
+};
+
+function getAreaBadgeStyle(area) {
+  if (!area) return "bg-white/10 text-[#9fb6c4] border-white/15";
+  const key = area.toLowerCase().trim();
+  for (const [pattern, style] of Object.entries(AREA_BADGE_STYLES)) {
+    if (key.includes(pattern)) return style;
+  }
+  return "bg-white/10 text-[#9fb6c4] border-white/15";
+}
+
 function CustomEvolutionTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
   return (
@@ -69,10 +96,27 @@ function EvolutionPanel({ employeeId, token }) {
   }, [employeeId, token]);
 
   if (state.status === "loading") {
-    return <p className="py-4 text-center text-xs text-[#9fb6c4]">Cargando evolución...</p>;
+    return (
+      <div className="mt-3 flex items-center gap-3 rounded-xl border border-white/10 bg-[#060f14] px-4 py-4">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 animate-spin text-[#14b8a6]">
+          <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="10"/>
+        </svg>
+        <p className="text-xs text-[#9fb6c4]">Cargando historial de evaluaciones…</p>
+      </div>
+    );
   }
   if (state.status === "error") {
-    return <p className="py-4 text-center text-xs text-rose-300">Error: {state.error}</p>;
+    return (
+      <div className="mt-3 flex items-start gap-3 rounded-xl border border-rose-300/20 bg-rose-500/8 px-4 py-4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4 shrink-0 text-rose-300 mt-0.5">
+          <circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>
+        </svg>
+        <div>
+          <p className="text-xs font-semibold text-rose-200">No se pudo cargar la evolución</p>
+          <p className="mt-0.5 text-xs text-rose-300/80">{state.error}</p>
+        </div>
+      </div>
+    );
   }
   if (!state.data) return null;
 
@@ -80,9 +124,15 @@ function EvolutionPanel({ employeeId, token }) {
 
   if (!cycles.length) {
     return (
-      <p className="py-4 text-center text-xs text-[#9fb6c4]">
-        Aún no hay evaluaciones cerradas para este empleado.
-      </p>
+      <div className="mt-3 flex items-start gap-3 rounded-xl border border-white/10 bg-[#060f14] px-4 py-4">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5 shrink-0 text-[#7a9aaa] mt-0.5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+        </svg>
+        <div>
+          <p className="text-xs font-semibold text-white">Sin historial de evaluaciones cerradas</p>
+          <p className="mt-0.5 text-xs text-[#9fb6c4]">La evolución aparecerá cuando se cierren ciclos de evaluación para este empleado.</p>
+        </div>
+      </div>
     );
   }
 
@@ -239,9 +289,10 @@ export default function EmployeesPage() {
   );
 
   const filteredEmployees = useMemo(() => {
+    const safeEmployees = Array.isArray(employees) ? employees : [];
     const term = String(searchQuery || "").trim().toLowerCase();
-    if (!term) return employees;
-    return employees.filter((employee) =>
+    if (!term) return safeEmployees;
+    return safeEmployees.filter((employee) =>
       [employee.nombre, employee.apellido, employee.email, employee.cargo, employee.area]
         .filter(Boolean)
         .some((field) => String(field).toLowerCase().includes(term))
@@ -255,7 +306,7 @@ export default function EmployeesPage() {
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
 
   const employeesById = useMemo(
-    () => new Map(employees.map((employee) => [employee._id, employee])),
+    () => new Map((Array.isArray(employees) ? employees : []).map((employee) => [employee._id, employee])),
     [employees]
   );
   const availableRoles = useMemo(
@@ -728,10 +779,29 @@ export default function EmployeesPage() {
                           {(employee.nombre?.[0] || "").toUpperCase()}{(employee.apellido?.[0] || "").toUpperCase()}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="font-semibold text-white truncate">{employee.apellido}, {employee.nombre}</p>
-                          <p className="mt-0.5 text-xs text-[#9fb6c4] truncate">
-                            {[employee.cargo, employee.area, employee.tipoEmpleado].filter(Boolean).join(" · ") || "Sin cargo"}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <p className="font-semibold text-white truncate">{employee.apellido}, {employee.nombre}</p>
+                            <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium ${employee.activo === false ? "border-white/15 bg-white/5 text-[#9fb6c4]" : "border-emerald-400/30 bg-emerald-500/15 text-emerald-300"}`}>
+                              <span className={`h-1.5 w-1.5 rounded-full ${employee.activo === false ? "bg-[#9fb6c4]" : "bg-emerald-400"}`} />
+                              {employee.activo === false ? "Inactivo" : "Activo"}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            {employee.cargo ? (
+                              <span className="text-xs text-[#9fb6c4]">{employee.cargo}</span>
+                            ) : null}
+                            {employee.cargo && employee.area ? (
+                              <span className="text-[#6a8a9a] text-xs">·</span>
+                            ) : null}
+                            {employee.area ? (
+                              <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${getAreaBadgeStyle(employee.area)}`}>
+                                {employee.area}
+                              </span>
+                            ) : null}
+                            {employee.tipoEmpleado ? (
+                              <span className="text-xs text-[#6a8a9a]">· {employee.tipoEmpleado}</span>
+                            ) : null}
+                          </div>
                           <p className="mt-0.5 text-xs text-[#6a8a9a]">
                             {manager ? `Jefe: ${manager.apellido}, ${manager.nombre}` : "Sin jefe asignado"}
                             {employee.fechaIngreso ? ` · Ingreso: ${formatDate(employee.fechaIngreso)}` : ""}
@@ -822,17 +892,26 @@ export default function EmployeesPage() {
               </>
             ) : null}
             {!isLoading && !isError && !filteredEmployees.length ? (
-              <EmptyState
-                compact
-                title="No hay empleados cargados todavía"
-                description={
-                  filters.q || filters.schoolId || searchQuery
-                    ? "No encontramos personas para los filtros actuales."
-                    : "Carga tu plantilla oficial o crea el primer empleado para empezar."
-                }
-                actionLabel={!filters.q && !filters.schoolId && !searchQuery ? "Ir a carga masiva" : undefined}
-                onAction={!filters.q && !filters.schoolId && !searchQuery ? () => setView("carga-masiva") : undefined}
-              />
+              (() => {
+                const isFiltered = filters.q || filters.schoolId || searchQuery;
+                return (
+                  <EmptyState
+                    compact
+                    title={isFiltered ? "Sin resultados para tu búsqueda" : "Todavía no hay personas en la nómina"}
+                    description={
+                      isFiltered
+                        ? `Ningún empleado coincide con "${filters.q || searchQuery || ""}". Probá con otro término, cambiá el colegio o limpiá los filtros.`
+                        : "Tu nómina está vacía. Podés crear el primer empleado con el formulario de la izquierda, o importar toda la plantilla de una sola vez desde carga masiva."
+                    }
+                    actionLabel={isFiltered ? "Limpiar filtros" : "Ir a carga masiva"}
+                    onAction={
+                      isFiltered
+                        ? () => setFilters({ q: "", schoolId: "" })
+                        : () => setView("carga-masiva")
+                    }
+                  />
+                );
+              })()
             ) : null}
           </div>
         </section>

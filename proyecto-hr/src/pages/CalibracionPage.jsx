@@ -207,8 +207,14 @@ export default function CalibracionPage() {
           )}
 
           {competencies.length === 0 ? (
-            <div className="px-5 py-10 text-center text-sm text-[#7a9aaa]">
-              No hay datos de evaluación para este ciclo.
+            <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+              </span>
+              <p className="text-sm font-semibold text-white">Sin evaluaciones para este ciclo</p>
+              <p className="max-w-xs text-xs text-[#7a9aaa]">Cuando se cierren evaluaciones en el ciclo seleccionado, los resultados aparecerán aquí para calibrar.</p>
             </div>
           ) : (
             <table className="w-full min-w-[640px] text-sm">

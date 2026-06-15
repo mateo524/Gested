@@ -301,8 +301,12 @@ export default function CompetenciesPage() {
           <ErrorState compact title={L("Error al cargar", "Failed to load")} description={error} actionLabel={L("Reintentar", "Retry")} onAction={loadData}/>
         ) : filtered.length === 0 ? (
           <EmptyState compact
-            title={competencies.length === 0 ? L("Sin habilidades aún", "No skills yet") : L("Sin resultados", "No results")}
-            description={competencies.length === 0 ? L("Creá la primera habilidad para comenzar.", "Create the first skill to get started.") : L("Probá ajustando los filtros.", "Try adjusting the filters.")}
+            title={competencies.length === 0 ? L("Todavía no hay habilidades definidas", "No skills defined yet") : L("Ninguna habilidad coincide con los filtros", "No skills match the filters")}
+            description={
+              competencies.length === 0
+                ? L("Las habilidades forman el modelo de evaluación de tu organización. Podés crearlas manualmente o usar un template de industria para arrancar más rápido.", "Skills form your organization's evaluation model. Create them manually or use an industry template to get started faster.")
+                : L("Probá ajustando categoría, nivel o estado para ver más resultados.", "Try adjusting category, level or status to see more results.")
+            }
             actionLabel={competencies.length === 0 ? L("+ Nueva habilidad", "+ New skill") : ""}
             onAction={competencies.length === 0 ? openNew : undefined}
           />

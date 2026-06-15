@@ -555,9 +555,29 @@ export default function EvaluationCyclesPage() {
                 />
               : null}
             {!isLoading && !isError && !visibleCycles.length ? (
-              <div className="rounded-2xl border border-dashed border-white/10 bg-[#0c1e28] px-5 py-6 text-center">
-                <p className="text-sm font-semibold text-white">{searchQuery ? "Sin ciclos para la búsqueda actual" : "Todavía no hay ciclos definidos"}</p>
-                <p className="mt-1 text-xs text-[#7a9aaa]">{searchQuery ? "Limpiá la búsqueda para ver todos." : "Creá el primer ciclo para empezar a organizar evaluaciones."}</p>
+              <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed border-white/10 bg-[#0c1e28] px-6 py-12 text-center">
+                <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                  </svg>
+                </span>
+                <p className="text-sm font-semibold text-white">
+                  {searchQuery ? "Ningún ciclo coincide con la búsqueda" : "Todavía no hay ciclos de evaluación"}
+                </p>
+                <p className="max-w-xs text-xs text-[#7a9aaa]">
+                  {searchQuery
+                    ? "Limpiá la búsqueda para ver todos los ciclos cargados."
+                    : "Creá el primer ciclo completando período, etapa y fechas en el formulario de la izquierda."}
+                </p>
+                {searchQuery ? (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    className="mt-1 rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-[#c5d5de] transition hover:bg-white/5"
+                  >
+                    Limpiar búsqueda
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>

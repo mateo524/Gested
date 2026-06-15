@@ -427,12 +427,14 @@ export default function UsersPage() {
             {!isLoading && messageType !== "error" && !filteredUsers.length ? (
               <EmptyState
                 compact
-                title="No hay usuarios para mostrar"
+                title={query || searchQuery ? "Ningún usuario coincide con la búsqueda" : "Todavía no hay usuarios creados"}
                 description={
                   query || searchQuery
-                    ? "Prueba con otra búsqueda o limpia el filtro actual."
-                    : "Crea el primer acceso para empezar a asignar roles."
+                    ? `No encontramos ningún usuario que coincida con "${query || searchQuery}". Probá con otro nombre, email o limpiá el filtro.`
+                    : "Los usuarios son las personas con acceso a la plataforma. Creá el primero con el formulario de la izquierda asignando nombre, email y rol."
                 }
+                actionLabel={query || searchQuery ? "Limpiar búsqueda" : ""}
+                onAction={query || searchQuery ? () => { setQuery(""); setSearchQuery(""); } : undefined}
               />
             ) : null}
           </div>

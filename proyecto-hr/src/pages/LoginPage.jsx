@@ -37,7 +37,7 @@ export default function LoginPage() {
     }
     if (params.get("demo") === "1") {
       setIsDemo(true);
-      setForm({ email: "admin@demo.com", password: "123456" });
+      setForm({ email: import.meta.env.VITE_DEMO_EMAIL || "", password: import.meta.env.VITE_DEMO_PASSWORD || "" });
     }
   }, []);
 
@@ -82,15 +82,7 @@ export default function LoginPage() {
         body: JSON.stringify({ email: forgotEmail }),
       });
 
-      if (data?.debugResetToken) {
-        setResetForm((prev) => ({ ...prev, token: data.debugResetToken }));
-      }
-
-      setMessage(
-        data?.debugResetToken
-          ? `Email no configurado. Token de prueba: ${data.debugResetToken}`
-          : "Si el correo existe, te enviamos un enlace para restablecer la contraseña."
-      );
+      setMessage("Si el correo existe, te enviamos un enlace para restablecer la contraseña.");
       setMode("reset");
     } catch (error) {
       setMessage(error.message || "No se pudo enviar la solicitud.");

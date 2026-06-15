@@ -466,8 +466,14 @@ export default function OrgChartPage() {
 
       {/* Tree canvas */}
       {tree.length === 0 ? (
-        <div className="flex min-h-[30vh] items-center justify-center rounded-3xl border border-white/10 bg-[#0c1e28]">
-          <p className="text-sm text-[#7a9aaa]">No hay empleados para mostrar.</p>
+        <div className="flex min-h-[30vh] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-white/10 bg-[#0c1e28] px-8 py-16 text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+          </span>
+          <p className="text-sm font-semibold text-white">El organigrama está vacío</p>
+          <p className="max-w-xs text-xs text-[#7a9aaa]">Para ver la estructura, primero importá personas desde Carga masiva o creálas en la sección Personas.</p>
         </div>
       ) : (
         <div

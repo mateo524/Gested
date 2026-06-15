@@ -40,7 +40,7 @@ export default function DevelopmentPlanForm({ plan, onVolver, onSave }) {
           : []
       );
     } catch (err) {
-      console.error(err);
+      addToast({ message: err.message, type: "error" });
     } finally {
       setCargandoEmpleados(false);
     }
@@ -202,7 +202,7 @@ export default function DevelopmentPlanForm({ plan, onVolver, onSave }) {
               ) : (
                 <>
                   <option value="">Seleccionar empleado</option>
-                  {empleados.map((emp) => (
+                  {(Array.isArray(empleados) ? empleados : []).map((emp) => (
                     <option key={emp._id} value={emp._id}>
                       {emp.nombreCompleto} ({emp.email})
                     </option>
@@ -290,7 +290,7 @@ export default function DevelopmentPlanForm({ plan, onVolver, onSave }) {
           </div>
 
           <div className="space-y-3">
-            {formData.objetivos.map((objetivo, index) => (
+            {(Array.isArray(formData.objetivos) ? formData.objetivos : []).map((objetivo, index) => (
               <div
                 key={index}
                 className="rounded-xl border border-white/[0.06] bg-[#091319]/50 p-4 space-y-3"
@@ -355,7 +355,7 @@ export default function DevelopmentPlanForm({ plan, onVolver, onSave }) {
           </div>
 
           <div className="space-y-3">
-            {formData.competencias.map((comp, index) => (
+            {(Array.isArray(formData.competencias) ? formData.competencias : []).map((comp, index) => (
               <div
                 key={index}
                 className="rounded-xl border border-white/[0.06] bg-[#091319]/50 p-4 space-y-3"

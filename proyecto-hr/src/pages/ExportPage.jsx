@@ -635,8 +635,16 @@ export default function ExportPage() {
                   ))
                 ) : (
                   <tr>
-                    <td className="px-4 py-6 text-[#9fb6c4]" colSpan="3">
-                      Todavía no hay registros importados para mostrar.
+                    <td colSpan="3">
+                      <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
+                        <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                          </svg>
+                        </span>
+                        <p className="text-sm font-semibold text-white">Sin registros para mostrar</p>
+                        <p className="max-w-xs text-xs text-[#7a9aaa]">Los registros aparecen aquí luego de completar una importación masiva.</p>
+                      </div>
                     </td>
                   </tr>
                 )}

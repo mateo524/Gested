@@ -426,13 +426,19 @@ export default function DashboardPage() {
     if (!token) return;
 
     const cacheKey = getDashboardCacheKey(user, activeCompanyId);
-    const cachedSummary = sessionStorage.getItem(cacheKey);
+    const cachedRaw = sessionStorage.getItem(cacheKey);
     let hasCached = false;
-    if (cachedSummary) {
+    if (cachedRaw) {
       try {
-        setSummary(JSON.parse(cachedSummary));
-        hasCached = true;
-        setIsLoading(false);
+        const cached = JSON.parse(cachedRaw);
+        const age = Date.now() - (cached.cachedAt || 0);
+        if (age < 5 * 60 * 1000 && cached.data) {
+          setSummary(cached.data);
+          hasCached = true;
+          setIsLoading(false);
+        } else {
+          sessionStorage.removeItem(cacheKey);
+        }
       } catch {
         sessionStorage.removeItem(cacheKey);
       }
@@ -448,7 +454,7 @@ export default function DashboardPage() {
     apiFetch("/dashboard/summary", { token, timeoutMs: 25000, signal: controller.signal })
       .then((summaryData) => {
         setSummary(summaryData);
-        sessionStorage.setItem(cacheKey, JSON.stringify(summaryData));
+        sessionStorage.setItem(cacheKey, JSON.stringify({ data: summaryData, cachedAt: Date.now() }));
         setMessage("");
         setIsLoading(false);
         setLoadSlow(false);
@@ -466,7 +472,10 @@ export default function DashboardPage() {
     };
   }, [token, activeCompanyId, user, retryCount]);
 
-  const training = useMemo(() => summary?.decisionInsights?.trainingRecommendations || [], [summary]);
+  const training = useMemo(() => {
+    const raw = summary?.decisionInsights?.trainingRecommendations;
+    return Array.isArray(raw) ? raw : [];
+  }, [summary]);
   const alerts = useMemo(() => {
     const items = [];
     if (summary?.alerts?.summary) {
@@ -793,6 +802,14 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-3.5">
+      {loadSlow && (
+        <div className="flex items-center gap-3 rounded-2xl border border-amber-300/20 bg-amber-500/[0.07] px-4 py-3 text-sm text-amber-200">
+          <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 animate-spin">
+            <circle cx="8" cy="8" r="6" strokeDasharray="28" strokeDashoffset="10" />
+          </svg>
+          Actualizando datos — esto puede tardar un momento en organizaciones grandes.
+        </div>
+      )}
       {/* Header */}
       <div className="rounded-2xl border border-white/[0.07] p-5 md:p-6"
         style={{ background: "linear-gradient(135deg, #132230 0%, #0d1e2b 50%, #091520 100%)", boxShadow: "0 8px 32px rgba(2,8,23,0.4), inset 0 1px 0 rgba(255,255,255,0.06)" }}>
@@ -833,7 +850,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {quickLinks.length > 0 && (
+        {Array.isArray(quickLinks) && quickLinks.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {quickLinks.map((link) => (
               <button
@@ -856,22 +873,37 @@ export default function DashboardPage() {
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <DemoTourCard setView={setView} /> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        {statCards.map((card) => (
-          <StatCard
-            key={card.label}
-            label={card.label}
-            value={card.value}
-            hint={card.hint}
-            accent={card.accent}
-            onClick={card.goTo ? () => setView(card.goTo) : undefined}
-          />
-        ))}
+        {Array.isArray(statCards) && statCards.length > 0 ? (
+          statCards.map((card) => (
+            <StatCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              hint={card.hint}
+              accent={card.accent}
+              onClick={card.goTo ? () => setView(card.goTo) : undefined}
+            />
+          ))
+        ) : isLoading ? (
+          [...Array(4)].map((_, i) => <SkeletonCard key={i} />)
+        ) : (
+          <div className="col-span-full">
+            <EmptyState
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              }
+              text="No hay métricas disponibles todavía. Los KPIs aparecerán cuando haya datos en la organización."
+            />
+          </div>
+        )}
       </section>
 
-      {upcomingMilestones.length > 0 && (
-        <SurfaceCard title="Próximos hitos" subtitle="Puntos de atención relevantes para el período actual.">
-          <div className="space-y-2">
-            {upcomingMilestones.map((m, i) => (
+      <SurfaceCard title="Próximos hitos" subtitle="Puntos de atención relevantes para el período actual.">
+        <div className="space-y-2">
+          {Array.isArray(upcomingMilestones) && upcomingMilestones.length > 0 ? (
+            upcomingMilestones.map((m, i) => (
               <div
                 key={`${m.title}-${i}`}
                 className="flex items-start gap-3 rounded-xl border border-white/[0.07] bg-[#0c1e28] px-4 py-3"
@@ -882,10 +914,19 @@ export default function DashboardPage() {
                   <p className="mt-0.5 text-xs text-[#7a9aaa]">{m.detail}</p>
                 </div>
               </div>
-            ))}
-          </div>
-        </SurfaceCard>
-      )}
+            ))
+          ) : (
+            <EmptyState
+              icon={
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              }
+              text="No hay hitos próximos registrados. Creá un ciclo activo para ver eventos aquí."
+            />
+          )}
+        </div>
+      </SurfaceCard>
 
       <section className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
         <SurfaceCard

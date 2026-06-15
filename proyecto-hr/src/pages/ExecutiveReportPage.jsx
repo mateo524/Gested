@@ -1724,7 +1724,7 @@ function ExecutiveReportPage() {
         </div>
       </section>
 
-      <SurfaceCard title="Filtros del reporte" subtitle="Cambiá ciclo, área o persona sin salir de la pantalla.">
+      <SurfaceCard title="Parámetros del análisis" subtitle="Acoté el alcance por ciclo, unidad o colaborador sin salir de la pantalla.">
         <div className="grid gap-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
           <label className="block">
             <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo</span>
@@ -1809,7 +1809,7 @@ function ExecutiveReportPage() {
         <EmptyPanel text="No pudimos cargar el reporte en este momento." />
       ) : activeTab === "comparar" ? (
         <div className="space-y-5">
-          <SurfaceCard title="Comparar ciclos" subtitle="Seleccioná dos ciclos y compará sus métricas clave lado a lado.">
+          <SurfaceCard title="Análisis Comparativo entre Períodos" subtitle="Elegí dos ciclos y confrontá sus métricas clave para identificar tendencias.">
             <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
               <label className="block">
                 <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo A</span>
@@ -1874,7 +1874,7 @@ function ExecutiveReportPage() {
             ];
 
             return (
-              <SurfaceCard title="Resultado de la comparación" subtitle={`${cycleALabel} vs. ${cycleBLabel}`}>
+              <SurfaceCard title="Resultados del Análisis Comparativo" subtitle={`${cycleALabel} vs. ${cycleBLabel}`}>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -2024,7 +2024,7 @@ function ExecutiveReportPage() {
           {priorityEmployees.length > 0 || topPerformers.length > 0 ? (
             <div className="grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
               {priorityEmployees.length > 0 ? (
-                <SurfaceCard title="Personas que necesitan atención" subtitle="Ordenadas por puntaje más bajo. Estas personas se beneficiarían de una conversación pronto.">
+                <SurfaceCard title="Focos de Atención Prioritaria" subtitle="Ordenadas por puntaje más bajo. Una conversación a tiempo puede cambiar la trayectoria.">
                   <div className="grid gap-2">
                     {priorityEmployees.slice(0, 6).map((employee) => (
                       <article key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300/15 bg-amber-500/5 px-4 py-3">
@@ -2055,7 +2055,7 @@ function ExecutiveReportPage() {
 
               <div className="space-y-5">
                 {topPerformers.length > 0 ? (
-                  <SurfaceCard title="Mejores puntajes" subtitle="Personas con desempeño destacado en el período visible.">
+                  <SurfaceCard title="Talento de Alto Desempeño" subtitle="Colaboradores con el mayor puntaje en el período analizado.">
                     <div className="space-y-2">
                       {topPerformers.map((employee, index) => (
                         <div key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-500/5 px-4 py-3">
@@ -2074,7 +2074,7 @@ function ExecutiveReportPage() {
                 ) : null}
 
                 {departmentScores.length > 1 && departmentScores.some((d) => d.averageScore > 0) ? (
-                  <SurfaceCard title="Rendimiento por área" subtitle="Promedio visible por equipo, ordenado de menor a mayor.">
+                  <SurfaceCard title="Pulso de Desempeño por Unidad" subtitle="Promedio por equipo, de menor a mayor. Identificá brechas estructurales.">
                     <div className="space-y-2">
                       {departmentScores.filter((d) => d.averageScore > 0).slice(0, 5).map((dept) => (
                         <div key={dept.name} className="flex items-center gap-3">
@@ -2100,7 +2100,7 @@ function ExecutiveReportPage() {
           {overviewActions.length > 0 ? (
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-5 py-4">
               <div className="flex items-center justify-between gap-4 mb-3">
-                <p className="text-sm font-semibold text-white">Acciones recomendadas</p>
+                <p className="text-sm font-semibold text-white">Agenda de Acciones Estratégicas</p>
                 <div className="flex gap-2">
                   <span className="rounded-full border border-rose-300/30 bg-rose-500/10 px-2.5 py-0.5 text-xs font-semibold text-rose-200">Alta {actionPrioritySummary.high}</span>
                   <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-200">Media {actionPrioritySummary.medium}</span>
@@ -2129,16 +2129,16 @@ function ExecutiveReportPage() {
           ) : null}
 
           {/* Score distribution */}
-          <SurfaceCard title="Distribución de desempeño" subtitle="Cantidad de personas por banda de puntaje en el período visible.">
+          <SurfaceCard title="Mapa de Distribución del Desempeño" subtitle="Cantidad de colaboradores por banda de puntaje en el período analizado.">
             <ScoreDistributionPanel employees={allEmployees} />
           </SurfaceCard>
 
           {/* Progress charts */}
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-            <MiniBarChart title="Estado de evaluaciones" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
+            <MiniBarChart title="Cobertura del Ciclo Evaluativo" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
 
             <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-white">Planes de desarrollo</p>
+              <p className="text-sm font-semibold text-white">Portfolio de Desarrollo de Talento</p>
               {Number(overview.development?.total) > 0 ? (
                 <>
                   <div className="mt-4 flex items-center justify-around">
@@ -2156,8 +2156,8 @@ function ExecutiveReportPage() {
             </article>
 
             <article className="col-span-full rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
-              <p className="text-sm font-semibold text-white">KPIs y OKRs por estado</p>
-              <p className="mt-0.5 text-xs text-[#7a9aaa]">Comparación directa entre objetivos y métricas clave.</p>
+              <p className="text-sm font-semibold text-white">Cumplimiento de Objetivos Estratégicos</p>
+              <p className="mt-0.5 text-xs text-[#7a9aaa]">Comparativa de avance entre KPIs y OKRs por estado del período.</p>
               {kpiOkrGrouped.some((r) => r.kpi > 0 || r.okr > 0) ? (
                 <div className="mt-4 h-[180px]">
                   <ResponsiveContainer width="100%" height="100%">
@@ -2199,7 +2199,7 @@ function ExecutiveReportPage() {
 
           {/* Department average score chart */}
           {departmentScores.length > 0 && departmentScores.some((d) => d.averageScore > 0) ? (
-            <SurfaceCard title="Puntaje promedio por área" subtitle="Ordenado de menor a mayor. Escala 0–5.">
+            <SurfaceCard title="Benchmarking de Desempeño por Área" subtitle="Promedio por unidad, ordenado de menor a mayor. Escala 0–5.">
               <div style={{ height: Math.max(180, departmentScores.length * 44) }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={departmentScores} layout="vertical" barCategoryGap="22%">
@@ -2222,16 +2222,16 @@ function ExecutiveReportPage() {
 
           {/* Scatter + 9-box */}
           <div className="grid gap-3 xl:grid-cols-2">
-            <SurfaceCard title="Mapa de personas" subtitle="Posición por puntaje vs planes de desarrollo activos.">
+            <SurfaceCard title="Matriz de Posicionamiento de Talento" subtitle="Puntaje de desempeño vs. planes de desarrollo activos por colaborador.">
               <TeamScatterPlot employees={allEmployees} />
             </SurfaceCard>
-            <SurfaceCard title="Mapa 9-box" subtitle="Performance × potencial de crecimiento (estimado por participación).">
+            <SurfaceCard title="Matriz 9-Box: Performance × Potencial" subtitle="Posicionamiento por desempeño y potencial de crecimiento (estimado por participación).">
               <NineBoxGrid employees={allEmployees} />
             </SurfaceCard>
           </div>
 
           {/* Department distribution */}
-          <SurfaceCard title="Distribución por departamento / equipo" subtitle="Cómo se reparte el seguimiento entre áreas visibles.">
+          <SurfaceCard title="Cobertura Organizacional por Unidad" subtitle="Distribución del seguimiento de desempeño entre las unidades visibles.">
             {overview?.departments?.length ? (
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
                 {overview.departments.map((item) => {
@@ -2275,7 +2275,7 @@ function ExecutiveReportPage() {
           </SurfaceCard>
 
           {/* Employee list */}
-          <SurfaceCard title="Personas visibles" subtitle="Desde acá podés saltar directo al reporte individual de cada persona.">
+          <SurfaceCard title="Universo de Colaboradores en Alcance" subtitle="Accedé al análisis individual de cualquier persona con un clic.">
             {employees.length ? (
               <CollapsibleList
                 items={employees}
@@ -2335,7 +2335,7 @@ function ExecutiveReportPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          <SurfaceCard title="Reporte individual" subtitle="Elegí una persona para ver su desempeño, sus evaluaciones, objetivos y desarrollo en un solo lugar.">
+          <SurfaceCard title="Análisis Individual de Desempeño" subtitle="Seleccioná un colaborador para ver su perfil completo: evaluaciones, objetivos y desarrollo en un solo lugar.">
             <div className="grid gap-4 xl:grid-cols-[1.2fr_auto]">
               <label className="block">
                 <span className="mb-2 block text-sm text-[#c5d5de]">Persona</span>
@@ -2379,11 +2379,11 @@ function ExecutiveReportPage() {
           ) : (
             <div ref={detailRef} className="space-y-3">
               <SurfaceCard
-                title="Detalle individual"
+                title="Perfil Ejecutivo del Colaborador"
                 subtitle={
                   selectedEmployee
                     ? `${selectedEmployee.fullName} · ${selectedEmployee.cargo || "Sin cargo"}${selectedEmployee.area ? ` · ${selectedEmployee.area}` : ""}`
-                    : "Cargando detalle individual"
+                    : "Preparando perfil ejecutivo..."
                 }
                 actions={
                   <div className="flex gap-2">
@@ -2465,7 +2465,7 @@ function ExecutiveReportPage() {
 
                     {/* KPI / OKR cards */}
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                      <SurfaceCard title="KPIs asignados" subtitle="Indicadores medibles y avance contra metas.">
+                      <SurfaceCard title="Indicadores Clave de Rendimiento (KPIs)" subtitle="Métricas cuantitativas y avance contra las metas comprometidas.">
                         {detail.kpis?.items?.length ? (
                           <div className="grid gap-3">
                             <CollapsibleList
@@ -2481,7 +2481,7 @@ function ExecutiveReportPage() {
                         )}
                       </SurfaceCard>
 
-                      <SurfaceCard title="OKRs asignados" subtitle="Objetivos y resultados clave.">
+                      <SurfaceCard title="Objetivos y Resultados Clave (OKRs)" subtitle="Alineación estratégica y avance en los resultados comprometidos.">
                         {detail.okrs?.items?.length ? (
                           <div className="grid gap-3">
                             <CollapsibleList
@@ -2500,7 +2500,7 @@ function ExecutiveReportPage() {
 
                     {/* Evaluations + Development plans */}
                     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                      <SurfaceCard title="Evaluaciones" subtitle="Autoevaluación, evaluación superior y cierre final cuando existan.">
+                      <SurfaceCard title="Historial de Evaluaciones" subtitle="Autoevaluación, evaluación de la jefatura y cierre final del período.">
                         {detail.evaluations?.length ? (
                           <CollapsibleList
                             items={detail.evaluations}
@@ -2541,7 +2541,7 @@ function ExecutiveReportPage() {
                         )}
                       </SurfaceCard>
 
-                      <SurfaceCard title="Plan de desarrollo" subtitle="Planes activos, vencidos o completados para esta persona.">
+                      <SurfaceCard title="Hoja de Ruta de Desarrollo" subtitle="Planes activos, completados y vencidos vinculados a este colaborador.">
                         {detail.developmentPlans?.length ? (
                           <div className="space-y-3">
                             <CollapsibleList
@@ -2586,7 +2586,7 @@ function ExecutiveReportPage() {
                     </div>
 
                     {/* Actions */}
-                    <SurfaceCard title="Acciones pendientes" subtitle="Qué conviene atender ahora según lo visible en el reporte individual.">
+                    <SurfaceCard title="Agenda de Intervención Individual" subtitle="Acciones concretas a tomar según la lectura ejecutiva del perfil actual.">
                       {detail.actions?.length ? (
                         <div className="space-y-3">
                           <CollapsibleList

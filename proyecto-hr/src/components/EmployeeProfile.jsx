@@ -11,13 +11,48 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import {
-  ChevronDown,
-  User,
-  ClipboardList,
-  TrendingUp,
-  BarChart2,
-} from "lucide-react";
+
+function IconChevronDown({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={className}>
+      <path d="M6 9l6 6 6-6" />
+    </svg>
+  );
+}
+function IconUser({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+    </svg>
+  );
+}
+function IconClipboardList({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <rect x="8" y="2" width="8" height="4" rx="1" />
+      <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+      <path d="M9 12h6M9 16h4" />
+    </svg>
+  );
+}
+function IconTrendingUp({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
+    </svg>
+  );
+}
+function IconBarChart2({ className }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}>
+      <line x1="18" y1="20" x2="18" y2="10" />
+      <line x1="12" y1="20" x2="12" y2="4" />
+      <line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // ProfileTab — accordion/tab hybrid
@@ -33,7 +68,7 @@ function ProfileTab({ label, icon, isOpen, onToggle, children }) {
           {icon}
           {label}
         </span>
-        <ChevronDown
+        <IconChevronDown
           className={`size-4 text-[#7f99a8] transition-transform duration-300 ${
             isOpen ? "rotate-180 text-[#14b8a6]" : ""
           }`}
@@ -195,7 +230,7 @@ export default function EmployeeProfile({ empleado, onVolver }) {
         {/* ── Tab 1: Información ── */}
         <ProfileTab
           label="Información"
-          icon={<User className="size-4 text-[#14b8a6]" />}
+          icon={<IconUser className="size-4 text-[#14b8a6]" />}
           isOpen={openTab === "info"}
           onToggle={() => toggleTab("info")}
         >
@@ -488,7 +523,7 @@ export default function EmployeeProfile({ empleado, onVolver }) {
         {/* ── Tab 2: Evaluaciones ── */}
         <ProfileTab
           label="Evaluaciones"
-          icon={<ClipboardList className="size-4 text-[#14b8a6]" />}
+          icon={<IconClipboardList className="size-4 text-[#14b8a6]" />}
           isOpen={openTab === "evaluaciones"}
           onToggle={() => toggleTab("evaluaciones")}
         >
@@ -597,12 +632,12 @@ export default function EmployeeProfile({ empleado, onVolver }) {
         {/* ── Tab 3: Planes de desarrollo ── */}
         <ProfileTab
           label="Planes de desarrollo"
-          icon={<TrendingUp className="size-4 text-[#14b8a6]" />}
+          icon={<IconTrendingUp className="size-4 text-[#14b8a6]" />}
           isOpen={openTab === "planes"}
           onToggle={() => toggleTab("planes")}
         >
           <div className="flex flex-col items-center gap-4 py-8 text-center">
-            <TrendingUp className="size-10 text-[#14b8a6]/40" />
+            <IconTrendingUp className="size-10 text-[#14b8a6]/40" />
             <p className="text-white/50 text-sm max-w-xs">
               Todavía no hay planes de desarrollo registrados para este
               empleado.
@@ -616,12 +651,12 @@ export default function EmployeeProfile({ empleado, onVolver }) {
         {/* ── Tab 4: KPIs & OKRs ── */}
         <ProfileTab
           label="KPIs & OKRs"
-          icon={<BarChart2 className="size-4 text-[#14b8a6]" />}
+          icon={<IconBarChart2 className="size-4 text-[#14b8a6]" />}
           isOpen={openTab === "kpis"}
           onToggle={() => toggleTab("kpis")}
         >
           <div className="flex flex-col items-center gap-3 py-8 text-center">
-            <BarChart2 className="size-10 text-[#14b8a6]/40" />
+            <IconBarChart2 className="size-10 text-[#14b8a6]/40" />
             <p className="text-white/50 text-sm">Sin datos registrados</p>
           </div>
         </ProfileTab>

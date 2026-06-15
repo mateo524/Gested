@@ -4,10 +4,13 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev": "node server.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:security": "node --test tests/security/*.test.js",
     "test:import": "node --test tests/import/*.test.js",
+    "seed:demo": "node scripts/seedDemo.mjs",
+    "seed:corp": "node scripts/seedCorp.mjs",
     "seed:validation-matrix": "node scripts/seedValidationMatrix.js",
     "smoke:postdeploy": "node scripts/smokeTestPostDeploy.js"
   },

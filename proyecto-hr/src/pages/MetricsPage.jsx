@@ -3,6 +3,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   Legend,
   ReferenceLine,
   ResponsiveContainer,
@@ -21,6 +22,20 @@ import {
 } from "../components/AppStates";
 import CollapsibleList from "../components/CollapsibleList";
 import ConfirmDialog from "../components/ConfirmDialog";
+
+const PERIOD_OPTIONS = [
+  { key: "mes", label: "Este mes" },
+  { key: "trimestre", label: "Este trimestre" },
+  { key: "anio", label: "Este año" },
+  { key: "todos", label: "Todos" },
+];
+
+const STATUS_COLORS = {
+  BORRADOR: "#64748b",
+  ENVIADA: "#38bdf8",
+  REVISADA: "#a78bfa",
+  CERRADA: "#14b8a6",
+};
 
 const TABS = [
   { key: "resumen", label: "Resumen" },
@@ -129,7 +144,7 @@ function SurfaceCard({ title, subtitle, actions, children }) {
   );
 }
 
-function SummaryCard({ label, value, hint, tone = "default" }) {
+function SummaryCard({ label, value, hint, tone = "default", tooltip }) {
   const toneClass =
     tone === "success"
       ? "border-emerald-300/20 bg-emerald-500/10"
@@ -140,7 +155,7 @@ function SummaryCard({ label, value, hint, tone = "default" }) {
           : "border-white/10 bg-[#0f1f28]";
 
   return (
-    <article className={`rounded-3xl border p-4 ${toneClass}`}>
+    <article className={`rounded-3xl border p-4 ${toneClass}`} title={tooltip}>
       <p className="text-xs uppercase tracking-[0.14em] text-[#7f99a8]">{label}</p>
       <p className="mt-2 text-2xl font-semibold text-white">{value}</p>
       {hint ? <p className="mt-2 text-sm text-[#9ab0bc]">{hint}</p> : null}
@@ -467,7 +482,7 @@ function hasMeaningfulText(value) {
   return Boolean(normalizeText(value));
 }
 
-function ChartTooltip({ active, payload, label }) {
+function ChartTooltip({ active, payload, label, descriptorCount }) {
   if (!active || !payload?.length) return null;
   return (
     <div className="rounded-2xl border border-white/15 bg-[#0b1d27] px-4 py-3 shadow-[0_16px_40px_rgba(2,8,23,0.5)] backdrop-blur-sm">
@@ -476,9 +491,12 @@ function ChartTooltip({ active, payload, label }) {
         <div key={entry.dataKey} className="flex items-center gap-2 py-0.5 text-sm">
           <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: entry.fill }} />
           <span className="text-[#a8bec9]">{entry.name}:</span>
-          <span className="ml-auto pl-4 font-semibold text-white">{entry.value}</span>
+          <span className="ml-auto pl-4 font-semibold text-white">{typeof entry.value === "number" ? entry.value.toFixed(2) : entry.value}</span>
         </div>
       ))}
+      {descriptorCount != null ? (
+        <p className="mt-2 border-t border-white/10 pt-2 text-xs text-[#6a8fa0]">{descriptorCount} descriptor{descriptorCount !== 1 ? "es" : ""} en esta competencia</p>
+      ) : null}
     </div>
   );
 }
@@ -527,6 +545,8 @@ export default function MetricsPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [confirmDeleteId, setConfirmDeleteId] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
+  const [selectedPeriod, setSelectedPeriod] = useState("todos");
+  const [selectedArea, setSelectedArea] = useState("");
 
   const canReadMetrics = Boolean(
     hasPermission("manage_metrics") ||
@@ -613,7 +633,7 @@ export default function MetricsPage() {
   );
   const groups = useMemo(() => buildGroups(metrics, competencyMap), [competencyMap, metrics]);
 
-  const visibleEmployees = useMemo(() => {
+  const allVisibleEmployees = useMemo(() => {
     return employees.length
       ? employees
       : [...new Map(
@@ -622,6 +642,35 @@ export default function MetricsPage() {
             .map((evaluation) => [String(evaluation.employeeId._id), evaluation.employeeId])
         ).values()];
   }, [employees, evaluations]);
+
+  const availableAreas = useMemo(() => {
+    const areas = new Set(allVisibleEmployees.map((e) => e.area).filter(Boolean));
+    return [...areas].sort();
+  }, [allVisibleEmployees]);
+
+  const visibleEmployees = useMemo(() => {
+    if (!selectedArea) return allVisibleEmployees;
+    return allVisibleEmployees.filter((e) => e.area === selectedArea);
+  }, [allVisibleEmployees, selectedArea]);
+
+  const periodFilteredEvaluations = useMemo(() => {
+    if (selectedPeriod === "todos") return evaluations;
+    const now = new Date();
+    return evaluations.filter((ev) => {
+      const d = new Date(ev.createdAt || ev.updatedAt || 0);
+      if (selectedPeriod === "mes") {
+        return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+      }
+      if (selectedPeriod === "trimestre") {
+        const q = Math.floor(now.getMonth() / 3);
+        return d.getFullYear() === now.getFullYear() && Math.floor(d.getMonth() / 3) === q;
+      }
+      if (selectedPeriod === "anio") {
+        return d.getFullYear() === now.getFullYear();
+      }
+      return true;
+    });
+  }, [evaluations, selectedPeriod]);
 
   useEffect(() => {
     if (!selectedEmployeeId && visibleEmployees.length) {
@@ -724,11 +773,17 @@ export default function MetricsPage() {
   }, [autoEvaluation, canSeeManagerSection, loadEvaluationDetail, managerEvaluation, selectedEmployeeId, selectedCycleId]);
 
   const operationalSummary = useMemo(() => {
-    const totalEvaluations = evaluations.length;
-    const autoCount = evaluations.filter((evaluation) => evaluation.tipo === "AUTOEVALUACION").length;
-    const managerCount = evaluations.filter((evaluation) => evaluation.tipo === "JEFATURA").length;
-    const overallAverage = average(evaluations.map((evaluation) => evaluation.resultadoFinal));
-    const pending = evaluations.filter((evaluation) => evaluation.estado !== "CERRADA").length;
+    const base = periodFilteredEvaluations;
+    const totalEvaluations = base.length;
+    const autoCount = base.filter((evaluation) => evaluation.tipo === "AUTOEVALUACION").length;
+    const managerCount = base.filter((evaluation) => evaluation.tipo === "JEFATURA").length;
+    const overallAverage = average(base.map((evaluation) => evaluation.resultadoFinal));
+    const pending = base.filter((evaluation) => evaluation.estado !== "CERRADA").length;
+    const statusDistribution = ["BORRADOR", "ENVIADA", "REVISADA", "CERRADA"].map((s) => ({
+      name: ESTADO_LABELS[s],
+      value: base.filter((ev) => ev.estado === s).length,
+      estado: s,
+    }));
     return {
       totalEvaluations,
       autoCount,
@@ -737,8 +792,9 @@ export default function MetricsPage() {
       pending,
       activeKpis: kpis.length,
       activeOkrs: okrs.length,
+      statusDistribution,
     };
-  }, [evaluations, kpis.length, okrs.length]);
+  }, [periodFilteredEvaluations, kpis.length, okrs.length]);
 
   const currentAutoAverage = useMemo(() => average(autoDetail?.scores?.map((item) => item.nivel) || []), [autoDetail]);
   const currentManagerAverage = useMemo(() => average(managerDetail?.scores?.map((item) => item.nivel) || []), [managerDetail]);
@@ -756,6 +812,7 @@ export default function MetricsPage() {
           name: group.title,
           auto: average(autoScores) ?? 0,
           jefe: average(managerScores) ?? 0,
+          descriptorCount: group.descriptors.length,
         };
       })
       .filter((row) => row.auto || row.jefe);
@@ -1010,53 +1067,90 @@ export default function MetricsPage() {
         </div>
       ) : null}
 
-      <div className="sticky top-0 z-10 bg-[#091319] pb-3 pt-1 flex flex-wrap gap-3 items-center">
-        <div className="relative min-w-[180px] flex-1">
-          <select
-            className="pf-select w-full"
-            value={selectedEmployeeId}
-            disabled={!visibleEmployees.length}
-            onChange={(event) => setSelectedEmployeeId(event.target.value)}
-          >
-            {visibleEmployees.map((employee) => (
-              <option key={employee._id} value={employee._id}>
-                {buildEmployeeLabel(employee)}
-              </option>
+      <div className="sticky top-0 z-10 bg-[#091319] pb-3 pt-1 space-y-2">
+        <div className="flex flex-wrap gap-2 items-center">
+          <div className="flex gap-1 rounded-2xl border border-white/10 bg-[#0f1f28] p-1">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
+                title={opt.key === "mes" ? "Filtrá por el mes calendario actual" : opt.key === "trimestre" ? "Filtrá por el trimestre actual (Q)" : opt.key === "anio" ? "Filtrá por el año en curso" : "Mostrar todas las evaluaciones sin filtro de fecha"}
+                onClick={() => setSelectedPeriod(opt.key)}
+                className={`rounded-xl px-3 py-1.5 text-xs font-medium transition ${
+                  selectedPeriod === opt.key
+                    ? "bg-[#14b8a6] text-[#0f172a]"
+                    : "text-[#8fa9b7] hover:text-white"
+                }`}
+              >
+                {opt.label}
+              </button>
             ))}
-          </select>
-          {!visibleEmployees.length ? (
-            <p className="mt-1 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
+          </div>
+          {availableAreas.length > 0 ? (
+            <select
+              className="pf-select min-w-[140px]"
+              value={selectedArea}
+              title="Filtrá empleados por área o departamento para acotar la vista a tu equipo"
+              onChange={(event) => {
+                setSelectedArea(event.target.value);
+                setSelectedEmployeeId("");
+              }}
+            >
+              <option value="">Todas las áreas</option>
+              {availableAreas.map((area) => (
+                <option key={area} value={area}>{area}</option>
+              ))}
+            </select>
           ) : null}
         </div>
-        <div className="min-w-[160px]">
-          <select
-            className="pf-select w-full"
-            value={selectedCycleId}
-            onChange={(event) => setSelectedCycleId(event.target.value)}
-          >
-            <option value="">Todos los ciclos</option>
-            {cycleOptionsForEmployee.map((cycle) => (
-              <option key={cycle._id} value={cycle._id}>
-                {buildCycleLabel(cycle)}
-              </option>
-            ))}
-          </select>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {TABS.filter((tab) => canSeeManagerSection || tab.key !== "manager").map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setActiveTab(tab.key)}
-              className={`rounded-2xl px-3 py-2 text-sm transition ${
-                activeTab === tab.key
-                  ? "bg-[#14b8a6] text-[#0f172a]"
-                  : "border border-white/10 bg-[#122530] text-[#afc3ce]"
-              }`}
+        <div className="flex flex-wrap gap-3 items-center">
+          <div className="relative min-w-[180px] flex-1">
+            <select
+              className="pf-select w-full"
+              value={selectedEmployeeId}
+              disabled={!visibleEmployees.length}
+              onChange={(event) => setSelectedEmployeeId(event.target.value)}
             >
-              {tab.label}
-            </button>
-          ))}
+              {visibleEmployees.map((employee) => (
+                <option key={employee._id} value={employee._id}>
+                  {buildEmployeeLabel(employee)}
+                </option>
+              ))}
+            </select>
+            {!visibleEmployees.length ? (
+              <p className="mt-1 text-xs text-amber-200">No encontramos empleados dentro de tu alcance para evaluar.</p>
+            ) : null}
+          </div>
+          <div className="min-w-[160px]">
+            <select
+              className="pf-select w-full"
+              value={selectedCycleId}
+              onChange={(event) => setSelectedCycleId(event.target.value)}
+            >
+              <option value="">Todos los ciclos</option>
+              {cycleOptionsForEmployee.map((cycle) => (
+                <option key={cycle._id} value={cycle._id}>
+                  {buildCycleLabel(cycle)}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {TABS.filter((tab) => canSeeManagerSection || tab.key !== "manager").map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setActiveTab(tab.key)}
+                className={`rounded-2xl px-3 py-2 text-sm transition ${
+                  activeTab === tab.key
+                    ? "bg-[#14b8a6] text-[#0f172a]"
+                    : "border border-white/10 bg-[#122530] text-[#afc3ce]"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -1074,18 +1168,80 @@ export default function MetricsPage() {
       {activeTab === "resumen" ? (
         <div className="space-y-5">
           <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-            <SummaryCard label="Evaluaciones visibles" value={operationalSummary.totalEvaluations} hint="Dentro de tu alcance" />
-            <SummaryCard label="Autoevaluaciones" value={operationalSummary.autoCount} hint="Registradas" />
-            <SummaryCard label="Evaluación jefe" value={operationalSummary.managerCount} hint="Registradas" />
+            <SummaryCard
+              label="Evaluaciones visibles"
+              value={operationalSummary.totalEvaluations}
+              hint="Dentro de tu alcance"
+              tooltip="Total de evaluaciones accesibles según tu rol y el período seleccionado"
+            />
+            <SummaryCard
+              label="Autoevaluaciones"
+              value={operationalSummary.autoCount}
+              hint="Registradas"
+              tooltip="Cantidad de evaluaciones de tipo AUTOEVALUACION en el período"
+            />
+            <SummaryCard
+              label="Evaluación jefe"
+              value={operationalSummary.managerCount}
+              hint="Registradas"
+              tooltip="Cantidad de evaluaciones de tipo JEFATURA en el período"
+            />
             <SummaryCard
               label="Promedio general"
               value={formatScore(operationalSummary.overallAverage)}
               hint="Resultado visible hoy"
               tone="success"
+              tooltip="Promedio del campo resultadoFinal de todas las evaluaciones en el período"
             />
-            <SummaryCard label="Pendientes" value={operationalSummary.pending} hint="Sin cierre todavía" tone="warning" />
-            <SummaryCard label="KPIs / OKRs" value={operationalSummary.activeKpis + operationalSummary.activeOkrs} hint="Contexto complementario" />
+            <SummaryCard
+              label="Pendientes"
+              value={operationalSummary.pending}
+              hint="Sin cierre todavía"
+              tone="warning"
+              tooltip="Evaluaciones en estado BORRADOR, ENVIADA o REVISADA — todavía no alcanzaron el cierre"
+            />
+            <SummaryCard
+              label="KPIs / OKRs"
+              value={operationalSummary.activeKpis + operationalSummary.activeOkrs}
+              hint="Contexto complementario"
+              tooltip="KPIs y OKRs cargados en el sistema como contexto operativo adicional"
+            />
           </section>
+
+          {operationalSummary.statusDistribution.some((d) => d.value > 0) ? (
+            <SurfaceCard
+              title="Distribución por estado"
+              subtitle="Cuántas evaluaciones están en cada etapa del proceso en el período seleccionado."
+            >
+              <div className="h-[200px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={operationalSummary.statusDistribution} barCategoryGap="35%" layout="vertical">
+                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" horizontal={false} />
+                    <XAxis type="number" stroke="#6a8fa0" tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={72} />
+                    <Tooltip
+                      content={({ active, payload }) => {
+                        if (!active || !payload?.length) return null;
+                        const d = payload[0].payload;
+                        return (
+                          <div className="rounded-2xl border border-white/15 bg-[#0b1d27] px-4 py-3 shadow-[0_16px_40px_rgba(2,8,23,0.5)]">
+                            <p className="text-xs font-semibold text-white">{d.name}</p>
+                            <p className="mt-1 text-sm text-[#a8bec9]">{d.value} evaluaciones</p>
+                          </div>
+                        );
+                      }}
+                      cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                    />
+                    <Bar dataKey="value" name="Cantidad" radius={[0, 6, 6, 0]} maxBarSize={24} animationDuration={500}>
+                      {operationalSummary.statusDistribution.map((entry) => (
+                        <Cell key={entry.estado} fill={STATUS_COLORS[entry.estado] || "#64748b"} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </SurfaceCard>
+          ) : null}
 
           <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
             <SurfaceCard
@@ -1430,7 +1586,13 @@ export default function MetricsPage() {
                     <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
                     <XAxis dataKey="name" stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
                     <YAxis domain={[0, 5]} stroke="#6a8fa0" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={28} />
-                    <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.05)", radius: 8 }} />
+                    <Tooltip
+                      content={(props) => {
+                        const count = props.payload?.[0]?.payload?.descriptorCount;
+                        return <ChartTooltip {...props} descriptorCount={count} />;
+                      }}
+                      cursor={{ fill: "rgba(255,255,255,0.05)", radius: 8 }}
+                    />
                     <Legend content={<ChartLegend />} />
                     {currentAutoAverage ? <ReferenceLine y={currentAutoAverage} stroke="#14b8a6" strokeDasharray="4 2" strokeWidth={1.2} label={{ value: currentAutoAverage ? String.fromCharCode(8596) + " " + currentAutoAverage.toFixed(1) : "", position: "insideTopRight", fill: "#14b8a6", fontSize: 10 }} /> : null}
                     {currentManagerAverage ? <ReferenceLine y={currentManagerAverage} stroke="#a78bfa" strokeDasharray="4 2" strokeWidth={1.2} label={{ value: currentManagerAverage ? String.fromCharCode(8596) + " " + currentManagerAverage.toFixed(1) : "", position: "insideBottomRight", fill: "#a78bfa", fontSize: 10 }} /> : null}

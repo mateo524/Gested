@@ -28,7 +28,7 @@ export default function CollapsibleList({
 
   return (
     <div className={className}>
-      {visibleItems.map((item, index) => renderItem(item, index))}
+      {(Array.isArray(visibleItems) ? visibleItems : []).map((item, index) => renderItem(item, index))}
       {hiddenCount > 0 ? (
         <div className="mt-3 flex justify-start">
           <button

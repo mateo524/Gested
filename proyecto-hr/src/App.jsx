@@ -52,6 +52,13 @@ const UsageAnalyticsPage = lazy(loadUsageAnalyticsPage);
 const OrgChartPage = lazy(loadOrgChartPage);
 const CalibracionPage = lazy(loadCalibracionPage);
 
+const KNOWN_VIEWS = new Set([
+  "dashboard","novedades","perfil","organizaciones","empleados","organigrama",
+  "competencias","metricas","metricas-ejecutivo","ciclos","evaluaciones","planes",
+  "bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics",
+  "usuarios","roles","settings","calibracion",
+]);
+
 function ViewLoader() {
   return (
     <div className="space-y-4 p-1">
@@ -148,6 +155,9 @@ function AppContent() {
         hasPermission("view_audit")
           ? "reporte-ejecutivo"
           : null,
+        hasPermission("view_reports") && hasPermission("manage_metrics")
+          ? "metricas-ejecutivo"
+          : null,
         hasPermission("manage_users") ||
         hasPermission("manage_school_users") ||
         hasPermission("manage_employees") ||
@@ -164,11 +174,13 @@ function AppContent() {
     [hasPermission, user]
   );
 
+  const activeView = availableViews.includes(view) ? view : (availableViews[0] || "dashboard");
+
   useEffect(() => {
-    if (!availableViews.includes(view)) {
-      setView(availableViews[0] || "dashboard");
+    if (view !== activeView) {
+      setView(activeView);
     }
-  }, [view, availableViews]);
+  }, [activeView, view]);
 
   useEffect(() => {
     localStorage.setItem("performia_search_query", searchQuery);
@@ -193,7 +205,7 @@ function AppContent() {
 
   const viewContextValue = useMemo(
     () => ({
-      view,
+      view: activeView,
       setView,
       searchQuery,
       setSearchQuery,
@@ -203,7 +215,7 @@ function AppContent() {
       setLanguage,
       t,
     }),
-    [language, searchQuery, setView, theme, t, view]
+    [activeView, language, searchQuery, setView, theme, t]
   );
 
   useEffect(() => {
@@ -229,8 +241,10 @@ function AppContent() {
         loadUsageAnalyticsPage
       );
     } else if (hasPermission("view_reports")) {
-      preloaders.push(loadEducationalExportsPage);
-      preloaders.push(loadExecutiveReportPage);
+      preloaders.push(loadEducationalExportsPage, loadExecutiveReportPage);
+      if (hasPermission("manage_metrics")) {
+        preloaders.push(loadMetricsPage);
+      }
     }
 
     const runPreload = () => {
@@ -259,7 +273,7 @@ function AppContent() {
   return (
     <ViewProvider value={viewContextValue}>
       <AppShell
-        view={view}
+        view={activeView}
         setView={setView}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -272,33 +286,49 @@ function AppContent() {
       >
         <ErrorBoundary>
         <Suspense fallback={<ViewLoader />}>
-          <div key={view} className="page-enter">
-          {view === "dashboard" && <DashboardPage />}
-          {view === "novedades" && <AnnouncementsPage />}
-          {view === "perfil" && <ProfilePage />}
-          {view === "organizaciones" && <OrganizationsPage />}
-          {view === "empleados" && <EmployeesPage />}
-          {view === "competencias" && <CompetenciesPage />}
-          {view === "metricas" && <MetricsPage />}
-          {view === "ciclos" && <EvaluationCyclesPage />}
-          {view === "evaluaciones" && <EvaluationsPage />}
-          {view === "planes" && <DevelopmentPlansPage />}
-          {view === "bases-descargas" && <EducationalExportsPage />}
-          {view === "reporte-ejecutivo" && <ExecutiveReportPage />}
-          {view === "carga-masiva" && <BulkImportPage />}
-          {view === "archivo-central" && <StorageCenterPage />}
-          {view === "analytics" && <UsageAnalyticsPage />}
-          {view === "usuarios" && <UsersPage />}
-          {view === "roles" && <RolesPage />}
-          {view === "settings" && <SettingsPage />}
-          {view === "organigrama" && <OrgChartPage />}
-          {view === "calibracion" && <CalibracionPage />}
-          {!["dashboard","novedades","perfil","organizaciones","empleados","organigrama","competencias","metricas","ciclos","evaluaciones","planes","bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics","usuarios","roles","settings","calibracion"].includes(view) && (
+          <div key={activeView} className="page-enter">
+          {activeView === "dashboard" && <DashboardPage />}
+          {activeView === "novedades" && <AnnouncementsPage />}
+          {activeView === "perfil" && <ProfilePage />}
+          {activeView === "organizaciones" && <OrganizationsPage />}
+          {activeView === "empleados" && <EmployeesPage />}
+          {activeView === "competencias" && <CompetenciesPage />}
+          {activeView === "metricas" && <MetricsPage />}
+          {activeView === "metricas-ejecutivo" && (
+            <div className="space-y-6">
+              <MetricsPage />
+              <ExecutiveReportPage />
+            </div>
+          )}
+          {activeView === "ciclos" && <EvaluationCyclesPage />}
+          {activeView === "evaluaciones" && <EvaluationsPage />}
+          {activeView === "planes" && <DevelopmentPlansPage />}
+          {activeView === "bases-descargas" && <EducationalExportsPage />}
+          {activeView === "reporte-ejecutivo" && <ExecutiveReportPage />}
+          {activeView === "carga-masiva" && <BulkImportPage />}
+          {activeView === "archivo-central" && <StorageCenterPage />}
+          {activeView === "analytics" && <UsageAnalyticsPage />}
+          {activeView === "usuarios" && <UsersPage />}
+          {activeView === "roles" && <RolesPage />}
+          {activeView === "settings" && <SettingsPage />}
+          {activeView === "organigrama" && <OrgChartPage />}
+          {activeView === "calibracion" && <CalibracionPage />}
+          {!KNOWN_VIEWS.has(activeView) && (
             <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28] text-3xl">🧭</div>
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#7a9aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10"/><path d="M16.2 7.8l-2 3.2-3.4 3.4-3.2 2L7 18l1.6-.6 3.2-2 3.4-3.4 2-3.2.6-1.6z"/>
+                </svg>
+              </div>
               <p className="text-lg font-semibold text-white">Vista no encontrada</p>
-              <p className="text-sm text-[#7a9aaa]">La sección <code className="rounded bg-white/8 px-1.5 py-0.5 text-xs text-[#14b8a6]">{view}</code> no existe.</p>
-              <button type="button" onClick={() => {}} className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a]" onClick={() => window.location.reload()}>Volver al inicio</button>
+              <p className="text-sm text-[#7a9aaa]">La sección <code className="rounded bg-white/8 px-1.5 py-0.5 text-xs text-[#14b8a6]">{activeView}</code> no existe.</p>
+              <button
+                type="button"
+                onClick={() => setView(availableViews[0] || "dashboard")}
+                className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a]"
+              >
+                Volver al inicio
+              </button>
             </div>
           )}
           </div>

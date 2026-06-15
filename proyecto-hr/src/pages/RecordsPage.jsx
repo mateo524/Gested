@@ -40,6 +40,7 @@ export default function RecordsPage() {
   const [options, setOptions] = useState({ roles: [], files: [] });
   const [filters, setFilters] = useState(emptyFilters);
   const [message, setMessage] = useState("");
+  const [messageIsError, setMessageIsError] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -83,7 +84,7 @@ export default function RecordsPage() {
         setTotalPages(data.totalPages ?? 1);
         setOptions(data.filters || { roles: [], files: [] });
       })
-      .catch((error) => setMessage(error.message));
+      .catch((error) => { setMessageIsError(true); setMessage(error.message); });
   }, [token, activeCompanyId, queryString]);
 
   const exportQueryString = useMemo(() => {
@@ -115,8 +116,10 @@ export default function RecordsPage() {
       anchor.download = "registros-filtrados.csv";
       anchor.click();
       window.URL.revokeObjectURL(url);
-      setMessage("Exportación filtrada generada");
+      setMessageIsError(false);
+      setMessage("Exportación descargada correctamente.");
     } catch (error) {
+      setMessageIsError(true);
       setMessage(error.message);
     }
   }
@@ -212,7 +215,26 @@ export default function RecordsPage() {
           </div>
         </div>
 
-        {message ? <p className="mt-4 text-rose-300">{message}</p> : null}
+        {message ? (
+          messageIsError ? (
+            <div className="mt-4 flex items-start gap-3 rounded-xl border border-rose-300/20 bg-rose-500/8 px-4 py-3">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4 shrink-0 text-rose-300 mt-0.5">
+                <circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/>
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-rose-200">Error al cargar registros</p>
+                <p className="mt-0.5 text-xs text-rose-300/80">{message}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 flex items-center gap-3 rounded-xl border border-emerald-300/20 bg-emerald-500/8 px-4 py-3">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4 shrink-0 text-emerald-300">
+                <path d="M5 13l4 4L19 7"/>
+              </svg>
+              <p className="text-sm text-emerald-200">{message}</p>
+            </div>
+          )
+        ) : null}
 
         <div className="mt-6 overflow-x-auto">
           <table className="min-w-full text-left text-sm">
@@ -241,8 +263,33 @@ export default function RecordsPage() {
                 ))
               ) : (
                 <tr>
-                  <td className="px-4 py-6 text-[#7f99a8]" colSpan="3">
-                    No hay registros para mostrar con este filtro.
+                  <td colSpan="3">
+                    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+                      <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                      </span>
+                      <p className="text-sm font-semibold text-white">
+                        {filters.q || filters.rol || filters.databaseId
+                          ? "Ningún registro coincide con los filtros activos"
+                          : "Todavía no hay registros importados"}
+                      </p>
+                      <p className="max-w-xs text-xs text-[#7a9aaa]">
+                        {filters.q || filters.rol || filters.databaseId
+                          ? "Probá ajustando el término de búsqueda, el rol o la base seleccionada."
+                          : "Los registros aparecen aquí después de completar una importación masiva desde la sección Carga masiva."}
+                      </p>
+                      {(filters.q || filters.rol || filters.databaseId) ? (
+                        <button
+                          type="button"
+                          onClick={() => setFilters(emptyFilters)}
+                          className="mt-1 rounded-xl border border-white/15 px-4 py-2 text-xs font-semibold text-[#c5d5de] transition hover:bg-white/5"
+                        >
+                          Limpiar filtros
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               )}
