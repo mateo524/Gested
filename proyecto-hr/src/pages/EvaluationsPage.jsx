@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 function SearchIcon({ className }) {
   return (
@@ -490,6 +491,71 @@ function EmployeeView({ token, language, searchQuery, user }) {
   );
 }
 
+function ScoreDistributionChart({ scores }) {
+  if (!Array.isArray(scores) || scores.length === 0) return null;
+  const buckets = [
+    { label: "1–2", min: 1, max: 2 },
+    { label: "2–3", min: 2, max: 3 },
+    { label: "3–4", min: 3, max: 4 },
+    { label: "4–5", min: 4, max: 5 },
+  ];
+  const data = buckets.map(b => ({
+    label: b.label,
+    count: scores.filter(s => s > b.min - 0.001 && s <= b.max + 0.001 && (b.min === 1 ? s >= 1 : s > b.min)).length,
+  }));
+  const hasAny = data.some(d => d.count > 0);
+  if (!hasAny) return null;
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0c1e28] px-5 py-4">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Distribución de puntajes</p>
+      <ResponsiveContainer width="100%" height={110}>
+        <BarChart data={data} barCategoryGap="30%">
+          <XAxis dataKey="label" tick={{ fill: "#7f99a8", fontSize: 11 }} axisLine={false} tickLine={false}/>
+          <YAxis allowDecimals={false} tick={{ fill: "#7f99a8", fontSize: 11 }} axisLine={false} tickLine={false} width={24}/>
+          <Tooltip
+            contentStyle={{ background: "#0f2330", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 10, fontSize: 12 }}
+            labelStyle={{ color: "#c7d5dc" }}
+            itemStyle={{ color: "#14b8a6" }}
+            formatter={v => [v, "Empleados"]}
+          />
+          <Bar dataKey="count" radius={[5, 5, 0, 0]}>
+            {data.map((_, i) => (
+              <Cell key={i} fill={i === 3 ? "#14b8a6" : i === 2 ? "#0e9b8b" : i === 1 ? "#0d7a6d" : "#0b5c52"}/>
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function CycleProgressBadge({ evaluations, cycleId }) {
+  const inCycle = cycleId
+    ? evaluations.filter(e => String(e.cycleId?._id || e.cycleId) === String(cycleId))
+    : evaluations;
+  const total = inCycle.length;
+  const completed = inCycle.filter(e => e.estado === "CERRADA" || e.estado === "ENVIADA").length;
+  if (total === 0) return null;
+  const pct = Math.round((completed / total) * 100);
+  return (
+    <div className="flex items-center gap-3 rounded-2xl border border-white/10 bg-[#0c1e28] px-5 py-4">
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Progreso del ciclo</span>
+          <span className="text-sm font-bold text-[#14b8a6]">{completed}/{total}</span>
+        </div>
+        <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+          <div
+            className="h-full rounded-full bg-[#14b8a6] transition-all duration-500"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <p className="mt-1 text-[11px] text-[#7f99a8]">{pct}% completadas</p>
+      </div>
+    </div>
+  );
+}
+
 // ─── Manager view ──────────────────────────────────────────────────────────────
 function ManagerView({ token, user }) {
   const { addToast } = useToast();
@@ -573,6 +639,13 @@ function ManagerView({ token, user }) {
     const avg = results.length ? (results.reduce((s, v) => s + v, 0) / results.length).toFixed(1) : "—";
     return { active, pending, completed, avg };
   }, [evaluations]);
+
+  const scoreDistribution = useMemo(() => {
+    const inCycle = filters.cicloId
+      ? evaluations.filter(e => String(e.cycleId?._id || e.cycleId) === filters.cicloId)
+      : evaluations;
+    return inCycle.filter(e => e.resultadoFinal != null).map(e => e.resultadoFinal);
+  }, [evaluations, filters.cicloId]);
 
   const areaOptions = useMemo(() => [...new Set(employees.map(e => e.area).filter(Boolean))].sort(), [employees]);
   const selectedIsSelf = form.employeeId === selfEmployeeId;
@@ -691,6 +764,11 @@ function ManagerView({ token, user }) {
     if (savedFilters.current) setFilters(savedFilters.current);
   }
 
+  function sendReminder(employeeId) {
+    addToast({ message: "Recordatorio enviado.", type: "success" });
+    // stub — wire to POST /notifications/reminder when backend supports it
+  }
+
   useEffect(() => {
     if (openEvalId) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [openEvalId]);
@@ -763,6 +841,11 @@ function ManagerView({ token, user }) {
             <p className={`mt-1 text-2xl font-bold ${s.accent ? "text-[#14b8a6]" : "text-white"}`}>{s.value}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <CycleProgressBadge evaluations={evaluations} cycleId={filters.cicloId || activeCycle?._id}/>
+        <ScoreDistributionChart scores={scoreDistribution}/>
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -864,11 +947,20 @@ function ManagerView({ token, user }) {
                         : <span className="text-[#5e7d8e]">—</span>}
                     </td>
                     <td className="px-4 py-3">
-                      <button type="button"
-                        onClick={e2 => { e2.stopPropagation(); openDetail(ev._id); }}
-                        className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#9fb6c4] transition hover:bg-white/5 hover:text-white">
-                        Ver →
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button type="button"
+                          onClick={e2 => { e2.stopPropagation(); openDetail(ev._id); }}
+                          className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#9fb6c4] transition hover:bg-white/5 hover:text-white">
+                          Ver →
+                        </button>
+                        {ev.estado === "BORRADOR" && (
+                          <button type="button"
+                            onClick={e2 => { e2.stopPropagation(); sendReminder(ev.employeeId?._id || ev.employeeId); }}
+                            className="rounded-lg border border-amber-400/25 bg-amber-500/10 px-2.5 py-1 text-xs text-amber-300 transition hover:bg-amber-500/20">
+                            Recordatorio
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

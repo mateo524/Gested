@@ -11,6 +11,21 @@ function scoreColor(score) {
   return "bg-emerald-500/20 text-emerald-200";
 }
 
+function rowQuadrant(average) {
+  if (average === null || average === undefined) return null;
+  if (average > 4) return "alto";
+  if (average >= 3) return "desarrollo";
+  return "bajo";
+}
+
+function rowBgClass(average) {
+  const q = rowQuadrant(average);
+  if (q === "alto") return "border-t border-white/5 bg-emerald-500/[0.06] hover:bg-emerald-500/[0.10] transition";
+  if (q === "desarrollo") return "border-t border-white/5 bg-amber-400/[0.06] hover:bg-amber-400/[0.10] transition";
+  if (q === "bajo") return "border-t border-white/5 bg-rose-500/[0.07] hover:bg-rose-500/[0.11] transition";
+  return "border-t border-white/5 transition hover:bg-white/[0.03]";
+}
+
 function ScoreCell({ value }) {
   return (
     <td className="px-3 py-2 text-center">
@@ -23,6 +38,13 @@ function ScoreCell({ value }) {
   );
 }
 
+const QUADRANT_FILTERS = [
+  { key: "all", label: "Todos", activeClass: "bg-[#14b8a6]/20 text-[#14b8a6] border-[#14b8a6]/40" },
+  { key: "alto", label: "Alto Desempeño", activeClass: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" },
+  { key: "desarrollo", label: "Desarrollo", activeClass: "bg-amber-400/20 text-amber-200 border-amber-400/40" },
+  { key: "bajo", label: "Bajo Desempeño", activeClass: "bg-rose-500/20 text-rose-300 border-rose-500/40" },
+];
+
 export default function CalibracionPage() {
   const { token } = useAuth();
   const [cycles, setCycles] = useState([]);
@@ -32,6 +54,7 @@ export default function CalibracionPage() {
   const [loadingCycles, setLoadingCycles] = useState(true);
   const [error, setError] = useState("");
   const [filterArea, setFilterArea] = useState("all");
+  const [filterQuadrant, setFilterQuadrant] = useState("all");
 
   useEffect(() => {
     async function fetchCycles() {
@@ -54,6 +77,8 @@ export default function CalibracionPage() {
       setLoading(true);
       setError("");
       setData(null);
+      setFilterQuadrant("all");
+      setFilterArea("all");
       try {
         const result = await apiFetch(`/evaluation-cycles/${cycleId}/calibration`, { token });
         setData(result);
@@ -71,17 +96,31 @@ export default function CalibracionPage() {
   }, [selectedCycleId, loadCalibration]);
 
   const areas = useMemo(() => {
-    if (!data?.rows) return [];
+    if (!Array.isArray(data?.rows)) return [];
     return [...new Set(data.rows.map((r) => r.employee.area || "Sin área"))];
   }, [data]);
 
-  const filteredRows = useMemo(() => {
-    if (!data?.rows) return [];
-    if (filterArea === "all") return data.rows;
-    return data.rows.filter((r) => (r.employee.area || "Sin área") === filterArea);
-  }, [data, filterArea]);
+  const distribution = useMemo(() => {
+    if (!Array.isArray(data?.rows)) return { alto: 0, desarrollo: 0, bajo: 0 };
+    return data.rows.reduce(
+      (acc, row) => {
+        const q = rowQuadrant(row.average);
+        if (q) acc[q] += 1;
+        return acc;
+      },
+      { alto: 0, desarrollo: 0, bajo: 0 }
+    );
+  }, [data]);
 
-  // Group rows by area
+  const filteredRows = useMemo(() => {
+    if (!Array.isArray(data?.rows)) return [];
+    return data.rows.filter((r) => {
+      const areaMatch = filterArea === "all" || (r.employee.area || "Sin área") === filterArea;
+      const quadrantMatch = filterQuadrant === "all" || rowQuadrant(r.average) === filterQuadrant;
+      return areaMatch && quadrantMatch;
+    });
+  }, [data, filterArea, filterQuadrant]);
+
   const groupedByArea = useMemo(() => {
     const groups = {};
     for (const row of filteredRows) {
@@ -92,7 +131,7 @@ export default function CalibracionPage() {
     return groups;
   }, [filteredRows]);
 
-  const competencies = data?.competencies || [];
+  const competencies = Array.isArray(data?.competencies) ? data.competencies : [];
 
   return (
     <div className="space-y-6">
@@ -107,6 +146,56 @@ export default function CalibracionPage() {
         </p>
       </div>
 
+      {/* Distribution summary chips — only shown once data is loaded */}
+      {data && !loading && (
+        <div className="flex flex-wrap gap-3">
+          <button
+            onClick={() => setFilterQuadrant("alto")}
+            className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition cursor-pointer ${
+              filterQuadrant === "alto"
+                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                : "bg-white/5 text-emerald-300/70 border-emerald-500/20 hover:bg-emerald-500/10"
+            }`}
+          >
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-400" />
+            {distribution.alto} Alto Desempeño
+          </button>
+          <button
+            onClick={() => setFilterQuadrant("desarrollo")}
+            className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition cursor-pointer ${
+              filterQuadrant === "desarrollo"
+                ? "bg-amber-400/20 text-amber-200 border-amber-400/40"
+                : "bg-white/5 text-amber-200/70 border-amber-400/20 hover:bg-amber-400/10"
+            }`}
+          >
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-400" />
+            {distribution.desarrollo} Desarrollo
+          </button>
+          <button
+            onClick={() => setFilterQuadrant("bajo")}
+            className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-semibold transition cursor-pointer ${
+              filterQuadrant === "bajo"
+                ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                : "bg-white/5 text-rose-300/70 border-rose-500/20 hover:bg-rose-500/10"
+            }`}
+          >
+            <span className="inline-block h-2 w-2 rounded-full bg-rose-400" />
+            {distribution.bajo} Bajo Desempeño
+          </button>
+          {filterQuadrant !== "all" && (
+            <button
+              onClick={() => setFilterQuadrant("all")}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-[#7a9aaa] hover:text-white transition cursor-pointer"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              Limpiar filtro
+            </button>
+          )}
+        </div>
+      )}
+
       {/* Controls */}
       <div className="flex flex-wrap items-end gap-4">
         <div className="flex flex-col gap-1">
@@ -120,7 +209,7 @@ export default function CalibracionPage() {
             <option value="">
               {loadingCycles ? "Cargando ciclos…" : "Seleccionar ciclo"}
             </option>
-            {cycles.map((c) => (
+            {Array.isArray(cycles) && cycles.map((c) => (
               <option key={c._id} value={c._id}>
                 {c.periodo} {c.anio} — {c.estado}
               </option>
@@ -137,7 +226,7 @@ export default function CalibracionPage() {
               onChange={(e) => setFilterArea(e.target.value)}
             >
               <option value="all">Todas las áreas</option>
-              {areas.map((a) => (
+              {Array.isArray(areas) && areas.map((a) => (
                 <option key={a} value={a}>
                   {a}
                 </option>
@@ -226,7 +315,7 @@ export default function CalibracionPage() {
                   <th className="px-3 py-3 text-left font-semibold text-xs uppercase tracking-wider">
                     Área / Cargo
                   </th>
-                  {competencies.map((comp) => (
+                  {Array.isArray(competencies) && competencies.map((comp) => (
                     <th
                       key={comp}
                       className="px-3 py-3 text-center font-semibold text-xs uppercase tracking-wider max-w-[120px]"
@@ -257,11 +346,11 @@ export default function CalibracionPage() {
                       </td>
                     </tr>
 
-                    {/* Employee rows */}
-                    {rows.map((row) => (
+                    {/* Employee rows — background derived from average quadrant for quick visual scan */}
+                    {Array.isArray(rows) && rows.map((row) => (
                       <tr
                         key={String(row.employee._id)}
-                        className="border-t border-white/5 transition hover:bg-white/[0.03]"
+                        className={rowBgClass(row.average)}
                       >
                         <td className="px-4 py-2.5 font-medium text-white">
                           {row.employee.nombre}
@@ -270,7 +359,7 @@ export default function CalibracionPage() {
                           <div className="text-xs">{row.employee.area}</div>
                           <div className="text-[11px] text-[#6b8797]">{row.employee.cargo}</div>
                         </td>
-                        {competencies.map((comp) => (
+                        {Array.isArray(competencies) && competencies.map((comp) => (
                           <ScoreCell key={comp} value={row.scores[comp] ?? null} />
                         ))}
                         <ScoreCell value={row.average} />
@@ -290,7 +379,7 @@ export default function CalibracionPage() {
                       >
                         Promedio del área — {area}
                       </td>
-                      {competencies.map((comp) => (
+                      {Array.isArray(competencies) && competencies.map((comp) => (
                         <td key={comp} className="px-3 py-2 text-center text-xs text-[#7a9aaa]">
                           —
                         </td>

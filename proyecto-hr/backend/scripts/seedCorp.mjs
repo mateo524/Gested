@@ -19,7 +19,7 @@ const companyId = new mongoose.Types.ObjectId("6b29b32aee3b9f7a50c3042c");
 const schoolId  = new mongoose.Types.ObjectId("6b29b32aee3b9f7a50c3042d"); // "school" = org unit
 
 // ─── Clean ───────────────────────────────────────────────────────────────────
-const COLS = ["employees","competencies","evaluationcycles","schools","companies","records","kpirecords"];
+const COLS = ["employees","competencies","evaluationcycles","schools","companies","records","kpirecords","evaluationscores"];
 for (const col of COLS) await db.collection(col).deleteMany({ companyId });
 console.log("Cleaned previous corp seed.");
 
@@ -279,5 +279,186 @@ console.log(`  ${"TOTAL".padEnd(20)} ${empDocs.length} empleados`);
 console.log(`  ${compDocs.length} competencias · ${cycles.length} ciclos`);
 console.log("\ncompanyId:", companyId.toString());
 console.log("schoolId: ", schoolId.toString());
+
+// ─── Evaluation Scores ───────────────────────────────────────────────────────
+// cycleResult.insertedIds: 0=Q2-2024, 1=Q4-2024, 2=Q2-2025, 3=Q4-2025, 4=Q2-2026
+const cycleIds = {
+  q2_2024: cycleResult.insertedIds[0],
+  q4_2024: cycleResult.insertedIds[1],
+  q2_2025: cycleResult.insertedIds[2],
+  q4_2025: cycleResult.insertedIds[3],
+};
+
+// Map legajo → _id for clarity when picking representatives
+const byLegajo = {};
+for (const e of empDocs) byLegajo[e.legajo] = e._id;
+
+// Competency names used in scores
+const COMP = {
+  comEfectiva:   "Comunicación efectiva",
+  teamwork:      "Trabajo en equipo",
+  orientResult:  "Orientación a resultados",
+  adaptChange:   "Adaptabilidad al cambio",
+  proactivity:   "Proactividad",
+  leadership:    "Liderazgo de equipos",
+  decisions:     "Toma de decisiones",
+  strategic:     "Pensamiento estratégico",
+  negotiation:   "Negociación y cierre",
+  pipeline:      "Gestión del pipeline",
+  prospecting:   "Prospección activa",
+  codeQuality:   "Calidad del código",
+  techSolving:   "Resolución de problemas técnicos",
+  techOwnership: "Ownership técnico",
+  customerC:     "Customer centricity",
+  retention:     "Retención y expansión",
+  escalation:    "Gestión de escalaciones",
+};
+
+// Builds a score entry; evaluatorId defaults to the department head
+const sc = (name, score, evaluatorId) => ({ competencyName: name, score, evaluatorId });
+
+// Representative employees per department (legajo → scores per cycle)
+// Dirección: high performers 4.5–5; Tech: 4–5; Ventas: mixed 3–5; Juniors: 2.5–4
+const scoreOps = [];
+
+const closedCycles = [cycleIds.q2_2024, cycleIds.q4_2024, cycleIds.q2_2025, cycleIds.q4_2025];
+
+// Score data: [ legajo, evaluatorHeadKey, [ [competency, score], ... ] ]
+// ~5 employees per department × 4 cycles ≈ 20 per cycle across the org
+const repScores = [
+  // Dirección
+  ["D-001", heads.rrhh,            [[COMP.comEfectiva,4.8],[COMP.leadership,5],[COMP.decisions,4.9],[COMP.strategic,5],[COMP.orientResult,4.8]]],
+  ["D-002", heads.rrhh,            [[COMP.comEfectiva,4.7],[COMP.leadership,4.8],[COMP.decisions,4.7],[COMP.strategic,4.8],[COMP.orientResult,4.7]]],
+  ["D-004", heads.rrhh,            [[COMP.comEfectiva,4.6],[COMP.leadership,4.7],[COMP.decisions,4.8],[COMP.strategic,4.7],[COMP.techOwnership,4.9]]],
+  // Ventas — mix
+  ["V-001", heads.direccion,       [[COMP.negotiation,4.7],[COMP.pipeline,4.5],[COMP.prospecting,4.6],[COMP.leadership,4.8],[COMP.orientResult,4.7]]],
+  ["V-003", heads.ventas,          [[COMP.negotiation,4.5],[COMP.pipeline,4.3],[COMP.prospecting,4.4],[COMP.comEfectiva,4.2],[COMP.orientResult,4.5]]],
+  ["V-008", heads.ventas,          [[COMP.negotiation,3.8],[COMP.pipeline,3.6],[COMP.prospecting,4.0],[COMP.comEfectiva,3.7],[COMP.orientResult,3.9]]],
+  ["V-014", heads.ventas,          [[COMP.negotiation,3.5],[COMP.pipeline,3.3],[COMP.prospecting,3.4],[COMP.comEfectiva,3.6],[COMP.orientResult,3.5]]],
+  ["V-020", heads.ventas,          [[COMP.negotiation,3.0],[COMP.pipeline,2.8],[COMP.prospecting,3.2],[COMP.comEfectiva,3.0],[COMP.adaptChange,3.1]]],
+  // Tecnología — high
+  ["T-001", heads.direccion,       [[COMP.codeQuality,4.8],[COMP.techSolving,4.9],[COMP.techOwnership,5],[COMP.leadership,4.8],[COMP.strategic,4.7]]],
+  ["T-002", heads.tecnologia,      [[COMP.codeQuality,4.7],[COMP.techSolving,4.8],[COMP.techOwnership,4.9],[COMP.comEfectiva,4.5],[COMP.orientResult,4.8]]],
+  ["T-004", heads.tecnologia,      [[COMP.codeQuality,4.6],[COMP.techSolving,4.7],[COMP.techOwnership,4.6],[COMP.teamwork,4.5],[COMP.proactivity,4.6]]],
+  ["T-017", heads.tecnologia,      [[COMP.codeQuality,3.0],[COMP.techSolving,3.2],[COMP.techOwnership,2.8],[COMP.teamwork,3.5],[COMP.adaptChange,3.3]]],
+  ["T-018", heads.tecnologia,      [[COMP.codeQuality,2.9],[COMP.techSolving,3.0],[COMP.techOwnership,2.7],[COMP.teamwork,3.4],[COMP.adaptChange,3.2]]],
+  // Producto
+  ["P-001", heads.direccion,       [[COMP.customerC,4.9],[COMP.decisions,4.8],[COMP.strategic,4.8],[COMP.leadership,4.7],[COMP.comEfectiva,4.8]]],
+  ["P-002", heads.producto,        [[COMP.customerC,4.6],[COMP.decisions,4.5],[COMP.strategic,4.4],[COMP.comEfectiva,4.5],[COMP.orientResult,4.6]]],
+  ["P-012", heads.producto,        [[COMP.customerC,3.2],[COMP.decisions,3.0],[COMP.adaptChange,3.3],[COMP.comEfectiva,3.1],[COMP.proactivity,3.2]]],
+  // Customer Success
+  ["CS-001",heads.direccion,       [[COMP.retention,4.8],[COMP.escalation,4.7],[COMP.leadership,4.8],[COMP.customerC,4.9],[COMP.comEfectiva,4.7]]],
+  ["CS-003",heads.customerSuccess, [[COMP.retention,4.5],[COMP.escalation,4.4],[COMP.customerC,4.6],[COMP.comEfectiva,4.3],[COMP.orientResult,4.5]]],
+  ["CS-012",heads.customerSuccess, [[COMP.retention,3.1],[COMP.escalation,3.0],[COMP.customerC,3.2],[COMP.comEfectiva,3.3],[COMP.adaptChange,3.0]]],
+  // Finanzas
+  ["F-001", heads.direccion,       [[COMP.decisions,4.8],[COMP.strategic,4.7],[COMP.orientResult,4.8],[COMP.leadership,4.6],[COMP.comEfectiva,4.7]]],
+];
+
+for (const cycleId of closedCycles) {
+  for (const [legajo, evaluatorId, competencyScores] of repScores) {
+    const employeeId = byLegajo[legajo];
+    if (!employeeId) continue;
+    scoreOps.push({
+      updateOne: {
+        filter: { employeeId, evaluationCycleId: cycleId },
+        update: {
+          $set: {
+            employeeId,
+            evaluationCycleId: cycleId,
+            companyId,
+            schoolId,
+            scores: competencyScores.map(([competencyName, score]) => sc(competencyName, score, evaluatorId)),
+            updatedAt: now,
+          },
+          $setOnInsert: { createdAt: now },
+        },
+        upsert: true,
+      },
+    });
+  }
+}
+
+await db.collection("evaluationscores").bulkWrite(scoreOps);
+console.log(`\nUpserted ${scoreOps.length} evaluation score documents (${repScores.length} employees × 4 closed cycles).`);
+
+// ─── KPI Records ──────────────────────────────────────────────────────────────
+// Only for 2025 cycles (Q2 + Q4); 3–4 KPIs per department per employee-cycle pair
+const kpiCycles = [
+  { cycleId: cycleIds.q2_2025, periodo: "Q2 2025" },
+  { cycleId: cycleIds.q4_2025, periodo: "Q4 2025" },
+];
+
+// Template: [ legajo, nombre, unidad, meta, valorFn(periodo) ]
+// valorFn returns actual value achieved; Q4 values slightly higher than Q2 for growth arc
+const kpiTemplates = [
+  // Ventas
+  ["V-001", "Ingresos cerrados",        "ARS",  15000000, (p) => p === "Q2 2025" ? 14200000 : 16100000],
+  ["V-001", "Nuevos clientes",          "clientes", 20,   (p) => p === "Q2 2025" ? 18 : 22],
+  ["V-001", "Tasa de conversión",       "%",    25,       (p) => p === "Q2 2025" ? 23.5 : 26.1],
+  ["V-001", "Churn prevenido",          "%",    5,        (p) => p === "Q2 2025" ? 4.2 : 3.8],
+  ["V-003", "Deals cerrados",           "deals", 12,      (p) => p === "Q2 2025" ? 11 : 13],
+  ["V-003", "ARR generado",             "USD",  80000,    (p) => p === "Q2 2025" ? 74000 : 88000],
+  ["V-003", "Pipeline generado",        "USD",  250000,   (p) => p === "Q2 2025" ? 238000 : 271000],
+  ["V-008", "Demos agendadas",          "demos", 30,      (p) => p === "Q2 2025" ? 27 : 32],
+  ["V-008", "Leads calificados",        "leads", 60,      (p) => p === "Q2 2025" ? 54 : 63],
+  ["V-008", "Tasa respuesta outreach",  "%",    18,       (p) => p === "Q2 2025" ? 15.2 : 17.8],
+  // Tecnología
+  ["T-001", "Releases on-time",         "%",    90,       (p) => p === "Q2 2025" ? 88 : 92],
+  ["T-001", "Uptime del sistema",       "%",    99.5,     (p) => p === "Q2 2025" ? 99.3 : 99.7],
+  ["T-001", "Deuda técnica reducida",   "issues", 30,     (p) => p === "Q2 2025" ? 27 : 35],
+  ["T-002", "PRs mergeados",            "PRs",  80,       (p) => p === "Q2 2025" ? 76 : 84],
+  ["T-002", "Cobertura de tests",       "%",    75,       (p) => p === "Q2 2025" ? 72 : 78],
+  ["T-002", "Tiempo de revisión PR",    "horas", 24,      (p) => p === "Q2 2025" ? 26 : 21],
+  ["T-004", "Features entregadas",      "features", 8,    (p) => p === "Q2 2025" ? 7 : 9],
+  ["T-004", "Bugs en producción",       "bugs",  5,       (p) => p === "Q2 2025" ? 6 : 4],
+  // Producto
+  ["P-001", "NPS del producto",         "puntos", 40,     (p) => p === "Q2 2025" ? 38 : 43],
+  ["P-001", "Features entregadas",      "features", 12,   (p) => p === "Q2 2025" ? 11 : 13],
+  ["P-001", "Time to market (sprint)",  "semanas", 3,     (p) => p === "Q2 2025" ? 3.4 : 2.8],
+  ["P-002", "Historias completadas",    "US",    45,      (p) => p === "Q2 2025" ? 42 : 48],
+  ["P-002", "Satisfacción usuario",     "%",    80,       (p) => p === "Q2 2025" ? 77 : 82],
+  // Customer Success
+  ["CS-001","Churn rate",               "%",    3,        (p) => p === "Q2 2025" ? 3.4 : 2.7],
+  ["CS-001","NPS clientes",             "puntos", 50,     (p) => p === "Q2 2025" ? 47 : 52],
+  ["CS-001","Expansión MRR",            "USD",  20000,    (p) => p === "Q2 2025" ? 18500 : 22100],
+  ["CS-003","Cuentas gestionadas",      "cuentas", 25,    (p) => p === "Q2 2025" ? 24 : 26],
+  ["CS-003","CSAT promedio",            "%",    90,       (p) => p === "Q2 2025" ? 88 : 91],
+  ["CS-003","Upsells cerrados",         "upsells", 4,     (p) => p === "Q2 2025" ? 3 : 5],
+  // Finanzas
+  ["F-001", "Cierre contable en plazo", "%",    100,      (p) => p === "Q2 2025" ? 100 : 100],
+  ["F-001", "Variación presupuestaria", "%",    5,        (p) => p === "Q2 2025" ? 4.2 : 3.8],
+  ["F-001", "Forecast accuracy",        "%",    90,       (p) => p === "Q2 2025" ? 87 : 92],
+];
+
+const kpiOps = [];
+for (const { cycleId, periodo } of kpiCycles) {
+  for (const [legajo, nombre, unidad, meta, valorFn] of kpiTemplates) {
+    const employeeId = byLegajo[legajo];
+    if (!employeeId) continue;
+    kpiOps.push({
+      updateOne: {
+        filter: { employeeId, evaluationCycleId: cycleId, nombre },
+        update: {
+          $set: {
+            employeeId,
+            evaluationCycleId: cycleId,
+            companyId,
+            nombre,
+            valor: valorFn(periodo),
+            meta,
+            unidad,
+            periodo,
+            updatedAt: now,
+          },
+          $setOnInsert: { createdAt: now },
+        },
+        upsert: true,
+      },
+    });
+  }
+}
+
+await db.collection("kpirecords").bulkWrite(kpiOps);
+console.log(`Upserted ${kpiOps.length} KPI records (${kpiTemplates.length} KPI templates × 2 cycles).`);
 
 process.exit(0);

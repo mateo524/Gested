@@ -9,6 +9,7 @@ import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
 
 const ESTADO_LABELS_ES = { PENDIENTE: "Pendiente", EN_CURSO: "En curso", EN_SEGUIMIENTO: "En seguimiento", COMPLETADO: "Completado", VENCIDO: "Vencido" };
 const ESTADO_LABELS_EN = { PENDIENTE: "Pending", EN_CURSO: "In progress", EN_SEGUIMIENTO: "In tracking", COMPLETADO: "Completed", VENCIDO: "Overdue" };
+const ESTADO_KEYS = ["PENDIENTE", "EN_CURSO", "EN_SEGUIMIENTO", "COMPLETADO", "VENCIDO"];
 
 function StatCard({ label, value, accent }) {
   return (
@@ -39,6 +40,19 @@ function ProgressBar({ value }) {
       </div>
       <span className="text-xs text-[#9fb6c4] w-8 text-right">{pct}%</span>
     </div>
+  );
+}
+
+function ProgressBadge({ value }) {
+  const pct = Math.min(100, Math.max(0, Number(value) || 0));
+  const color = pct >= 100 ? "bg-emerald-500/20 text-emerald-300"
+    : pct >= 60 ? "bg-sky-500/20 text-sky-300"
+    : pct >= 30 ? "bg-amber-500/20 text-amber-300"
+    : "bg-white/10 text-[#9fb6c4]";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold tabular-nums ${color}`}>
+      {pct}%
+    </span>
   );
 }
 
@@ -145,7 +159,7 @@ export default function DevelopmentPlansPage() {
     };
   }, [plans]);
 
-  const areaOptions = useMemo(() => [...new Set(employees.map(e => e.area).filter(Boolean))].sort(), [employees]);
+  const areaOptions = useMemo(() => [...new Set((Array.isArray(employees) ? employees : []).map(e => e.area).filter(Boolean))].sort(), [employees]);
 
   function openNew() {
     setForm(emptyForm);
@@ -322,14 +336,24 @@ export default function DevelopmentPlansPage() {
           <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
             value={filters.employeeId} onChange={e => setFilters(f => ({ ...f, employeeId: e.target.value }))}>
             <option value="">{L("Todos los responsables", "All responsible")}</option>
-            {employees.map(e => <option key={e._id} value={e._id}>{e.apellido}, {e.nombre}</option>)}
+            {(Array.isArray(employees) ? employees : []).map(e => <option key={e._id} value={e._id}>{e.apellido}, {e.nombre}</option>)}
           </select>
         )}
-        <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
-          value={filters.estado} onChange={e => setFilters(f => ({ ...f, estado: e.target.value }))}>
-          <option value="">{L("Todos los estados", "All statuses")}</option>
-          {Object.entries(estadoLabels).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-        </select>
+        {/* Status chips — quicker to scan than a dropdown when there are only 5 options */}
+        <div className="flex flex-wrap gap-1.5">
+          <button type="button"
+            onClick={() => setFilters(f => ({ ...f, estado: "" }))}
+            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${!filters.estado ? "border-[#14b8a6] bg-[#14b8a6]/15 text-[#14b8a6]" : "border-white/10 text-[#7f99a8] hover:bg-white/5"}`}>
+            {L("Todos", "All")}
+          </button>
+          {ESTADO_KEYS.map(k => (
+            <button key={k} type="button"
+              onClick={() => setFilters(f => ({ ...f, estado: f.estado === k ? "" : k }))}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition ${filters.estado === k ? "border-[#14b8a6] bg-[#14b8a6]/15 text-[#14b8a6]" : "border-white/10 text-[#7f99a8] hover:bg-white/5"}`}>
+              {estadoLabels[k]}
+            </button>
+          ))}
+        </div>
         {(filters.employeeId || filters.estado) ? (
           <button type="button" onClick={() => setFilters({ employeeId: "", estado: "", prioridad: "" })}
             className="rounded-xl border border-white/10 px-3 py-2 text-sm text-[#9fb6c4] transition hover:bg-white/5">
@@ -346,10 +370,13 @@ export default function DevelopmentPlansPage() {
           <ErrorState compact title={L("Error al cargar", "Failed to load")} description={error} actionLabel={L("Reintentar", "Retry")} onAction={() => { const ctrl = new AbortController(); loadPlans(ctrl.signal); }}/>
         ) : filtered.length === 0 ? (
           <EmptyState compact
-            title={plans.length === 0 ? L("Todavía no hay planes de acción", "No action plans yet") : L("Ningún plan coincide con los filtros", "No plans match the filters")}
+            title={plans.length === 0 ? L("Todavía no hay planes de desarrollo", "No development plans yet") : L("Ningún plan coincide con los filtros", "No plans match the filters")}
             description={
               plans.length === 0
-                ? L("Los planes de acción acompañan el cierre de cada evaluación. Creá el primero para registrar compromisos de desarrollo y hacer seguimiento del progreso.", "Action plans accompany each evaluation close. Create the first one to record development commitments and track progress.")
+                ? L(
+                    "Todavía no hay planes de desarrollo. Los planes se crean automáticamente después del primer ciclo de evaluación.",
+                    "No development plans yet. Plans are created automatically after the first evaluation cycle."
+                  )
                 : L("Probá cambiando el colaborador o el estado para ampliar los resultados.", "Try changing the collaborator or status to broaden the results.")
             }
             actionLabel={canManage && plans.length === 0 ? L("+ Nuevo plan", "+ New plan") : ""}
@@ -386,7 +413,12 @@ export default function DevelopmentPlansPage() {
                       </td>
                       <td className="px-4 py-3 text-[#9fb6c4] text-xs whitespace-nowrap">{dueDate}</td>
                       <td className="px-4 py-3 min-w-[120px]"><ProgressBar value={plan.progreso}/></td>
-                      <td className="px-4 py-3"><StatusBadge estado={plan.estado} language={language}/></td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <StatusBadge estado={plan.estado} language={language}/>
+                          <ProgressBadge value={plan.progreso}/>
+                        </div>
+                      </td>
                       {canManage ? (
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-2">
@@ -427,11 +459,11 @@ export default function DevelopmentPlansPage() {
                 <select className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none"
                   value={form.employeeId} onChange={e => setForm(f => ({ ...f, employeeId: e.target.value }))}>
                   <option value="">{L("Seleccioná un empleado", "Select an employee")}</option>
-                  {employees.map(e => <option key={e._id} value={e._id}>{e.apellido}, {e.nombre}</option>)}
+                  {(Array.isArray(employees) ? employees : []).map(e => <option key={e._id} value={e._id}>{e.apellido}, {e.nombre}</option>)}
                 </select>
               </div>
               {/* Suggest from evaluation — only visible when creating a new plan for a specific employee */}
-              {!modal.editId && form.employeeId && closedEvals.length > 0 ? (
+              {!modal.editId && form.employeeId && Array.isArray(closedEvals) && closedEvals.length > 0 ? (
                 <div className="rounded-xl border border-white/10 bg-[#091319] p-3 space-y-2">
                   <p className="text-xs font-semibold text-[#14b8a6]">{L("Sugerir plan desde evaluación", "Suggest plan from evaluation")}</p>
                   <div className="flex gap-2">
@@ -440,7 +472,7 @@ export default function DevelopmentPlansPage() {
                       value={selectedEvalForSuggestion}
                       onChange={e => { setSelectedEvalForSuggestion(e.target.value); setSuggestions([]); }}>
                       <option value="">{L("Elegí una evaluación cerrada", "Select a closed evaluation")}</option>
-                      {closedEvals.map(ev => (
+                      {(Array.isArray(closedEvals) ? closedEvals : []).map(ev => (
                         <option key={ev._id} value={ev._id}>
                           {ev.tipo || "Evaluación"} — {ev.createdAt ? new Date(ev.createdAt).toLocaleDateString(language === "en" ? "en-US" : "es-AR", { day: "2-digit", month: "short", year: "numeric" }) : ev._id}
                         </option>
@@ -452,11 +484,11 @@ export default function DevelopmentPlansPage() {
                       {isFetchingSuggestions ? L("Cargando…", "Loading…") : L("Cargar", "Load")}
                     </button>
                   </div>
-                  {suggestions.length > 0 ? (
+                  {Array.isArray(suggestions) && suggestions.length > 0 ? (
                     <div className="space-y-1.5">
                       <p className="text-xs text-[#7f99a8]">{L("Métricas débiles — elegí una para precargar:", "Weak metrics — pick one to pre-fill:")}</p>
                       <div className="flex flex-wrap gap-2">
-                        {suggestions.map(s => (
+                        {(Array.isArray(suggestions) ? suggestions : []).map(s => (
                           <button key={s.metricId} type="button" onClick={() => applySuggestion(s)}
                             className="rounded-full border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-3 py-1 text-xs text-[#14b8a6] transition hover:bg-[#14b8a6]/20">
                             {s.metricNombre} <span className="text-white/40">({s.nivel}/5)</span>

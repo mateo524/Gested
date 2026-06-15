@@ -5,11 +5,26 @@ import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
 
+const TIPO_OPTIONS = ["TRANSVERSAL", "TECNICA", "LIDERAZGO"];
+
+const TIPO_LABEL = {
+  TRANSVERSAL: { es: "Transversal", en: "Transversal" },
+  TECNICA:     { es: "Técnica",     en: "Technical"    },
+  LIDERAZGO:   { es: "Liderazgo",   en: "Leadership"   },
+};
+
+const TIPO_BADGE_CLS = {
+  TRANSVERSAL: "bg-sky-500/15 text-sky-200",
+  TECNICA:     "bg-emerald-500/15 text-emerald-200",
+  LIDERAZGO:   "bg-violet-500/15 text-violet-200",
+};
+
 const TIPO_TO_CATEGORIA = {
   TRANSVERSAL: "soft",
   DOCENTE: "soft",
   LIDERAZGO: "soft",
   PERSONALIZADA: "technical",
+  TECNICA: "technical",
 };
 
 const COMPONENTE_TO_NIVEL = { C: "basic", A: "intermediate", H: "advanced" };
@@ -62,6 +77,72 @@ function Badge({ children, variant = "default" }) {
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>;
 }
 
+function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, nivelLabel, audienceLabel, L, onEdit, onDelete }) {
+  return (
+    <tr className="hover:bg-white/[0.02] transition border-t border-white/5">
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <p className="font-medium text-white">{c.nombre}</p>
+          {!active ? <Badge variant="inactive">{L("Inactiva", "Inactive")}</Badge> : null}
+        </div>
+      </td>
+      <td className="px-4 py-3">
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${tipoBadgeCls(c.tipo)}`}>
+          {tipoLabel(c.tipo)}
+        </span>
+      </td>
+      <td className="px-4 py-3 max-w-xs">
+        <p className="text-[#9fb6c4] truncate">{c.descripcion || "—"}</p>
+      </td>
+      <td className="px-4 py-3">
+        <span className="text-[#c7d5dc]">{nivelLabel(c.componente)}</span>
+      </td>
+      <td className="px-4 py-3 text-xs text-[#9fb6c4]">{audienceLabel(c)}</td>
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => onEdit(c)}
+            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5">
+            {L("Editar", "Edit")}
+          </button>
+          <button type="button" onClick={() => onDelete(c)}
+            className="rounded-lg border border-rose-300/30 px-2.5 py-1 text-xs text-rose-300 transition hover:bg-rose-500/10">
+            {L("Eliminar", "Delete")}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+function CompetencyGroup({ tipo, items, tipoLabel, tipoBadgeCls, nivelLabel, audienceLabel, L, onEdit, onDelete }) {
+  return (
+    <>
+      <tr className="border-t border-white/10 bg-white/[0.015]">
+        <td colSpan={6} className="px-4 py-2">
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tipoBadgeCls(tipo)}`}>
+            {tipoLabel(tipo)}
+          </span>
+          <span className="ml-2 text-[11px] text-[#5e7d8e]">{items.length}</span>
+        </td>
+      </tr>
+      {items.map(c => (
+        <CompetencyRow
+          key={c._id}
+          c={c}
+          active={c.activa !== false}
+          tipoLabel={tipoLabel}
+          tipoBadgeCls={tipoBadgeCls}
+          nivelLabel={nivelLabel}
+          audienceLabel={audienceLabel}
+          L={L}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
+      ))}
+    </>
+  );
+}
+
 export default function CompetenciesPage() {
   const { token } = useAuth();
   const { language, searchQuery } = useView();
@@ -88,8 +169,9 @@ export default function CompetenciesPage() {
         apiFetch("/competencies", { token }),
         apiFetch("/employees", { token }).catch(() => ({})),
       ]);
-      setCompetencies(comp);
-      setEmployees(emp?.data ?? emp ?? []);
+      setCompetencies(Array.isArray(comp) ? comp : []);
+      const empRaw = emp?.data ?? emp ?? [];
+      setEmployees(Array.isArray(empRaw) ? empRaw : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -100,7 +182,7 @@ export default function CompetenciesPage() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const filtered = useMemo(() => {
-    let list = competencies;
+    let list = Array.isArray(competencies) ? competencies : [];
     const q = (filters.q || searchQuery || "").trim().toLowerCase();
     if (q) list = list.filter(c => [c.nombre, c.descripcion, c.tipo].filter(Boolean).some(v => String(v).toLowerCase().includes(q)));
     if (filters.categoria) {
@@ -119,15 +201,18 @@ export default function CompetenciesPage() {
     return list;
   }, [competencies, filters, searchQuery]);
 
-  const stats = useMemo(() => ({
-    total: competencies.length,
-    active: competencies.filter(c => c.activa !== false).length,
-    technical: competencies.filter(c => (TIPO_TO_CATEGORIA[c.tipo] || "technical") === "technical").length,
-    soft: competencies.filter(c => (TIPO_TO_CATEGORIA[c.tipo] || "technical") === "soft").length,
-  }), [competencies]);
+  const stats = useMemo(() => {
+    const list = Array.isArray(competencies) ? competencies : [];
+    return {
+      total: list.length,
+      active: list.filter(c => c.activa !== false).length,
+      technical: list.filter(c => (TIPO_TO_CATEGORIA[c.tipo] || "technical") === "technical").length,
+      soft: list.filter(c => (TIPO_TO_CATEGORIA[c.tipo] || "technical") === "soft").length,
+    };
+  }, [competencies]);
 
   const departmentOptions = useMemo(() =>
-    [...new Set(employees.map(e => String(e.area || "").trim()).filter(Boolean))].sort()
+    [...new Set((Array.isArray(employees) ? employees : []).map(e => String(e.area || "").trim()).filter(Boolean))].sort()
   , [employees]);
 
   function openNew() {
@@ -208,9 +293,14 @@ export default function CompetenciesPage() {
     await loadData();
   }
 
-  function categoriaLabel(tipo) {
-    const cat = TIPO_TO_CATEGORIA[tipo] || "technical";
-    return cat === "soft" ? L("Blanda", "Soft") : L("Técnica", "Technical");
+  function tipoLabel(tipo) {
+    const entry = TIPO_LABEL[tipo];
+    if (!entry) return tipo || "—";
+    return language === "en" ? entry.en : entry.es;
+  }
+
+  function tipoBadgeCls(tipo) {
+    return TIPO_BADGE_CLS[tipo] || "bg-white/10 text-[#c7d5dc]";
   }
 
   function nivelLabel(componente) {
@@ -315,46 +405,45 @@ export default function CompetenciesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {[L("Habilidad", "Skill"), L("Categoría", "Category"), L("Descripción", "Description"), L("Nivel", "Level"), L("Alcance", "Scope"), L("Acciones", "Actions")].map(h => (
+                  {[L("Habilidad", "Skill"), L("Tipo", "Type"), L("Descripción", "Description"), L("Nivel", "Level"), L("Alcance", "Scope"), L("Acciones", "Actions")].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/5">
-                {filtered.map(c => {
-                  const cat = TIPO_TO_CATEGORIA[c.tipo] || "technical";
+              <tbody>
+                {TIPO_OPTIONS.map(tipo => {
+                  const group = filtered.filter(c => (c.tipo || "TRANSVERSAL") === tipo);
+                  if (group.length === 0) return null;
+                  return (
+                    <CompetencyGroup
+                      key={tipo}
+                      tipo={tipo}
+                      items={group}
+                      tipoLabel={tipoLabel}
+                      tipoBadgeCls={tipoBadgeCls}
+                      nivelLabel={nivelLabel}
+                      audienceLabel={audienceLabel}
+                      L={L}
+                      onEdit={openEdit}
+                      onDelete={c => setConfirmState({ open: true, item: c })}
+                    />
+                  );
+                })}
+                {filtered.filter(c => !TIPO_OPTIONS.includes(c.tipo)).map(c => {
                   const active = c.activa !== false;
                   return (
-                    <tr key={c._id} className="hover:bg-white/[0.02] transition">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-white">{c.nombre}</p>
-                          {!active ? <Badge variant="inactive">{L("Inactiva", "Inactive")}</Badge> : null}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <Badge variant={cat === "soft" ? "soft" : "technical"}>{categoriaLabel(c.tipo)}</Badge>
-                      </td>
-                      <td className="px-4 py-3 max-w-xs">
-                        <p className="text-[#9fb6c4] truncate">{c.descripcion || "—"}</p>
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="text-[#c7d5dc]">{nivelLabel(c.componente)}</span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-[#9fb6c4]">{audienceLabel(c)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => openEdit(c)}
-                            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5">
-                            {L("Editar", "Edit")}
-                          </button>
-                          <button type="button" onClick={() => setConfirmState({ open: true, item: c })}
-                            className="rounded-lg border border-rose-300/30 px-2.5 py-1 text-xs text-rose-300 transition hover:bg-rose-500/10">
-                            {L("Eliminar", "Delete")}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
+                    <CompetencyRow
+                      key={c._id}
+                      c={c}
+                      active={active}
+                      tipoLabel={tipoLabel}
+                      tipoBadgeCls={tipoBadgeCls}
+                      nivelLabel={nivelLabel}
+                      audienceLabel={audienceLabel}
+                      L={L}
+                      onEdit={openEdit}
+                      onDelete={() => setConfirmState({ open: true, item: c })}
+                    />
                   );
                 })}
               </tbody>
@@ -389,12 +478,13 @@ export default function CompetenciesPage() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="mb-1 block text-xs text-[#7f99a8]">{L("Categoría", "Category")}</label>
+                  <label className="mb-1 block text-xs text-[#7f99a8]">{L("Tipo", "Type")}</label>
                   <select className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none"
-                    value={TIPO_TO_CATEGORIA[form.tipo] === "soft" ? "soft" : "technical"}
-                    onChange={e => setForm(f => ({ ...f, tipo: e.target.value === "soft" ? "TRANSVERSAL" : "PERSONALIZADA" }))}>
-                    <option value="soft">{L("Blanda", "Soft")}</option>
-                    <option value="technical">{L("Técnica", "Technical")}</option>
+                    value={form.tipo}
+                    onChange={e => setForm(f => ({ ...f, tipo: e.target.value }))}>
+                    <option value="TRANSVERSAL">{L("Transversal", "Transversal")}</option>
+                    <option value="TECNICA">{L("Técnica", "Technical")}</option>
+                    <option value="LIDERAZGO">{L("Liderazgo", "Leadership")}</option>
                   </select>
                 </div>
                 <div>

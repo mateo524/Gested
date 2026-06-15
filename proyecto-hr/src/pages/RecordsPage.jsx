@@ -2,13 +2,31 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch, apiUrl } from "../lib/api";
 
+const RECORD_TYPES = [
+  { value: "Alta",         label: "Alta",         color: "text-emerald-300", bg: "bg-emerald-500/10 border-emerald-300/20" },
+  { value: "Baja",         label: "Baja",         color: "text-rose-300",    bg: "bg-rose-500/10 border-rose-300/20" },
+  { value: "Licencia",     label: "Licencia",     color: "text-amber-300",   bg: "bg-amber-500/10 border-amber-300/20" },
+  { value: "Modificación", label: "Modificación", color: "text-sky-300",     bg: "bg-sky-500/10 border-sky-300/20" },
+];
+
 const emptyFilters = {
   q: "",
   rol: "",
   databaseId: "",
+  tipo: "",
 };
 
 const PAGE_SIZE = 50;
+
+function formatDate(value) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  const dd   = String(d.getDate()).padStart(2, "0");
+  const mm   = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
 
 function SortIcon({ active, dir }) {
   if (!active) {
@@ -34,19 +52,30 @@ function SortIcon({ active, dir }) {
   );
 }
 
+function TypeBadge({ tipo }) {
+  const def = RECORD_TYPES.find((t) => t.value === tipo);
+  if (!def) return <span className="text-[#9fb6c4]">{tipo || "-"}</span>;
+  return (
+    <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium ${def.bg} ${def.color}`}>
+      {def.label}
+    </span>
+  );
+}
+
 export default function RecordsPage() {
   const { token, activeCompanyId } = useAuth();
-  const [records, setRecords] = useState([]);
-  const [options, setOptions] = useState({ roles: [], files: [] });
-  const [filters, setFilters] = useState(emptyFilters);
-  const [message, setMessage] = useState("");
+  const [records, setRecords]         = useState([]);
+  const [typeSummary, setTypeSummary] = useState({});
+  const [options, setOptions]         = useState({ roles: [], files: [] });
+  const [filters, setFilters]         = useState(emptyFilters);
+  const [message, setMessage]         = useState("");
   const [messageIsError, setMessageIsError] = useState(false);
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal]             = useState(0);
+  const [totalPages, setTotalPages]   = useState(1);
 
-  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortBy, setSortBy]   = useState("createdAt");
   const [sortDir, setSortDir] = useState("desc");
 
   function handleSort(field) {
@@ -71,7 +100,6 @@ export default function RecordsPage() {
     return `?${params.toString()}`;
   }, [filters, currentPage, sortBy, sortDir]);
 
-  // Reset to page 1 when filters change
   useEffect(() => {
     setCurrentPage(1);
   }, [filters]);
@@ -83,6 +111,7 @@ export default function RecordsPage() {
         setTotal(data.total ?? 0);
         setTotalPages(data.totalPages ?? 1);
         setOptions(data.filters || { roles: [], files: [] });
+        setTypeSummary(data.typeSummary && typeof data.typeSummary === "object" ? data.typeSummary : {});
       })
       .catch((error) => { setMessageIsError(true); setMessage(error.message); });
   }, [token, activeCompanyId, queryString]);
@@ -110,9 +139,9 @@ export default function RecordsPage() {
       }
 
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const url  = window.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
-      anchor.href = url;
+      anchor.href     = url;
       anchor.download = "registros-filtrados.csv";
       anchor.click();
       window.URL.revokeObjectURL(url);
@@ -124,22 +153,55 @@ export default function RecordsPage() {
     }
   }
 
+  const hasSummary = Object.keys(typeSummary).length > 0;
+
   const columns = [
     { key: "nombreCompleto", label: "Nombre" },
-    { key: "rol", label: "Rol" },
-    { key: "email", label: "Email" },
+    { key: "tipo",           label: "Tipo" },
+    { key: "rol",            label: "Rol" },
+    { key: "email",          label: "Email" },
+    { key: "createdAt",      label: "Fecha" },
   ];
+
+  const hasActiveFilter = filters.q || filters.rol || filters.databaseId || filters.tipo;
 
   return (
     <div className="space-y-6">
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-8">
-        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Lectura de base</p>
-        <h3 className="mt-3 text-3xl font-bold text-white">Registros importados</h3>
+        <p className="text-sm uppercase tracking-[0.22em] text-[#14b8a6]">Historial de novedades</p>
+        <h3 className="mt-3 text-3xl font-bold text-white">Registros de empleados</h3>
         <p className="mt-3 max-w-3xl text-[#9fb6c4]">
-          Esta vista permite revisar los datos ya procesados, filtrar por rol, fuente o término de
-          búsqueda y validar rápidamente si la carga quedó consistente.
+          Seguimiento de altas, bajas, licencias y modificaciones. Filtrá por tipo de novedad, rol o
+          fuente para validar rápidamente la consistencia de los datos cargados.
         </p>
       </section>
+
+      {/* Summary cards por tipo — se ocultan si el backend aún no devuelve typeSummary */}
+      {hasSummary && (
+        <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {RECORD_TYPES.map((t) => (
+            <button
+              key={t.value}
+              type="button"
+              onClick={() =>
+                setFilters((prev) => ({ ...prev, tipo: prev.tipo === t.value ? "" : t.value }))
+              }
+              className={`rounded-2xl border p-5 text-left transition-all ${
+                filters.tipo === t.value
+                  ? `${t.bg} ${t.color} border-current`
+                  : "border-white/10 bg-[#122530] hover:bg-white/5"
+              }`}
+            >
+              <p className={`text-2xl font-bold ${filters.tipo === t.value ? t.color : "text-white"}`}>
+                {typeSummary[t.value] ?? 0}
+              </p>
+              <p className={`mt-1 text-sm ${filters.tipo === t.value ? t.color : "text-[#9fb6c4]"}`}>
+                {t.label}
+              </p>
+            </button>
+          ))}
+        </section>
+      )}
 
       <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">
         <div className="flex flex-wrap items-end gap-4">
@@ -151,6 +213,22 @@ export default function RecordsPage() {
               value={filters.q}
               onChange={(event) => setFilters({ ...filters, q: event.target.value })}
             />
+          </label>
+
+          <label className="min-w-44">
+            <span className="mb-2 block text-sm text-[#9fb6c4]">Tipo de novedad</span>
+            <select
+              className="w-full rounded-2xl border border-white/15 bg-[#0f1f28] px-4 py-3 text-white"
+              value={filters.tipo}
+              onChange={(event) => setFilters({ ...filters, tipo: event.target.value })}
+            >
+              <option value="">Todos</option>
+              {RECORD_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="min-w-44">
@@ -203,7 +281,7 @@ export default function RecordsPage() {
           </div>
           <div className="flex flex-wrap items-center gap-3">
             <span className="rounded-full bg-[#1e293b] px-4 py-2 text-sm text-[#b8c9d4]">
-              {total} registros
+              {total} {total === 1 ? "registro" : "registros"}
             </span>
             <button
               type="button"
@@ -253,34 +331,36 @@ export default function RecordsPage() {
               </tr>
             </thead>
             <tbody>
-              {Array.isArray(records) && records.length ? (
+              {Array.isArray(records) && records.length > 0 ? (
                 records.map((record) => (
-                  <tr key={record._id} className="border-b border-white/5">
+                  <tr key={record._id} className="border-b border-white/5 hover:bg-white/[0.02] transition-colors">
                     <td className="px-4 py-3 text-white">{record.nombreCompleto || "-"}</td>
+                    <td className="px-4 py-3"><TypeBadge tipo={record.tipo} /></td>
                     <td className="px-4 py-3 text-[#9fb6c4]">{record.rol || "-"}</td>
                     <td className="px-4 py-3 text-[#9fb6c4]">{record.email || "-"}</td>
+                    <td className="px-4 py-3 text-[#9fb6c4] tabular-nums">{formatDate(record.createdAt)}</td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan="3">
-                    <div className="flex flex-col items-center gap-3 px-6 py-12 text-center">
+                  <td colSpan={columns.length}>
+                    <div className="flex flex-col items-center gap-3 px-6 py-16 text-center">
                       <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-6 w-6">
                           <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                       </span>
                       <p className="text-sm font-semibold text-white">
-                        {filters.q || filters.rol || filters.databaseId
-                          ? "Ningún registro coincide con los filtros activos"
-                          : "Todavía no hay registros importados"}
+                        {hasActiveFilter
+                          ? `Sin resultados${filters.tipo ? ` para el tipo "${filters.tipo}"` : ""}`
+                          : "Sin registros de novedades aún"}
                       </p>
                       <p className="max-w-xs text-xs text-[#7a9aaa]">
-                        {filters.q || filters.rol || filters.databaseId
-                          ? "Probá ajustando el término de búsqueda, el rol o la base seleccionada."
-                          : "Los registros aparecen aquí después de completar una importación masiva desde la sección Carga masiva."}
+                        {hasActiveFilter
+                          ? "Ningún registro coincide con los filtros activos. Probá ajustando el tipo de novedad, el rol, la base o el término de búsqueda."
+                          : "Los registros de altas, bajas, licencias y modificaciones aparecen aquí una vez que se completa una importación masiva desde la sección Carga masiva."}
                       </p>
-                      {(filters.q || filters.rol || filters.databaseId) ? (
+                      {hasActiveFilter && (
                         <button
                           type="button"
                           onClick={() => setFilters(emptyFilters)}
@@ -288,7 +368,7 @@ export default function RecordsPage() {
                         >
                           Limpiar filtros
                         </button>
-                      ) : null}
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -309,7 +389,6 @@ export default function RecordsPage() {
                 onClick={() => setCurrentPage(1)}
                 className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-[#c5d5de] disabled:opacity-30"
               >
-                {/* double left arrow */}
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
                   <path d="M7 2L2 7l5 5M12 2L7 7l5 5" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
@@ -320,7 +399,6 @@ export default function RecordsPage() {
                 onClick={() => setCurrentPage((p) => p - 1)}
                 className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-[#c5d5de] disabled:opacity-30"
               >
-                {/* left arrow */}
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 2L4 7l5 5"/>
                 </svg>
@@ -359,7 +437,6 @@ export default function RecordsPage() {
                 onClick={() => setCurrentPage((p) => p + 1)}
                 className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-[#c5d5de] disabled:opacity-30"
               >
-                {/* right arrow */}
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M5 2l5 5-5 5"/>
                 </svg>
@@ -370,7 +447,6 @@ export default function RecordsPage() {
                 onClick={() => setCurrentPage(totalPages)}
                 className="rounded-xl border border-white/15 bg-[#0f1f28] px-3 py-2 text-sm text-[#c5d5de] disabled:opacity-30"
               >
-                {/* double right arrow */}
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 2l5 5-5 5M7 2l5 5-5 5"/>
                 </svg>

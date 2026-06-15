@@ -11,7 +11,8 @@ function initials(nombre, apellido) {
   return a + b || "?";
 }
 
-function buildTree(nodes) {
+export function buildTree(nodes) {
+  if (!Array.isArray(nodes)) return [];
   const byId = {};
   nodes.forEach((n) => { byId[n._id] = { ...n, children: [] }; });
 
@@ -24,9 +25,8 @@ function buildTree(nodes) {
     }
   });
 
-  // Sort children alphabetically
   function sort(list) {
-    list.sort((a, b) => a.apellido.localeCompare(b.apellido));
+    list.sort((a, b) => (a.apellido || "").localeCompare(b.apellido || ""));
     list.forEach((node) => sort(node.children));
   }
   sort(roots);
@@ -43,6 +43,27 @@ function collectAllIds(nodes) {
   }
   walk(nodes);
   return ids;
+}
+
+// Walks upward through managerId links to collect the full ancestor chain —
+// needed so area-filtered views never produce orphan roots in deep hierarchies
+function collectAncestorIds(nodeIds, allById) {
+  const result = new Set(nodeIds);
+  nodeIds.forEach((id) => {
+    let current = allById[id];
+    while (current?.managerId && allById[current.managerId]) {
+      result.add(current.managerId);
+      current = allById[current.managerId];
+    }
+  });
+  return result;
+}
+
+// Returns direct-report count from the *full* employee list, unaffected by
+// any active area filter — fixes the inflated/deflated teamSize in SidePanel
+function directReportCount(employeeId, allNodes) {
+  if (!Array.isArray(allNodes)) return 0;
+  return allNodes.filter((n) => n.managerId === employeeId).length;
 }
 
 // ─── side panel ─────────────────────────────────────────────────────────────
@@ -76,7 +97,7 @@ function ScoreMeter({ score, max = 5 }) {
   );
 }
 
-function SidePanel({ employee, onClose, onViewEvals }) {
+function SidePanel({ employee, allNodes, onClose, onViewEvals }) {
   useEffect(() => {
     function onKey(e) { if (e.key === "Escape") onClose(); }
     window.addEventListener("keydown", onKey);
@@ -85,7 +106,8 @@ function SidePanel({ employee, onClose, onViewEvals }) {
 
   if (!employee) return null;
 
-  const teamSize = employee.children?.length || 0;
+  // Use full dataset so count is correct regardless of active area filter
+  const teamSize = directReportCount(employee._id, allNodes);
   const tipoColor = TIPO_COLOR[employee.tipoEmpleado] || "#14b8a6";
 
   return (
@@ -93,7 +115,6 @@ function SidePanel({ employee, onClose, onViewEvals }) {
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <aside className="relative flex w-full max-w-md flex-col overflow-y-auto border-l border-white/10 bg-[#091319] shadow-[-4px_0_40px_rgba(2,8,23,0.7)]">
 
-        {/* Header */}
         <div className="flex items-center justify-between px-5 py-4">
           <p className="text-[11px] uppercase tracking-[0.18em] text-[#5e7d8e]">Perfil del empleado</p>
           <button type="button" onClick={onClose}
@@ -105,7 +126,6 @@ function SidePanel({ employee, onClose, onViewEvals }) {
           </button>
         </div>
 
-        {/* Hero */}
         <div className="relative mx-4 mb-4 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#0f2230] to-[#091319] p-6">
           <div className="absolute inset-0 opacity-30"
             style={{ background: `radial-gradient(circle at 80% 20%, ${tipoColor}22 0%, transparent 60%)` }} />
@@ -137,13 +157,11 @@ function SidePanel({ employee, onClose, onViewEvals }) {
               </div>
             </div>
           </div>
-          {/* Score meter */}
           <div className="relative mt-5 border-t border-white/8 pt-4">
             <ScoreMeter score={employee.averageScore || 0} />
           </div>
         </div>
 
-        {/* Stats grid */}
         <div className="mx-4 mb-4 grid grid-cols-2 gap-3">
           <div className="rounded-2xl border border-white/10 bg-[#0c1e28] p-4">
             <p className="text-[10px] uppercase tracking-[0.14em] text-[#5e7d8e]">Evaluaciones</p>
@@ -163,7 +181,6 @@ function SidePanel({ employee, onClose, onViewEvals }) {
           ) : null}
         </div>
 
-        {/* Fields */}
         <div className="mx-4 mb-4 space-y-3">
           {employee.email ? (
             <div className="flex items-center gap-3 rounded-2xl border border-white/8 bg-[#0c1e28] px-4 py-3">
@@ -175,7 +192,6 @@ function SidePanel({ employee, onClose, onViewEvals }) {
           ) : null}
         </div>
 
-        {/* Actions */}
         <div className="mt-auto border-t border-white/10 p-4 space-y-2">
           <button type="button" onClick={() => onViewEvals(employee._id)}
             className="flex w-full items-center justify-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]">
@@ -190,18 +206,12 @@ function SidePanel({ employee, onClose, onViewEvals }) {
   );
 }
 
-function Field({ label, value }) {
-  return (
-    <div>
-      <p className="mb-1 text-[11px] uppercase tracking-[0.15em] text-[#5e7d8e]">{label}</p>
-      <p className="text-sm text-white">{value}</p>
-    </div>
-  );
-}
-
 // ─── connector lines via SVG overlay ────────────────────────────────────────
 
-function ConnectorLines({ containerRef, treeRef }) {
+// Accepts collapsedIds + scrollVersion so SVG recomputes whenever the tree
+// layout changes — not only on window resize (which missed collapse/expand and
+// horizontal scroll events)
+function ConnectorLines({ containerRef, treeRef, collapsedIds, scrollVersion }) {
   const [lines, setLines] = useState([]);
 
   useEffect(() => {
@@ -215,9 +225,9 @@ function ConnectorLines({ containerRef, treeRef }) {
         const id = el.getAttribute("data-node-id");
         const rect = el.getBoundingClientRect();
         nodeRects[id] = {
-          x: rect.left - containerRect.left + rect.width / 2,
-          y: rect.top - containerRect.top + rect.height,
-          top: rect.top - containerRect.top,
+          x: rect.left - containerRect.left + containerRef.current.scrollLeft + rect.width / 2,
+          y: rect.top - containerRect.top + containerRef.current.scrollTop + rect.height,
+          top: rect.top - containerRect.top + containerRef.current.scrollTop,
         };
       });
 
@@ -234,15 +244,26 @@ function ConnectorLines({ containerRef, treeRef }) {
       setLines(newLines);
     }
 
-    compute();
+    // rAF ensures the DOM has settled after a React render before measuring
+    const raf = requestAnimationFrame(compute);
     window.addEventListener("resize", compute);
-    return () => window.removeEventListener("resize", compute);
-  }, [containerRef, treeRef]);
+
+    const container = containerRef.current;
+    container?.addEventListener("scroll", compute);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", compute);
+      container?.removeEventListener("scroll", compute);
+    };
+  // collapsedIds.size and scrollVersion are the triggers that force recompute
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [containerRef, treeRef, collapsedIds, scrollVersion]);
 
   return (
     <svg
-      className="pointer-events-none absolute inset-0 h-full w-full overflow-visible"
-      style={{ zIndex: 0 }}
+      className="pointer-events-none absolute inset-0 overflow-visible"
+      style={{ zIndex: 0, width: "100%", height: "100%" }}
     >
       {lines.map((l) => (
         <path
@@ -257,23 +278,42 @@ function ConnectorLines({ containerRef, treeRef }) {
   );
 }
 
+// ─── area badge colors ───────────────────────────────────────────────────────
+
+const AREA_PALETTE = [
+  "#818cf8","#34d399","#f59e0b","#38bdf8","#f472b6",
+  "#a78bfa","#fb923c","#4ade80","#e879f9","#22d3ee",
+];
+
+function areaColor(area, areaList) {
+  if (!area) return "#5e7d8e";
+  const idx = areaList.indexOf(area);
+  return AREA_PALETTE[idx % AREA_PALETTE.length];
+}
+
 // ─── org node card ───────────────────────────────────────────────────────────
 
-function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId }) {
+function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId, areaList }) {
   const hasChildren = node.children?.length > 0;
+  const cargo = node.cargo ?? "";
+  const area = node.area ?? "";
+  const nombre = node.nombre ?? "";
+  const apellido = node.apellido ?? "";
+
   const isHighlighted = highlight && (
-    node.nombre.toLowerCase().includes(highlight) ||
-    node.apellido.toLowerCase().includes(highlight) ||
-    node.cargo.toLowerCase().includes(highlight) ||
-    node.area.toLowerCase().includes(highlight)
+    nombre.toLowerCase().includes(highlight) ||
+    apellido.toLowerCase().includes(highlight) ||
+    cargo.toLowerCase().includes(highlight) ||
+    area.toLowerCase().includes(highlight)
   );
   const dimmed = highlight && !isHighlighted;
+  const badgeColor = areaColor(area, areaList);
 
   return (
     <div
       data-node-id={node._id}
       data-child-of={parentId || undefined}
-      className={`relative z-10 w-40 cursor-pointer rounded-2xl border bg-[#0c1e28] p-3 text-center transition-all ${
+      className={`relative z-10 w-44 cursor-pointer rounded-2xl border bg-[#0c1e28] p-3 text-center transition-all ${
         isHighlighted
           ? "border-[#14b8a6] shadow-[0_0_16px_rgba(20,184,166,0.3)]"
           : "border-white/10"
@@ -283,15 +323,25 @@ function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId }) {
       tabIndex={0}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
     >
-      <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#14b8a6] text-sm font-bold text-[#0f172a]">
-        {initials(node.nombre, node.apellido)}
+      <div
+        className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[#0f172a]"
+        style={{ backgroundColor: badgeColor }}
+      >
+        {initials(nombre, apellido)}
       </div>
       <p className="truncate text-xs font-semibold text-white">
-        {node.nombre} {node.apellido}
+        {nombre} {apellido}
       </p>
-      <p className="mt-0.5 truncate text-[11px] text-[#14b8a6]">{node.cargo}</p>
-      {node.area ? (
-        <p className="mt-0.5 truncate text-[10px] text-[#7a9aaa]">{node.area}</p>
+      {cargo ? (
+        <p className="mt-0.5 truncate text-[11px] text-[#14b8a6]">{cargo}</p>
+      ) : null}
+      {area ? (
+        <span
+          className="mt-1.5 inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-semibold"
+          style={{ backgroundColor: `${badgeColor}20`, color: badgeColor, border: `1px solid ${badgeColor}40` }}
+        >
+          {area}
+        </span>
       ) : null}
       {hasChildren ? (
         <button
@@ -311,7 +361,7 @@ function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId }) {
 
 // ─── recursive tree level ────────────────────────────────────────────────────
 
-function TreeLevel({ nodes, highlight, collapsedIds, onToggle, onSelect, parentId, depth }) {
+function TreeLevel({ nodes, highlight, collapsedIds, onToggle, onSelect, parentId, depth, areaList }) {
   return (
     <div className={`flex flex-col items-center ${depth > 0 ? "mt-10" : ""}`}>
       <div className="flex flex-wrap items-start justify-center gap-8">
@@ -324,6 +374,7 @@ function TreeLevel({ nodes, highlight, collapsedIds, onToggle, onSelect, parentI
               onToggle={() => onToggle(node._id)}
               onClick={() => onSelect(node)}
               parentId={parentId}
+              areaList={areaList}
             />
             {node.children?.length > 0 && !collapsedIds.has(node._id) ? (
               <TreeLevel
@@ -334,6 +385,7 @@ function TreeLevel({ nodes, highlight, collapsedIds, onToggle, onSelect, parentI
                 onSelect={onSelect}
                 parentId={node._id}
                 depth={depth + 1}
+                areaList={areaList}
               />
             ) : null}
           </div>
@@ -354,6 +406,8 @@ export default function OrgChartPage() {
   const [areaFilter, setAreaFilter] = useState("");
   const [collapsedIds, setCollapsedIds] = useState(new Set());
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  // Incremented on scroll so ConnectorLines recomputes without a full re-mount
+  const [scrollVersion, setScrollVersion] = useState(0);
   const containerRef = useRef(null);
   const treeRef = useRef(null);
 
@@ -361,21 +415,30 @@ export default function OrgChartPage() {
     if (!token) return;
     setLoading(true);
     apiFetch("/employees/org-chart", { token })
-      .then((data) => setNodes(data.nodes || []))
+      .then((data) => {
+        setNodes(Array.isArray(data?.nodes) ? data.nodes : []);
+      })
       .catch((err) => setError(err.message || "Error al cargar el organigrama"))
       .finally(() => setLoading(false));
   }, [token]);
 
   const areas = useMemo(() => {
+    if (!Array.isArray(nodes)) return [];
     const set = new Set(nodes.map((n) => n.area).filter(Boolean));
     return [...set].sort();
   }, [nodes]);
 
   const filteredNodes = useMemo(() => {
+    if (!Array.isArray(nodes)) return [];
     if (!areaFilter) return nodes;
-    // When filtering by area, include the manager chain so tree still makes sense
-    const areaIds = new Set(nodes.filter((n) => n.area === areaFilter).map((n) => n._id));
-    return nodes.filter((n) => areaIds.has(n._id) || (n.managerId && areaIds.has(n.managerId)));
+
+    const allById = {};
+    nodes.forEach((n) => { allById[n._id] = n; });
+
+    const areaIds = nodes.filter((n) => n.area === areaFilter).map((n) => n._id);
+    // Walk the full ancestor chain so deep hierarchies never produce orphan roots
+    const keepIds = collectAncestorIds(areaIds, allById);
+    return nodes.filter((n) => keepIds.has(n._id));
   }, [nodes, areaFilter]);
 
   const tree = useMemo(() => buildTree(filteredNodes), [filteredNodes]);
@@ -395,8 +458,9 @@ export default function OrgChartPage() {
 
   const highlight = search.trim().toLowerCase();
 
-  // Recompute lines whenever tree changes (trigger via key)
-  const treeKey = `${filteredNodes.length}-${collapsedIds.size}`;
+  const handleScroll = useCallback(() => {
+    setScrollVersion((v) => v + 1);
+  }, []);
 
   if (loading) {
     return (
@@ -422,14 +486,12 @@ export default function OrgChartPage() {
 
   return (
     <div className="space-y-5">
-      {/* Header */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.18em] text-[#5e7d8e]">Estructura</p>
           <h1 className="text-2xl font-bold text-white">Organigrama</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {/* Search */}
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-[#0c1e28] px-3 py-2">
             <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 shrink-0 text-[#7a9aaa]">
               <circle cx="7" cy="7" r="4.5" />
@@ -442,7 +504,6 @@ export default function OrgChartPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          {/* Area filter */}
           <select
             className="rounded-2xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
             value={areaFilter}
@@ -453,7 +514,6 @@ export default function OrgChartPage() {
               <option key={a} value={a}>{a}</option>
             ))}
           </select>
-          {/* Expand / collapse */}
           <button
             type="button"
             onClick={collapsedIds.size > 0 ? handleExpandAll : handleCollapseAll}
@@ -464,7 +524,6 @@ export default function OrgChartPage() {
         </div>
       </div>
 
-      {/* Tree canvas */}
       {tree.length === 0 ? (
         <div className="flex min-h-[30vh] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-white/10 bg-[#0c1e28] px-8 py-16 text-center">
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-[#7a9aaa]">
@@ -478,11 +537,17 @@ export default function OrgChartPage() {
       ) : (
         <div
           ref={containerRef}
+          onScroll={handleScroll}
           className="relative overflow-auto rounded-3xl border border-white/10 bg-[#091319] p-8"
           style={{ minHeight: "60vh" }}
         >
-          <ConnectorLines containerRef={containerRef} treeRef={treeRef} />
-          <div ref={treeRef} key={treeKey} className="relative inline-flex min-w-full flex-col items-center">
+          <ConnectorLines
+            containerRef={containerRef}
+            treeRef={treeRef}
+            collapsedIds={collapsedIds}
+            scrollVersion={scrollVersion}
+          />
+          <div ref={treeRef} className="relative inline-flex min-w-full flex-col items-center">
             <TreeLevel
               nodes={tree}
               highlight={highlight}
@@ -491,16 +556,17 @@ export default function OrgChartPage() {
               onSelect={setSelectedEmployee}
               parentId={null}
               depth={0}
+              areaList={areas}
             />
           </div>
         </div>
       )}
 
-      {/* Side panel — rendered in a portal so fixed positioning works regardless of CSS transforms */}
       {selectedEmployee
         ? createPortal(
             <SidePanel
               employee={selectedEmployee}
+              allNodes={nodes}
               onClose={() => setSelectedEmployee(null)}
               onViewEvals={(employeeId) => {
                 setSelectedEmployee(null);
