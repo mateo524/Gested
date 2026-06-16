@@ -40,6 +40,8 @@ import calendlyRoutes from "./routes/calendly.routes.js";
 import webhooksConfigRoutes from "./routes/webhooks-config.routes.js";
 import analyticsRoutes from "./routes/analytics.routes.js";
 import dripRoutes from "./routes/drip.routes.js";
+import twoFactorRoutes from "./routes/twoFactor.routes.js";
+import pdfExportRoutes from "./routes/pdfExport.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { ensureIndexes } from "./utils/ensureIndexes.js";
 import { buildHealthStatus } from "./utils/health.js";
@@ -255,6 +257,7 @@ app.use((req, res, next) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/auth/2fa", twoFactorRoutes);
 app.use("/dashboard", dashboardRoutes);
 app.use("/companies", companiesRoutes);
 app.use("/users", usersRoutes);
@@ -262,6 +265,7 @@ app.use("/roles", rolesRoutes);
 app.use("/audit", auditRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/export", exportRoutes);
+app.use("/pdf-export", pdfExportRoutes);
 app.use("/records", recordsRoutes);
 app.use("/storage", storageRoutes);
 app.use("/announcements", announcementsRoutes);

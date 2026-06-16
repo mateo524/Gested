@@ -3,6 +3,7 @@ import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch } from "../lib/api";
 import { ErrorState, LoadingState } from "../components/AppStates";
+import TwoFactorSettings from "../components/TwoFactorSettings";
 
 const ALL_EVENTS = [
   { value: "evaluation.created", label: "Evaluación creada" },
@@ -274,6 +275,8 @@ export default function SettingsPage() {
           ) : null}
         </div>
       </section>
+
+      <TwoFactorSettings />
 
       {isAdmin ? (
         <section className="rounded-[2rem] border border-white/10 bg-[#122530] p-6">

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
-import { apiFetch } from "../lib/api";
+import { apiFetch, apiUrl } from "../lib/api";
 import {
   LineChart,
   Line,
@@ -144,12 +144,12 @@ export default function EmployeeProfile({ empleado, onVolver }) {
     try {
       setDescargando("pdf");
       const response = await fetch(
-        `${import.meta.env.VITE_API_URL}/export/pdf/employee/${empleado._id}`,
+        `${apiUrl}/pdf-export/employee/${empleado._id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      if (!response.ok) throw new Error("Error al descargar");
+      if (!response.ok) throw new Error("Error al descargar el reporte PDF");
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -210,9 +210,14 @@ export default function EmployeeProfile({ empleado, onVolver }) {
             <button
               onClick={descargarPDF}
               disabled={descargando === "pdf"}
-              className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-xl transition"
+              className="flex items-center gap-2 rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/8 px-4 py-2 text-sm text-[#14b8a6] disabled:opacity-50 hover:bg-[#14b8a6]/15 transition-colors"
             >
-              {descargando === "pdf" ? "Descargando..." : "📄 PDF"}
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="size-4">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              {descargando === "pdf" ? "Descargando..." : "Descargar reporte PDF"}
             </button>
             <button
               onClick={() => setEditando(true)}
