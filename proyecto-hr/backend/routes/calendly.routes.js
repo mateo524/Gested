@@ -52,11 +52,12 @@ async function createDeal(dealname, contactId) {
   return res.json();
 }
 
-router.get("/calendly/test", (_req, res) => res.json({ ok: true }));
-
 router.post("/calendly", async (req, res) => {
   try {
-    const { event, payload } = req.body ?? {};
+    if (!req.body || Object.keys(req.body).length === 0) {
+      return res.status(400).json({ error: "Missing request body" });
+    }
+    const { event, payload } = req.body;
     if (event !== "invitee.created") return res.status(200).json({ ok: true, skipped: true });
 
     const name = payload?.invitee?.name ?? "Unknown";

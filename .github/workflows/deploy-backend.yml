@@ -1,5 +1,18 @@
 name: Deploy Backend to Cloud Run
 
+# Required GitHub Secrets:
+# - GCP_SA_KEY: Google Cloud service account JSON key
+# - MONGO_URI: MongoDB Atlas connection string
+# - JWT_SECRET: JWT signing secret
+# - RESEND_API_KEY: Resend email API key
+# - RESEND_FROM_EMAIL: Sender email address
+# - SENTRY_DSN_BACKEND: Sentry DSN for backend error tracking
+# - AUTOMATION_TOKEN: Token for internal automation endpoints
+# Optional:
+# - WOOPSOCIAL_API_KEY: For monitoring notifications
+# - VERCEL_TOKEN: For Vercel deployment checks
+# - SENTRY_AUTH_TOKEN: For Sentry release tracking
+
 on:
   push:
     branches: [main]

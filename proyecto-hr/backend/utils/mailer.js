@@ -25,7 +25,7 @@ async function sendViaSendGrid({ to, subject, html }) {
 
   const body = JSON.stringify({
     personalizations: [{ to: [{ email: to }] }],
-    from: { email: "zentorhq@gmail.com", name: "ZENTOR" },
+    from: { email: process.env.RESEND_FROM_EMAIL || "no-reply@zentor.com.ar", name: "ZENTOR" },
     subject,
     content: [{ type: "text/html", value: html }],
   });

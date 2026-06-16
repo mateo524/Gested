@@ -120,12 +120,9 @@ jobs:
           fi
           MESSAGE="$MESSAGE\n🔗 https://vercel.com/gested/gested-l6ej"
 
-          curl -s -X POST "https://api.woopsocial.com/mcp" \
-            -H "Authorization: Bearer $WOOPSOCIAL_API_KEY" \
-            -H "Content-Type: application/json" \
-            -d "{\"message\": \"$MESSAGE\"}" \
-            && echo "✅ WoopSocial notification sent" \
-            || echo "❌ WoopSocial notification failed"
+          echo "## 🚨 Zentor Alert" >> $GITHUB_STEP_SUMMARY
+          echo "$MESSAGE" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Alert written to workflow summary"
 
       - name: Summary
         run: |

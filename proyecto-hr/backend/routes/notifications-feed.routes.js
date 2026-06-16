@@ -66,14 +66,10 @@ router.patch("/feed/read", auth, async (req, res) => {
 // GET /notifications-feed/stream — SSE endpoint
 // Accepts token via Authorization header or ?token= query param (EventSource limitation).
 router.get("/stream", (req, res) => {
-  // Support token via query param for EventSource clients
   let user;
   try {
-    const token =
-      req.query.token ||
-      (req.headers.authorization?.startsWith("Bearer ")
-        ? req.headers.authorization.split(" ")[1]
-        : null);
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
     if (!token) return res.status(401).json({ mensaje: "No autorizado" });
     user = jwt.verify(token, process.env.JWT_SECRET);
   } catch {

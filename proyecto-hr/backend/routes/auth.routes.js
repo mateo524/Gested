@@ -18,6 +18,8 @@ const LOGIN_WINDOW_MS = 10 * 60 * 1000;
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOCK_TIME_MS = 15 * 60 * 1000;
 const PASSWORD_MIN_LENGTH = 8;
+// TODO: Replace with Redis-backed rate limiting (e.g. rate-limiter-flexible)
+// Current in-memory Map resets on restart and doesn't work across Cloud Run instances.
 // WARNING: loginAttempts/loginLocks are in-process Maps. They reset on restart and
 // do NOT work across multiple instances (PM2 clusters, containers, load balancers).
 // For multi-instance deployments, replace with a shared Redis store using

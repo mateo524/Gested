@@ -3,8 +3,8 @@ import PDFDocument from "pdfkit";
 import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
-import auth from "../middleware/auth.js";
-import permit from "../middleware/permit.js";
+import { auth } from "../middleware/auth.js";
+import { permit } from "../middleware/permit.js";
 
 const router = Router();
 
