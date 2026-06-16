@@ -229,14 +229,24 @@ export function AuthProvider({ children }) {
     return () => clearInterval(interval);
   }, [computeTokenTimes]);
 
+  // Silent refresh — fires 30 min before expiry, keeps session alive without re-login
   useEffect(() => {
-    if (!tokenExpiresAt) return;
-    const nearExpiryThreshold = 60 * 60 * 1000;
-    const msUntilNearExpiry = tokenExpiresAt.getTime() - Date.now() - nearExpiryThreshold;
-    if (msUntilNearExpiry <= 0) return;
-    const id = setTimeout(() => setTokenTimes(computeTokenTimes()), msUntilNearExpiry);
+    if (!tokenExpiresAt || !token) return;
+    const REFRESH_BEFORE_MS = 30 * 60 * 1000;
+    const msUntilRefresh = tokenExpiresAt.getTime() - Date.now() - REFRESH_BEFORE_MS;
+    if (msUntilRefresh <= 0) return;
+    const id = setTimeout(async () => {
+      try {
+        const data = await apiFetch("/auth/refresh", { token, method: "POST" });
+        if (data?.token && data?.user) {
+          applySession(data.token, data.user);
+        }
+      } catch {
+        // Refresh failed — session will show near-expiry warning, user re-logs manually
+      }
+    }, msUntilRefresh);
     return () => clearTimeout(id);
-  }, [tokenExpiresAt, computeTokenTimes]);
+  }, [tokenExpiresAt, token, applySession]);
 
   const tokenRemainingMs = tokenTimes.remainingMs;
   const tokenNearExpiry = tokenTimes.nearExpiry;

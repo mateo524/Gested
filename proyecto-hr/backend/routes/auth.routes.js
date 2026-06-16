@@ -520,4 +520,28 @@ router.get("/security-status", auth, async (req, res) => {
   });
 });
 
+// ── Silent token refresh — called by frontend ~30 min before expiry ────────
+router.post("/refresh", auth, async (req, res) => {
+  try {
+    const user = await User.findOne({
+      _id: req.user.userId,
+      companyId: req.user.companyId,
+      activo: true,
+    });
+
+    if (!user) return res.status(401).json({ mensaje: "Sesión inválida" });
+
+    if (!user.isSuperAdmin) {
+      const company = await Company.findById(user.companyId).lean();
+      if (!company?.activa) return res.status(403).json({ mensaje: "Empresa suspendida" });
+    }
+
+    const safeUser = await buildSafeUser(user);
+    const token = buildToken(user, safeUser);
+    res.json({ token, user: safeUser });
+  } catch {
+    res.status(500).json({ mensaje: "Error al renovar sesión" });
+  }
+});
+
 export default router;

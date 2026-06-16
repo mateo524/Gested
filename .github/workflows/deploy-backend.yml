@@ -84,6 +84,8 @@ jobs:
           HUBSPOT_PAT: ${{ secrets.HUBSPOT_PAT }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN_BACKEND }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
         run: |
           # Single-quoted YAML values prevent & from being interpreted as an anchor
           node -e "
@@ -104,6 +106,8 @@ jobs:
             HUBSPOT_PAT: process.env.HUBSPOT_PAT,
             SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL,
             SENTRY_DSN: process.env.SENTRY_DSN,
+            RESEND_API_KEY: process.env.RESEND_API_KEY,
+            RESEND_FROM_EMAIL: process.env.RESEND_FROM_EMAIL,
           };
           const lines = Object.entries(vars)
             .filter(([, v]) => v)

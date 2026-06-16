@@ -1,6 +1,24 @@
 import nodemailer from "nodemailer";
 
-// ── SendGrid helper (used when SMTP is not configured) ─────────────────────
+const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "ZENTOR <onboarding@resend.dev>";
+
+// ── Resend helper ──────────────────────────────────────────────────────────
+async function sendViaResend({ to, subject, html, text }) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key) return { sent: false, reason: "no_resend_key" };
+
+  const res = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: FROM_ADDRESS, to, subject, html, text }),
+  });
+
+  if (res.status === 200 || res.status === 201) return { sent: true };
+  const body = await res.json().catch(() => ({}));
+  return { sent: false, reason: `resend_${res.status}`, detail: body?.message };
+}
+
+// ── SendGrid helper (fallback) ─────────────────────────────────────────────
 async function sendViaSendGrid({ to, subject, html }) {
   const key = process.env.SENDGRID_API_KEY;
   if (!key) return { sent: false, reason: "no_sendgrid_key" };
@@ -22,10 +40,11 @@ async function sendViaSendGrid({ to, subject, html }) {
 }
 
 function canSend() {
-  return Boolean(process.env.SENDGRID_API_KEY) || smtpConfigured();
+  return Boolean(process.env.RESEND_API_KEY) || Boolean(process.env.SENDGRID_API_KEY) || smtpConfigured();
 }
 
 export async function dispatch({ to, subject, html, text }) {
+  if (process.env.RESEND_API_KEY) return sendViaResend({ to, subject, html, text });
   if (process.env.SENDGRID_API_KEY) return sendViaSendGrid({ to, subject, html });
   if (!smtpConfigured()) return { sent: false, reason: "no_transport" };
   const t = createTransporter();
