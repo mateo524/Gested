@@ -1,0 +1,137 @@
+name: Monitor — Sentry errors + Vercel deploy health
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # every 30 minutes
+  workflow_dispatch:
+    inputs:
+      fix_mode:
+        description: 'Run in fix mode (attempt auto-fixes)'
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    name: Check Sentry + Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Sentry for new errors
+        id: sentry
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: zentor-xk
+        run: |
+          # Install sentry-cli
+          npm install -g @sentry/cli --silent
+
+          echo "=== Sentry Issues ==="
+          ISSUES=$(sentry-cli --auth-token "$SENTRY_AUTH_TOKEN" issues list \
+            --org "$SENTRY_ORG" \
+            --project javascript-react \
+            --status unresolved 2>/dev/null || echo "[]")
+
+          NODE_ISSUES=$(sentry-cli --auth-token "$SENTRY_AUTH_TOKEN" issues list \
+            --org "$SENTRY_ORG" \
+            --project node \
+            --status unresolved 2>/dev/null || echo "[]")
+
+          echo "Frontend issues:"
+          echo "$ISSUES"
+          echo "Backend issues:"
+          echo "$NODE_ISSUES"
+
+          # Count issues via Sentry API
+          FRONTEND_COUNT=$(curl -s \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            "https://de.sentry.io/api/0/projects/zentor-xk/javascript-react/issues/?query=is:unresolved&limit=1" \
+            | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); try{const a=JSON.parse(d); console.log(a.length)}catch{console.log(0)}" 2>/dev/null || echo "0")
+
+          NODE_COUNT=$(curl -s \
+            -H "Authorization: Bearer $SENTRY_AUTH_TOKEN" \
+            "https://de.sentry.io/api/0/projects/zentor-xk/node/issues/?query=is:unresolved&limit=1" \
+            | node -e "const d=require('fs').readFileSync('/dev/stdin','utf8'); try{const a=JSON.parse(d); console.log(a.length)}catch{console.log(0)}" 2>/dev/null || echo "0")
+
+          echo "frontend_count=$FRONTEND_COUNT" >> $GITHUB_OUTPUT
+          echo "node_count=$NODE_COUNT" >> $GITHUB_OUTPUT
+          echo "has_errors=$([ "$FRONTEND_COUNT" -gt 0 ] || [ "$NODE_COUNT" -gt 0 ] && echo true || echo false)" >> $GITHUB_OUTPUT
+
+      - name: Check latest Vercel deployments
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "=== Vercel Deployment Status ==="
+
+          # Check gested-l6ej project
+          DEPLOYS=$(curl -s \
+            -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?teamId=gested&projectId=gested-l6ej&limit=3" 2>/dev/null)
+
+          echo "$DEPLOYS" | node -e "
+            const d = require('fs').readFileSync('/dev/stdin','utf8');
+            try {
+              const { deployments } = JSON.parse(d);
+              if (!deployments?.length) { console.log('No deployments found'); process.exit(0); }
+              deployments.forEach(dep => {
+                const status = dep.state || dep.readyState;
+                const icon = status === 'READY' ? '✅' : status === 'ERROR' ? '❌' : '⏳';
+                console.log(icon + ' ' + status + ' | ' + dep.url + ' | ' + dep.meta?.githubCommitMessage?.slice(0,60));
+              });
+              const latest = deployments[0];
+              const latestStatus = latest.state || latest.readyState;
+              process.stdout.write('');
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'latest_status=' + latestStatus + '\n');
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'deploy_ok=' + (latestStatus === 'READY' ? 'true' : 'false') + '\n');
+            } catch(e) {
+              console.log('Could not parse response:', e.message);
+              require('fs').appendFileSync(process.env.GITHUB_OUTPUT, 'deploy_ok=unknown\n');
+            }
+          "
+
+      - name: Notify via WoopSocial if issues found
+        if: steps.sentry.outputs.has_errors == 'true' || steps.vercel.outputs.deploy_ok == 'false'
+        env:
+          WOOPSOCIAL_API_KEY: ${{ secrets.WOOPSOCIAL_API_KEY }}
+          FRONTEND_ERRORS: ${{ steps.sentry.outputs.frontend_count }}
+          NODE_ERRORS: ${{ steps.sentry.outputs.node_count }}
+          DEPLOY_OK: ${{ steps.vercel.outputs.deploy_ok }}
+          LATEST_STATUS: ${{ steps.vercel.outputs.latest_status }}
+        run: |
+          if [ -z "$WOOPSOCIAL_API_KEY" ]; then
+            echo "⚠️  WOOPSOCIAL_API_KEY not set — skipping notification"
+            exit 0
+          fi
+
+          MESSAGE="🚨 *Zentor Alert*"
+          if [ "$DEPLOY_OK" = "false" ]; then
+            MESSAGE="$MESSAGE\n❌ Vercel deploy en ERROR (status: $LATEST_STATUS)"
+          fi
+          if [ "$FRONTEND_ERRORS" -gt 0 ]; then
+            MESSAGE="$MESSAGE\n⚠️  Sentry frontend: $FRONTEND_ERRORS errores sin resolver"
+          fi
+          if [ "$NODE_ERRORS" -gt 0 ]; then
+            MESSAGE="$MESSAGE\n⚠️  Sentry backend: $NODE_ERRORS errores sin resolver"
+          fi
+          MESSAGE="$MESSAGE\n🔗 https://vercel.com/gested/gested-l6ej"
+
+          curl -s -X POST "https://api.woopsocial.com/mcp" \
+            -H "Authorization: Bearer $WOOPSOCIAL_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"message\": \"$MESSAGE\"}" \
+            && echo "✅ WoopSocial notification sent" \
+            || echo "❌ WoopSocial notification failed"
+
+      - name: Summary
+        run: |
+          echo "### Monitor Summary" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Vercel deploy | ${{ steps.vercel.outputs.latest_status || 'unknown' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sentry frontend errors | ${{ steps.sentry.outputs.frontend_count || '0' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Sentry backend errors | ${{ steps.sentry.outputs.node_count || '0' }} |" >> $GITHUB_STEP_SUMMARY
