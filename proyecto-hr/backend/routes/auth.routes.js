@@ -73,6 +73,21 @@ const passwordChangeLimiter = rateLimit({
   },
 });
 
+const forgotPasswordLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const email = String(req.body?.email || "").toLowerCase().trim();
+    return `forgot::${ip}::${email}`;
+  },
+  message: {
+    mensaje: "Demasiadas solicitudes de recuperación. Intentá nuevamente en una hora.",
+  },
+});
+
 function createRouteError(status, message) {
   const error = new Error(message);
   error.status = status;
@@ -392,7 +407,7 @@ async function handleChangeOwnPassword(req, res) {
 router.put("/me/password", auth, passwordChangeLimiter, handleChangeOwnPassword);
 router.post("/change-password", auth, passwordChangeLimiter, handleChangeOwnPassword);
 
-router.post("/forgot-password", async (req, res) => {
+router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();
 
