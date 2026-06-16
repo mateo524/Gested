@@ -83,6 +83,7 @@ jobs:
           CONTACT_NOTIFICATIONS_TO: ${{ secrets.CONTACT_NOTIFICATIONS_TO }}
           HUBSPOT_PAT: ${{ secrets.HUBSPOT_PAT }}
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN_BACKEND }}
         run: |
           # Single-quoted YAML values prevent & from being interpreted as an anchor
           node -e "
@@ -102,6 +103,7 @@ jobs:
             CONTACT_NOTIFICATIONS_TO: process.env.CONTACT_NOTIFICATIONS_TO,
             HUBSPOT_PAT: process.env.HUBSPOT_PAT,
             SLACK_WEBHOOK_URL: process.env.SLACK_WEBHOOK_URL,
+            SENTRY_DSN: process.env.SENTRY_DSN,
           };
           const lines = Object.entries(vars)
             .filter(([, v]) => v)
