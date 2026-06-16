@@ -361,4 +361,33 @@ router.delete("/:id", auth, requireSuperAdmin, permit("manage_companies"), async
   res.json({ mensaje: "Empresa eliminada" });
 });
 
+const ALLOWED_MODULE_KEYS = [
+  "evaluaciones", "competencias", "planesDesarrollo", "reporteEjecutivo",
+  "orgchart", "exportacion", "kpis", "calibracion", "cargaMasiva",
+];
+
+router.patch("/:id/modules", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
+  const company = await Company.findById(req.params.id);
+  if (!company) return res.status(404).json({ mensaje: "Empresa no encontrada" });
+
+  const updates = req.body || {};
+  const patch = {};
+  for (const key of ALLOWED_MODULE_KEYS) {
+    if (typeof updates[key] === "boolean") patch[key] = updates[key];
+  }
+
+  company.modules = { ...(company.modules?.toObject?.() ?? company.modules ?? {}), ...patch };
+  await company.save();
+
+  runInBackground(() => logAudit({
+    companyId: company._id,
+    userId: req.user.userId,
+    accion: "update",
+    modulo: "companies",
+    detalle: `Módulos actualizados: ${JSON.stringify(patch)}`,
+  }), "audit-company-modules");
+
+  res.json({ mensaje: "Módulos actualizados", modules: company.modules });
+});
+
 export default router;

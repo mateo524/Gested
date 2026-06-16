@@ -129,6 +129,7 @@ export function buildSafeUserPayload({ user, role, company, effectiveRole }) {
     teamId: effectiveRole?.teamId || "",
     companyName: company?.nombre || "Sin empresa",
     permisos: effectiveRole?.permisos || role?.permisos || [],
+    modules: company?.modules ?? null,
   };
 }
 

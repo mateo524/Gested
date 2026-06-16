@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 import { apiFetch } from "../lib/api";
 import ConfirmDialog from "../components/ConfirmDialog";
+import { CompanyModulesModal } from "../components/CompanyModulesModal";
 
 const emptyCompany = {
   nombre: "",
@@ -54,6 +56,8 @@ function ErrorState({ onRetry }) {
 
 export default function CompaniesPage() {
   const { token, refreshCompanies } = useAuth();
+  const { addToast } = useToast();
+  const [modulesTarget, setModulesTarget] = useState(null);
   const [companies, setCompanies] = useState([]);
   const [form, setForm] = useState(emptyCompany);
   const [message, setMessage] = useState("");
@@ -635,6 +639,13 @@ export default function CompaniesPage() {
                           <p className="mt-1 text-sm text-[#9fb6c4]">Usuarios asignados: {company.usersCount || 0}</p>
                         </div>
 
+                        <button
+                          type="button"
+                          onClick={() => setModulesTarget(company)}
+                          className="rounded-xl border border-[#14b8a6]/30 bg-[#14b8a6]/8 px-4 py-2 text-sm text-[#14b8a6] hover:bg-[#14b8a6]/12 transition"
+                        >
+                          Módulos
+                        </button>
                         {/* Fix #4: deactivation via toggleCompany now opens ConfirmDialog; reactivation is direct */}
                         <button
                           type="button"
@@ -714,6 +725,20 @@ export default function CompaniesPage() {
         }}
         onConfirm={confirmToggleDeactivate}
       />
+
+      {modulesTarget && (
+        <CompanyModulesModal
+          company={modulesTarget}
+          token={token}
+          addToast={addToast}
+          onClose={() => setModulesTarget(null)}
+          onSaved={(updatedModules) => {
+            setCompanies(prev =>
+              prev.map(c => c._id === modulesTarget._id ? { ...c, modules: updatedModules } : c)
+            );
+          }}
+        />
+      )}
     </div>
   );
 }

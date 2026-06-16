@@ -264,6 +264,12 @@ export function AuthProvider({ children }) {
       logout,
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
+      modules: user?.modules ?? null,
+      hasModule: (key) => {
+        if (user?.isSuperAdmin) return true;
+        if (!user?.modules) return true;
+        return user.modules[key] !== false;
+      },
       sessionHydrating,
     }),
     [

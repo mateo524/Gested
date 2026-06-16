@@ -97,7 +97,7 @@ function ViewLoader() {
 }
 
 function AppContent() {
-  const { isAuthenticated, hasPermission, user } = useAuth();
+  const { isAuthenticated, hasPermission, hasModule, user } = useAuth();
   const [view, setView] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
@@ -124,54 +124,54 @@ function AppContent() {
         user ? "novedades" : null,
         user ? "perfil" : null,
         hasPermission("manage_employees") ? "empleados" : null,
-        hasPermission("manage_employees") ? "organigrama" : null,
-        hasPermission("manage_competencies") ? "competencias" : null,
-        hasPermission("manage_metrics") ? "metricas" : null,
-        hasPermission("manage_evaluation_cycles") || hasPermission("view_reports")
+        hasPermission("manage_employees") && hasModule("orgchart") ? "organigrama" : null,
+        hasPermission("manage_competencies") && hasModule("competencias") ? "competencias" : null,
+        hasPermission("manage_metrics") && hasModule("kpis") ? "metricas" : null,
+        hasModule("evaluaciones") && (hasPermission("manage_evaluation_cycles") || hasPermission("view_reports"))
           ? "ciclos"
           : null,
-        hasPermission("manage_evaluations") ||
-        hasPermission("evaluate_team") ||
-        hasPermission("self_evaluate") ||
-        hasPermission("view_reports")
-          ? "evaluaciones"
-          : null,
-        hasPermission("manage_development_plans") ||
-        hasPermission("evaluate_team") ||
-        hasPermission("self_evaluate") ||
-        hasPermission("download_self_report") ||
-        hasPermission("view_reports")
-          ? "planes"
-          : null,
-        hasPermission("view_reports") ||
-        hasPermission("download_reports") ||
-        hasPermission("download_team_reports") ||
-        hasPermission("download_self_report")
-          ? "bases-descargas"
-          : null,
-        hasPermission("view_reports") ||
-        hasPermission("download_reports") ||
-        hasPermission("download_team_reports") ||
-        hasPermission("view_audit")
-          ? "reporte-ejecutivo"
-          : null,
-        hasPermission("view_reports") && hasPermission("manage_metrics")
+        hasModule("evaluaciones") && (
+          hasPermission("manage_evaluations") ||
+          hasPermission("evaluate_team") ||
+          hasPermission("self_evaluate") ||
+          hasPermission("view_reports")
+        ) ? "evaluaciones" : null,
+        hasModule("planesDesarrollo") && (
+          hasPermission("manage_development_plans") ||
+          hasPermission("evaluate_team") ||
+          hasPermission("self_evaluate") ||
+          hasPermission("download_self_report") ||
+          hasPermission("view_reports")
+        ) ? "planes" : null,
+        hasModule("exportacion") && (
+          hasPermission("view_reports") ||
+          hasPermission("download_reports") ||
+          hasPermission("download_team_reports") ||
+          hasPermission("download_self_report")
+        ) ? "bases-descargas" : null,
+        hasModule("reporteEjecutivo") && (
+          hasPermission("view_reports") ||
+          hasPermission("download_reports") ||
+          hasPermission("download_team_reports") ||
+          hasPermission("view_audit")
+        ) ? "reporte-ejecutivo" : null,
+        hasModule("reporteEjecutivo") && hasPermission("view_reports") && hasPermission("manage_metrics")
           ? "metricas-ejecutivo"
           : null,
-        hasPermission("manage_users") ||
-        hasPermission("manage_school_users") ||
-        hasPermission("manage_employees") ||
-        hasPermission("manage_roles") ||
-        hasPermission("view_audit")
-          ? "carga-masiva"
-          : null,
+        hasModule("cargaMasiva") && (
+          hasPermission("manage_users") ||
+          hasPermission("manage_school_users") ||
+          hasPermission("manage_employees") ||
+          hasPermission("manage_roles") ||
+          hasPermission("view_audit")
+        ) ? "carga-masiva" : null,
         user?.isSuperAdmin ? "archivo-central" : null,
         user?.isSuperAdmin ? "analytics" : null,
-        hasPermission("manage_evaluations") || hasPermission("view_reports")
+        hasModule("evaluaciones") && (hasPermission("manage_evaluations") || hasPermission("view_reports")) && hasModule("calibracion")
           ? "calibracion"
           : null,
       ].filter(Boolean),
-    [hasPermission, user]
+    [hasPermission, hasModule, user]
   );
 
   const activeView = availableViews.includes(view) ? view : (availableViews[0] || "dashboard");
