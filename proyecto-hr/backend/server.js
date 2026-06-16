@@ -1,4 +1,6 @@
 import "dotenv/config";
+import "./instrument.js";
+import { Sentry } from "./instrument.js";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -314,11 +316,14 @@ app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
 });
 
-app.use((err, _req, res, _next) => {
+app.use((err, req, res, _next) => {
   const status = err.status || err.statusCode || 500;
 
   if (status >= 500) {
     logger.error("Unhandled error", { message: err.message, stack: err.stack, status });
+    if (process.env.SENTRY_DSN) {
+      Sentry.captureException(err, { extra: { status, path: req.path, method: req.method } });
+    }
   }
 
   if (status >= 500 && process.env.NODE_ENV === "production") {
