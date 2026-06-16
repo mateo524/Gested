@@ -1,0 +1,29 @@
+# Cloud Scheduler job — sends evaluation reminder emails daily at 09:00 AR time
+# Targets users with pending evaluations in cycles closing within 3 days.
+#
+# Deploy with:
+#   gcloud scheduler jobs create http zentor-cycle-reminders \
+#     --schedule="0 9 * * *" \
+#     --time-zone="America/Argentina/Buenos_Aires" \
+#     --uri="https://<CLOUD_RUN_URL>/automation/cycle-reminders" \
+#     --http-method=POST \
+#     --headers="x-automation-token=<AUTOMATION_TOKEN>,Content-Type=application/json" \
+#     --message-body="{}" \
+#     --project=<GCP_PROJECT_ID>
+
+name: zentor-cycle-reminders
+schedule: "0 9 * * *"
+timeZone: "America/Argentina/Buenos_Aires"
+httpTarget:
+  uri: "https://YOUR_CLOUD_RUN_URL/automation/cycle-reminders"
+  httpMethod: POST
+  headers:
+    Content-Type: "application/json"
+    x-automation-token: "YOUR_AUTOMATION_TOKEN"
+  body: "e30="   # base64 of "{}"
+retryConfig:
+  retryCount: 2
+  minBackoffDuration: "60s"
+  maxBackoffDuration: "600s"
+  maxDoublings: 2
+attemptDeadline: "300s"

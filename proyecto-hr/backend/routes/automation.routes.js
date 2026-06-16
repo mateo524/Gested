@@ -4,6 +4,8 @@ import Company from "../models/Company.js";
 import CompanySetting from "../models/CompanySetting.js";
 import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
+import EvaluationCycle from "../models/EvaluationCycle.js";
+import User from "../models/User.js";
 import Metric from "../models/Metric.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
 import AuditLog from "../models/AuditLog.js";
@@ -11,6 +13,8 @@ import { auth } from "../middleware/auth.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
+import { sendEvaluationReminderEmail } from "../utils/mailer.js";
+import { logger } from "../utils/logger.js";
 
 const router = express.Router();
 
@@ -202,5 +206,67 @@ router.get(
     res.json({ days, trend });
   }
 );
+
+// ── Cycle closing reminders — triggered by Cloud Scheduler daily ───────────
+// Finds all ABIERTO cycles closing in ≤3 days, sends reminder to users
+// with pending evaluations in those cycles.
+router.post("/cycle-reminders", async (req, res) => {
+  const token = req.headers["x-automation-token"];
+  if (!process.env.AUTOMATION_TOKEN || token !== process.env.AUTOMATION_TOKEN) {
+    return res.status(401).json({ mensaje: "Token de automatizacion invalido" });
+  }
+
+  const now = new Date();
+  const in3Days = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
+
+  // Cycles that are ABIERTO and close within the next 3 days
+  const closingSoon = await EvaluationCycle.find({
+    estado: "ABIERTO",
+    fechaFin: { $gte: now, $lte: in3Days },
+  }).lean();
+
+  if (!closingSoon.length) {
+    return res.json({ mensaje: "Sin ciclos por cerrar", sent: 0, executedAt: now });
+  }
+
+  let totalSent = 0;
+  const details = [];
+
+  for (const cycle of closingSoon) {
+    // Find users in this company with PENDIENTE evaluations in this cycle
+    const pendingEvals = await Evaluation.find({
+      companyId: cycle.companyId,
+      cycleId: cycle._id,
+      estado: { $in: ["PENDIENTE", "EN_PROGRESO"] },
+    }).select("evaluadorId").lean();
+
+    if (!pendingEvals.length) continue;
+
+    const evaluadorIds = [...new Set(pendingEvals.map(e => String(e.evaluadorId)).filter(Boolean))];
+    const users = await User.find({
+      _id: { $in: evaluadorIds },
+      activo: true,
+    }).select("email nombre").lean();
+
+    for (const user of users) {
+      const count = pendingEvals.filter(e => String(e.evaluadorId) === String(user._id)).length;
+      try {
+        await sendEvaluationReminderEmail({
+          to: user.email,
+          nombre: user.nombre,
+          pendingCount: count,
+          cycleEndDate: cycle.fechaFin,
+        });
+        totalSent++;
+      } catch (err) {
+        logger.error("[automation] reminder email failed", { userId: user._id, err: err.message });
+      }
+    }
+
+    details.push({ cycleId: cycle._id, periodo: cycle.periodo, notified: users.length });
+  }
+
+  res.json({ mensaje: "Recordatorios enviados", sent: totalSent, cycles: details, executedAt: now });
+});
 
 export default router;
