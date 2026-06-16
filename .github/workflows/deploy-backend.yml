@@ -139,3 +139,43 @@ jobs:
             --project ${{ env.PROJECT_ID }})
           echo "✅ Backend live at: $URL"
           echo "CLOUD_RUN_URL=$URL" >> $GITHUB_ENV
+
+      - name: Create or update Cloud Scheduler job
+        env:
+          AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
+        run: |
+          # Enable the Cloud Scheduler API (idempotent)
+          gcloud services enable cloudscheduler.googleapis.com --project ${{ env.PROJECT_ID }} || true
+
+          JOB_NAME="zentor-cycle-reminders"
+          REGION="${{ env.REGION }}"
+          PROJECT="${{ env.PROJECT_ID }}"
+          URI="${CLOUD_RUN_URL}/automation/cycle-reminders"
+
+          # Check if job already exists
+          if gcloud scheduler jobs describe "$JOB_NAME" --location="$REGION" --project="$PROJECT" > /dev/null 2>&1; then
+            echo "Updating existing scheduler job..."
+            gcloud scheduler jobs update http "$JOB_NAME" \
+              --location="$REGION" \
+              --schedule="0 9 * * *" \
+              --time-zone="America/Argentina/Buenos_Aires" \
+              --uri="$URI" \
+              --http-method=POST \
+              --headers="x-automation-token=${AUTOMATION_TOKEN},Content-Type=application/json" \
+              --message-body='{}' \
+              --attempt-deadline=300s \
+              --project="$PROJECT"
+          else
+            echo "Creating new scheduler job..."
+            gcloud scheduler jobs create http "$JOB_NAME" \
+              --location="$REGION" \
+              --schedule="0 9 * * *" \
+              --time-zone="America/Argentina/Buenos_Aires" \
+              --uri="$URI" \
+              --http-method=POST \
+              --headers="x-automation-token=${AUTOMATION_TOKEN},Content-Type=application/json" \
+              --message-body='{}' \
+              --attempt-deadline=300s \
+              --project="$PROJECT"
+          fi
+          echo "✅ Cloud Scheduler job '$JOB_NAME' configured → $URI"

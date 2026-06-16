@@ -1,9 +1,12 @@
 import * as Sentry from "@sentry/react";
 
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN
-  || "https://c0be36902ecb04d42d3acec4a410efe5@o4511576596676608.ingest.de.sentry.io/4511576630886480";
+// DSN must be set via VITE_SENTRY_DSN env var (Vercel → Settings → Environment Variables)
+// Project: javascript-react (NOT node) — get DSN from Sentry → Projects → javascript-react → Settings → Client Keys
+const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN;
 
 export function initSentry() {
+  if (!SENTRY_DSN) return; // silently skip in local dev without config
+
   Sentry.init({
     dsn: SENTRY_DSN,
     environment: import.meta.env.MODE,
