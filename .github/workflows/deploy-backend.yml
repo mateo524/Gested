@@ -154,6 +154,7 @@ jobs:
           echo "CLOUD_RUN_URL=$URL" >> $GITHUB_ENV
 
       - name: Create or update Cloud Scheduler job
+        continue-on-error: true
         env:
           AUTOMATION_TOKEN: ${{ secrets.AUTOMATION_TOKEN }}
         run: |
