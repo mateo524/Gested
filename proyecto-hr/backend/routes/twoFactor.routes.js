@@ -2,7 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
-import auth from '../middleware/auth.js';
+import { auth } from '../middleware/auth.js';
 import TwoFactorAuth from '../models/TwoFactorAuth.js';
 
 const router = Router();
