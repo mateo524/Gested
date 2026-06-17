@@ -284,26 +284,23 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
 function EmployeeView({ token, language, searchQuery, user }) {
   const { addToast } = useToast();
   const [evaluations, setEvaluations] = useState([]);
-  const [metrics, setMetrics] = useState([]);
   const [cycles, setCycles] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedEvalId, setSelectedEvalId] = useState(null);
   const [evalDetail, setEvalDetail] = useState(null);
-  const [loadingDetail, setLoadingDetail] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
+  const [openEvalId, setOpenEvalId] = useState(null);
 
   const loadEvals = useCallback(async (signal) => {
     try {
       setIsLoading(true); setError("");
-      const [evalsRes, met, cyc] = await Promise.all([
+      const [evalsRes, cyc] = await Promise.all([
         apiFetch("/evaluations", { token, signal }),
-        apiFetch("/metrics", { token, signal }).catch(() => []),
         apiFetch("/evaluation-cycles", { token, signal }).catch(() => []),
       ]);
       const evals = evalsRes?.data ?? evalsRes ?? [];
       setEvaluations(evals);
-      setMetrics(Array.isArray(met) ? met : []);
       setCycles(Array.isArray(cyc) ? cyc : []);
       const self = evals.find(e => e.tipo === "AUTOEVALUACION");
       setSelectedEvalId(prev => prev || self?._id || evals[0]?._id || null);
@@ -323,32 +320,20 @@ function EmployeeView({ token, language, searchQuery, user }) {
   useEffect(() => {
     if (!selectedEvalId) { setEvalDetail(null); return; }
     const ctrl = new AbortController();
-    setLoadingDetail(true);
     apiFetch(`/evaluations/${selectedEvalId}`, { token, signal: ctrl.signal })
       .then(data => {
         if (!ctrl.signal.aborted)
           setEvalDetail(data?.evaluation ? data : { evaluation: data, scores: data?.scores || [] });
       })
-      .catch(() => {})
-      .finally(() => { if (!ctrl.signal.aborted) setLoadingDetail(false); });
+      .catch(() => {});
     return () => ctrl.abort();
   }, [selectedEvalId, token]);
 
-  const metricMap = useMemo(() => new Map(metrics.map(m => [String(m._id), m])), [metrics]);
   const selfEval = useMemo(() => evaluations.find(e => e.tipo === "AUTOEVALUACION"), [evaluations]);
   const activeCycle = useMemo(() =>
     cycles.find(c => c.estado === "Activo" || c.estado === "Inicio") || cycles[0] || null, [cycles]);
 
   const scores = evalDetail?.scores || [];
-  const visibleScores = useMemo(() => {
-    const term = (searchQuery || "").trim().toLowerCase();
-    if (!term) return scores;
-    return scores.filter(s => {
-      const m = metricMap.get(String(s.metricId?._id || s.metricId));
-      return m && [m.nombre, m.descripcion].filter(Boolean).some(v => v.toLowerCase().includes(term));
-    });
-  }, [scores, metricMap, searchQuery]);
-
   const stats = useMemo(() => {
     const completed = scores.filter(s => s.nivel > 0).length;
     const avg = completed ? (scores.reduce((sum, s) => sum + (s.nivel || 0), 0) / completed).toFixed(1) : "—";
@@ -359,20 +344,32 @@ function EmployeeView({ token, language, searchQuery, user }) {
     if (!activeCycle) { addToast({ message: "No hay un ciclo activo.", type: "warning" }); return; }
     try {
       setIsCreating(true);
-      await apiFetch("/evaluations", {
+      const created = await apiFetch("/evaluations", {
         method: "POST", token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ employeeId: user?.employeeId, cycleId: activeCycle._id, tipo: "AUTOEVALUACION" }),
       });
       addToast({ message: "Autoevaluación iniciada.", type: "success" });
-      setSelectedEvalId(null);
       const ctrl = new AbortController();
       await loadEvals(ctrl.signal);
+      const newId = created?.evaluation?._id || created?._id;
+      if (newId) setOpenEvalId(newId);
     } catch (err) {
       addToast({ message: err.message, type: "error" });
     } finally {
       setIsCreating(false);
     }
+  }
+
+  if (openEvalId) {
+    return (
+      <EvalDetailView
+        evalId={openEvalId}
+        token={token}
+        onBack={() => setOpenEvalId(null)}
+        onSaved={() => { setOpenEvalId(null); const ctrl = new AbortController(); loadEvals(ctrl.signal); }}
+      />
+    );
   }
 
   if (isLoading) return <LoadingState compact title="Cargando tu evaluación…" description=""/>;
@@ -407,7 +404,7 @@ function EmployeeView({ token, language, searchQuery, user }) {
             <p className="text-sm font-semibold text-white">Autoevaluación en curso</p>
             <p className="mt-0.5 text-xs text-amber-200/80">Tenés cambios sin enviar. Completá y enviá tu autoevaluación.</p>
           </div>
-          <button type="button" onClick={() => setSelectedEvalId(selfEval._id)}
+          <button type="button" onClick={() => setOpenEvalId(selfEval._id)}
             className="shrink-0 rounded-xl border border-amber-400/30 bg-amber-500/15 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/25">
             Continuar
           </button>
@@ -425,61 +422,39 @@ function EmployeeView({ token, language, searchQuery, user }) {
         </div>
       )}
 
-      {evaluations.length > 1 && (
-        <div className="flex flex-wrap gap-2">
-          {evaluations.map(ev => {
-            const cycleLabel = cycles.find(c => String(c._id) === String(ev.cycleId?._id || ev.cycleId))?.periodo || "—";
-            return (
-              <button key={ev._id} type="button" onClick={() => setSelectedEvalId(ev._id)}
-                className={`rounded-xl px-3 py-2 text-sm transition ${selectedEvalId === ev._id ? "bg-[#14b8a6] text-[#0f172a] font-semibold" : "border border-white/10 bg-[#0c1e28] text-[#9fb6c4] hover:bg-white/5"}`}>
-                {TIPO_LABELS[ev.tipo] || ev.tipo} · {cycleLabel}
-              </button>
-            );
-          })}
+      {evaluations.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
+          <div className="border-b border-white/10 px-4 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Mis evaluaciones</span>
+          </div>
+          <div className="divide-y divide-white/5">
+            {evaluations.map(ev => {
+              const cycleLabel = cycles.find(c => String(c._id) === String(ev.cycleId?._id || ev.cycleId))?.periodo || "—";
+              const isPending = ev.estado === "BORRADOR";
+              return (
+                <button key={ev._id} type="button" onClick={() => setOpenEvalId(ev._id)}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3.5 text-left hover:bg-white/[0.03] transition">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white">{TIPO_LABELS[ev.tipo] || ev.tipo}</p>
+                    <p className="text-xs text-[#7f99a8]">{cycleLabel}</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <StatusBadge estado={ev.estado}/>
+                    {ev.resultadoFinal != null && ev.resultadoFinal > 0
+                      ? <span className="text-sm font-semibold text-[#14b8a6]">{ev.resultadoFinal}</span>
+                      : null}
+                    <span className={`text-xs font-medium ${isPending ? "text-amber-300" : "text-[#14b8a6]"}`}>
+                      {isPending ? "Completar →" : "Ver →"}
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
-      {selectedEvalId ? (
-        <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
-          {loadingDetail ? (
-            <LoadingState compact title="Cargando habilidades…" description=""/>
-          ) : !evalDetail || !scores.length ? (
-            <EmptyState compact title="Sin habilidades asignadas" description="No hay habilidades en este ciclo todavía."/>
-          ) : (
-            <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  {["Habilidad", "Descripción", "Estado", "Resultado"].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {visibleScores.map(score => {
-                  const m = metricMap.get(String(score.metricId?._id || score.metricId));
-                  const hasResult = score.nivel > 0;
-                  return (
-                    <tr key={String(score._id || score.metricId?._id || score.metricId)} className="hover:bg-white/[0.02] transition">
-                      <td className="px-4 py-3 font-medium text-white">{m?.nombre || "—"}</td>
-                      <td className="px-4 py-3 max-w-xs"><p className="text-xs text-[#9fb6c4] truncate">{m?.descripcion || "—"}</p></td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-medium ${hasResult ? "bg-emerald-500/15 text-emerald-200" : "bg-sky-500/15 text-sky-200"}`}>
-                          {hasResult ? "Completada" : "En progreso"}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3">
-                        {hasResult ? <span className="font-semibold text-[#14b8a6]">{score.nivel}</span> : <span className="text-[#5e7d8e]">—</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-          )}
-        </div>
-      ) : evaluations.length === 0 ? (
+      {evaluations.length === 0 ? (
         <EmptyState compact
           title="Todavía no tenés evaluaciones asignadas"
           description={activeCycle
