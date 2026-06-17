@@ -4,6 +4,7 @@ import Evaluation from "../models/Evaluation.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import EvaluationScore from "../models/EvaluationScore.js";
 import Metric from "../models/Metric.js";
+import Competency from "../models/Competency.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
 import { requireAnyPermission } from "../middleware/rbac.js";
@@ -18,6 +19,43 @@ import { invalidateDashboardCache } from "./dashboard.routes.js";
 import { dispatch as dispatchEmail } from "../utils/mailer.js";
 
 const router = express.Router();
+
+// When a company has no Metrics yet (only Competencies created via the Habilidades page),
+// auto-create one Metric per active Competency so evaluations can be seeded.
+async function ensureMetricsFromCompetencies(companyId, schoolId) {
+  const schoolFilter = schoolId
+    ? { $or: [{ schoolId }, { schoolId: null }] }
+    : {};
+  const competencies = await Competency.find({
+    companyId,
+    ...schoolFilter,
+    activa: true,
+  }).select("_id nombre descripcion schoolId").lean();
+
+  if (!competencies.length) return [];
+
+  const upserts = competencies.map((c) => ({
+    updateOne: {
+      filter: { companyId, competencyId: c._id },
+      update: {
+        $setOnInsert: {
+          companyId,
+          schoolId: c.schoolId ?? null,
+          competencyId: c._id,
+          nombre: c.nombre,
+          descripcion: c.descripcion || "",
+          cargoAplica: [],
+          ponderacion: 1,
+          activa: true,
+        },
+      },
+      upsert: true,
+    },
+  }));
+  await Metric.bulkWrite(upserts);
+
+  return Metric.find({ companyId, ...schoolFilter, activa: true }).select("_id cargoAplica").lean();
+}
 
 export async function buildEvaluationFilter(req) {
   const filter = buildScopedFilter(req, {});
@@ -239,11 +277,15 @@ router.get(
     const metricSchoolFilter = evaluation.schoolId
       ? { $or: [{ schoolId: evaluation.schoolId }, { schoolId: null }] }
       : {};
-    const allActive = await Metric.find({
+    let allActive = await Metric.find({
       companyId: evaluation.companyId,
       ...metricSchoolFilter,
       activa: true,
     }).select("_id cargoAplica").lean();
+
+    if (!allActive.length) {
+      allActive = await ensureMetricsFromCompetencies(evaluation.companyId, evaluation.schoolId);
+    }
 
     if (!empCargo) {
       console.warn(`[evaluations] GET /:id auto-seed: employee ${emp?._id} has no cargo — cargo-specific metrics will not be seeded`);
@@ -336,11 +378,15 @@ router.post(
       const seedSchoolFilter = employee.schoolId
         ? { $or: [{ schoolId: employee.schoolId }, { schoolId: null }] }
         : {};
-      const activeMetrics = await Metric.find({
+      let activeMetrics = await Metric.find({
         companyId: employee.companyId,
         ...seedSchoolFilter,
         activa: true,
       }).select("_id cargoAplica").lean();
+
+      if (!activeMetrics.length) {
+        activeMetrics = await ensureMetricsFromCompetencies(employee.companyId, employee.schoolId);
+      }
       if (!employee.cargo) {
         console.warn(`[evaluations] POST / seed: employee ${employee._id} has no cargo — cargo-specific metrics will not be seeded`);
       }
