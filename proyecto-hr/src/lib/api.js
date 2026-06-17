@@ -11,7 +11,10 @@ function resolveApiUrl() {
       origin.includes("127.0.0.1") ||
       origin.includes("[::1]");
 
-    return isLocalOrigin ? "http://localhost:3000" : import.meta.env.VITE_API_URL;
+    if (isLocalOrigin) return "http://localhost:3000";
+    const prodUrl = import.meta.env.VITE_API_URL;
+    if (!prodUrl) throw new Error("VITE_API_URL is not set. Configure it in Vercel environment variables.");
+    return prodUrl;
   }
 
   return "http://localhost:3000";
