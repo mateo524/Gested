@@ -1,8 +1,8 @@
-import nodemailer from "nodemailer";
+﻿import nodemailer from "nodemailer";
 
 const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "ZENTOR <onboarding@resend.dev>";
 
-// ── Resend helper ──────────────────────────────────────────────────────────
+// â”€â”€ Resend helper â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function sendViaResend({ to, subject, html, text }) {
   const key = process.env.RESEND_API_KEY;
   if (!key) return { sent: false, reason: "no_resend_key" };
@@ -18,14 +18,14 @@ async function sendViaResend({ to, subject, html, text }) {
   return { sent: false, reason: `resend_${res.status}`, detail: body?.message };
 }
 
-// ── SendGrid helper (fallback) ─────────────────────────────────────────────
+// â”€â”€ SendGrid helper (fallback) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function sendViaSendGrid({ to, subject, html }) {
   const key = process.env.SENDGRID_API_KEY;
   if (!key) return { sent: false, reason: "no_sendgrid_key" };
 
   const body = JSON.stringify({
     personalizations: [{ to: [{ email: to }] }],
-    from: { email: process.env.RESEND_FROM_EMAIL || "no-reply@zentor.com.ar", name: "ZENTOR" },
+    from: { email: process.env.RESEND_FROM_EMAIL || "no-reply@zentorhq.com.ar", name: "ZENTOR" },
     subject,
     content: [{ type: "text/html", value: html }],
   });
@@ -74,7 +74,7 @@ function createTransporter() {
   });
 }
 
-// ── Welcome email when a new organization is created ──────────────────────
+// â”€â”€ Welcome email when a new organization is created â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function sendWelcomeEmail({ to, nombre, companyName, password, appUrl }) {
   if (!canSend()) return { sent: false, reason: "no_transport" };
 
@@ -87,38 +87,38 @@ export async function sendWelcomeEmail({ to, nombre, companyName, password, appU
     <span style="font-size:20px;color:#14b8a6;font-weight:700">.</span>
   </div>
 
-  <h1 style="font-size:24px;font-weight:700;color:#0f172a;margin:0 0 8px">¡Bienvenido a ZENTOR, ${nombre}!</h1>
-  <p style="color:#475569;margin:0 0 24px">Tu cuenta para <strong>${companyName}</strong> ya está activa.</p>
+  <h1 style="font-size:24px;font-weight:700;color:#0f172a;margin:0 0 8px">Â¡Bienvenido a ZENTOR, ${nombre}!</h1>
+  <p style="color:#475569;margin:0 0 24px">Tu cuenta para <strong>${companyName}</strong> ya estÃ¡ activa.</p>
 
   <div style="background:#f8fafc;border-radius:10px;padding:20px;margin-bottom:24px;border:1px solid #e2e8f0">
     <p style="margin:0 0 8px;font-size:14px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:0.5px">Tus credenciales</p>
     <p style="margin:4px 0;font-size:15px"><strong>Email:</strong> ${to}</p>
-    <p style="margin:4px 0;font-size:15px"><strong>Contraseña temporal:</strong> <code style="background:#e2e8f0;padding:2px 8px;border-radius:4px">${password}</code></p>
-    <p style="margin:12px 0 0;font-size:13px;color:#94a3b8">Se te pedirá cambiar la contraseña en el primer acceso.</p>
+    <p style="margin:4px 0;font-size:15px"><strong>ContraseÃ±a temporal:</strong> <code style="background:#e2e8f0;padding:2px 8px;border-radius:4px">${password}</code></p>
+    <p style="margin:12px 0 0;font-size:13px;color:#94a3b8">Se te pedirÃ¡ cambiar la contraseÃ±a en el primer acceso.</p>
   </div>
 
   <p style="font-weight:600;color:#0f172a;margin:0 0 12px">Primeros pasos recomendados:</p>
   <ol style="padding-left:20px;color:#475569;margin:0 0 24px">
-    <li style="margin-bottom:8px">Ingresá a la plataforma y cambiá tu contraseña</li>
-    <li style="margin-bottom:8px">Cargá los empleados de tu organización (podés importar desde Excel)</li>
-    <li style="margin-bottom:8px">Creá las competencias o indicadores que querés evaluar</li>
-    <li style="margin-bottom:8px">Configurá el primer ciclo de evaluación</li>
+    <li style="margin-bottom:8px">IngresÃ¡ a la plataforma y cambiÃ¡ tu contraseÃ±a</li>
+    <li style="margin-bottom:8px">CargÃ¡ los empleados de tu organizaciÃ³n (podÃ©s importar desde Excel)</li>
+    <li style="margin-bottom:8px">CreÃ¡ las competencias o indicadores que querÃ©s evaluar</li>
+    <li style="margin-bottom:8px">ConfigurÃ¡ el primer ciclo de evaluaciÃ³n</li>
   </ol>
 
   <a href="${url}" style="display:inline-block;background:#14b8a6;color:#0f172a;font-weight:700;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:15px">
-    Ingresar a ZENTOR →
+    Ingresar a ZENTOR â†’
   </a>
 
   <p style="margin:32px 0 0;font-size:13px;color:#94a3b8">
-    ¿Tenés alguna duda? Respondé este email o escribinos a <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a>.<br>
+    Â¿TenÃ©s alguna duda? RespondÃ© este email o escribinos a <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a>.<br>
     Demo en vivo: <a href="https://calendly.com/zentorhq/demo-zentor" style="color:#14b8a6">calendly.com/zentorhq/demo-zentor</a>
   </p>
 </div>`;
 
-  return dispatch({ to, subject: `Bienvenido a ZENTOR — ${companyName}`, html });
+  return dispatch({ to, subject: `Bienvenido a ZENTOR â€” ${companyName}`, html });
 }
 
-// ── Pending evaluations reminder ───────────────────────────────────────────
+// â”€â”€ Pending evaluations reminder â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 export async function sendEvaluationReminderEmail({ to, nombre, pendingCount, cycleEndDate, appUrl }) {
   if (!canSend()) return { sent: false, reason: "no_transport" };
 
@@ -130,12 +130,12 @@ export async function sendEvaluationReminderEmail({ to, nombre, pendingCount, cy
   <div style="margin-bottom:24px">
     <span style="font-size:20px;font-weight:700;color:#0f172a">ZENTOR</span><span style="color:#14b8a6;font-weight:700">.</span>
   </div>
-  <h1 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 8px">Tenés ${pendingCount} evaluacion${pendingCount > 1 ? "es" : ""} pendiente${pendingCount > 1 ? "s" : ""}</h1>
+  <h1 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 8px">TenÃ©s ${pendingCount} evaluacion${pendingCount > 1 ? "es" : ""} pendiente${pendingCount > 1 ? "s" : ""}</h1>
   <p style="color:#475569;margin:0 0 24px">Hola ${nombre}${dateStr ? `, el ciclo actual cierra el <strong>${dateStr}</strong>` : ""}. Completalas para que el reporte ejecutivo quede completo.</p>
   <a href="${url}?view=evaluaciones" style="display:inline-block;background:#14b8a6;color:#0f172a;font-weight:700;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:15px">
-    Completar evaluaciones →
+    Completar evaluaciones â†’
   </a>
-  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">¿Necesitás ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
+  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">Â¿NecesitÃ¡s ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
 </div>`;
 
   return dispatch({ to, subject: `Recordatorio: ${pendingCount} evaluacion${pendingCount > 1 ? "es" : ""} pendiente${pendingCount > 1 ? "s" : ""} en ZENTOR`, html });
@@ -149,16 +149,16 @@ export async function sendPasswordResetEmail({ to, resetUrl }) {
   <div style="margin-bottom:24px">
     <span style="font-size:20px;font-weight:700;color:#0f172a">ZENTOR</span><span style="color:#14b8a6;font-weight:700">.</span>
   </div>
-  <h1 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 8px">Restablecer tu contraseña</h1>
-  <p style="color:#475569;margin:0 0 24px">Recibimos una solicitud para restablecer tu contraseña. Hacé click en el botón de abajo para crear una nueva.</p>
+  <h1 style="font-size:22px;font-weight:700;color:#0f172a;margin:0 0 8px">Restablecer tu contraseÃ±a</h1>
+  <p style="color:#475569;margin:0 0 24px">Recibimos una solicitud para restablecer tu contraseÃ±a. HacÃ© click en el botÃ³n de abajo para crear una nueva.</p>
   <a href="${resetUrl}" style="display:inline-block;background:#14b8a6;color:#0f172a;font-weight:700;padding:14px 28px;border-radius:50px;text-decoration:none;font-size:15px">
-    Restablecer contraseña →
+    Restablecer contraseÃ±a â†’
   </a>
-  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">Si no solicitaste esto, podés ignorar este correo. El enlace expira en 1 hora.</p>
-  <p style="margin:8px 0 0;font-size:13px;color:#94a3b8">¿Necesitás ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
+  <p style="margin:24px 0 0;font-size:13px;color:#94a3b8">Si no solicitaste esto, podÃ©s ignorar este correo. El enlace expira en 1 hora.</p>
+  <p style="margin:8px 0 0;font-size:13px;color:#94a3b8">Â¿NecesitÃ¡s ayuda? <a href="mailto:zentorhq@gmail.com" style="color:#14b8a6">zentorhq@gmail.com</a></p>
 </div>`;
 
-  return dispatch({ to, subject: "ZENTOR — Restablecer contraseña", html });
+  return dispatch({ to, subject: "ZENTOR â€” Restablecer contraseÃ±a", html });
 }
 
 export async function sendContactRequestNotification(contactRequest) {
@@ -186,7 +186,7 @@ export async function sendContactRequestNotification(contactRequest) {
     ].join("\n"),
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
-        <h2>Nueva solicitud comercial — ZENTOR</h2>
+        <h2>Nueva solicitud comercial â€” ZENTOR</h2>
         <p><strong>Nombre:</strong> ${contactRequest.name}</p>
         <p><strong>Email:</strong> ${contactRequest.email}</p>
         <p><strong>Institucion:</strong> ${contactRequest.institution || "-"}</p>
