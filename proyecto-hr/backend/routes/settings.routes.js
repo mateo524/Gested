@@ -36,9 +36,30 @@ router.get("/", auth, async (req, res) => {
 
 router.put("/", auth, permit("manage_settings"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
+
+  const ALLOWED_FIELDS = [
+    "nombreVisible",
+    "logoUrl",
+    "primaryColor",
+    "maxUploadSizeMb",
+    "defaultEmailDomain",
+    "defaultEmployeeRoleCode",
+    "automations",
+    "slackWebhookUrl",
+    "importProfiles",
+    "onboarding",
+  ];
+
+  const updateData = {};
+  for (const field of ALLOWED_FIELDS) {
+    if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+      updateData[field] = req.body[field];
+    }
+  }
+
   const settings = await CompanySetting.findOneAndUpdate(
     { companyId },
-    { ...req.body, companyId },
+    { ...updateData, companyId },
     { upsert: true, new: true }
   );
 

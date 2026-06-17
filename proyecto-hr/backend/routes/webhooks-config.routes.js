@@ -11,6 +11,46 @@ const router = express.Router();
 export default router;
 export { WebhookConfig };
 
+// ─── SSRF prevention ──────────────────────────────────────────────────────────
+
+const PRIVATE_IP_PATTERNS = [
+  /^localhost$/i,
+  /^127\./,
+  /^0\.0\.0\.0$/,
+  /^10\./,
+  /^172\.(1[6-9]|2\d|3[01])\./,
+  /^192\.168\./,
+  /^169\.254\./,       // link-local / AWS metadata
+  /^::1$/,             // IPv6 loopback
+  /^fc00:/i,           // IPv6 ULA
+  /^fe80:/i,           // IPv6 link-local
+];
+
+function isSafeWebhookUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return { safe: false, reason: "URL inválida." };
+  }
+
+  if (process.env.NODE_ENV === "production" && parsed.protocol !== "https:") {
+    return { safe: false, reason: "Solo se permiten URLs HTTPS en producción." };
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    return { safe: false, reason: "Protocolo no permitido. Use https://." };
+  }
+
+  const hostname = parsed.hostname;
+  for (const pattern of PRIVATE_IP_PATTERNS) {
+    if (pattern.test(hostname)) {
+      return { safe: false, reason: "La URL apunta a una dirección interna no permitida." };
+    }
+  }
+
+  return { safe: true };
+}
+
 // ─── Supported events ─────────────────────────────────────────────────────────
 
 export const SUPPORTED_EVENTS = [
@@ -42,8 +82,12 @@ router.post(
   requirePermission(PERMISSIONS.MANAGE_SETTINGS),
   async (req, res) => {
     const { url, events } = req.body;
-    if (!url || !url.startsWith("http")) {
-      return res.status(400).json({ mensaje: "URL inválida. Debe comenzar con http o https." });
+    if (!url) {
+      return res.status(400).json({ mensaje: "URL requerida." });
+    }
+    const urlCheck = isSafeWebhookUrl(url.trim());
+    if (!urlCheck.safe) {
+      return res.status(400).json({ mensaje: urlCheck.reason });
     }
     const validEvents = (Array.isArray(events) ? events : []).filter((e) =>
       SUPPORTED_EVENTS.includes(e)
@@ -106,6 +150,11 @@ router.post(
       .createHmac("sha256", webhook.secret)
       .update(JSON.stringify({ event, payload, timestamp }))
       .digest("hex");
+
+    const urlCheck = isSafeWebhookUrl(webhook.url);
+    if (!urlCheck.safe) {
+      return res.status(400).json({ mensaje: "URL almacenada no es segura: " + urlCheck.reason });
+    }
 
     try {
       const response = await fetch(webhook.url, {

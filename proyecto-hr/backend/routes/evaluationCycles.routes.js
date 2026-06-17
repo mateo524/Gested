@@ -238,6 +238,14 @@ router.delete(
       return res.status(404).json({ mensaje: "Ciclo no encontrado" });
     }
 
+    // Cascade delete: remove child evaluations and their scores first
+    const evaluations = await Evaluation.find({ cycleId: cycle._id }).select("_id").lean();
+    if (evaluations.length > 0) {
+      const evalIds = evaluations.map((e) => e._id);
+      await EvaluationScore.deleteMany({ evaluationId: { $in: evalIds } });
+      await Evaluation.deleteMany({ _id: { $in: evalIds } });
+    }
+
     await EvaluationCycle.deleteOne({ _id: cycle._id });
 
     runInBackground(() => logAudit({

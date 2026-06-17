@@ -158,7 +158,8 @@ async function getAssignmentSyncPlanForUser({ user, role, preserveExistingScope 
 
 router.get("/", auth, permit("manage_users"), async (req, res) => {
   const { companyId } = await resolveCompanyScope(req);
-  const search = req.query.q?.trim();
+  const rawSearch = req.query.q?.trim();
+  const search = rawSearch ? rawSearch.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : rawSearch;
   const onlyActive =
     req.query.activo === "true" ? true : req.query.activo === "false" ? false : null;
 

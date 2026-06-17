@@ -21,6 +21,10 @@ import { runInBackground } from "../utils/background.js";
 
 const router = express.Router();
 
+function asyncHandler(fn) {
+  return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+}
+
 function resolveTenantIds(req) {
   const companyFromHeader = req.get("X-Company-Id");
   return {
@@ -173,7 +177,7 @@ router.get(
     PERMISSIONS.VIEW_SELF_PROFILE,
     PERMISSIONS.VIEW_REPORTS
   ),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const employee = await Employee.findOne(buildScopedFilter(req, { _id: req.params.id }))
       .select("-__v")
       .lean();
@@ -246,7 +250,7 @@ router.get(
       evaluations,
       plans,
     });
-  }
+  })
 );
 
 router.get(
@@ -259,7 +263,7 @@ router.get(
     PERMISSIONS.VIEW_SELF_PROFILE,
     PERMISSIONS.VIEW_REPORTS
   ),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const employee = await Employee.findOne(buildScopedFilter(req, { _id: req.params.id }))
       .select("nombre apellido cargo companyId schoolId")
       .lean();
@@ -347,7 +351,7 @@ router.get(
       employee: { nombre: employee.nombre, apellido: employee.apellido, cargo: employee.cargo },
       cycles,
     });
-  }
+  })
 );
 
 router.get(
@@ -360,7 +364,7 @@ router.get(
     PERMISSIONS.VIEW_SELF_PROFILE,
     PERMISSIONS.VIEW_REPORTS
   ),
-  async (req, res) => {
+  asyncHandler(async (req, res) => {
     const employee = await Employee.findOne(buildScopedFilter(req, { _id: req.params.id }))
       .select("nombre apellido cargo companyId schoolId managerId area")
       .lean();
@@ -442,10 +446,10 @@ router.get(
       });
 
     res.json({ history });
-  }
+  })
 );
 
-router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
+router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), asyncHandler(async (req, res) => {
   const { companyId, schoolId } = resolveTenantIds(req);
   let effectiveSchoolId = schoolId;
 
@@ -539,9 +543,9 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     temporaryPassword: userLinkResult?.temporaryPassword || null,
   });
   runInBackground(() => triggerSheetSync({ companyId: safeEmployee.companyId, schoolId: safeEmployee.schoolId }), "sheet-sync-employee-create");
-});
+}));
 
-router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
+router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), asyncHandler(async (req, res) => {
   const filter = buildScopedFilter(req, { _id: req.params.id });
   const employee = await Employee.findOne(filter);
 
@@ -599,9 +603,9 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
   const { __v: _vu, ...safeUpdated } = employee.toObject ? employee.toObject() : employee;
   res.json({ mensaje: "Empleado actualizado", employee: safeUpdated });
   runInBackground(() => triggerSheetSync({ companyId: employee.companyId, schoolId: employee.schoolId }), "sheet-sync-employee-update");
-});
+}));
 
-router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), async (req, res) => {
+router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), asyncHandler(async (req, res) => {
   const filter = buildScopedFilter(req, { _id: req.params.id });
   const employee = await Employee.findOne(filter);
   if (!employee) {
@@ -644,6 +648,6 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
 
   res.json({ mensaje: "Empleado eliminado" });
   runInBackground(() => triggerSheetSync({ companyId: employee.companyId, schoolId: employee.schoolId }), "sheet-sync-employee-delete");
-});
+}));
 
 export default router;

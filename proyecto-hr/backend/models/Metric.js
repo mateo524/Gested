@@ -29,4 +29,6 @@ const MetricSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+MetricSchema.index({ companyId: 1, competencyId: 1 }, { unique: true });
+
 export default mongoose.model("Metric", MetricSchema);

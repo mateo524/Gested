@@ -52,7 +52,8 @@ async function parseUploadedRows(file) {
 }
 
 router.get("/", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
-  const q = req.query.q?.trim();
+  const raw = req.query.q?.trim();
+  const q = raw ? raw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') : null;
   const companies = await Company.find(
     q
       ? {

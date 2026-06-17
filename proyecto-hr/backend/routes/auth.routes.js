@@ -75,6 +75,16 @@ const passwordChangeLimiter = rateLimit({
   },
 });
 
+const resetPasswordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    mensaje: "Demasiados intentos. Intenta nuevamente más tarde.",
+  },
+});
+
 const forgotPasswordLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
   limit: 5,
@@ -88,6 +98,14 @@ const forgotPasswordLimiter = rateLimit({
   message: {
     mensaje: "Demasiadas solicitudes de recuperación. Intentá nuevamente en una hora.",
   },
+});
+
+const refreshLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: "Demasiadas solicitudes de renovación. Intenta más tarde." },
 });
 
 function createRouteError(status, message) {
@@ -179,6 +197,9 @@ export async function updateOwnPassword({ user, currentPassword, newPassword }) 
 
   user.passwordHash = await bcrypt.hash(newPassword, 10);
   user.mustChangePassword = false;
+  // Invalidate any pending reset token when the user changes password via /me/password
+  user.passwordResetTokenHash = null;
+  user.passwordResetExpiresAt = null;
   if (typeof user.save === "function") {
     await user.save();
   }
@@ -216,6 +237,7 @@ function buildToken(user, safeUser) {
       isSuperAdmin: !!user.isSuperAdmin,
       permisos: safeUser.permisos,
       nombre: user.nombre,
+      tokenVersion: user.tokenVersion ?? 0,
     },
     process.env.JWT_SECRET,
     { expiresIn: "8h" }
@@ -273,6 +295,14 @@ router.post("/login", loginLimiter, async (req, res) => {
     }
 
     clearAttempts(key);
+
+    // Clear any outstanding password-reset token so it cannot be used
+    // after the legitimate owner has already authenticated normally.
+    if (user.passwordResetTokenHash) {
+      user.passwordResetTokenHash = null;
+      user.passwordResetExpiresAt = null;
+      await user.save();
+    }
 
     const safeUser = await buildSafeUser(user);
 
@@ -457,7 +487,7 @@ router.post("/forgot-password", forgotPasswordLimiter, async (req, res) => {
   }
 });
 
-router.post("/reset-password", async (req, res) => {
+router.post("/reset-password", resetPasswordLimiter, async (req, res) => {
   try {
     const rawToken = req.body.token?.trim();
     const newPassword = req.body.newPassword?.trim();
@@ -538,7 +568,7 @@ router.get("/security-status", auth, async (req, res) => {
 });
 
 // ── Silent token refresh — called by frontend ~30 min before expiry ────────
-router.post("/refresh", auth, async (req, res) => {
+router.post("/refresh", refreshLimiter, auth, async (req, res) => {
   try {
     const user = await User.findOne({
       _id: req.user.userId,
@@ -547,6 +577,12 @@ router.post("/refresh", auth, async (req, res) => {
     });
 
     if (!user) return res.status(401).json({ mensaje: "Sesión inválida" });
+
+    // Reject tokens issued before the current tokenVersion
+    // (covers logout-all and password-change invalidation).
+    if ((user.tokenVersion ?? 0) !== (req.user.tokenVersion ?? 0)) {
+      return res.status(401).json({ mensaje: "Sesión revocada" });
+    }
 
     if (!user.isSuperAdmin) {
       const company = await Company.findById(user.companyId).lean();

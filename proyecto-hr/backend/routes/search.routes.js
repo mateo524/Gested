@@ -18,7 +18,8 @@ router.get("/global", auth, permit("manage_companies"), async (req, res) => {
     });
   }
 
-  const regex = { $regex: q, $options: "i" };
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = { $regex: escaped, $options: "i" };
 
   const [companies, files, announcements] = await Promise.all([
     Company.find({

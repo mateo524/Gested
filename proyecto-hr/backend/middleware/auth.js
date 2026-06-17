@@ -11,7 +11,7 @@ export function auth(req, res, next) {
   try {
     const token = header.split(" ")[1];
 
-    const payload = jwt.verify(token, process.env.JWT_SECRET);
+    const payload = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ["HS256"] });
 
     // Guardamos info del usuario en req
     req.user = payload;

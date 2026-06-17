@@ -108,8 +108,8 @@ function assertRuntimeConfig() {
     throw new Error("Falta JWT_SECRET");
   }
 
-  if (process.env.NODE_ENV === "production" && process.env.JWT_SECRET.length < 32) {
-    throw new Error("JWT_SECRET debe tener al menos 32 caracteres en producción.");
+  if (process.env.JWT_SECRET.length < 32) {
+    throw new Error("JWT_SECRET debe tener al menos 32 caracteres en todos los entornos.");
   }
 }
 
@@ -364,5 +364,11 @@ async function start() {
 }
 
 start();
+
+process.on("SIGTERM", async () => {
+  console.log("SIGTERM received. Shutting down gracefully...");
+  await mongoose.connection.close();
+  process.exit(0);
+});
 
 export { app };

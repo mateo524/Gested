@@ -47,7 +47,6 @@ jobs:
 
       - name: Run tests
         run: npm test --prefix proyecto-hr/backend
-        continue-on-error: true
 
   deploy:
     name: Deploy to Cloud Run
