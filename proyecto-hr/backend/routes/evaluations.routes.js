@@ -234,9 +234,14 @@ router.get(
     // Auto-seed missing scores for metrics that now apply to this employee
     const emp = evaluation.employeeId;
     const empCargo = emp?.cargo || "";
+    // Include company-wide metrics (schoolId: null) AND school-specific ones.
+    // Metrics default to schoolId: null so a strict match on schoolId would miss them.
+    const metricSchoolFilter = evaluation.schoolId
+      ? { $or: [{ schoolId: evaluation.schoolId }, { schoolId: null }] }
+      : {};
     const allActive = await Metric.find({
       companyId: evaluation.companyId,
-      ...(evaluation.schoolId ? { schoolId: evaluation.schoolId } : {}),
+      ...metricSchoolFilter,
       activa: true,
     }).select("_id cargoAplica").lean();
 
@@ -326,10 +331,14 @@ router.post(
         }))
       );
     } else {
-      // Pre-populate empty scores for metrics that apply to this employee
+      // Pre-populate empty scores for metrics that apply to this employee.
+      // Include company-wide metrics (schoolId: null) AND school-specific ones.
+      const seedSchoolFilter = employee.schoolId
+        ? { $or: [{ schoolId: employee.schoolId }, { schoolId: null }] }
+        : {};
       const activeMetrics = await Metric.find({
         companyId: employee.companyId,
-        ...(employee.schoolId ? { schoolId: employee.schoolId } : {}),
+        ...seedSchoolFilter,
         activa: true,
       }).select("_id cargoAplica").lean();
       if (!employee.cargo) {
