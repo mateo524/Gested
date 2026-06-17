@@ -60,6 +60,7 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
   const { addToast } = useToast();
   const [data, setData] = useState(null);
   const [autoData, setAutoData] = useState(null);
+  const [autoLoaded, setAutoLoaded] = useState(false);
   const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scores, setScores] = useState({});
@@ -80,7 +81,7 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
         const ev = detail?.evaluation || detail;
         const sc = detail?.scores || [];
         setData({ evaluation: ev, scores: sc });
-        setMetrics(met || []);
+        setMetrics(Array.isArray(met) ? met : []);
         const initS = {}, initC = {};
         sc.forEach(s => {
           const id = String(s.metricId?._id || s.metricId);
@@ -95,12 +96,14 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
           const cycId = ev.cycleId?._id || ev.cycleId;
           try {
             const allEvals = await apiFetch(`/evaluations?employeeId=${empId}&cycleId=${cycId}&tipo=AUTOEVALUACION`, { token, signal: ctrl.signal });
-            const autoEval = Array.isArray(allEvals) ? allEvals[0] : null;
+            // Backend returns { data: [], total } — not a plain array
+            const autoEval = Array.isArray(allEvals) ? allEvals[0] : (allEvals?.data?.[0] ?? null);
             if (autoEval?._id) {
               const autoDetail = await apiFetch(`/evaluations/${autoEval._id}`, { token, signal: ctrl.signal });
               if (!ctrl.signal.aborted) setAutoData(autoDetail);
             }
-          } catch { /* no auto eval */ }
+          } catch { /* employee hasn't created auto-eval yet */ }
+          if (!ctrl.signal.aborted) setAutoLoaded(true);
         }
       } catch (err) {
         if (!ctrl.signal.aborted) addToast({ message: err.message, type: "error" });
@@ -126,6 +129,16 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
     (autoData?.scores || []).forEach(s => m.set(String(s.metricId?._id || s.metricId), s));
     return m;
   }, [autoData]);
+
+  const summaryAuto = useMemo(() => {
+    const vals = (autoData?.scores || []).map(s => s.nivel || 0).filter(v => v > 0);
+    return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+  }, [autoData]);
+
+  const summaryManager = useMemo(() => {
+    const vals = Object.values(scores).map(Number).filter(v => v > 0);
+    return vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+  }, [scores]);
 
   async function handleSave(submit) {
     const evaluation = data?.evaluation;
@@ -158,11 +171,12 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
   const empName = emp ? `${emp.nombre || ""} ${emp.apellido || ""}`.trim() : "—";
   const isJefatura = ev.tipo === "JEFATURA";
   const isReadOnly = ev.estado === "CERRADA";
-  const showSideBySide = isJefatura && autoData;
+  const showSideBySide = isJefatura && !!autoData;
+  const noAutoYet = isJefatura && autoLoaded && !autoData;
 
   return (
     <div className="space-y-5">
-      {/* Back + header */}
+      {/* Header */}
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={onBack}
           className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-[#c7d5dc] transition hover:bg-white/10">
@@ -171,33 +185,73 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
         </button>
         <div className="flex-1 min-w-0">
           <h2 className="text-lg font-semibold text-white">{empName}</h2>
-          <p className="text-xs text-[#7f99a8]">{ev.cycleId?.periodo || "—"} · {TIPO_LABELS[ev.tipo] || ev.tipo}</p>
+          <p className="text-xs text-[#7f99a8]">
+            {ev.cycleId?.periodo || "—"} · {TIPO_LABELS[ev.tipo] || ev.tipo}
+            {emp?.cargo ? <span className="ml-2 text-[#5e7d8e]">· {emp.cargo}</span> : null}
+            {emp?.area ? <span className="ml-2 text-[#5e7d8e]">· {emp.area}</span> : null}
+          </p>
         </div>
         <StatusBadge estado={ev.estado}/>
-        {emp?.cargo ? <span className="hidden sm:block text-xs text-[#9fb6c4]">{emp.cargo}</span> : null}
-        {emp?.area ? <span className="hidden sm:block text-xs text-[#7f99a8]">{emp.area}</span> : null}
       </div>
 
+      {/* Score summary cards — only for JEFATURA once auto-eval loaded */}
+      {isJefatura && (
+        <div className="grid grid-cols-3 gap-3">
+          <div className="rounded-2xl border border-violet-500/25 bg-violet-500/8 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-violet-300">Autoevaluación</p>
+            {summaryAuto
+              ? <p className="mt-1 text-2xl font-bold text-violet-200">{summaryAuto}<span className="ml-1 text-sm font-normal text-violet-400">/5</span></p>
+              : <p className="mt-1 text-sm text-violet-400/70">{autoLoaded ? "Sin completar" : "Cargando…"}</p>}
+          </div>
+          <div className="rounded-2xl border border-[#14b8a6]/25 bg-[#14b8a6]/8 px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#14b8a6]">Tu evaluación</p>
+            {summaryManager
+              ? <p className="mt-1 text-2xl font-bold text-[#14b8a6]">{summaryManager}<span className="ml-1 text-sm font-normal text-[#0d9488]">/5</span></p>
+              : <p className="mt-1 text-sm text-[#14b8a6]/50">Sin completar</p>}
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#0c1e28] px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#5e7d8e]">Diferencia</p>
+            {summaryAuto && summaryManager ? (() => {
+              const d = (parseFloat(summaryManager) - parseFloat(summaryAuto)).toFixed(1);
+              const isPos = parseFloat(d) > 0, isNeg = parseFloat(d) < 0;
+              return <p className={`mt-1 text-2xl font-bold ${isPos ? "text-emerald-400" : isNeg ? "text-rose-400" : "text-white"}`}>{isPos ? `+${d}` : d}</p>;
+            })() : <p className="mt-1 text-sm text-white/20">—</p>}
+          </div>
+        </div>
+      )}
+
+      {/* Info banners */}
       {showSideBySide && (
-        <div className="rounded-xl border border-[#14b8a6]/25 bg-[#14b8a6]/8 px-4 py-2.5 text-sm text-[#9ecfcc]">
-          Podés ver la autoevaluación del empleado al costado para hacer una evaluación justa y objetiva.
+        <div className="flex items-start gap-3 rounded-xl border border-violet-500/20 bg-violet-500/8 px-4 py-3 text-sm">
+          <svg viewBox="0 0 16 16" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-violet-300"><circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/><path d="M8 7v4M8 5.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <p className="text-violet-200">La columna <span className="font-semibold">Autoevaluación</span> muestra cómo se puntuó el empleado. Usala como referencia para hacer una evaluación justa y objetiva.</p>
+        </div>
+      )}
+      {noAutoYet && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-400/20 bg-amber-500/8 px-4 py-3 text-sm">
+          <svg viewBox="0 0 16 16" fill="none" className="mt-0.5 h-4 w-4 shrink-0 text-amber-300"><path d="M8 2L14 13H2L8 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/><path d="M8 6v3M8 11v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+          <p className="text-amber-200">El empleado <span className="font-semibold">aún no completó su autoevaluación</span>. Podés evaluar igualmente; cuando la complete aparecerá al lado para comparar.</p>
         </div>
       )}
 
       {/* Skills grid */}
       <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
-        {/* Header */}
-        <div className={`grid gap-3 border-b border-white/10 px-4 py-3 ${showSideBySide ? "grid-cols-[2fr_1fr_1fr_1.5fr]" : "grid-cols-[2fr_1fr_1.5fr]"}`}>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Habilidad</span>
-          {showSideBySide && <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-300">Autoevaluación</span>}
-          <span className={`text-[11px] font-semibold uppercase tracking-[0.12em] ${isJefatura ? "text-[#14b8a6]" : "text-[#5e7d8e]"}`}>
+        {/* Column headers */}
+        <div className={`grid gap-0 border-b border-white/10 ${showSideBySide ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]"}`}>
+          <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Habilidad</div>
+          {showSideBySide && (
+            <div className="border-l border-violet-500/15 bg-violet-500/5 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-violet-300">
+              Autoevaluación
+            </div>
+          )}
+          <div className={`border-l px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] ${isJefatura ? "border-[#14b8a6]/15 bg-[#14b8a6]/5 text-[#14b8a6]" : "border-white/10 text-[#5e7d8e]"}`}>
             {isJefatura ? "Tu evaluación" : "Calificación"}
-          </span>
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Notas</span>
+          </div>
+          <div className="border-l border-white/10 px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Notas</div>
         </div>
 
         {allMetricIds.length === 0 ? (
-          <div className="px-4 py-8 text-center text-sm text-[#7f99a8]">Sin habilidades asignadas en este ciclo.</div>
+          <div className="px-4 py-10 text-center text-sm text-[#7f99a8]">Sin habilidades asignadas a este empleado.</div>
         ) : (
           <div className="divide-y divide-white/5">
             {allMetricIds.map(id => {
@@ -205,32 +259,45 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
               const autoScore = autoScoreMap.get(id);
               const autoNivel = autoScore?.nivel || 0;
               const currentNivel = scores[id] || 0;
-              const diff = currentNivel && autoNivel ? currentNivel - autoNivel : null;
+              const diff = showSideBySide && currentNivel && autoNivel ? currentNivel - autoNivel : null;
               return (
-                <div key={id} className={`grid items-center gap-3 px-4 py-3 ${showSideBySide ? "grid-cols-[2fr_1fr_1fr_1.5fr]" : "grid-cols-[2fr_1fr_1.5fr]"}`}>
-                  <div>
+                <div key={id} className={`grid gap-0 ${showSideBySide ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]"}`}>
+                  {/* Skill name */}
+                  <div className="px-4 py-3.5">
                     <p className="text-sm font-medium text-white">{metric?.nombre || "—"}</p>
-                    {metric?.descripcion ? <p className="text-xs text-[#7f99a8] truncate">{metric.descripcion}</p> : null}
+                    {metric?.descripcion ? <p className="mt-0.5 text-xs text-[#7f99a8] line-clamp-2">{metric.descripcion}</p> : null}
                   </div>
+                  {/* Auto-eval col */}
                   {showSideBySide && (
-                    <div>
-                      <StarRow value={autoNivel} disabled/>
-                      {autoScore?.comentario ? <p className="text-[11px] text-[#8ea5b3] truncate">{autoScore.comentario}</p> : null}
+                    <div className="border-l border-violet-500/10 bg-violet-500/[0.04] px-4 py-3.5">
+                      <div className="flex items-center gap-2">
+                        <StarRow value={autoNivel} disabled/>
+                        {autoNivel > 0 && <span className="text-sm font-semibold text-violet-300">{autoNivel}</span>}
+                      </div>
+                      {autoScore?.comentario ? (
+                        <p className="mt-1 text-[11px] italic text-violet-300/70 line-clamp-2">"{autoScore.comentario}"</p>
+                      ) : null}
                     </div>
                   )}
-                  <div>
-                    <StarRow value={currentNivel}
-                      onChange={isReadOnly ? undefined : (n) => setScores(s => ({ ...s, [id]: n }))}
-                      disabled={isReadOnly}/>
+                  {/* Manager eval col */}
+                  <div className={`border-l px-4 py-3.5 ${isJefatura ? "border-[#14b8a6]/10 bg-[#14b8a6]/[0.04]" : "border-white/10"}`}>
+                    <div className="flex items-center gap-2">
+                      <StarRow value={currentNivel}
+                        onChange={isReadOnly ? undefined : (n) => setScores(s => ({ ...s, [id]: n }))}
+                        disabled={isReadOnly}/>
+                      {currentNivel > 0 && <span className="text-sm font-semibold text-[#14b8a6]">{currentNivel}</span>}
+                    </div>
                     {diff !== null && (
-                      <span className={`text-[10px] font-medium ${diff > 0 ? "text-emerald-400" : diff < 0 ? "text-rose-400" : "text-[#7f99a8]"}`}>
+                      <span className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
+                        ${diff > 0 ? "bg-emerald-500/15 text-emerald-300" : diff < 0 ? "bg-rose-500/15 text-rose-300" : "bg-white/10 text-[#7f99a8]"}`}>
                         {diff > 0 ? `+${diff}` : diff} vs auto
                       </span>
                     )}
                   </div>
-                  <div>
+                  {/* Notes col */}
+                  <div className="border-l border-white/10 px-4 py-3.5">
                     {isReadOnly ? (
-                      <p className="text-sm text-[#9fb6c4]">{comments[id] || "—"}</p>
+                      <p className="text-sm text-[#9fb6c4]">{comments[id] || <span className="text-[#5e7d8e]">—</span>}</p>
                     ) : (
                       <input type="text" placeholder="Notas…" value={comments[id] || ""}
                         onChange={e => setComments(c => ({ ...c, [id]: e.target.value }))}
