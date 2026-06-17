@@ -114,7 +114,17 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
     return () => ctrl.abort();
   }, [evalId, token]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const metricMap = useMemo(() => new Map(metrics.map(m => [String(m._id), m])), [metrics]);
+  const metricMap = useMemo(() => {
+    const map = new Map(metrics.map(m => [String(m._id), m]));
+    // Enrich from populated metricId on scores (covers auto-created metrics not in /metrics list)
+    [...(data?.scores || []), ...(autoData?.scores || [])].forEach(s => {
+      if (s.metricId && typeof s.metricId === "object" && s.metricId._id) {
+        const key = String(s.metricId._id);
+        if (!map.has(key)) map.set(key, s.metricId);
+      }
+    });
+    return map;
+  }, [metrics, data, autoData]);
 
   const allMetricIds = useMemo(() => {
     const ids = new Set();
