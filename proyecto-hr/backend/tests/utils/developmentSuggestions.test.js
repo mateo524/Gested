@@ -36,7 +36,7 @@ test("ORG_ADMIN recibe sugerencias solo de su tenant via scope filter", () => {
   );
 
   assert.equal(filter.companyId, "org-scope");
-  assert.deepEqual(filter.schoolId, { $in: ["school-scope", null] });
+  assert.equal(filter.schoolId, "school-scope");
 });
 
 test("KPI en riesgo genera sugerencia", () => {
