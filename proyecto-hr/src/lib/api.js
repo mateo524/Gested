@@ -96,6 +96,7 @@ export async function apiFetch(path, { token, headers, timeoutMs, signal, ...opt
   const effectiveTimeout = Number(timeoutMs || DEFAULT_TIMEOUT_MS);
 
   const requestInit = (requestSignal) => ({
+    credentials: "include", // send httpOnly cookies cross-origin
     ...options,
     signal: requestSignal,
     headers: {

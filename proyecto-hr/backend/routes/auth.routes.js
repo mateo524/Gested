@@ -244,6 +244,41 @@ function buildToken(user, safeUser) {
   );
 }
 
+const REFRESH_COOKIE = "rt";
+const REFRESH_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+function buildRefreshToken(user) {
+  return jwt.sign(
+    {
+      type: "refresh",
+      userId: user._id,
+      companyId: user.companyId,
+      tokenVersion: user.tokenVersion ?? 0,
+    },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+}
+
+function setRefreshCookie(res, refreshToken) {
+  res.cookie(REFRESH_COOKIE, refreshToken, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none", // cross-origin: Vercel frontend → Cloud Run backend
+    maxAge: REFRESH_MAX_AGE_MS,
+    path: "/",
+  });
+}
+
+function clearRefreshCookie(res) {
+  res.clearCookie(REFRESH_COOKIE, {
+    httpOnly: true,
+    secure: true,
+    sameSite: "none",
+    path: "/",
+  });
+}
+
 function hashResetToken(rawToken) {
   return crypto.createHash("sha256").update(rawToken).digest("hex");
 }
@@ -314,6 +349,7 @@ router.post("/login", loginLimiter, async (req, res) => {
     }
 
     const token = buildToken(user, safeUser);
+    setRefreshCookie(res, buildRefreshToken(user));
 
     await logAudit({
       companyId: user.companyId,
@@ -567,20 +603,39 @@ router.get("/security-status", auth, async (req, res) => {
   });
 });
 
-// ── Silent token refresh — called by frontend ~30 min before expiry ────────
-router.post("/refresh", refreshLimiter, auth, async (req, res) => {
+// ── Token refresh — reads httpOnly cookie, no access token required ────────
+router.post("/refresh", refreshLimiter, async (req, res) => {
   try {
+    const rawCookie = req.cookies?.[REFRESH_COOKIE];
+    if (!rawCookie) return res.status(401).json({ mensaje: "No hay sesión activa" });
+
+    let payload;
+    try {
+      payload = jwt.verify(rawCookie, process.env.JWT_SECRET, { algorithms: ["HS256"] });
+    } catch {
+      clearRefreshCookie(res);
+      return res.status(401).json({ mensaje: "Sesión inválida o expirada" });
+    }
+
+    if (payload.type !== "refresh") {
+      clearRefreshCookie(res);
+      return res.status(401).json({ mensaje: "Token inválido" });
+    }
+
     const user = await User.findOne({
-      _id: req.user.userId,
-      companyId: req.user.companyId,
+      _id: payload.userId,
+      companyId: payload.companyId,
       activo: true,
     });
 
-    if (!user) return res.status(401).json({ mensaje: "Sesión inválida" });
+    if (!user) {
+      clearRefreshCookie(res);
+      return res.status(401).json({ mensaje: "Sesión inválida" });
+    }
 
     // Reject tokens issued before the current tokenVersion
-    // (covers logout-all and password-change invalidation).
-    if ((user.tokenVersion ?? 0) !== (req.user.tokenVersion ?? 0)) {
+    if ((user.tokenVersion ?? 0) !== (payload.tokenVersion ?? 0)) {
+      clearRefreshCookie(res);
       return res.status(401).json({ mensaje: "Sesión revocada" });
     }
 
@@ -591,10 +646,20 @@ router.post("/refresh", refreshLimiter, auth, async (req, res) => {
 
     const safeUser = await buildSafeUser(user);
     const token = buildToken(user, safeUser);
+
+    // Rotate refresh token
+    setRefreshCookie(res, buildRefreshToken(user));
+
     res.json({ token, user: safeUser });
   } catch {
     res.status(500).json({ mensaje: "Error al renovar sesión" });
   }
+});
+
+// ── Logout — clears the httpOnly refresh cookie ─────────────────────────────
+router.post("/logout", (req, res) => {
+  clearRefreshCookie(res);
+  res.json({ mensaje: "Sesión cerrada" });
 });
 
 export default router;

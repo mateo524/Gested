@@ -4,6 +4,7 @@ import { Sentry } from "./instrument.js";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import compression from "compression";
 import helmet from "helmet";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
@@ -114,6 +115,7 @@ function assertRuntimeConfig() {
 }
 
 app.use(cors(buildCorsOptions()));
+app.use(cookieParser());
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(
   compression({

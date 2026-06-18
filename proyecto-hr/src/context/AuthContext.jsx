@@ -24,7 +24,10 @@ function decodeTokenPayload(token) {
 }
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  // Access token lives only in memory — never written to localStorage.
+  // On page load the bootstrap effect below exchanges the httpOnly refresh
+  // cookie for a fresh access token via POST /auth/refresh.
+  const [token, setToken] = useState("");
   const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
   const [companies, setCompanies] = useState([]);
   const [branding, setBranding] = useState(defaultBranding);
@@ -41,11 +44,31 @@ export function AuthProvider({ children }) {
     localStorage.getItem(ACTIVE_COMPANY_KEY) || ""
   );
   const [sessionHydrating, setSessionHydrating] = useState(false);
+  // True while the initial cookie→token exchange is in flight.
+  // Consumers can show a loading screen instead of redirecting to login.
+  const [sessionBootstrapping, setSessionBootstrapping] = useState(true);
 
   const userRef = useRef(user);
   useEffect(() => {
     userRef.current = user;
   }, [user]);
+
+  // Bootstrap: exchange the httpOnly refresh cookie for an access token.
+  // Runs once on mount so the user stays logged in across page reloads.
+  useEffect(() => {
+    apiFetch("/auth/refresh", { method: "POST" })
+      .then(({ token: t, user: u }) => {
+        setToken(t);
+        setUser(u);
+        localStorage.setItem("user", JSON.stringify(u));
+      })
+      .catch(() => {
+        // No valid refresh cookie — clear stale cached user.
+        localStorage.removeItem("user");
+        setUser(null);
+      })
+      .finally(() => setSessionBootstrapping(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setActiveCompanyId = useCallback((companyId) => {
     if (!companyId) {
@@ -59,7 +82,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const applySession = useCallback((nextToken, nextUser) => {
-    localStorage.setItem("token", nextToken);
+    // Token is memory-only — NOT stored in localStorage.
+    // user is cached in localStorage for fast paint on next load (non-sensitive).
     localStorage.setItem("user", JSON.stringify(nextUser));
     setToken(nextToken);
     setUser(nextUser);
@@ -165,7 +189,8 @@ export function AuthProvider({ children }) {
   }, [applySession, hydrateSessionData, token]);
 
   const logout = useCallback(() => {
-    localStorage.removeItem("token");
+    // Ask the server to clear the httpOnly refresh cookie.
+    apiFetch("/auth/logout", { method: "POST" }).catch(() => {});
     localStorage.removeItem("user");
     localStorage.removeItem(ACTIVE_COMPANY_KEY);
     setToken("");
@@ -272,6 +297,7 @@ export function AuthProvider({ children }) {
       login,
       updateSession,
       logout,
+      sessionBootstrapping,
       isAuthenticated: !!token,
       hasPermission: (perm) => user?.permisos?.includes(perm),
       modules: user?.modules ?? null,
@@ -303,6 +329,7 @@ export function AuthProvider({ children }) {
       updateSession,
       user,
       sessionHydrating,
+      sessionBootstrapping,
     ]
   );
 
