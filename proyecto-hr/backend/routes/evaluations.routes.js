@@ -665,4 +665,103 @@ router.post(
   }
 );
 
+// POST /evaluations/bulk — create one JEFATURA evaluation per employeeId in a single request.
+// Skips duplicates (same employee+cycle+tipo) instead of failing the whole batch.
+router.post(
+  "/bulk",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.MANAGE_EVALUATIONS, PERMISSIONS.EVALUATE_TEAM),
+  async (req, res) => {
+    const { cycleId, tipo, employeeIds } = req.body || {};
+
+    if (!cycleId || !tipo || !Array.isArray(employeeIds) || !employeeIds.length) {
+      return res.status(400).json({ mensaje: "Debes indicar cycleId, tipo y al menos un employeeId." });
+    }
+
+    const scopeFilter = buildScopedFilter(req, {});
+    const cycle = await EvaluationCycle.findOne({ ...scopeFilter, _id: cycleId }).lean();
+    if (!cycle) return res.status(404).json({ mensaje: "Ciclo no encontrado dentro de tu alcance." });
+
+    const employees = await Employee.find({
+      ...scopeFilter,
+      _id: { $in: employeeIds },
+      activo: true,
+    }).lean();
+
+    if (!employees.length) {
+      return res.status(404).json({ mensaje: "No se encontraron empleados activos con los IDs indicados." });
+    }
+
+    const seedSchoolFilter = cycle.schoolId
+      ? { $or: [{ schoolId: cycle.schoolId }, { schoolId: null }] }
+      : {};
+    let activeMetrics = await Metric.find({
+      companyId: cycle.companyId,
+      ...seedSchoolFilter,
+      activa: true,
+    }).select("_id cargoAplica").lean();
+
+    if (!activeMetrics.length) {
+      activeMetrics = await ensureMetricsFromCompetencies(cycle.companyId, cycle.schoolId);
+    }
+
+    let created = 0;
+    let skipped = 0;
+
+    for (const employee of employees) {
+      let evaluation;
+      try {
+        evaluation = await Evaluation.create({
+          companyId: employee.companyId,
+          schoolId: employee.schoolId ?? null,
+          employeeId: employee._id,
+          evaluatorUserId: req.user.userId,
+          cycleId: cycle._id,
+          tipo,
+          estado: "BORRADOR",
+          comentariosGenerales: "",
+          acuerdoEmpleado: "PENDIENTE",
+          resultadoFinal: 0,
+          evidenciaUrls: [],
+        });
+        created++;
+      } catch (err) {
+        if (err.code === 11000) { skipped++; continue; }
+        throw err;
+      }
+
+      const applicable = activeMetrics.filter((m) => {
+        return !m.cargoAplica?.length ||
+          (typeof employee.cargo === "string" && employee.cargo.length > 0 && m.cargoAplica.includes(employee.cargo));
+      });
+      if (applicable.length) {
+        await EvaluationScore.bulkWrite(
+          applicable.map((m) => ({
+            updateOne: {
+              filter: { evaluationId: evaluation._id, metricId: m._id },
+              update: { $setOnInsert: { nivel: 0, comentario: "" } },
+              upsert: true,
+            },
+          }))
+        );
+      }
+    }
+
+    runInBackground(() => logAudit({
+      companyId: cycle.companyId,
+      schoolId: cycle.schoolId,
+      userId: req.user.userId,
+      accion: "bulk_create",
+      modulo: "evaluations",
+      detalle: `Creación masiva: ${created} evaluaciones ${tipo}, ciclo ${cycle.periodo} ${cycle.anio}. Omitidas: ${skipped}`,
+    }), "audit-bulk-eval-create");
+
+    invalidateReportCache(String(cycle.companyId));
+    invalidateDashboardCache(String(cycle.companyId));
+    res.status(201).json({ mensaje: `${created} evaluación(es) creada(s), ${skipped} omitida(s).`, created, skipped });
+    runInBackground(() => triggerSheetSync({ companyId: String(cycle.companyId), schoolId: cycle.schoolId ? String(cycle.schoolId) : undefined }), "sheet-sync-bulk-eval-create");
+  }
+);
+
 export default router;
