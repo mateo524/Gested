@@ -29,12 +29,6 @@ function decodeTokenPayload(token) {
   }
 }
 
-// Only cache non-sensitive fields for fast paint — permissions/roles come fresh from /auth/refresh on boot.
-function safeUserCache(user) {
-  if (!user) return null;
-  const { _id, nombre, apellido, email, companyId, schoolId, cargo, area, avatarUrl } = user;
-  return { _id, nombre, apellido, email, companyId, schoolId, cargo, area, avatarUrl };
-}
 
 export function AuthProvider({ children }) {
   // Access token lives only in memory — never written to localStorage.
