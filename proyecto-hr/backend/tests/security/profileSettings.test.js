@@ -88,7 +88,7 @@ test("validatePasswordChangePayload exige longitud y confirmacion si viene", () 
         newPassword: "123",
         confirmPassword: "123",
       }),
-    /6 caracteres/
+    /8 caracteres/
   );
 
   assert.throws(
