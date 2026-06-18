@@ -2,7 +2,7 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import crypto from "node:crypto";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import User from "../models/User.js";
 import Role from "../models/Role.js";
 import Company from "../models/Company.js";
@@ -91,7 +91,7 @@ const forgotPasswordLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => {
-    const ip = req.ip || req.headers["x-forwarded-for"] || "unknown";
+    const ip = ipKeyGenerator(req);
     const email = String(req.body?.email || "").toLowerCase().trim();
     return `forgot::${ip}::${email}`;
   },
