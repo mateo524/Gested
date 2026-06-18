@@ -655,8 +655,19 @@ router.post("/refresh", refreshLimiter, async (req, res) => {
   }
 });
 
-// ── Logout — clears the httpOnly refresh cookie ─────────────────────────────
-router.post("/logout", (req, res) => {
+// ── Logout — clears the httpOnly refresh cookie and revokes refresh tokens ───
+router.post("/logout", async (req, res) => {
+  try {
+    const raw = req.cookies?.rt;
+    if (raw) {
+      const payload = jwt.verify(raw, process.env.JWT_SECRET);
+      if (payload?.userId) {
+        await User.updateOne({ _id: payload.userId }, { $inc: { tokenVersion: 1 } });
+      }
+    }
+  } catch {
+    // Invalid or missing cookie — still clear it
+  }
   clearRefreshCookie(res);
   res.json({ mensaje: "Sesión cerrada" });
 });
