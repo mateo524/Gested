@@ -11,6 +11,12 @@ const defaultBranding = {
   maxUploadSizeMb: 10,
 };
 
+function safeUserCache(u) {
+  if (!u) return null;
+  const { permisos, isSuperAdmin, roleKey, ...safe } = u;
+  return safe;
+}
+
 function decodeTokenPayload(token) {
   try {
     const payload = token.split(".")[1];
@@ -21,6 +27,13 @@ function decodeTokenPayload(token) {
   } catch {
     return null;
   }
+}
+
+// Only cache non-sensitive fields for fast paint — permissions/roles come fresh from /auth/refresh on boot.
+function safeUserCache(user) {
+  if (!user) return null;
+  const { _id, nombre, apellido, email, companyId, schoolId, cargo, area, avatarUrl } = user;
+  return { _id, nombre, apellido, email, companyId, schoolId, cargo, area, avatarUrl };
 }
 
 export function AuthProvider({ children }) {
@@ -60,7 +73,7 @@ export function AuthProvider({ children }) {
       .then(({ token: t, user: u }) => {
         setToken(t);
         setUser(u);
-        localStorage.setItem("user", JSON.stringify(u));
+        localStorage.setItem("user", JSON.stringify(safeUserCache(u)));
       })
       .catch(() => {
         // No valid refresh cookie — clear stale cached user.
@@ -84,7 +97,7 @@ export function AuthProvider({ children }) {
   const applySession = useCallback((nextToken, nextUser) => {
     // Token is memory-only — NOT stored in localStorage.
     // user is cached in localStorage for fast paint on next load (non-sensitive).
-    localStorage.setItem("user", JSON.stringify(nextUser));
+    localStorage.setItem("user", JSON.stringify(safeUserCache(nextUser)));
     setToken(nextToken);
     setUser(nextUser);
   }, []);
@@ -207,7 +220,7 @@ export function AuthProvider({ children }) {
 
     apiFetch("/auth/me", { token, timeoutMs: 30000 })
       .then(async (nextUser) => {
-        localStorage.setItem("user", JSON.stringify(nextUser));
+        localStorage.setItem("user", JSON.stringify(safeUserCache(nextUser)));
         setUser(nextUser);
         if (!userRef.current) {
           await hydrateSessionData(token, nextUser);
@@ -262,7 +275,7 @@ export function AuthProvider({ children }) {
     if (msUntilRefresh <= 0) return;
     const id = setTimeout(async () => {
       try {
-        const data = await apiFetch("/auth/refresh", { token, method: "POST" });
+        const data = await apiFetch("/auth/refresh", { method: "POST" });
         if (data?.token && data?.user) {
           applySession(data.token, data.user);
         }

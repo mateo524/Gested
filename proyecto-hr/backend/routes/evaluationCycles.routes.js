@@ -146,7 +146,7 @@ router.post(
       Company.findById(companyId).lean().then(async (co) => {
         const companyName = co?.nombre || String(companyId);
         const totalEvals = await Evaluation.countDocuments({ cycleId: cycle._id }).catch(() => 0);
-        const closedEvals = await Evaluation.countDocuments({ cycleId: cycle._id, estado: "Cerrado" }).catch(() => 0);
+        const closedEvals = await Evaluation.countDocuments({ cycleId: cycle._id, estado: "CERRADA" }).catch(() => 0);
         slack.cycleClosed(companyName, cycle.periodo, totalEvals).catch(() => {});
         notifyClientSlack(companyId, clientSlack.cycleClosed(companyName, cycle.periodo, totalEvals, closedEvals));
       }).catch(() => {});
@@ -215,7 +215,7 @@ router.put(
       Company.findById(cycle.companyId).lean().then(async (co) => {
         const companyName = co?.nombre || String(cycle.companyId);
         const totalEvals = await Evaluation.countDocuments({ cycleId: cycle._id }).catch(() => 0);
-        const closedEvals = await Evaluation.countDocuments({ cycleId: cycle._id, estado: "Cerrado" }).catch(() => 0);
+        const closedEvals = await Evaluation.countDocuments({ cycleId: cycle._id, estado: "CERRADA" }).catch(() => 0);
         slack.cycleClosed(companyName, cycle.periodo, totalEvals).catch(() => {});
         notifyClientSlack(cycle.companyId, clientSlack.cycleClosed(companyName, cycle.periodo, totalEvals, closedEvals));
       }).catch(() => {});

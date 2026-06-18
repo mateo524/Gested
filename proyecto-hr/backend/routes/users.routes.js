@@ -560,6 +560,7 @@ router.post("/bulk", auth, permit("manage_users"), async (req, res) => {
   const { action, userIds = [] } = req.body;
   const { companyId } = await resolveCompanyScope(req);
 
+  if (!Array.isArray(userIds) || userIds.length > 500) return res.status(400).json({ mensaje: "userIds debe ser un arreglo de hasta 500 elementos" });
   if (!action || !Array.isArray(userIds) || userIds.length === 0) {
     return res.status(400).json({ mensaje: "Debes indicar accion y usuarios" });
   }

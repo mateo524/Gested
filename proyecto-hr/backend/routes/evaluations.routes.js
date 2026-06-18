@@ -755,7 +755,7 @@ router.post(
         allScoreOps.push({
           updateOne: {
             filter: { evaluationId: evaluation._id, metricId: m._id },
-            update: { $setOnInsert: { nivel: 0, comentario: "" } },
+            update: { $setOnInsert: { companyId: employee.companyId, schoolId: employee.schoolId ?? null, nivel: 0, comentario: "" } },
             upsert: true,
           },
         });

@@ -84,7 +84,12 @@ export function requireAnyPermission(...requiredPermissions) {
 }
 
 export function requireRole(...roles) {
-  return (req, res, next) => {
+  return async (req, res, next) => {
+    try {
+      await hydrateUserPermissions(req);
+    } catch (err) {
+      return res.status(err.status || 401).json({ mensaje: err.message || "Sesión inválida" });
+    }
     const currentRole = req.user?.roleCode || req.user?.roleKey;
     if (!roles.includes(currentRole)) {
       return res.status(403).json({
@@ -97,6 +102,7 @@ export function requireRole(...roles) {
 }
 
 export function requireSuperAdmin(req, res, next) {
+  if (!req.user) return res.status(401).json({ mensaje: "Autenticacion requerida" });
   if (!req.user?.isSuperAdmin) {
     return res.status(403).json({
       mensaje: "Solo Super Admin puede acceder a este recurso",

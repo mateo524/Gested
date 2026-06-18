@@ -145,6 +145,7 @@ const generalLimiter = rateLimit({
   limit: 300,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: ipKeyGenerator,
   message: {
     mensaje: "Demasiadas solicitudes. Intenta nuevamente en unos minutos.",
   },
@@ -180,6 +181,7 @@ const authLimiter = rateLimit({
   limit: 10,
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: ipKeyGenerator,
   message: { mensaje: "Demasiados intentos de login. Esperá 15 minutos." },
 });
 app.use("/auth/login", authLimiter);

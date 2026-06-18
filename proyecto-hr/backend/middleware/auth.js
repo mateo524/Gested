@@ -21,6 +21,7 @@ export function auth(req, res, next) {
     if (err instanceof jwt.JsonWebTokenError || err instanceof jwt.TokenExpiredError) {
       return res.status(401).json({ mensaje: "Token inválido" });
     }
-    next(err);
+    console.error(err);
+    return res.status(401).json({ mensaje: "No autorizado" });
   }
 }

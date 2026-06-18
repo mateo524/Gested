@@ -113,6 +113,7 @@ router.get(
         filter.cargo = req.query.cargo;
       }
 
+      if (req.query.managerId && !/^[a-f\d]{24}$/i.test(req.query.managerId)) return res.status(400).json({ mensaje: "managerId invalido" });
       if (req.query.managerId) {
         filter.managerId = req.query.managerId;
       }

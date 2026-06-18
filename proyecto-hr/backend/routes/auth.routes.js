@@ -207,9 +207,9 @@ export async function updateOwnPassword({ user, currentPassword, newPassword }) 
   return user;
 }
 
-async function buildSafeUser(user) {
+async function buildSafeUser(user, preloadedCompany) {
   const role = user.roleId ? await Role.findById(user.roleId).lean() : null;
-  const company = await Company.findById(user.companyId).lean();
+  const company = preloadedCompany !== undefined ? preloadedCompany : await Company.findById(user.companyId).lean();
   const effectiveRole = await resolveEffectiveRole({
     ...user.toObject(),
     roleCode: role?.code || null,
@@ -266,7 +266,7 @@ function setRefreshCookie(res, refreshToken) {
     secure: true,
     sameSite: "none", // cross-origin: Vercel frontend → Cloud Run backend
     maxAge: REFRESH_MAX_AGE_MS,
-    path: "/",
+    path: "/auth",
   });
 }
 
@@ -275,7 +275,7 @@ function clearRefreshCookie(res) {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    path: "/",
+    path: "/auth",
   });
 }
 
@@ -311,6 +311,7 @@ router.post("/login", loginLimiter, async (req, res) => {
 
     const user = await User.findOne({ email, activo: true });
     if (!user) {
+      await bcrypt.compare(password, "$2b$12$invalidhashpadding000000000000000000000000000000000000000");
       registerFailedAttempt(key);
       return res.status(401).json({ mensaje: "Credenciales invalidas" });
     }
@@ -339,14 +340,12 @@ router.post("/login", loginLimiter, async (req, res) => {
       await user.save();
     }
 
-    const safeUser = await buildSafeUser(user);
-
-    if (!safeUser.isSuperAdmin) {
-      const company = await Company.findById(user.companyId).lean();
-      if (!company?.activa) {
-        return res.status(403).json({ mensaje: "La empresa tiene el acceso suspendido" });
-      }
+    const company = user.isSuperAdmin ? undefined : await Company.findById(user.companyId).lean();
+    if (!user.isSuperAdmin && !company?.activa) {
+      return res.status(403).json({ mensaje: "La empresa tiene el acceso suspendido" });
     }
+
+    const safeUser = await buildSafeUser(user, company);
 
     const token = buildToken(user, safeUser);
     setRefreshCookie(res, buildRefreshToken(user));
@@ -433,7 +432,7 @@ router.put("/me/profile", auth, async (req, res) => {
       user: safeUser,
     });
   } catch (error) {
-    res.status(error.status || 500).json({ mensaje: error.message || "No pudimos actualizar el perfil." });
+    res.status(error.status || 500).json({ mensaje: process.env.NODE_ENV === "production" ? "Error al actualizar el perfil" : error.message });
   }
 });
 
@@ -634,7 +633,7 @@ router.post("/refresh", refreshLimiter, async (req, res) => {
     }
 
     // Reject tokens issued before the current tokenVersion
-    if ((user.tokenVersion ?? 0) !== (payload.tokenVersion ?? 0)) {
+    if ((payload.tokenVersion ?? 0) < (user.tokenVersion ?? 0)) {
       clearRefreshCookie(res);
       return res.status(401).json({ mensaje: "Sesión revocada" });
     }
