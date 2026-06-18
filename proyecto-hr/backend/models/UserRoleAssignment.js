@@ -56,6 +56,5 @@ const UserRoleAssignmentSchema = new mongoose.Schema(
 );
 
 UserRoleAssignmentSchema.index({ companyId: 1, userId: 1, active: 1 });
-UserRoleAssignmentSchema.index({ companyId: 1, userId: 1 }, { unique: true });
 
 export default mongoose.model("UserRoleAssignment", UserRoleAssignmentSchema);

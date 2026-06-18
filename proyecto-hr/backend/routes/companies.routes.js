@@ -23,6 +23,13 @@ import { triggerSheetSync } from "../utils/sheetSync.js";
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
+router.param("id", (req, res, next, id) => {
+  if (!/^[a-f\d]{24}$/i.test(id)) {
+    return res.status(400).json({ mensaje: "ID de empresa no válido" });
+  }
+  next();
+});
+
 async function parseUploadedRows(file) {
   if (!file) return [];
   const workbook = new ExcelJS.Workbook();
@@ -67,15 +74,18 @@ router.get("/", auth, requireSuperAdmin, permit("manage_companies"), async (req,
   )
     .sort({ nombre: 1 })
     .lean();
-  const users = await User.find().select("companyId isSuperAdmin").lean();
+  const companyIds = companies.map((c) => c._id);
+  const userCounts = await User.aggregate([
+    { $match: { companyId: { $in: companyIds }, isSuperAdmin: { $ne: true } } },
+    { $group: { _id: "$companyId", count: { $sum: 1 } } },
+  ]);
+  const countMap = new Map(userCounts.map((u) => [String(u._id), u.count]));
 
   res.json(
     companies.map((company) => ({
       ...company,
       slug: company.slug || company.nombre.toLowerCase().replace(/\s+/g, "-"),
-      usersCount: users.filter(
-        (user) => String(user.companyId) === String(company._id) && !user.isSuperAdmin
-      ).length,
+      usersCount: countMap.get(String(company._id)) || 0,
     }))
   );
 });
@@ -222,7 +232,7 @@ router.post("/", auth, requireSuperAdmin, permit("manage_companies"), upload.sin
         const roleCode = mapRoleInputToLegacyRoleCode(requestedRole);
         const role = roleMap.get(roleCode) || roleMap.get("EMPLEADO");
         if (email && role) {
-          const exists = await User.findOne({ email });
+          const exists = await User.findOne({ email, companyId: company._id });
           if (!exists) {
             const tempPassword = String(row.password || "").trim() || generateTempPassword();
             await User.create({

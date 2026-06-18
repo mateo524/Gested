@@ -97,7 +97,7 @@ function ViewLoader() {
 }
 
 function AppContent() {
-  const { isAuthenticated, hasPermission, hasModule, user } = useAuth();
+  const { isAuthenticated, hasPermission, hasModule, user, sessionBootstrapping } = useAuth();
   const [view, setView] = useState("dashboard");
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
@@ -261,6 +261,8 @@ function AppContent() {
     const timer = window.setTimeout(runPreload, 400);
     return () => window.clearTimeout(timer);
   }, [hasPermission, isAuthenticated, user]);
+
+  if (sessionBootstrapping) return null;
 
   if (!isAuthenticated) {
     return <LoginPage />;

@@ -672,20 +672,35 @@ router.post(
   auth,
   attachTenantScope,
   requireAnyPermission(PERMISSIONS.MANAGE_EVALUATIONS, PERMISSIONS.EVALUATE_TEAM),
-  async (req, res) => {
+  async (req, res, next) => {
+    try {
     const { cycleId, tipo, employeeIds } = req.body || {};
 
     if (!cycleId || !tipo || !Array.isArray(employeeIds) || !employeeIds.length) {
       return res.status(400).json({ mensaje: "Debes indicar cycleId, tipo y al menos un employeeId." });
     }
 
+    const { Types: MongooseTypes } = (await import("mongoose")).default;
+
+    if (!MongooseTypes.ObjectId.isValid(cycleId)) {
+      return res.status(400).json({ mensaje: "cycleId no es un ObjectId válido." });
+    }
+    const validEmployeeIds = employeeIds.filter((id) => MongooseTypes.ObjectId.isValid(id));
+    if (!validEmployeeIds.length) {
+      return res.status(400).json({ mensaje: "Ningún employeeId es un ObjectId válido." });
+    }
+
     const scopeFilter = buildScopedFilter(req, {});
     const cycle = await EvaluationCycle.findOne({ ...scopeFilter, _id: cycleId }).lean();
     if (!cycle) return res.status(404).json({ mensaje: "Ciclo no encontrado dentro de tu alcance." });
 
+    if (!req.scope?.isSuperAdmin && String(cycle.companyId) !== String(req.scope?.companyId)) {
+      return res.status(403).json({ mensaje: "El ciclo no pertenece a tu empresa." });
+    }
+
     const employees = await Employee.find({
       ...scopeFilter,
-      _id: { $in: employeeIds },
+      _id: { $in: validEmployeeIds },
       activo: true,
     }).lean();
 
@@ -708,6 +723,7 @@ router.post(
 
     let created = 0;
     let skipped = 0;
+    const allScoreOps = [];
 
     for (const employee of employees) {
       let evaluation;
@@ -728,24 +744,26 @@ router.post(
         created++;
       } catch (err) {
         if (err.code === 11000) { skipped++; continue; }
-        throw err;
+        return next(err);
       }
 
       const applicable = activeMetrics.filter((m) => {
         return !m.cargoAplica?.length ||
           (typeof employee.cargo === "string" && employee.cargo.length > 0 && m.cargoAplica.includes(employee.cargo));
       });
-      if (applicable.length) {
-        await EvaluationScore.bulkWrite(
-          applicable.map((m) => ({
-            updateOne: {
-              filter: { evaluationId: evaluation._id, metricId: m._id },
-              update: { $setOnInsert: { nivel: 0, comentario: "" } },
-              upsert: true,
-            },
-          }))
-        );
+      for (const m of applicable) {
+        allScoreOps.push({
+          updateOne: {
+            filter: { evaluationId: evaluation._id, metricId: m._id },
+            update: { $setOnInsert: { nivel: 0, comentario: "" } },
+            upsert: true,
+          },
+        });
       }
+    }
+
+    if (allScoreOps.length) {
+      await EvaluationScore.bulkWrite(allScoreOps);
     }
 
     runInBackground(() => logAudit({
@@ -761,6 +779,9 @@ router.post(
     invalidateDashboardCache(String(cycle.companyId));
     res.status(201).json({ mensaje: `${created} evaluación(es) creada(s), ${skipped} omitida(s).`, created, skipped });
     runInBackground(() => triggerSheetSync({ companyId: String(cycle.companyId), schoolId: cycle.schoolId ? String(cycle.schoolId) : undefined }), "sheet-sync-bulk-eval-create");
+    } catch (err) {
+      next(err);
+    }
   }
 );
 

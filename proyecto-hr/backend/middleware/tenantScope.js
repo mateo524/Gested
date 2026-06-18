@@ -29,7 +29,7 @@ export function buildScopedFilter(req, extra = {}) {
   };
 
   if (scope.schoolId) {
-    base.schoolId = { $in: [scope.schoolId, null] };
+    base.schoolId = scope.schoolId;
   }
 
   return base;

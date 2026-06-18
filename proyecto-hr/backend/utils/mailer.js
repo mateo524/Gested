@@ -184,18 +184,21 @@ export async function sendContactRequestNotification(contactRequest) {
       "Mensaje:",
       contactRequest.message || "-",
     ].join("\n"),
-    html: `
+    html: (() => {
+      const e = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+      return `
       <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
         <h2>Nueva solicitud comercial — ZENTOR</h2>
-        <p><strong>Nombre:</strong> ${contactRequest.name}</p>
-        <p><strong>Email:</strong> ${contactRequest.email}</p>
-        <p><strong>Institucion:</strong> ${contactRequest.institution || "-"}</p>
-        <p><strong>Rol:</strong> ${contactRequest.role || "-"}</p>
-        <p><strong>Tamano:</strong> ${contactRequest.size || "-"}</p>
-        <p><strong>Origen:</strong> ${contactRequest.source || "-"}</p>
+        <p><strong>Nombre:</strong> ${e(contactRequest.name)}</p>
+        <p><strong>Email:</strong> ${e(contactRequest.email)}</p>
+        <p><strong>Institucion:</strong> ${e(contactRequest.institution || "-")}</p>
+        <p><strong>Rol:</strong> ${e(contactRequest.role || "-")}</p>
+        <p><strong>Tamano:</strong> ${e(contactRequest.size || "-")}</p>
+        <p><strong>Origen:</strong> ${e(contactRequest.source || "-")}</p>
         <p><strong>Mensaje:</strong></p>
-        <p>${String(contactRequest.message || "-").replace(/\n/g, "<br/>")}</p>
+        <p>${e(contactRequest.message || "-").replace(/\n/g, "<br/>")}</p>
       </div>
-    `,
+    `;
+    })(),
   });
 }

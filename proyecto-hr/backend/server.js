@@ -92,6 +92,7 @@ function buildCorsOptions() {
 
   return {
     origin(origin, callback) {
+      if (!origin && process.env.NODE_ENV === 'production') return callback(new Error('CORS: origin required'));
       if (!origin) return callback(null, true);
       if (isAllowedOrigin(origin)) return callback(null, true);
       return callback(new Error("CORS: origen no permitido"));

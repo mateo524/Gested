@@ -26,16 +26,19 @@ const UserSchema = new mongoose.Schema(
     },
     nombre: { type: String, required: true },
     apellido: { type: String, default: "", trim: true },
-    email: { type: String, required: true, unique: true, lowercase: true, trim: true },
+    email: { type: String, required: true, lowercase: true, trim: true },
     avatarUrl: { type: String, default: "", trim: true },
     passwordHash: { type: String, required: true },
     activo: { type: Boolean, default: true },
     isSuperAdmin: { type: Boolean, default: false },
     mustChangePassword: { type: Boolean, default: false },
+    tokenVersion: { type: Number, default: 0 },
     passwordResetTokenHash: { type: String, default: null },
     passwordResetExpiresAt: { type: Date, default: null, index: true },
   },
   { timestamps: true }
 );
+
+UserSchema.index({ companyId: 1, email: 1 }, { unique: true });
 
 export default mongoose.model("User", UserSchema);

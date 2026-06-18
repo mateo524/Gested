@@ -176,12 +176,18 @@ router.get("/", auth, permit("manage_users"), async (req, res) => {
     ];
   }
 
+  const skip = Math.max(0, parseInt(req.query.skip, 10) || 0);
+  const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 50));
+  const total = await User.countDocuments(filters);
+
   const users = await User.find(filters)
     .select("-passwordHash")
     .populate("roleId", "nombre permisos")
-    .sort({ nombre: 1 });
+    .sort({ nombre: 1 })
+    .skip(skip)
+    .limit(limit);
 
-  res.json(users);
+  res.json({ total, skip, limit, users });
 });
 
 router.post("/", auth, permit("manage_users"), async (req, res) => {
@@ -621,6 +627,13 @@ router.post("/bulk", auth, permit("manage_users"), async (req, res) => {
     processed: users.length,
     temporaryPasswords,
   });
+});
+
+router.param("id", (req, res, next, id) => {
+  if (!/^[a-f\d]{24}$/i.test(id)) {
+    return res.status(400).json({ mensaje: "ID de usuario no valido" });
+  }
+  next();
 });
 
 router.put("/:id", auth, permit("manage_users"), async (req, res) => {

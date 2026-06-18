@@ -39,9 +39,8 @@ export async function getScopedEmployeeIds(scope = {}, overrides = {}) {
     activo: true,
   };
 
-  if (context.schoolId) {
-    filter.schoolId = context.schoolId;
-  }
+  if (!context.schoolId) return [];
+  filter.schoolId = context.schoolId;
 
   if (isDepartmentManagerScope(context)) {
     filter.area = context.departmentCode;
