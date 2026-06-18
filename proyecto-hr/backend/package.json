@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "node server.js",
-    "test": "vitest run",
+    "test": "vitest run && node --test tests/import/*.test.js tests/metrics/*.test.js tests/onboarding/*.test.js tests/reports/*.test.js tests/security/*.test.js tests/support/*.test.js tests/utils/*.test.js",
     "test:watch": "vitest",
     "test:security": "node --test tests/security/*.test.js",
     "test:import": "node --test tests/import/*.test.js",

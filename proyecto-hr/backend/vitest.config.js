@@ -11,5 +11,16 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./tests/setup.js"],
     testTimeout: 15000,
+    // These directories use node:test (not vitest) and are run separately via node --test
+    exclude: [
+      "**/node_modules/**",
+      "tests/import/**",
+      "tests/metrics/**",
+      "tests/onboarding/**",
+      "tests/reports/**",
+      "tests/security/**",
+      "tests/support/**",
+      "tests/utils/**",
+    ],
   },
 });
