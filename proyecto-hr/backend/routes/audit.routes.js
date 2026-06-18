@@ -42,7 +42,7 @@ router.get("/", auth, permit("view_audit"), async (req, res) => {
 
   const [logs, users] = await Promise.all([
     AuditLog.find(filters).sort({ createdAt: -1 }).limit(300).lean(),
-    User.find({ companyId, isSuperAdmin: false }).select("nombre email").lean(),
+    User.find({ companyId, isSuperAdmin: false }).select("nombre email").limit(500).lean(),
   ]);
 
   const userMap = new Map(users.map((user) => [String(user._id), user]));

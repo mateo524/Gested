@@ -25,6 +25,13 @@ function asyncHandler(fn) {
   return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
+router.param("id", (req, res, next, val) => {
+  if (!/^[a-f\d]{24}$/i.test(val)) {
+    return res.status(400).json({ message: "ID de empleado inválido" });
+  }
+  next();
+});
+
 function resolveTenantIds(req) {
   const companyFromHeader = req.get("X-Company-Id");
   return {

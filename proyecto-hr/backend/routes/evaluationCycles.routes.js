@@ -128,7 +128,7 @@ router.post(
       detalle: `Se creo el ciclo ${cycle.periodo} ${cycle.anio}`,
     }), "audit-cycle-create");
 
-    if (cycle.estado === "Inicio") {
+    if (cycle.estado === "ABIERTO") {
       emitWebhook(String(companyId), "cycle.started", {
         cycleId: String(cycle._id),
         anio: cycle.anio,
@@ -197,7 +197,7 @@ router.put(
       detalle: `Se actualizo el ciclo ${cycle.periodo} ${cycle.anio}`,
     }), "audit-cycle-update");
 
-    if (cycle.estado === "Inicio") {
+    if (cycle.estado === "ABIERTO") {
       emitWebhook(String(cycle.companyId), "cycle.started", {
         cycleId: String(cycle._id),
         anio: cycle.anio,

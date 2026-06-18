@@ -75,7 +75,7 @@ function buildCorsOptions() {
   const allowedOrigins = buildAllowedOrigins();
   const allowVercelPreview =
     process.env.NODE_ENV === "production" &&
-    String(process.env.ALLOW_VERCEL_PREVIEWS || "true").toLowerCase() !== "false";
+    String(process.env.ALLOW_VERCEL_PREVIEWS || "false").toLowerCase() !== "false";
 
   function isAllowedOrigin(origin) {
     if (allowedOrigins.has(origin)) return true;
