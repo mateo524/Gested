@@ -34,8 +34,8 @@ export function PlanUpgradeBanner({ feature }) {
       </p>
       <p className="mt-2 text-xs text-[#6a8ea0]">
         Contactá a soporte en{" "}
-        <a href="mailto:hola@zentor.com.ar" className="text-[#14b8a6] hover:underline">
-          hola@zentor.com.ar
+        <a href="mailto:zentorhq@gmail.com" className="text-[#14b8a6] hover:underline">
+          zentorhq@gmail.com
         </a>{" "}
         para actualizar tu plan.
       </p>
