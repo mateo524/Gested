@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { PlanGate } from "./components/PlanGate";
 
 const loadDashboardPage = () => import("./pages/DashboardPage");
 const loadOrganizationsPage = () => import("./pages/OrganizationsPage");
@@ -296,26 +297,28 @@ function AppContent() {
           {activeView === "organizaciones" && <OrganizationsPage />}
           {activeView === "empleados" && <EmployeesPage />}
           {activeView === "competencias" && <CompetenciesPage />}
-          {activeView === "metricas" && <MetricsPage />}
+          {activeView === "metricas" && <PlanGate feature="Métricas y KPIs"><MetricsPage /></PlanGate>}
           {activeView === "metricas-ejecutivo" && (
-            <div className="space-y-6">
-              <MetricsPage />
-              <ExecutiveReportPage />
-            </div>
+            <PlanGate feature="Métricas y reporte ejecutivo">
+              <div className="space-y-6">
+                <MetricsPage />
+                <ExecutiveReportPage />
+              </div>
+            </PlanGate>
           )}
           {activeView === "ciclos" && <EvaluationCyclesPage />}
           {activeView === "evaluaciones" && <EvaluationsPage />}
-          {activeView === "planes" && <DevelopmentPlansPage />}
+          {activeView === "planes" && <PlanGate feature="Planes de desarrollo"><DevelopmentPlansPage /></PlanGate>}
           {activeView === "bases-descargas" && <EducationalExportsPage />}
-          {activeView === "reporte-ejecutivo" && <ExecutiveReportPage />}
+          {activeView === "reporte-ejecutivo" && <PlanGate feature="Reporte ejecutivo"><ExecutiveReportPage /></PlanGate>}
           {activeView === "carga-masiva" && <BulkImportPage />}
           {activeView === "archivo-central" && <StorageCenterPage />}
           {activeView === "analytics" && <UsageAnalyticsPage />}
           {activeView === "usuarios" && <UsersPage />}
           {activeView === "roles" && <RolesPage />}
           {activeView === "settings" && <SettingsPage />}
-          {activeView === "organigrama" && <OrgChartPage />}
-          {activeView === "calibracion" && <CalibracionPage />}
+          {activeView === "organigrama" && <PlanGate feature="Organigrama"><OrgChartPage /></PlanGate>}
+          {activeView === "calibracion" && <PlanGate feature="Calibración"><CalibracionPage /></PlanGate>}
           {!KNOWN_VIEWS.has(activeView) && (
             <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28]">

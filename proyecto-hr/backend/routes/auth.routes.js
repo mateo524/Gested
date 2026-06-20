@@ -165,6 +165,8 @@ export function buildSafeUserPayload({ user, role, company, effectiveRole }) {
     companyName: company?.nombre || "Sin empresa",
     permisos: effectiveRole?.permisos || role?.permisos || [],
     modules: company?.modules ?? null,
+    plan: company?.plan ?? "pro",
+    planExpiresAt: company?.planExpiresAt ?? null,
   };
 }
 

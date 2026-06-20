@@ -7,6 +7,7 @@ import School from "../models/School.js";
 import User from "../models/User.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope, buildScopedFilter } from "../middleware/tenantScope.js";
+import { checkEmployeeLimit } from "../middleware/requirePlan.js";
 import { requireAnyPermission, requirePermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { logAudit } from "../utils/audit.js";
@@ -457,7 +458,7 @@ router.get(
   })
 );
 
-router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), asyncHandler(async (req, res) => {
+router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_EMPLOYEES), checkEmployeeLimit, asyncHandler(async (req, res) => {
   const { companyId, schoolId } = resolveTenantIds(req);
   let effectiveSchoolId = schoolId;
 

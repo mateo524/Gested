@@ -401,4 +401,30 @@ router.patch("/:id/modules", auth, requireSuperAdmin, permit("manage_companies")
   res.json({ mensaje: "Módulos actualizados", modules: company.modules });
 });
 
+// PATCH /:id/plan — superAdmin sets plan and optional expiry
+router.patch("/:id/plan", auth, requireSuperAdmin, permit("manage_companies"), async (req, res) => {
+  const { plan, planExpiresAt } = req.body;
+  const validPlans = ["base", "pro"];
+  if (!validPlans.includes(plan)) {
+    return res.status(400).json({ ok: false, mensaje: `Plan inválido. Valores permitidos: ${validPlans.join(", ")}.` });
+  }
+
+  const company = await Company.findById(req.params.id);
+  if (!company) return res.status(404).json({ ok: false, mensaje: "Empresa no encontrada." });
+
+  company.plan = plan;
+  company.planExpiresAt = planExpiresAt ? new Date(planExpiresAt) : null;
+  await company.save();
+
+  res.json({ ok: true, plan: company.plan, planExpiresAt: company.planExpiresAt });
+});
+
+// GET /:id/plan — anyone authenticated can check their own company plan
+router.get("/:id/plan", auth, async (req, res) => {
+  const company = await Company.findById(req.params.id).select("plan planExpiresAt nombre").lean();
+  if (!company) return res.status(404).json({ ok: false, mensaje: "Empresa no encontrada." });
+  const expired = company.planExpiresAt && new Date(company.planExpiresAt) < new Date();
+  res.json({ ok: true, plan: company.plan, planExpiresAt: company.planExpiresAt, expired });
+});
+
 export default router;

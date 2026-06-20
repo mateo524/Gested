@@ -22,6 +22,8 @@ const CompanySchema = new mongoose.Schema({
   spreadsheetUrl: { type: String, default: null },
   spreadsheetLastSync: { type: Date, default: null },
   modules: { type: ModulesSchema, default: () => ({}) },
+  plan: { type: String, enum: ["base", "pro"], default: "pro" },
+  planExpiresAt: { type: Date, default: null },
 }, { timestamps: true });
 
 export default mongoose.model("Company", CompanySchema);
