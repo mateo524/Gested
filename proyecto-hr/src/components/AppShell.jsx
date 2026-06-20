@@ -3,6 +3,7 @@ import { apiUrl } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
+import WhatsNewModal from "./WhatsNewModal";
 import AppLogo from "./brand/AppLogo";
 import useClickOutside from "../hooks/useClickOutside";
 
@@ -547,6 +548,7 @@ export default function AppShell({
 
   return (
     <div className="h-screen overflow-hidden bg-[#091319] text-[#E8EEF1]">
+      <WhatsNewModal />
       <div className="flex h-full">
         {/* Sidebar */}
         <aside className={`hidden h-screen shrink-0 border-r border-white/[0.07] transition-all lg:flex lg:flex-col ${sidebarCollapsed ? "w-[72px]" : "w-[256px]"}`}
