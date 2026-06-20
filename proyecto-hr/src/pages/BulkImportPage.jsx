@@ -324,6 +324,7 @@ export default function BulkImportPage() {
   const [isConfirming, setIsConfirming] = useState(false);
   const [isLoadingJobs, setIsLoadingJobs] = useState(false);
   const [showAllJobs, setShowAllJobs] = useState(false);
+  const [isReverting, setIsReverting] = useState(false);
 
   const summary = analyzeResponse?.summary || null;
   const preview = analyzeResponse?.preview || null;
@@ -602,6 +603,22 @@ export default function BulkImportPage() {
       );
     } finally {
       setIsConfirming(false);
+    }
+  }
+
+  async function handleRevert() {
+    const jobId = analyzeResponse?.importJobId || result?.importJobId;
+    if (!jobId) return;
+    if (!window.confirm("¿Revertir la importación? Se eliminarán los registros creados en los últimos segundos posteriores a la confirmación. Esta acción no se puede deshacer.")) return;
+    try {
+      setIsReverting(true);
+      const data = await apiFetch(`/bulk-import/jobs/${jobId}/revert`, { method: "POST", token });
+      setFeedback("success", data.mensaje || "Importación revertida.");
+      await loadJobs();
+    } catch (err) {
+      setFeedback("error", err.message);
+    } finally {
+      setIsReverting(false);
     }
   }
 
@@ -922,6 +939,16 @@ export default function BulkImportPage() {
                 <a href={result.reportUrl || result.downloadUrl} target="_blank" rel="noreferrer" className="rounded-2xl border border-white/15 px-4 py-3 text-sm font-medium text-white">
                   Descargar reporte
                 </a>
+              ) : null}
+              {result.ok && canManageImport ? (
+                <button
+                  type="button"
+                  onClick={handleRevert}
+                  disabled={isReverting}
+                  className="rounded-2xl border border-rose-400/30 bg-rose-500/8 px-4 py-3 text-sm font-medium text-rose-200 hover:bg-rose-500/15 disabled:opacity-60"
+                >
+                  {isReverting ? "Revirtiendo..." : "Revertir importación"}
+                </button>
               ) : null}
               {showHistory ? (
                 <button

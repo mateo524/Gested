@@ -919,4 +919,87 @@ router.get(
   }
 );
 
+// ── GET /reports/participation — Participation report by cycle ────────────────
+router.get(
+  "/participation",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const { companyId } = resolveCompanyScope(req);
+      const cycleId = req.query.cycleId || null;
+
+      const cycleFilter = cycleId ? { _id: cycleId, companyId } : { companyId };
+      const cycles = await EvaluationCycle.find(cycleFilter).sort({ createdAt: -1 }).limit(5).lean();
+      if (!cycles.length) return res.json({ ok: true, rows: [], total: 0 });
+
+      const targetCycleIds = cycles.map((c) => c._id);
+      const [totalEmployees, evaluations] = await Promise.all([
+        Employee.countDocuments({ companyId }),
+        Evaluation.find({ companyId, cycleId: { $in: targetCycleIds } })
+          .select("cycleId estado employeeId")
+          .lean(),
+      ]);
+
+      const rows = cycles.map((cycle) => {
+        const cycleEvals = evaluations.filter((e) => String(e.cycleId) === String(cycle._id));
+        const completed = cycleEvals.filter((e) => ["REVISADA", "CERRADA", "Revisada", "Cerrada"].includes(e.estado)).length;
+        const pending = cycleEvals.filter((e) => ["Borrador", "Pendiente", "BORRADOR", "PENDIENTE"].includes(e.estado)).length;
+        const rate = totalEmployees > 0 ? Math.round((completed / totalEmployees) * 100) : 0;
+        return {
+          cycleId: String(cycle._id),
+          cycleLabel: buildCycleLabel(cycle),
+          estado: cycle.estado,
+          totalEmployees,
+          totalEvaluations: cycleEvals.length,
+          completed,
+          pending,
+          participationRate: rate,
+        };
+      });
+
+      res.json({ ok: true, rows, total: rows.length });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+// ── GET /reports/plans-summary — Development plans summary ───────────────────
+router.get(
+  "/plans-summary",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const { companyId } = resolveCompanyScope(req);
+
+      const plans = await DevelopmentPlan.find({ companyId })
+        .select("estado fechaSeguimiento prioridad employeeId createdAt")
+        .lean();
+
+      const now = new Date();
+      const total = plans.length;
+      const open = plans.filter((p) => p.estado !== "CERRADO").length;
+      const completed = plans.filter((p) => p.estado === "CERRADO").length;
+      const overdue = plans.filter(
+        (p) => p.estado !== "CERRADO" && p.fechaSeguimiento && new Date(p.fechaSeguimiento) < now
+      ).length;
+      const highPriority = plans.filter((p) => p.prioridad === "ALTA" && p.estado !== "CERRADO").length;
+
+      const byStatus = plans.reduce((acc, p) => {
+        const key = p.estado || "SIN_ESTADO";
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
+
+      res.json({ ok: true, summary: { total, open, completed, overdue, highPriority, byStatus } });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
 export default router;

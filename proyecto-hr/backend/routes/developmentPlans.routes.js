@@ -624,4 +624,43 @@ router.get(
   }
 );
 
+// ── Comments on development plans ────────────────────────────────────────────
+router.post(
+  "/:id/comments",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.VIEW_REPORTS, PERMISSIONS.VIEW_GLOBAL_REPORTS, PERMISSIONS.MANAGE_EMPLOYEES),
+  async (req, res) => {
+    const { text } = req.body;
+    if (!text || String(text).trim().length === 0) {
+      return res.status(400).json({ ok: false, mensaje: "El comentario no puede estar vacío." });
+    }
+    const scopeFilter = buildScopedFilter(req);
+    const plan = await DevelopmentPlan.findOne({ _id: req.params.id, ...scopeFilter });
+    if (!plan) return res.status(404).json({ ok: false, mensaje: "Plan no encontrado." });
+
+    plan.comments.push({ userId: req.user._id, text: String(text).trim().slice(0, 1000) });
+    await plan.save();
+
+    const added = plan.comments[plan.comments.length - 1];
+    res.status(201).json({ ok: true, comment: added });
+  }
+);
+
+router.get(
+  "/:id/comments",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(PERMISSIONS.VIEW_REPORTS, PERMISSIONS.VIEW_GLOBAL_REPORTS, PERMISSIONS.MANAGE_EMPLOYEES),
+  async (req, res) => {
+    const scopeFilter = buildScopedFilter(req);
+    const plan = await DevelopmentPlan.findOne({ _id: req.params.id, ...scopeFilter })
+      .select("comments")
+      .populate("comments.userId", "nombre apellido email")
+      .lean();
+    if (!plan) return res.status(404).json({ ok: false, mensaje: "Plan no encontrado." });
+    res.json({ ok: true, comments: plan.comments || [] });
+  }
+);
+
 export default router;

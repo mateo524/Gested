@@ -227,6 +227,50 @@ router.get(
   }
 );
 
+// ── Revertir última importación ──────────────────────────────────────────────
+router.post(
+  "/jobs/:id/revert",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    try {
+      const ImportJob = (await import("../models/ImportJob.js")).default;
+      const Employee = (await import("../models/Employee.js")).default;
+      const User = (await import("../models/User.js")).default;
+
+      const filter = buildBulkImportTenantFilter(req, { _id: req.params.id });
+      const job = await ImportJob.findOne(filter).lean();
+      if (!job) return res.status(404).json({ ok: false, mensaje: "Importación no encontrada." });
+      if (job.stage !== "confirmed") {
+        return res.status(400).json({ ok: false, mensaje: "Solo se pueden revertir importaciones confirmadas." });
+      }
+
+      const importedAt = job.confirmedAt || job.updatedAt;
+      const tenantFilter = job.companyId ? { companyId: job.companyId } : { schoolId: job.schoolId };
+      const since = new Date(new Date(importedAt).getTime() - 5000); // 5s buffer
+
+      let deleted = 0;
+      if (job.datasetDetected === "empleados" || job.datasetRequested === "empleados") {
+        const result = await Employee.deleteMany({ ...tenantFilter, createdAt: { $gte: since } });
+        deleted = result.deletedCount;
+      } else if (job.datasetDetected === "usuarios" || job.datasetRequested === "usuarios") {
+        const result = await User.deleteMany({ ...tenantFilter, createdAt: { $gte: since } });
+        deleted = result.deletedCount;
+      }
+
+      await ImportJob.updateOne({ _id: job._id }, {
+        $set: { stage: "expired" },
+        $push: { auditTrail: { action: "reverted", actorUserId: req.user._id, details: { deleted }, at: new Date() } },
+      });
+
+      res.json({ ok: true, deleted, mensaje: `Importación revertida. ${deleted} registros eliminados.` });
+    } catch (err) {
+      res.status(500).json({ ok: false, mensaje: err.message });
+    }
+  }
+);
+
 router.get(
   "/jobs/:id",
   auth,

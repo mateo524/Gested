@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
 import { ToastProvider } from "./context/ToastContext";
+import { CompactModeProvider } from "./context/CompactModeContext";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
 import { resolveUiText } from "./lib/uiCopy";
 import { apiUrl } from "./lib/api";
@@ -345,7 +346,9 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <AppContent />
+        <CompactModeProvider>
+          <AppContent />
+        </CompactModeProvider>
       </ToastProvider>
     </AuthProvider>
   );

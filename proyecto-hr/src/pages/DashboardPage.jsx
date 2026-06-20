@@ -6,6 +6,7 @@ import { apiFetch, apiUrl } from "../lib/api";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import { useView } from "../context/ViewContext";
 import OnboardingChecklist from "../components/OnboardingChecklist";
+import TopPerformers from "../components/TopPerformers";
 import CollapsibleList from "../components/CollapsibleList";
 
 function getDashboardCacheKey(user, companyId) {
@@ -927,6 +928,12 @@ export default function DashboardPage() {
 
         <QuickToolsCard setView={setView} isEmpleado={isEmpleado} isLector={isLector} summary={summary} />
       </section>
+
+      {(isSuperOrDirector || isRRHH) && (activeCompanyId || user?.companyId) ? (
+        <SurfaceCard title="Top performers" subtitle="Las 5 personas con mayor puntuación en el ciclo vigente.">
+          <TopPerformers companyId={activeCompanyId || user?.companyId} />
+        </SurfaceCard>
+      ) : null}
 
     </div>
   );

@@ -5,24 +5,19 @@ const STORAGE_KEY = "zentor_seen_version";
 
 const CHANGES = [
   {
-    icon: "🔔",
-    title: "Novedades en cada actualización",
-    desc: "Ahora vas a ver este popup cada vez que deployemos una versión nueva con cambios.",
-  },
-  {
     icon: "🌐",
     title: "Nuevo dominio",
-    desc: "La app ya está disponible en app.zentor.com.ar y la landing en zentor.com.ar.",
+    desc: "Zentor ya tiene su dominio propio: app.zentor.com.ar. Actualizá cualquier acceso directo que tengas guardado.",
   },
   {
     icon: "🔐",
-    title: "Seguridad mejorada",
-    desc: "Logout ahora invalida el token en el servidor. Las sesiones se cierran de forma definitiva.",
+    title: "Cierre de sesión mejorado",
+    desc: "Al cerrar sesión, tu cuenta queda completamente desconectada en todos los dispositivos.",
   },
   {
-    icon: "⚡",
-    title: "Mejor rendimiento",
-    desc: "Optimizaciones en CORS, rate limiting y compresión para respuestas más rápidas.",
+    icon: "🔔",
+    title: "Novedades en cada versión",
+    desc: "A partir de ahora vas a ver este aviso cada vez que haya cambios relevantes en la plataforma.",
   },
 ];
 

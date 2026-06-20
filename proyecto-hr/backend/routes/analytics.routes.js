@@ -5,7 +5,10 @@ import Employee from "../models/Employee.js";
 import Evaluation from "../models/Evaluation.js";
 import EvaluationCycle from "../models/EvaluationCycle.js";
 import DevelopmentPlan from "../models/DevelopmentPlan.js";
+import EvaluationScore from "../models/EvaluationScore.js";
 import { auth } from "../middleware/auth.js";
+import { attachTenantScope } from "../middleware/tenantScope.js";
+import NpsResponse from "../models/NpsResponse.js";
 
 const router = express.Router();
 
@@ -192,6 +195,117 @@ router.get("/usage", auth, requireSuperAdmin, async (req, res) => {
       ok: false,
       message: error.message || "No pudimos generar el reporte de analytics.",
     });
+  }
+});
+
+// ── Anomaly Detection (rule-based) ────────────────────────────────────────────
+// GET /analytics/anomalies?companyId=
+// Returns evaluations with suspicious patterns: all-same scores, outlier scores,
+// no evaluations for active employees, stale open evaluations.
+router.get("/anomalies", auth, attachTenantScope, async (req, res) => {
+  try {
+    const companyId = req.query.companyId || req.scope?.companyId;
+    if (!companyId) return res.status(400).json({ ok: false, message: "companyId requerido." });
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [evaluations, scores, employees] = await Promise.all([
+      Evaluation.find({ companyId }).select("_id employeeId estado createdAt cycleId").lean(),
+      EvaluationScore.find({ companyId }).select("evaluationId nivel").lean(),
+      Employee.find({ companyId, activo: true }).select("_id nombre apellido").lean(),
+    ]);
+
+    const anomalies = [];
+
+    // Rule 1: Stale open evaluations (open > 30 days)
+    for (const ev of evaluations) {
+      if (["Borrador", "Pendiente"].includes(ev.estado) && ev.createdAt < thirtyDaysAgo) {
+        anomalies.push({
+          type: "stale_evaluation",
+          severity: "medium",
+          evaluationId: String(ev._id),
+          employeeId: String(ev.employeeId),
+          detail: "Evaluación abierta hace más de 30 días sin cerrar.",
+        });
+      }
+    }
+
+    // Rule 2: All-same scores (monotone responses)
+    const scoresByEval = new Map();
+    for (const s of scores) {
+      const key = String(s.evaluationId);
+      if (!scoresByEval.has(key)) scoresByEval.set(key, []);
+      scoresByEval.get(key).push(Number(s.nivel));
+    }
+    for (const [evalId, niveles] of scoresByEval.entries()) {
+      if (niveles.length >= 3) {
+        const allSame = niveles.every((n) => n === niveles[0]);
+        if (allSame) {
+          anomalies.push({
+            type: "all_same_scores",
+            severity: "low",
+            evaluationId: evalId,
+            detail: `Todos los scores son ${niveles[0]} (posible respuesta sin reflexión).`,
+          });
+        }
+        // Rule 3: Outlier — all 1s or all 5s in a large eval
+        const avg = niveles.reduce((a, b) => a + b, 0) / niveles.length;
+        if (avg <= 1.3 || avg >= 4.8) {
+          anomalies.push({
+            type: "outlier_scores",
+            severity: "medium",
+            evaluationId: evalId,
+            detail: `Puntaje promedio extremo: ${avg.toFixed(1)}. Revisar si es consistente.`,
+          });
+        }
+      }
+    }
+
+    // Rule 4: Employees with no evaluations at all
+    const evaluatedEmployeeIds = new Set(evaluations.map((e) => String(e.employeeId)));
+    for (const emp of employees) {
+      if (!evaluatedEmployeeIds.has(String(emp._id))) {
+        anomalies.push({
+          type: "no_evaluations",
+          severity: "low",
+          employeeId: String(emp._id),
+          employeeName: [emp.apellido, emp.nombre].filter(Boolean).join(", "),
+          detail: "Empleado activo sin ninguna evaluación registrada.",
+        });
+      }
+    }
+
+    res.json({ ok: true, total: anomalies.length, anomalies });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+// ── NPS ──────────────────────────────────────────────────────────────────────
+router.post("/nps", auth, async (req, res) => {
+  try {
+    const { score, comment = "" } = req.body;
+    if (typeof score !== "number" || score < 0 || score > 10) {
+      return res.status(400).json({ ok: false, message: "Score inválido." });
+    }
+    await NpsResponse.create({ userId: req.user._id, score, comment: String(comment).slice(0, 500) });
+    res.json({ ok: true });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
+  }
+});
+
+router.get("/nps", auth, async (req, res) => {
+  try {
+    if (!req.user?.isSuperAdmin) return res.status(403).json({ ok: false });
+    const responses = await NpsResponse.find().sort({ createdAt: -1 }).limit(200).lean();
+    const avg = responses.length ? responses.reduce((s, r) => s + r.score, 0) / responses.length : null;
+    const promoters = responses.filter(r => r.score >= 9).length;
+    const detractors = responses.filter(r => r.score <= 6).length;
+    const npsScore = responses.length ? Math.round(((promoters - detractors) / responses.length) * 100) : null;
+    res.json({ ok: true, npsScore, avg, total: responses.length, responses });
+  } catch (err) {
+    res.status(500).json({ ok: false, message: err.message });
   }
 });
 

@@ -39,6 +39,13 @@ const DevelopmentPlanSchema = new mongoose.Schema(
       enum: ["PENDIENTE", "EN_CURSO", "CERRADO"],
       default: "PENDIENTE",
     },
+    comments: [
+      {
+        userId: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+        text: { type: String, required: true, maxlength: 1000 },
+        createdAt: { type: Date, default: () => new Date() },
+      },
+    ],
   },
   { timestamps: true }
 );
