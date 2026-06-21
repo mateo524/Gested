@@ -216,6 +216,8 @@ function AppIcon({ name, active, size = "md" }) {
       return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>;
     case "organizaciones":
       return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>;
+    case "billing":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>;
     case "settings":
       return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>;
     case "analytics": case "archivo-central":
@@ -328,6 +330,7 @@ export default function AppShell({
     { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
     { key: "roles", label: "Accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "permisos"] },
     { key: "settings", label: "Configuración", show: isSuperAdmin, keywords: ["configuracion", "configuración", "ajustes"] },
+    { key: "billing", label: "Facturación", show: !isEmployee && !isManager && (isSuperAdmin || hasPermission("manage_users")), keywords: ["facturacion", "facturación", "plan", "suscripcion", "pago"] },
     { key: "archivo-central", label: "Plataforma", show: isSuperAdmin, keywords: ["plataforma", "archivo central"] },
     { key: "analytics", label: "Analytics", show: isSuperAdmin, keywords: ["analytics", "uso", "estadísticas"] },
     { key: "calibracion", label: "Calibración", show: hasPermission("manage_evaluations") || hasPermission("view_reports"), keywords: ["calibracion", "calibración", "notas", "matriz"] },
@@ -393,6 +396,7 @@ export default function AppShell({
     if (isSuperAdmin) {
       const platKids = [
         { key: "organizaciones", es: "Organizaciones", en: "Organizations" },
+        { key: "billing", es: "Facturación", en: "Billing" },
         { key: "settings", es: "Configuración", en: "Settings" },
         { key: "analytics", es: "Analytics", en: "Analytics" },
       ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));

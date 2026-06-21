@@ -512,7 +512,7 @@ export default function DevelopmentPlansPage() {
                   placeholder={L("Describí la acción o habilidad…", "Describe the action or skill…")}
                   value={form.medicion} onChange={e => setForm(f => ({ ...f, medicion: e.target.value }))}/>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-[#7f99a8]">{L("Estado", "Status")}</label>
                   <select className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none"

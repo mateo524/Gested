@@ -32,6 +32,7 @@ const loadProfilePage = () => import("./pages/ProfilePage");
 const loadUsageAnalyticsPage = () => import("./pages/UsageAnalyticsPage");
 const loadOrgChartPage = () => import("./pages/OrgChartPage");
 const loadCalibracionPage = () => import("./pages/CalibracionPage");
+const loadBillingPage = () => import("./pages/BillingPage");
 
 const DashboardPage = lazy(loadDashboardPage);
 const OrganizationsPage = lazy(loadOrganizationsPage);
@@ -53,12 +54,13 @@ const ProfilePage = lazy(loadProfilePage);
 const UsageAnalyticsPage = lazy(loadUsageAnalyticsPage);
 const OrgChartPage = lazy(loadOrgChartPage);
 const CalibracionPage = lazy(loadCalibracionPage);
+const BillingPage = lazy(loadBillingPage);
 
 const KNOWN_VIEWS = new Set([
   "dashboard","novedades","perfil","organizaciones","empleados","organigrama",
   "competencias","metricas","metricas-ejecutivo","ciclos","evaluaciones","planes",
   "bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics",
-  "usuarios","roles","settings","calibracion",
+  "usuarios","roles","settings","calibracion","billing",
 ]);
 
 function ViewLoader() {
@@ -319,6 +321,7 @@ function AppContent() {
           {activeView === "settings" && <SettingsPage />}
           {activeView === "organigrama" && <PlanGate feature="Organigrama"><OrgChartPage /></PlanGate>}
           {activeView === "calibracion" && <PlanGate feature="Calibración"><CalibracionPage /></PlanGate>}
+          {activeView === "billing" && <BillingPage />}
           {!KNOWN_VIEWS.has(activeView) && (
             <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28]">

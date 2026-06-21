@@ -47,6 +47,7 @@ import analyticsRoutes from "./routes/analytics.routes.js";
 import dripRoutes from "./routes/drip.routes.js";
 import twoFactorRoutes from "./routes/twoFactor.routes.js";
 import pdfExportRoutes from "./routes/pdfExport.routes.js";
+import billingRoutes from "./routes/billing.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { ensureIndexes } from "./utils/ensureIndexes.js";
 import { buildHealthStatus } from "./utils/health.js";
@@ -299,6 +300,7 @@ app.use("/webhooks", calendlyRoutes);
 app.use("/webhooks-config", webhooksConfigRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/drip", dripRoutes);
+app.use("/billing", billingRoutes);
 
 // Request logging — emits one structured log line per completed request.
 // Skips /health to avoid noise in Cloud Logging dashboards.
