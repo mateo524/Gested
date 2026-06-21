@@ -5,6 +5,8 @@ const subscriptionSchema = new mongoose.Schema({
   plan:              { type: String, enum: ["base", "pro"], required: true },
   status:            { type: String, enum: ["pending", "authorized", "paused", "cancelled", "expired"], default: "pending" },
 
+  employeeCount:     { type: Number },
+
   // MercadoPago identifiers
   mpPreapprovalId:   { type: String, index: true },    // preapproval subscription ID
   mpPayerId:         { type: String },                  // MP payer ID

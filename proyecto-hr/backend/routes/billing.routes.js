@@ -3,42 +3,32 @@
  *
  * Required env vars:
  *   MP_ACCESS_TOKEN  — MercadoPago Access Token (from MP credentials page)
- *   MP_WEBHOOK_SECRET — random string used to validate webhook signatures (optional but recommended)
  *   FRONTEND_URL     — e.g. https://app.zentor.com.ar
  *
- * Plans:
- *   base — ARS $X/month, up to 50 employees
- *   pro  — ARS $Y/month, unlimited employees
+ * Pricing model:
+ *   Single plan. Price = employeeCount × PRICE_PER_EMPLOYEE_ARS (per month).
+ *   Minimum: MIN_EMPLOYEES employees billed.
+ *   Price is never shown in the app — only in MercadoPago checkout.
  */
 
 import { Router } from "express";
 import Company      from "../models/Company.js";
 import Subscription from "../models/Subscription.js";
-import { auth, attachTenantScope } from "../middleware/auth.js";
+import { auth } from "../middleware/auth.js";
+import { attachTenantScope } from "../middleware/tenantScope.js";
 
 const router = Router();
 
 const MP_BASE = "https://api.mercadopago.com";
 
-// Plan definitions — prices in ARS
-const PLANS = {
-  base: {
-    label: "Zentor Base",
-    description: "Hasta 50 empleados · Evaluaciones, reportes y planes",
-    price: 29900,   // ARS 29.900/mes — ajustá según mercado
-    currency: "ARS",
-    frequency: 1,
-    frequencyType: "months",
-  },
-  pro: {
-    label: "Zentor Pro",
-    description: "Empleados ilimitados · Todas las funciones",
-    price: 69900,   // ARS 69.900/mes
-    currency: "ARS",
-    frequency: 1,
-    frequencyType: "months",
-  },
-};
+// ~$3 USD/employee — adjust as ARS/USD rate changes
+const PRICE_PER_EMPLOYEE_ARS = 3000;  // ARS per employee per month
+const MIN_EMPLOYEES = 5;              // minimum billed employees
+
+function calcPrice(employeeCount) {
+  const billed = Math.max(employeeCount || 0, MIN_EMPLOYEES);
+  return billed * PRICE_PER_EMPLOYEE_ARS;
+}
 
 async function mpFetch(path, options = {}) {
   const token = process.env.MP_ACCESS_TOKEN;
@@ -59,22 +49,12 @@ async function mpFetch(path, options = {}) {
   return data;
 }
 
-// ─── GET /billing/plans ───────────────────────────────────────────────────────
-// Returns available plan definitions (prices, features)
-router.get("/plans", (req, res) => {
-  res.json({
-    ok: true,
-    plans: Object.entries(PLANS).map(([key, p]) => ({ key, ...p })),
-  });
-});
-
 // ─── GET /billing/status ──────────────────────────────────────────────────────
-// Returns current subscription status for the authenticated company
 router.get("/status", auth, attachTenantScope, async (req, res) => {
   try {
-    const companyId = req.tenantCompanyId;
+    const companyId = req.scope.companyId;
     const [company, sub] = await Promise.all([
-      Company.findById(companyId).select("plan planExpiresAt").lean(),
+      Company.findById(companyId).select("plan planExpiresAt nombre").lean(),
       Subscription.findOne({ companyId, status: { $in: ["authorized", "pending"] } })
         .sort({ createdAt: -1 }).lean(),
     ]);
@@ -89,13 +69,11 @@ router.get("/status", auth, attachTenantScope, async (req, res) => {
       expired,
       subscription: sub ? {
         id: sub._id,
-        mpPreapprovalId: sub.mpPreapprovalId,
         status: sub.status,
+        employeeCount: sub.employeeCount,
         nextPaymentDate: sub.nextPaymentDate,
         lastPaymentDate: sub.lastPaymentDate,
-        lastPaymentAmount: sub.lastPaymentAmount,
       } : null,
-      planDef: PLANS[company?.plan ?? "pro"],
     });
   } catch (err) {
     console.error("[billing/status]", err);
@@ -104,27 +82,32 @@ router.get("/status", auth, attachTenantScope, async (req, res) => {
 });
 
 // ─── POST /billing/create-checkout ───────────────────────────────────────────
-// Creates a MercadoPago preapproval (subscription) and returns the checkout URL
+// Body: { employeeCount: number, contactName: string, contactEmail: string }
+// Creates a MercadoPago preapproval and returns the checkout URL.
+// Price is calculated server-side and NOT returned to the client.
 router.post("/create-checkout", auth, attachTenantScope, async (req, res) => {
   try {
-    const { plan } = req.body;
-    if (!PLANS[plan]) return res.status(400).json({ ok: false, message: "Plan inválido" });
+    const { employeeCount, contactName, contactEmail } = req.body;
 
-    const companyId = req.tenantCompanyId;
+    const count = parseInt(employeeCount, 10);
+    if (!count || count < 1) return res.status(400).json({ ok: false, message: "Cantidad de empleados inválida" });
+
+    const companyId = req.scope.companyId;
     const frontendUrl = process.env.FRONTEND_URL || "https://app.zentor.com.ar";
-    const planDef = PLANS[plan];
+    const totalARS = calcPrice(count);
 
     const payload = {
-      reason:           planDef.label,
+      reason: "Zentor — Gestión de desempeño",
       auto_recurring: {
-        frequency:      planDef.frequency,
-        frequency_type: planDef.frequencyType,
-        transaction_amount: planDef.price / 100, // MP uses float ARS
-        currency_id:    planDef.currency,
+        frequency:          1,
+        frequency_type:     "months",
+        transaction_amount: totalARS,
+        currency_id:        "ARS",
       },
-      back_url:         `${frontendUrl}?billing_return=1`,
+      back_url:           `${frontendUrl}?billing_return=1`,
       external_reference: String(companyId),
-      status:           "pending",
+      status:             "pending",
+      payer_email:        contactEmail || undefined,
     };
 
     const data = await mpFetch("/preapproval", {
@@ -132,14 +115,14 @@ router.post("/create-checkout", auth, attachTenantScope, async (req, res) => {
       body: JSON.stringify(payload),
     });
 
-    // Upsert subscription record
     await Subscription.findOneAndUpdate(
       { companyId, mpPreapprovalId: data.id },
-      { companyId, plan, status: "pending", mpPreapprovalId: data.id },
+      { companyId, plan: "pro", status: "pending", mpPreapprovalId: data.id, employeeCount: count },
       { upsert: true, new: true }
     );
 
-    res.json({ ok: true, checkoutUrl: data.init_point, preapprovalId: data.id });
+    // Return ONLY the checkout URL — never the price
+    res.json({ ok: true, checkoutUrl: data.init_point });
   } catch (err) {
     console.error("[billing/create-checkout]", err);
     res.status(500).json({ ok: false, message: err.message || "Error al crear suscripción" });
@@ -147,10 +130,9 @@ router.post("/create-checkout", auth, attachTenantScope, async (req, res) => {
 });
 
 // ─── POST /billing/cancel ─────────────────────────────────────────────────────
-// Cancels the active subscription in MP and locally
 router.post("/cancel", auth, attachTenantScope, async (req, res) => {
   try {
-    const companyId = req.tenantCompanyId;
+    const companyId = req.scope.companyId;
     const sub = await Subscription.findOne({ companyId, status: "authorized" }).sort({ createdAt: -1 });
     if (!sub) return res.status(404).json({ ok: false, message: "No hay suscripción activa" });
 
@@ -174,50 +156,41 @@ router.post("/cancel", auth, attachTenantScope, async (req, res) => {
 });
 
 // ─── POST /billing/webhook ────────────────────────────────────────────────────
-// Receives MercadoPago payment notifications (IPN / webhooks)
-// Configure this URL in MP: https://api.zentor.com.ar/billing/webhook
+// Configure in MP: https://api.zentor.com.ar/billing/webhook
 router.post("/webhook", async (req, res) => {
   try {
     const { type, data } = req.body;
-
-    // Acknowledge immediately to avoid MP retries
-    res.json({ ok: true });
+    res.json({ ok: true }); // acknowledge immediately
 
     if (type !== "subscription_preapproval" && type !== "payment") return;
-
     const resourceId = data?.id;
     if (!resourceId) return;
 
-    let preapprovalId, mpStatus, payerId, payerEmail, nextPaymentDate, transactionAmount;
+    let preapprovalId, mpStatus, payerEmail, nextPaymentDate, transactionAmount;
 
     if (type === "subscription_preapproval") {
       const detail = await mpFetch(`/preapproval/${resourceId}`);
-      preapprovalId   = detail.id;
-      mpStatus        = detail.status;
-      payerId         = detail.payer_id;
-      payerEmail      = detail.payer_email;
-      nextPaymentDate = detail.next_payment_date ? new Date(detail.next_payment_date) : null;
+      preapprovalId     = detail.id;
+      mpStatus          = detail.status;
+      payerEmail        = detail.payer_email;
+      nextPaymentDate   = detail.next_payment_date ? new Date(detail.next_payment_date) : null;
       transactionAmount = detail.auto_recurring?.transaction_amount;
     } else if (type === "payment") {
       const payment = await mpFetch(`/v1/payments/${resourceId}`);
       if (payment.payment_type_id !== "recurring") return;
-      preapprovalId   = payment.preapproval_id;
-      mpStatus        = payment.status === "approved" ? "authorized" : payment.status;
-      payerEmail      = payment.payer?.email;
+      preapprovalId     = payment.preapproval_id;
+      mpStatus          = payment.status === "approved" ? "authorized" : payment.status;
+      payerEmail        = payment.payer?.email;
       transactionAmount = payment.transaction_amount;
-      if (payment.status === "approved") {
-        nextPaymentDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-      }
+      if (payment.status === "approved") nextPaymentDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     }
 
     if (!preapprovalId) return;
-
     const sub = await Subscription.findOne({ mpPreapprovalId: preapprovalId });
     if (!sub) return;
 
     const statusMap = { authorized: "authorized", paused: "paused", cancelled: "cancelled", pending: "pending" };
     sub.status = statusMap[mpStatus] || sub.status;
-    if (payerId) sub.mpPayerId = payerId;
     if (payerEmail) sub.mpPayerEmail = payerEmail;
     if (nextPaymentDate) sub.nextPaymentDate = nextPaymentDate;
     if (transactionAmount) {
@@ -228,16 +201,10 @@ router.post("/webhook", async (req, res) => {
     }
     await sub.save();
 
-    // Update company plan when payment confirmed
     if (sub.status === "authorized") {
-      const expiresAt = new Date(Date.now() + 32 * 24 * 60 * 60 * 1000); // +32 days buffer
-      await Company.findByIdAndUpdate(sub.companyId, {
-        plan: sub.plan,
-        planExpiresAt: expiresAt,
-      });
+      const expiresAt = new Date(Date.now() + 32 * 24 * 60 * 60 * 1000);
+      await Company.findByIdAndUpdate(sub.companyId, { plan: "pro", planExpiresAt: expiresAt });
     }
-
-    // Cancel = revert to base
     if (sub.status === "cancelled") {
       await Company.findByIdAndUpdate(sub.companyId, { plan: "base", planExpiresAt: null });
     }
