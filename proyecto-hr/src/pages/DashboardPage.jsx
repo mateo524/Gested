@@ -728,18 +728,23 @@ export default function DashboardPage() {
 
   if (!summary && message) {
     return (
-      <div className="space-y-4">
-        <DashboardSkeleton />
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-rose-300/25 bg-rose-500/8 px-4 py-3 text-sm text-rose-200">
-          <span>{message}</span>
-          <button
-            type="button"
-            onClick={() => { setMessage(""); setIsLoading(true); setLoadSlow(false); setRetryCount((c) => c + 1); }}
-            className="shrink-0 rounded-xl border border-rose-300/30 px-3 py-1.5 text-xs font-semibold transition hover:bg-rose-500/15"
-          >
-            Reintentar
-          </button>
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#7a9aaa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
         </div>
+        <div>
+          <p className="font-semibold text-white">No se pudo cargar el dashboard</p>
+          <p className="mt-1 max-w-xs text-sm text-[#7a9aaa]">{message}</p>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setMessage(""); setIsLoading(true); setLoadSlow(false); setRetryCount((c) => c + 1); }}
+          className="rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#0f172a] hover:bg-[#0d9488]"
+        >
+          Reintentar
+        </button>
       </div>
     );
   }

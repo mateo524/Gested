@@ -276,6 +276,9 @@ function AppContent() {
     return <ForcePasswordPage />;
   }
 
+  // Company not found — show banner but allow navigation to organizaciones
+  const companyMissing = user && !user.isSuperAdmin && (!user.companyId || user.companyName === "Sin empresa");
+
   return (
     <ViewProvider value={viewContextValue}>
       <AppShell
@@ -293,6 +296,21 @@ function AppContent() {
         <ErrorBoundary>
         <Suspense fallback={<ViewLoader />}>
           <div key={activeView} className="page-enter">
+          {companyMissing && activeView !== "organizaciones" && (
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/25 bg-amber-500/10 px-4 py-3">
+              <div className="flex items-center gap-2.5">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span className="text-sm text-amber-200">Empresa no encontrada. Para continuar, creá tu empresa en Organizaciones.</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setView("organizaciones")}
+                className="rounded-xl bg-amber-400 px-3 py-1.5 text-xs font-semibold text-[#0f172a] hover:bg-amber-300"
+              >
+                Ir a Organizaciones
+              </button>
+            </div>
+          )}
           {activeView === "dashboard" && <DashboardPage />}
           {activeView === "novedades" && <AnnouncementsPage />}
           {activeView === "perfil" && <ProfilePage />}
