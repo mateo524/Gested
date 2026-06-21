@@ -767,11 +767,11 @@ export default function AppShell({
                   t={t}
                 />
                 <button type="button" onClick={() => setShowShortcuts(true)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:bg-[#172c39] hover:text-white"
+                  className="hidden sm:flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-[#12222d] text-[#8ea5b3] transition hover:bg-[#172c39] hover:text-white"
                   aria-label="Atajos de teclado" title="Atajos (?)">
                   <span className="text-sm font-semibold">?</span>
                 </button>
-                <LanguageMenu language={language} setLanguage={setLanguage} t={t}/>
+                <div className="hidden sm:block"><LanguageMenu language={language} setLanguage={setLanguage} t={t}/></div>
                 <button onClick={logout}
                   className="rounded-xl border border-white/15 bg-[#152833] px-3 py-2 text-sm text-white transition hover:bg-[#1a3240]">
                   {t("topbar.logout", "Salir")}

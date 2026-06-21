@@ -44,7 +44,7 @@ function CycleProgressPanel({ cycleId, token, onClose }) {
           ) : (
             <div className="space-y-5">
               {/* Summary */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
                   { label: "Personas", value: data.summary.total },
                   { label: "Con evaluaciones", value: data.summary.withEvals },

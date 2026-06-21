@@ -206,7 +206,7 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
 
       {/* Score summary cards — only for JEFATURA once auto-eval loaded */}
       {isJefatura && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 sm:grid-cols-3 gap-3">
           <div className="rounded-2xl border border-violet-500/25 bg-violet-500/8 px-4 py-3">
             <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-violet-300">Autoevaluación</p>
             {summaryAuto
@@ -245,7 +245,7 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
       )}
 
       {/* Skills grid */}
-      <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
+      <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden overflow-x-auto">
         {/* Column headers */}
         <div className={`grid gap-0 border-b border-white/10 ${showSideBySide ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]"}`}>
           <div className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">Habilidad</div>
