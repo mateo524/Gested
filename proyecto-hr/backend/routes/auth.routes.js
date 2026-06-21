@@ -290,6 +290,115 @@ function buildResetUrl(rawToken) {
   return `${baseUrl}/reset-password?token=${encodeURIComponent(rawToken)}`;
 }
 
+// ─── POST /auth/register ─────────────────────────────────────────────────────
+// Public self-service registration: creates a company + admin user in one step.
+const registerLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  limit: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { mensaje: "Demasiados registros desde esta IP. Intentá más tarde." },
+});
+
+router.post("/register", registerLimiter, async (req, res) => {
+  try {
+    const nombre       = trimText(req.body.nombre);
+    const apellido     = trimText(req.body.apellido);
+    const email        = trimText(req.body.email).toLowerCase();
+    const password     = trimText(req.body.password);
+    const companyName  = trimText(req.body.companyName);
+
+    if (!nombre || !email || !password || !companyName) {
+      return res.status(400).json({ mensaje: "Completá todos los campos obligatorios." });
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return res.status(400).json({ mensaje: "El correo no es válido." });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ mensaje: "La contraseña debe tener al menos 8 caracteres." });
+    }
+    if (companyName.length < 2) {
+      return res.status(400).json({ mensaje: "El nombre de la empresa es demasiado corto." });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ mensaje: "Ya existe una cuenta con ese correo." });
+    }
+
+    // Create slug from company name
+    const baseSlug = companyName
+      .toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    let slug = baseSlug;
+    let suffix = 1;
+    while (await Company.findOne({ slug })) {
+      slug = `${baseSlug}-${suffix++}`;
+    }
+
+    // Find or create "Admin empresa" role for this company (use a generic admin role)
+    let adminRole = await Role.findOne({ code: "org_admin", companyId: null }).lean();
+    // If no global admin role, create company without role assignment and set isSuperAdmin-like perms via a new role
+    // We'll create a company-scoped admin role
+    const company = await Company.create({
+      nombre: companyName,
+      slug,
+      plan: "pro",
+      modules: {
+        evaluaciones: true,
+        planesDesarrollo: true,
+        kpis: true,
+        exportacion: true,
+        reporteEjecutivo: true,
+        orgchart: true,
+        cargaMasiva: true,
+        calibracion: false,
+      },
+    });
+
+    // Create an admin role scoped to this company
+    const ALL_PERMS = [
+      "manage_companies","manage_users","manage_roles","manage_settings","manage_employees",
+      "manage_competencies","manage_metrics","manage_evaluation_cycles","manage_evaluations",
+      "manage_development_plans","view_reports","download_reports","download_team_reports",
+      "evaluate_team","self_evaluate","view_audit","manage_schools","manage_school_users",
+      "download_self_report",
+    ];
+    const role = await Role.create({
+      nombre: "Administrador",
+      code: "org_admin",
+      scope: "company",
+      companyId: company._id,
+      permisos: ALL_PERMS,
+    });
+
+    const passwordHash = await bcrypt.hash(password, 10);
+    const user = await User.create({
+      nombre,
+      apellido,
+      email,
+      passwordHash,
+      companyId: company._id,
+      roleId: role._id,
+      activo: true,
+      mustChangePassword: false,
+    });
+
+    const safeUser = await buildSafeUser(user, company);
+    const token = buildToken(user, safeUser);
+    const refreshToken = buildRefreshToken(user);
+    setRefreshCookie(res, refreshToken);
+
+    res.status(201).json({ token, user: safeUser });
+  } catch (err) {
+    console.error("[auth/register]", err);
+    res.status(500).json({ mensaje: "No se pudo crear la cuenta. Intentá más tarde." });
+  }
+});
+
 router.post("/login", loginLimiter, async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();

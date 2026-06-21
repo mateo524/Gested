@@ -16,6 +16,7 @@ export default function LoginPage() {
   const [form, setForm] = useState({ email: "", password: "" });
   const [forgotEmail, setForgotEmail] = useState("");
   const [resetForm, setResetForm] = useState({ token: "", newPassword: "" });
+  const [registerForm, setRegisterForm] = useState({ nombre: "", apellido: "", email: "", password: "", companyName: "" });
   const [mode, setMode] = useState("login");
   const [message, setMessage] = useState("");
   const [portalBranding] = useState(defaultBranding);
@@ -86,6 +87,25 @@ export default function LoginPage() {
       setMode("reset");
     } catch (error) {
       setMessage(error.message || "No se pudo enviar la solicitud.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRegister = async (event) => {
+    try {
+      event?.preventDefault();
+      if (isSubmitting) return;
+      setMessage("");
+      setIsSubmitting(true);
+      const data = await apiFetch("/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(registerForm),
+      });
+      await login(data);
+    } catch (error) {
+      setMessage(error.message || "No se pudo crear la cuenta.");
     } finally {
       setIsSubmitting(false);
     }
@@ -170,14 +190,18 @@ export default function LoginPage() {
               ? "Recuperar contraseña"
               : mode === "reset"
                 ? "Nueva contraseña"
-                : `Entrar a ${portalBranding.nombreVisible}`}
+                : mode === "register"
+                  ? "Crear cuenta"
+                  : `Entrar a ${portalBranding.nombreVisible}`}
           </h1>
           <p className="mt-2 text-sm leading-6 text-[#AFC3CE]">
             {mode === "login"
               ? "Accedé a tu panel de gestión institucional."
               : mode === "forgot"
                 ? "Ingresá tu correo y te enviamos un enlace de recuperación."
-                : "Ingresá el token de recuperación y tu nueva contraseña."}
+                : mode === "register"
+                  ? "Completá tus datos para empezar gratis."
+                  : "Ingresá el token de recuperación y tu nueva contraseña."}
           </p>
 
           {mode === "login" && isDemo && (
@@ -229,6 +253,75 @@ export default function LoginPage() {
                 className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#AFC3CE] transition hover:border-white/40"
               >
                 Olvidé mi contraseña
+              </button>
+              <div className="pt-1 text-center text-xs text-[#7a9aaa]">
+                ¿No tenés cuenta?{" "}
+                <button type="button" onClick={() => { setMessage(""); setMode("register"); }}
+                  className="font-semibold text-[#14b8a6] hover:underline">
+                  Registrarse gratis
+                </button>
+              </div>
+            </form>
+          )}
+
+          {mode === "register" && (
+            <form className="mt-7 space-y-3" onSubmit={handleRegister}>
+              <div className="grid grid-cols-2 gap-3">
+                <input
+                  type="text"
+                  placeholder="Nombre *"
+                  value={registerForm.nombre}
+                  onChange={e => setRegisterForm(f => ({ ...f, nombre: e.target.value }))}
+                  required
+                  className={inputClass}
+                />
+                <input
+                  type="text"
+                  placeholder="Apellido"
+                  value={registerForm.apellido}
+                  onChange={e => setRegisterForm(f => ({ ...f, apellido: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+              <input
+                type="text"
+                placeholder="Nombre de la empresa *"
+                value={registerForm.companyName}
+                onChange={e => setRegisterForm(f => ({ ...f, companyName: e.target.value }))}
+                required
+                className={inputClass}
+              />
+              <input
+                type="email"
+                placeholder="Correo electrónico *"
+                value={registerForm.email}
+                onChange={e => setRegisterForm(f => ({ ...f, email: e.target.value }))}
+                required
+                autoComplete="email"
+                className={inputClass}
+              />
+              <input
+                type="password"
+                placeholder="Contraseña (mín. 8 caracteres) *"
+                value={registerForm.password}
+                onChange={e => setRegisterForm(f => ({ ...f, password: e.target.value }))}
+                required
+                autoComplete="new-password"
+                className={inputClass}
+              />
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full rounded-[1.25rem] bg-[#14b8a6] py-3.5 font-semibold text-[#0f172a] shadow-[0_8px_24px_rgba(20,184,166,0.28)] transition hover:bg-[#0d9488] disabled:cursor-wait disabled:opacity-70"
+              >
+                {isSubmitting ? "Creando cuenta..." : "Crear cuenta y entrar"}
+              </button>
+              <button
+                type="button"
+                onClick={() => { setMessage(""); setMode("login"); }}
+                className="w-full rounded-[1.25rem] border border-white/20 py-3 text-sm text-[#AFC3CE] transition hover:border-white/40"
+              >
+                Ya tengo cuenta
               </button>
             </form>
           )}
