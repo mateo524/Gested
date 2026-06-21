@@ -399,6 +399,80 @@ router.post("/register", registerLimiter, async (req, res) => {
   }
 });
 
+// ─── POST /auth/setup-company ─────────────────────────────────────────────────
+// Authenticated users without a company can create one for themselves.
+router.post("/setup-company", auth, async (req, res) => {
+  try {
+    if (req.user.companyId) {
+      return res.status(409).json({ mensaje: "Ya tenés una empresa asignada." });
+    }
+    const companyName = String(req.body.companyName || "").trim();
+    if (!companyName || companyName.length < 2) {
+      return res.status(400).json({ mensaje: "Nombre de empresa demasiado corto." });
+    }
+
+    const baseSlug = companyName
+      .toLowerCase()
+      .normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40);
+    let slug = baseSlug;
+    let suffix = 1;
+    while (await Company.findOne({ slug })) {
+      slug = `${baseSlug}-${suffix++}`;
+    }
+
+    const ALL_PERMS = [
+      "manage_companies","manage_users","manage_roles","manage_settings","manage_employees",
+      "manage_competencies","manage_metrics","manage_evaluation_cycles","manage_evaluations",
+      "manage_development_plans","view_reports","download_reports","download_team_reports",
+      "evaluate_team","self_evaluate","view_audit","manage_schools","manage_school_users",
+      "download_self_report",
+    ];
+
+    const company = await Company.create({
+      nombre: companyName,
+      slug,
+      plan: "pro",
+      modules: {
+        evaluaciones: true,
+        planesDesarrollo: true,
+        kpis: true,
+        exportacion: true,
+        reporteEjecutivo: true,
+        orgchart: true,
+        cargaMasiva: true,
+        calibracion: false,
+      },
+    });
+
+    const role = await Role.create({
+      nombre: "Administrador",
+      code: "org_admin",
+      scope: "company",
+      companyId: company._id,
+      permisos: ALL_PERMS,
+    });
+
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user.userId,
+      { companyId: company._id, roleId: role._id },
+      { new: true }
+    );
+
+    const safeUser = await buildSafeUser(updatedUser, company);
+    const token = buildToken(updatedUser, safeUser);
+    const refreshToken = buildRefreshToken(updatedUser);
+    setRefreshCookie(res, refreshToken);
+
+    res.status(201).json({ token, user: safeUser });
+  } catch (err) {
+    console.error("[auth/setup-company]", err);
+    res.status(500).json({ mensaje: "No se pudo crear la empresa. Intentá más tarde." });
+  }
+});
+
 router.post("/login", loginLimiter, async (req, res) => {
   try {
     const email = req.body.email?.trim().toLowerCase();

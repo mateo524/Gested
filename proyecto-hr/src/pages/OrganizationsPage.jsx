@@ -5,6 +5,64 @@ import { apiFetch } from "../lib/api";
 import CompaniesPage from "./CompaniesPage";
 import SchoolsPage from "./SchoolsPage";
 
+function SetupCompanyForm({ token, login }) {
+  const [companyName, setCompanyName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    if (!companyName.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/auth/setup-company", {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyName: companyName.trim() }),
+      });
+      await login(data);
+    } catch (err) {
+      setError(err?.message || "No se pudo crear la empresa.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <section className="rounded-[2rem] border border-amber-400/30 bg-amber-500/5 p-6">
+      <div className="mb-4 flex items-center gap-2.5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <h4 className="text-lg font-semibold text-slate-950">Configurar empresa</h4>
+      </div>
+      <p className="mb-4 text-sm text-slate-500">Tu cuenta no tiene una empresa asociada. Ingresá el nombre de tu organización para comenzar.</p>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+        <div className="flex-1">
+          <label className="mb-1.5 block text-xs font-medium text-slate-600">Nombre de la empresa</label>
+          <input
+            type="text"
+            value={companyName}
+            onChange={e => setCompanyName(e.target.value)}
+            placeholder="Ej: Acme S.A."
+            required
+            minLength={2}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 placeholder-slate-400 focus:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/20"
+          />
+        </div>
+        <button
+          type="submit"
+          disabled={loading || !companyName.trim()}
+          className="rounded-xl bg-emerald-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-50"
+        >
+          {loading ? "Creando…" : "Crear empresa"}
+        </button>
+      </form>
+      {error ? <p className="mt-2 text-sm text-red-500">{error}</p> : null}
+    </section>
+  );
+}
+
 function SpreadsheetBadge({ token, companyId }) {
   const [url, setUrl] = useState(null);
   const [lastSync, setLastSync] = useState(null);
@@ -39,8 +97,10 @@ function SpreadsheetBadge({ token, companyId }) {
 }
 
 export default function OrganizationsPage() {
-  const { user, activeCompany, token } = useAuth();
+  const { user, activeCompany, token, login } = useAuth();
   const canManageCompanies = !!user?.isSuperAdmin;
+  const canManageOwnCompany = !user?.isSuperAdmin && !!user?.permisos?.includes("manage_companies");
+  const needsCompanySetup = canManageOwnCompany && !user?.companyId;
   const [tab, setTab] = useState(canManageCompanies ? "empresas" : "colegios");
   const [qualityItems, setQualityItems] = useState([]);
   const [isLoadingQuality, setIsLoadingQuality] = useState(false);
@@ -148,6 +208,10 @@ export default function OrganizationsPage() {
             )}
           </div>
         </section>
+      ) : null}
+
+      {needsCompanySetup ? (
+        <SetupCompanyForm token={token} login={login} />
       ) : null}
 
       {tab === "empresas" && canManageCompanies ? <CompaniesPage /> : null}
