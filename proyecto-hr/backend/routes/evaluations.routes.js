@@ -107,7 +107,7 @@ export function canEmployeeViewEvaluation(req, evaluation) {
   if (!evaluation) return false;
   if (getEvaluationEmployeeId(evaluation) !== String(req.scope.employeeId || "")) return false;
   if (evaluation.tipo === "AUTOEVALUACION") return true;
-  return evaluation.estado === "CERRADA" || evaluation.estado === "REVISADA";
+  return evaluation.estado === "CERRADA";
 }
 
 export function filterEvaluationsForScope(req, evaluations = []) {
