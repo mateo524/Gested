@@ -5,7 +5,7 @@ import { ToastProvider } from "./context/ToastContext";
 import { CompactModeProvider } from "./context/CompactModeContext";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser } from "./lib/roleHelpers";
 import { resolveUiText } from "./lib/uiCopy";
-import { apiUrl } from "./lib/api";
+import { apiUrl, apiFetch } from "./lib/api";
 import LoginPage from "./pages/LoginPage";
 import AppShell from "./components/AppShell";
 import ForcePasswordPage from "./pages/ForcePasswordPage";
@@ -101,8 +101,9 @@ function ViewLoader() {
 }
 
 function AppContent() {
-  const { isAuthenticated, hasPermission, hasModule, user, sessionBootstrapping } = useAuth();
+  const { isAuthenticated, hasPermission, hasModule, user, sessionBootstrapping, token } = useAuth();
   const [view, setView] = useState("dashboard");
+  const [billingRequired, setBillingRequired] = useState(false);
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
   const [language, setLanguage] = useState(() => localStorage.getItem("performia_language") || "es");
@@ -114,6 +115,22 @@ function AppContent() {
     const id = setInterval(ping, 5 * 60 * 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Billing gate: company admins must pay before using the app.
+  // Skip for SuperAdmin, employees, and managers.
+  useEffect(() => {
+    if (!token || !user || user.isSuperAdmin || isEmployeeUser(user) || isManagerUser(user)) {
+      setBillingRequired(false);
+      return;
+    }
+    apiFetch("/billing/status", { token })
+      .then((data) => {
+        const hasActiveSub = !!data.subscription;
+        const hasManualPlan = data.planExpiresAt && !data.expired;
+        setBillingRequired(!hasActiveSub && !hasManualPlan);
+      })
+      .catch(() => setBillingRequired(false));
+  }, [token, user]);
 
   const availableViews = useMemo(
     () =>
@@ -181,7 +198,12 @@ function AppContent() {
     [hasPermission, hasModule, user]
   );
 
-  const activeView = availableViews.includes(view) ? view : (availableViews[0] || "dashboard");
+  const gatedViews = useMemo(
+    () => billingRequired ? ["billing"] : availableViews,
+    [billingRequired, availableViews]
+  );
+
+  const activeView = gatedViews.includes(view) ? view : (gatedViews[0] || "dashboard");
 
   useEffect(() => {
     if (view !== activeView) {
@@ -294,7 +316,7 @@ function AppContent() {
         language={language}
         setLanguage={setLanguage}
         t={t}
-        availableViews={availableViews}
+        availableViews={gatedViews}
       >
         <ErrorBoundary>
         <Suspense fallback={<ViewLoader />}>
@@ -354,7 +376,7 @@ function AppContent() {
               <p className="text-sm text-[#7a9aaa]">La sección <code className="rounded bg-white/8 px-1.5 py-0.5 text-xs text-[#14b8a6]">{activeView}</code> no existe.</p>
               <button
                 type="button"
-                onClick={() => setView(availableViews[0] || "dashboard")}
+                onClick={() => setView(gatedViews[0] || "dashboard")}
                 className="rounded-2xl bg-[#14b8a6] px-5 py-2.5 text-sm font-semibold text-[#0f172a]"
               >
                 Volver al inicio

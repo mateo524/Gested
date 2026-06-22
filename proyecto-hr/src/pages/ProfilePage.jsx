@@ -137,7 +137,11 @@ export default function ProfilePage() {
             </div>
             <div className="rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] p-3">
               <p className="text-[10px] uppercase tracking-[0.12em] text-[#5e7d8e]">Alcance</p>
-              <p className="mt-1.5 text-sm font-semibold text-white">{user?.scope || user?.roleScope || "Global"}</p>
+              <p className="mt-1.5 text-sm font-semibold text-white">
+                {user?.isSuperAdmin ? "Plataforma" : (
+                  { school: "Organización", company: "Empresa", global: "Global", team: "Equipo", self: "Personal", read_only: "Solo lectura" }[user?.scope || user?.roleScope] || user?.scope || user?.roleScope || "Organización"
+                )}
+              </p>
             </div>
             <div className="col-span-full rounded-2xl border border-white/[0.08] bg-gradient-to-b from-[#111f28] to-[#0c1920] p-3">
               <p className="text-[10px] uppercase tracking-[0.12em] text-[#5e7d8e]">Organización activa</p>

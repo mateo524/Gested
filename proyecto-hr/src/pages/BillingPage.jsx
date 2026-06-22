@@ -108,6 +108,7 @@ export default function BillingPage() {
   const sub = status?.subscription;
   const hasActiveSub = sub?.status === "authorized";
   const hasPendingSub = sub?.status === "pending";
+  const needsSubscription = !hasActiveSub && !hasPendingSub && !status?.planExpiresAt;
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -115,6 +116,13 @@ export default function BillingPage() {
         <h2 className="text-xl font-semibold text-white">Facturación y suscripción</h2>
         <p className="mt-1 text-sm text-[#7a9aaa]">Activá o administrá tu suscripción a Zentor.</p>
       </div>
+
+      {needsSubscription && (
+        <div className="rounded-2xl border border-amber-400/20 bg-amber-500/8 px-5 py-4">
+          <p className="text-sm font-semibold text-amber-300">Tu cuenta no tiene una suscripción activa</p>
+          <p className="mt-1 text-xs text-amber-200/70">Completá el formulario para activar el acceso a todas las funciones.</p>
+        </div>
+      )}
 
       {/* Current status */}
       {(hasActiveSub || hasPendingSub || status?.planExpiresAt) && (
