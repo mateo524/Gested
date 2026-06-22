@@ -149,6 +149,9 @@ export function AuthProvider({ children }) {
 
     if (!nextUser?.isSuperAdmin && !nextUser?.permisos?.includes("manage_companies")) {
       setCompanies([]);
+      // Sync active_company_id to the user's own companyId so API requests always use the correct header.
+      // Without this, a stale value from a previous session causes 403 "No tenés acceso a esa empresa".
+      setActiveCompanyId(nextUser?.companyId ? String(nextUser.companyId) : "");
       return;
     }
 

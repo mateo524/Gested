@@ -927,7 +927,7 @@ router.get(
   requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
   async (req, res) => {
     try {
-      const { companyId } = resolveCompanyScope(req);
+      const { companyId } = await resolveCompanyScope(req);
       const cycleId = req.query.cycleId || null;
 
       const cycleFilter = cycleId ? { _id: cycleId, companyId } : { companyId };
@@ -974,7 +974,7 @@ router.get(
   requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
   async (req, res) => {
     try {
-      const { companyId } = resolveCompanyScope(req);
+      const { companyId } = await resolveCompanyScope(req);
 
       const plans = await DevelopmentPlan.find({ companyId })
         .select("estado fechaSeguimiento prioridad employeeId createdAt")

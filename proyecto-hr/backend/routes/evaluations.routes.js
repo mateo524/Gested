@@ -271,7 +271,7 @@ router.get(
       { $sort: { score: -1 } },
       { $limit: limit },
       { $lookup: { from: "employees", localField: "_id", foreignField: "_id", as: "emp" } },
-      { $unwind: { path: "$emp", preserveNullAndEmpty: true } },
+      { $unwind: { path: "$emp", preserveNullAndEmptyArrays: true } },
       { $project: {
         _id: 1,
         name: { $trim: { input: { $concat: [

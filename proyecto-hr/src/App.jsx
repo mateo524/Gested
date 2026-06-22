@@ -103,7 +103,7 @@ function ViewLoader() {
 function AppContent() {
   const { isAuthenticated, hasPermission, hasModule, user, sessionBootstrapping, token } = useAuth();
   const [view, setView] = useState("dashboard");
-  const [billingRequired, setBillingRequired] = useState(false);
+  const [billingRequired, setBillingRequired] = useState(null);
   const [searchQuery, setSearchQuery] = useState(() => localStorage.getItem("performia_search_query") || "");
   const [theme, setTheme] = useState(() => localStorage.getItem("performia_theme") || "dark");
   const [language, setLanguage] = useState(() => localStorage.getItem("performia_language") || "es");
@@ -119,7 +119,11 @@ function AppContent() {
   // Billing gate: company admins must pay before using the app.
   // Skip for SuperAdmin, employees, and managers.
   useEffect(() => {
-    if (!token || !user || user.isSuperAdmin || isEmployeeUser(user) || isManagerUser(user)) {
+    if (!token || !user) {
+      setBillingRequired(null);
+      return;
+    }
+    if (user.isSuperAdmin || isEmployeeUser(user) || isManagerUser(user)) {
       setBillingRequired(false);
       return;
     }
@@ -299,6 +303,13 @@ function AppContent() {
 
   if (user?.mustChangePassword) {
     return <ForcePasswordPage />;
+  }
+
+  // Hold rendering until billing check resolves for users who need it.
+  // Prevents dashboard from mounting (and firing API calls) before we know
+  // whether to gate them to the billing page.
+  if (billingRequired === null && !user?.isSuperAdmin && !isEmployeeUser(user) && !isManagerUser(user)) {
+    return null;
   }
 
   // Company not found — show banner but allow navigation to organizaciones
