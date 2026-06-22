@@ -944,8 +944,8 @@ router.get(
 
       const rows = cycles.map((cycle) => {
         const cycleEvals = evaluations.filter((e) => String(e.cycleId) === String(cycle._id));
-        const completed = cycleEvals.filter((e) => ["REVISADA", "CERRADA", "Revisada", "Cerrada"].includes(e.estado)).length;
-        const pending = cycleEvals.filter((e) => ["Borrador", "Pendiente", "BORRADOR", "PENDIENTE"].includes(e.estado)).length;
+        const completed = cycleEvals.filter((e) => ["REVISADA", "CERRADA"].includes(e.estado)).length;
+        const pending = cycleEvals.filter((e) => ["BORRADOR", "ENVIADA"].includes(e.estado)).length;
         const rate = totalEmployees > 0 ? Math.round((completed / totalEmployees) * 100) : 0;
         return {
           cycleId: String(cycle._id),

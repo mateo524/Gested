@@ -15,7 +15,7 @@ const linkedinTokens = new Map();
 
 // Step 1 — redirect user to LinkedIn consent screen
 router.get("/auth", authenticate, (req, res) => {
-  const state = `${req.user._id}_${Date.now()}`;
+  const state = `${req.user.userId}_${Date.now()}`;
   const scope = "openid profile email w_member_social";
   const url = new URL("https://www.linkedin.com/oauth/v2/authorization");
   url.searchParams.set("response_type", "code");
@@ -67,13 +67,13 @@ router.get("/callback", async (req, res) => {
 
 // GET /api/linkedin/status — check if the current user has a token
 router.get("/status", authenticate, (req, res) => {
-  const connected = linkedinTokens.has(String(req.user._id));
+  const connected = linkedinTokens.has(String(req.user.userId));
   res.json({ connected });
 });
 
 // POST /api/linkedin/post — publish a text post as the authenticated LinkedIn user
 router.post("/post", authenticate, async (req, res) => {
-  const token = linkedinTokens.get(String(req.user._id));
+  const token = linkedinTokens.get(String(req.user.userId));
   if (!token) return res.status(401).json({ error: "LinkedIn not connected" });
 
   const { text } = req.body;
@@ -120,7 +120,7 @@ router.post("/post", authenticate, async (req, res) => {
 
 // DELETE /api/linkedin/disconnect — remove stored token
 router.delete("/disconnect", authenticate, (req, res) => {
-  linkedinTokens.delete(String(req.user._id));
+  linkedinTokens.delete(String(req.user.userId));
   res.json({ ok: true });
 });
 

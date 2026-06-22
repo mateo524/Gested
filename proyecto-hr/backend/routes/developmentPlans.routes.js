@@ -639,7 +639,7 @@ router.post(
     const plan = await DevelopmentPlan.findOne({ _id: req.params.id, ...scopeFilter });
     if (!plan) return res.status(404).json({ ok: false, mensaje: "Plan no encontrado." });
 
-    plan.comments.push({ userId: req.user._id, text: String(text).trim().slice(0, 1000) });
+    plan.comments.push({ userId: req.user.userId, text: String(text).trim().slice(0, 1000) });
     await plan.save();
 
     const added = plan.comments[plan.comments.length - 1];

@@ -237,19 +237,19 @@ router.post("/cycle-reminders", async (req, res) => {
     const pendingEvals = await Evaluation.find({
       companyId: cycle.companyId,
       cycleId: cycle._id,
-      estado: { $in: ["PENDIENTE", "EN_PROGRESO"] },
-    }).select("evaluadorId").lean();
+      estado: { $in: ["BORRADOR", "ENVIADA"] },
+    }).select("evaluatorUserId").lean();
 
     if (!pendingEvals.length) continue;
 
-    const evaluadorIds = [...new Set(pendingEvals.map(e => String(e.evaluadorId)).filter(Boolean))];
+    const evaluadorIds = [...new Set(pendingEvals.map(e => String(e.evaluatorUserId)).filter(Boolean))];
     const users = await User.find({
       _id: { $in: evaluadorIds },
       activo: true,
     }).select("email nombre").lean();
 
     for (const user of users) {
-      const count = pendingEvals.filter(e => String(e.evaluadorId) === String(user._id)).length;
+      const count = pendingEvals.filter(e => String(e.evaluatorUserId) === String(user._id)).length;
       try {
         await sendEvaluationReminderEmail({
           to: user.email,

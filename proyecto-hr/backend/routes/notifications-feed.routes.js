@@ -18,7 +18,7 @@ export function pushNotification(userId, notification) {
 // Returns the last 20 notifications for the authenticated user.
 router.get("/feed", auth, async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
+    const userId = req.user.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, message: "No autorizado" });
     }
@@ -47,7 +47,7 @@ router.get("/feed", auth, async (req, res) => {
 // Marks all notifications as read for the authenticated user.
 router.patch("/feed/read", auth, async (req, res) => {
   try {
-    const userId = req.user._id || req.user.id;
+    const userId = req.user.userId;
     if (!userId) {
       return res.status(401).json({ ok: false, message: "No autorizado" });
     }

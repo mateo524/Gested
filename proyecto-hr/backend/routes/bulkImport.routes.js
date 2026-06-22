@@ -261,7 +261,7 @@ router.post(
 
       await ImportJob.updateOne({ _id: job._id }, {
         $set: { stage: "expired" },
-        $push: { auditTrail: { action: "reverted", actorUserId: req.user._id, details: { deleted }, at: new Date() } },
+        $push: { auditTrail: { action: "reverted", actorUserId: req.user.userId, details: { deleted }, at: new Date() } },
       });
 
       res.json({ ok: true, deleted, mensaje: `Importación revertida. ${deleted} registros eliminados.` });

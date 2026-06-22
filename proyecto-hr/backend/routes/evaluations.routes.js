@@ -107,7 +107,7 @@ export function canEmployeeViewEvaluation(req, evaluation) {
   if (!evaluation) return false;
   if (getEvaluationEmployeeId(evaluation) !== String(req.scope.employeeId || "")) return false;
   if (evaluation.tipo === "AUTOEVALUACION") return true;
-  return evaluation.estado === "CERRADA" || evaluation.estado === "PUBLICADA";
+  return evaluation.estado === "CERRADA" || evaluation.estado === "REVISADA";
 }
 
 export function filterEvaluationsForScope(req, evaluations = []) {
@@ -363,13 +363,13 @@ router.post(
     }
 
     if (scores.length) {
-      await EvaluationScore.insertMany(
+      await EvaluationScore.bulkWrite(
         scores.map((score) => ({
-          evaluationId: evaluation._id,
-          metricId: score.metricId,
-          nivel: score.nivel,
-          comentario: score.comentario || "",
-          evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [],
+          updateOne: {
+            filter: { evaluationId: evaluation._id, metricId: score.metricId },
+            update: { $set: { nivel: score.nivel, comentario: score.comentario || "", evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [] } },
+            upsert: true,
+          },
         }))
       );
     } else {
@@ -462,7 +462,7 @@ router.put(
     // unauthorised type escalation or retroactive audit-trail modification.
     // Only MANAGE_EVALUATIONS admins may change tipo, and only to a known value.
     if ("tipo" in req.body) {
-      if (!req.user?.permissions?.includes(PERMISSIONS.MANAGE_EVALUATIONS)) {
+      if (!req.user?.permisos?.includes(PERMISSIONS.MANAGE_EVALUATIONS)) {
         return res.status(403).json({ mensaje: "No tienes permiso para cambiar el tipo de evaluacion" });
       }
       if (!ALLOWED_TIPOS.includes(req.body.tipo)) {
@@ -486,13 +486,13 @@ router.put(
           await evaluation.save({ session });
           await EvaluationScore.deleteMany({ evaluationId: evaluation._id }, { session });
           if (scores.length) {
-            await EvaluationScore.insertMany(
+            await EvaluationScore.bulkWrite(
               scores.map((score) => ({
-                evaluationId: evaluation._id,
-                metricId: score.metricId,
-                nivel: score.nivel,
-                comentario: score.comentario || "",
-                evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [],
+                updateOne: {
+                  filter: { evaluationId: evaluation._id, metricId: score.metricId },
+                  update: { $set: { nivel: score.nivel, comentario: score.comentario || "", evidenciaUrls: Array.isArray(score.evidenciaUrls) ? score.evidenciaUrls : [] } },
+                  upsert: true,
+                },
               })),
               { session }
             );

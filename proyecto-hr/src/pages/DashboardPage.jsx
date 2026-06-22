@@ -368,6 +368,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!token) return;
+    if (user?.isSuperAdmin && !activeCompanyId) {
+      setIsLoading(false);
+      return;
+    }
 
     const cacheKey = getDashboardCacheKey(user, activeCompanyId);
     const cachedRaw = sessionStorage.getItem(cacheKey);
@@ -722,6 +726,22 @@ export default function DashboardPage() {
             El servidor está iniciando — el primer acceso del día puede tardar hasta 30 segundos.
           </div>
         ) : null}
+      </div>
+    );
+  }
+
+  if (user?.isSuperAdmin && !activeCompanyId && !isLoading) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-[#0c1e28]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#14b8a6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <p className="font-semibold text-white">Bienvenido a Zentor</p>
+          <p className="mt-1 max-w-xs text-sm text-[#7a9aaa]">No hay ninguna empresa creada todavía. Creá la primera desde Plataforma.</p>
+        </div>
       </div>
     );
   }

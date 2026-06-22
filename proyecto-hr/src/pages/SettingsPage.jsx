@@ -54,6 +54,8 @@ export default function SettingsPage() {
   const isAdmin = user?.permisos?.includes("manage_settings") || user?.isSuperAdmin;
 
   useEffect(() => {
+    if (!token) return;
+    if (user?.isSuperAdmin && !activeCompany) return;
     apiFetch("/settings", { token })
       .then((data) => {
         if (data) {
@@ -69,10 +71,11 @@ export default function SettingsPage() {
         setMessageType("warning");
         setMessage(error.message);
       });
-  }, [token]);
+  }, [token, user?.isSuperAdmin, activeCompany]);
 
   function loadWebhooks() {
     if (!isAdmin) return;
+    if (user?.isSuperAdmin && !activeCompany) { setWebhooksState("ready"); return; }
     setWebhooksState("loading");
     apiFetch("/webhooks-config", { token })
       .then((data) => {
@@ -85,7 +88,7 @@ export default function SettingsPage() {
   useEffect(() => {
     loadWebhooks();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, isAdmin]);
+  }, [token, isAdmin, activeCompany]);
 
   async function handleAddWebhook(event) {
     event.preventDefault();

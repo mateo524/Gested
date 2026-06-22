@@ -806,7 +806,7 @@ export default function CompaniesPage() {
                   setPlanSaving(true);
                   try {
                     const body = { plan: planForm.plan, planExpiresAt: planForm.planExpiresAt || null };
-                    await apiFetch(`/companies/${planTarget._id}/plan`, { token, method: "PATCH", body: JSON.stringify(body) });
+                    await apiFetch(`/companies/${planTarget._id}/plan`, { token, method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
                     setCompanies(prev => prev.map(c => c._id === planTarget._id ? { ...c, plan: planForm.plan, planExpiresAt: planForm.planExpiresAt || null } : c));
                     addToast({ message: "Plan actualizado", type: "success" });
                     setPlanTarget(null);

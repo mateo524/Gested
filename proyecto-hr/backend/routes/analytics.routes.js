@@ -219,7 +219,7 @@ router.get("/anomalies", auth, attachTenantScope, async (req, res) => {
 
     // Rule 1: Stale open evaluations (open > 30 days)
     for (const ev of evaluations) {
-      if (["Borrador", "Pendiente"].includes(ev.estado) && ev.createdAt < thirtyDaysAgo) {
+      if (["BORRADOR", "ENVIADA"].includes(ev.estado) && ev.createdAt < thirtyDaysAgo) {
         anomalies.push({
           type: "stale_evaluation",
           severity: "medium",
@@ -288,7 +288,7 @@ router.post("/nps", auth, async (req, res) => {
     if (typeof score !== "number" || score < 0 || score > 10) {
       return res.status(400).json({ ok: false, message: "Score inválido." });
     }
-    await NpsResponse.create({ userId: req.user._id, score, comment: String(comment).slice(0, 500) });
+    await NpsResponse.create({ userId: req.user.userId, score, comment: String(comment).slice(0, 500) });
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ ok: false, message: err.message });

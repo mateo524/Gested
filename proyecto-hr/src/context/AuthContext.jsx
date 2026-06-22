@@ -156,15 +156,17 @@ export function AuthProvider({ children }) {
       const companyList = await apiFetch("/companies", { token: nextToken });
       setCompanies(companyList);
 
+      const storedId = localStorage.getItem(ACTIVE_COMPANY_KEY);
+      const validIds = new Set((Array.isArray(companyList) ? companyList : []).map((c) => String(c._id)));
+
       const nextCompanyId =
-        localStorage.getItem(ACTIVE_COMPANY_KEY) ||
+        (storedId && validIds.has(storedId) ? storedId : null) ||
         nextUser.companyId ||
         companyList[0]?._id ||
         "";
 
-      if (nextCompanyId) {
-        setActiveCompanyId(nextCompanyId);
-      }
+      // Always call setActiveCompanyId — passing "" clears the stale value from localStorage
+      setActiveCompanyId(nextCompanyId || "");
     } catch {
       setCompanies([]);
     }

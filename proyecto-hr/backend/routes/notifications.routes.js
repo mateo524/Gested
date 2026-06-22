@@ -43,8 +43,8 @@ router.post("/remind-pending", auth, requireSuperAdmin, async (req, res) => {
       const pending = await Evaluation.countDocuments({
         companyId: cycle.companyId,
         cycleId: cycle._id,
-        evaluadorId: user._id,
-        estado: { $in: ["Borrador", "Pendiente"] },
+        evaluatorUserId: user._id,
+        estado: { $in: ["BORRADOR", "ENVIADA"] },
       });
 
       if (pending > 0) {
@@ -107,10 +107,10 @@ router.post("/digest-biweekly", auth, requireSuperAdmin, async (req, res) => {
         Evaluation.countDocuments({
           companyId: userCompanyId,
           cycleId: { $in: cyclesForUser.map((c) => c._id) },
-          evaluadorId: user._id,
-          estado: { $in: ["Borrador", "Pendiente"] },
+          evaluatorUserId: user._id,
+          estado: { $in: ["BORRADOR", "ENVIADA"] },
         }),
-        DevelopmentPlan.countDocuments({ companyId: userCompanyId, empleadoId: user._id, estado: { $ne: "CERRADO" } }),
+        DevelopmentPlan.countDocuments({ companyId: userCompanyId, employeeId: user.employeeId, estado: { $ne: "CERRADO" } }),
       ]);
 
       if (pendingEvals === 0 && openPlans === 0) continue;

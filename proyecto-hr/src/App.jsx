@@ -119,7 +119,7 @@ function AppContent() {
     () =>
       [
         "dashboard",
-        hasPermission("manage_companies") || hasPermission("manage_schools")
+        hasPermission("manage_companies") || hasPermission("manage_schools") || user?.isSuperAdmin
           ? "organizaciones"
           : null,
         hasPermission("manage_users") ? "usuarios" : null,
@@ -171,6 +171,9 @@ function AppContent() {
         ) ? "carga-masiva" : null,
         user?.isSuperAdmin ? "archivo-central" : null,
         user?.isSuperAdmin ? "analytics" : null,
+        !isEmployeeUser(user) && !isManagerUser(user) && (user?.isSuperAdmin || hasPermission("manage_users"))
+          ? "billing"
+          : null,
         hasModule("evaluaciones") && (hasPermission("manage_evaluations") || hasPermission("view_reports")) && hasModule("calibracion")
           ? "calibracion"
           : null,

@@ -31,7 +31,7 @@ export default function BillingPage() {
   const [cancelLoading, setCancelLoading] = useState(false);
 
   const [form, setForm] = useState({
-    contactName:   user?.name || "",
+    contactName:   user?.nombre ? `${user.nombre}${user.apellido ? " " + user.apellido : ""}` : "",
     contactEmail:  user?.email || "",
     companyName:   "",
     employeeCount: "",
@@ -60,6 +60,7 @@ export default function BillingPage() {
     try {
       const data = await apiFetch("/billing/create-checkout", {
         token, method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           employeeCount: count,
           contactName:   form.contactName,
@@ -82,7 +83,7 @@ export default function BillingPage() {
     if (!window.confirm("¿Cancelar la suscripción? El plan seguirá activo hasta el próximo vencimiento.")) return;
     setCancelLoading(true);
     try {
-      await apiFetch("/billing/cancel", { token, method: "POST", body: JSON.stringify({}) });
+      await apiFetch("/billing/cancel", { token, method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
       addToast({ message: "Suscripción cancelada", type: "success" });
       setStatus(s => ({ ...s, subscription: { ...s.subscription, status: "cancelled" } }));
     } catch {

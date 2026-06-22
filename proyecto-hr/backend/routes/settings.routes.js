@@ -65,7 +65,7 @@ router.put("/", auth, permit("manage_settings"), async (req, res) => {
 
   await logAudit({
     companyId,
-    userId: req.user.id,
+    userId: req.user.userId,
     accion: "actualizacion",
     modulo: "parametros",
     detalle: "Se actualizaron parametros de la empresa",

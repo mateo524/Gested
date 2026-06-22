@@ -22,7 +22,7 @@ function generateBackupCodes(count = 8) {
 // POST /setup — generate a TOTP secret and QR code URL, does NOT enable 2FA
 router.post('/setup', auth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId;
 
     const secretObj = speakeasy.generateSecret({
       name: `Gested HR (${req.user.email || userId})`,
@@ -58,7 +58,7 @@ router.post('/setup', auth, async (req, res) => {
 // POST /verify — verify TOTP token, enable 2FA, generate & store hashed backup codes
 router.post('/verify', auth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId;
     const { token } = req.body;
 
     if (!token) {
@@ -102,7 +102,7 @@ router.post('/verify', auth, async (req, res) => {
 // POST /disable — verify TOTP before disabling 2FA
 router.post('/disable', auth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId;
     const { token } = req.body;
 
     if (!token) {
@@ -140,7 +140,7 @@ router.post('/disable', auth, async (req, res) => {
 // GET /status — return current 2FA status
 router.get('/status', auth, async (req, res) => {
   try {
-    const userId = req.user.id || req.user._id;
+    const userId = req.user.userId;
 
     const record = await TwoFactorAuth.findOne({ userId });
 

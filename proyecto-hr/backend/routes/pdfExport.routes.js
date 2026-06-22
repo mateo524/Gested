@@ -23,16 +23,16 @@ router.get(
       }
 
       const evaluations = await Evaluation.find({
-        empleadoId: employeeId,
-        estado: { $in: ["CERRADO", "PUBLICADA"] },
+        employeeId,
+        estado: { $in: ["REVISADA", "CERRADA"] },
       })
         .sort({ updatedAt: -1 })
         .limit(3)
-        .populate("evaluadorId", "nombre apellido");
+        .populate("evaluatorUserId", "nombre apellido");
 
       const developmentPlans = await DevelopmentPlan.find({
-        empleadoId: employeeId,
-        activo: true,
+        employeeId,
+        estado: { $ne: "CERRADO" },
       }).limit(5);
 
       const doc = new PDFDocument({ margin: 50 });
@@ -131,8 +131,8 @@ router.get(
           .text("Sin evaluaciones cerradas o publicadas.");
       } else {
         for (const ev of evaluations) {
-          const evaluador = ev.evaluadorId
-            ? `${ev.evaluadorId.nombre} ${ev.evaluadorId.apellido}`
+          const evaluador = ev.evaluatorUserId
+            ? `${ev.evaluatorUserId.nombre} ${ev.evaluatorUserId.apellido}`
             : "—";
 
           doc

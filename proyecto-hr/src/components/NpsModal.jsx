@@ -34,6 +34,7 @@ export default function NpsModal() {
       await apiFetch("/analytics/nps", {
         method: "POST",
         token,
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ score, comment }),
       });
     } catch {}
