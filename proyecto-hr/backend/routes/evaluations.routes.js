@@ -238,6 +238,55 @@ router.get(
 );
 
 router.get(
+  "/top-performers",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(
+    PERMISSIONS.MANAGE_EVALUATIONS,
+    PERMISSIONS.VIEW_REPORTS
+  ),
+  async (req, res) => {
+    const { Types } = (await import("mongoose")).default;
+
+    const resolvedCompanyId = req.query.companyId || req.scope?.companyId;
+    if (!resolvedCompanyId || !Types.ObjectId.isValid(resolvedCompanyId)) {
+      return res.json([]);
+    }
+
+    const limit = Math.min(20, Math.max(1, parseInt(req.query.limit) || 5));
+    const matchStage = {
+      companyId: new Types.ObjectId(resolvedCompanyId),
+      estado: { $in: ["CERRADA", "REVISADA"] },
+      resultadoFinal: { $gt: 0 },
+    };
+    if (req.query.cycleId && Types.ObjectId.isValid(req.query.cycleId)) {
+      matchStage.cycleId = new Types.ObjectId(req.query.cycleId);
+    }
+
+    const performers = await Evaluation.aggregate([
+      { $match: matchStage },
+      { $addFields: { _tp: { $cond: [{ $eq: ["$tipo", "FINAL"] }, 0, 1] } } },
+      { $sort: { _tp: 1, resultadoFinal: -1 } },
+      { $group: { _id: "$employeeId", score: { $first: "$resultadoFinal" } } },
+      { $sort: { score: -1 } },
+      { $limit: limit },
+      { $lookup: { from: "employees", localField: "_id", foreignField: "_id", as: "emp" } },
+      { $unwind: { path: "$emp", preserveNullAndEmpty: true } },
+      { $project: {
+        _id: 1,
+        name: { $trim: { input: { $concat: [
+          { $ifNull: ["$emp.nombre", ""] }, " ", { $ifNull: ["$emp.apellido", ""] },
+        ]}}},
+        area: { $ifNull: ["$emp.area", ""] },
+        score: { $round: ["$score", 1] },
+      }},
+    ]);
+
+    res.json(performers);
+  }
+);
+
+router.get(
   "/:id",
   auth,
   attachTenantScope,
