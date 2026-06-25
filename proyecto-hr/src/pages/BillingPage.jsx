@@ -90,11 +90,17 @@ export default function BillingPage() {
     employeeCount: "",
   });
 
+  async function refreshStatus() {
+    try {
+      const s = await apiFetch("/billing/status", { token });
+      setStatus(s);
+    } catch {
+      addToast({ message: "No se pudo cargar el estado de facturación", type: "error" });
+    }
+  }
+
   useEffect(() => {
-    apiFetch("/billing/status", { token })
-      .then(s => setStatus(s))
-      .catch(() => addToast({ message: "No se pudo cargar el estado de facturación", type: "error" }))
-      .finally(() => setLoading(false));
+    refreshStatus().finally(() => setLoading(false));
   }, [token]);
 
   function handleChange(e) {
@@ -136,8 +142,8 @@ export default function BillingPage() {
     setCancelLoading(true);
     try {
       await apiFetch("/billing/cancel", { token, method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
+      await refreshStatus();
       addToast({ message: "Suscripción cancelada. El acceso continúa hasta el próximo vencimiento.", type: "success" });
-      setStatus(s => ({ ...s, subscription: s.subscription ? { ...s.subscription, status: "cancelled" } : null }));
       setShowCancelModal(false);
     } catch {
       addToast({ message: "No se pudo cancelar la suscripción", type: "error" });
