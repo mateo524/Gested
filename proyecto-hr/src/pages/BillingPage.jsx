@@ -244,7 +244,7 @@ export default function BillingPage() {
         </section>
       )}
 
-      {/* Feature list + form */}
+      {/* Feature list + form/upgrade */}
       <div className="grid gap-4 sm:grid-cols-2">
         {/* Features */}
         <div className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5">
@@ -259,7 +259,27 @@ export default function BillingPage() {
           </ul>
         </div>
 
-        {/* Form */}
+        {/* Upgrade card when active, form when not */}
+        {(hasActiveSub || hasManualPlan) ? (
+          <div className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 flex flex-col justify-between gap-6">
+            <div>
+              <p className="text-sm font-semibold text-white">¿Necesitás más usuarios?</p>
+              <p className="mt-2 text-sm text-[#8fa9b7] leading-relaxed">
+                Si tu organización creció y necesitás ajustar la cantidad de empleados facturados, escribinos y lo coordinamos sin interrumpir el servicio.
+              </p>
+            </div>
+            <a
+              href="mailto:hola@zentor.com.ar?subject=Ampliar%20plan%20-%20m%C3%A1s%20usuarios&body=Hola%2C%20quiero%20ampliar%20la%20cantidad%20de%20empleados%20de%20mi%20plan%20actual."
+              className="inline-flex items-center gap-2 rounded-xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] self-start"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+              Escribinos
+            </a>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 space-y-4">
           <p className="text-sm font-semibold text-white">Activar suscripción</p>
           <p className="text-xs text-[#7a9aaa]">Completá tus datos para continuar al pago.</p>
@@ -328,10 +348,8 @@ export default function BillingPage() {
             {submitting ? "Procesando…" : hasActiveSub ? "Suscripción activa" : "Continuar al pago →"}
           </button>
 
-          {hasActiveSub && (
-            <p className="text-center text-xs text-[#5e7d8e]">Ya tenés una suscripción activa.</p>
-          )}
         </form>
+        )}
       </div>
 
       <p className="text-center text-xs text-[#5e7d8e]">
