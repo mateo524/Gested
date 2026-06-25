@@ -303,47 +303,6 @@ function QuickToolsCard({ setView, isEmpleado, isLector, summary }) {
   );
 }
 
-function SeedDemoBanner({ token, onSeeded }) {
-  const { addToast } = useToast();
-  const [loading, setLoading] = useState(false);
-
-  async function handleSeed() {
-    try {
-      setLoading(true);
-      const data = await apiFetch("/onboarding/seed-demo", { token, method: "POST" });
-      addToast({ message: `Datos de demo cargados: ${data.seeded.employees} empleados, ${data.seeded.competencies} competencias.`, type: "success" });
-      if (onSeeded) onSeeded();
-    } catch (err) {
-      addToast({ message: err.message || "No se pudieron cargar los datos de demo.", type: "error" });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 px-5 py-4">
-      <div className="flex items-start gap-3">
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#14b8a6]/15">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4 text-[#14b8a6]" aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </span>
-        <div>
-          <p className="text-sm font-semibold text-white">Empeza con datos de ejemplo</p>
-          <p className="mt-0.5 text-xs text-[#7a9aaa]">Carga empleados, competencias y un ciclo de prueba para explorar la plataforma sin configurar nada.</p>
-        </div>
-      </div>
-      <button
-        type="button"
-        onClick={handleSeed}
-        disabled={loading}
-        className="shrink-0 rounded-xl bg-[#14b8a6] px-4 py-2 text-sm font-semibold text-[#022019] transition hover:bg-[#0d9488] disabled:opacity-60"
-      >
-        {loading ? "Cargando..." : "Cargar datos de demo"}
-      </button>
-    </div>
-  );
-}
 
 export default function DashboardPage() {
   const { token, activeCompanyId, user } = useAuth();
@@ -836,9 +795,6 @@ export default function DashboardPage() {
       </div>
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
-      {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) && Number(summary?.cards?.[0]?.value || 0) === 0 ? (
-        <SeedDemoBanner token={token} onSeeded={() => { setSummary(null); setRetryCount((c) => c + 1); }} />
-      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         {Array.isArray(statCards) && statCards.length > 0 ? (
