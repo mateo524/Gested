@@ -104,6 +104,15 @@ export default function BillingPage() {
     refreshStatus().finally(() => setLoading(false));
   }, [token]);
 
+  // Refresh after returning from MP checkout (billing_return=1 in URL)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("billing_return") === "1") {
+      window.history.replaceState({}, "", window.location.pathname);
+      refreshStatus();
+    }
+  }, []);
+
   function handleChange(e) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
@@ -289,7 +298,7 @@ export default function BillingPage() {
               <p className="text-sm font-semibold text-white">Agregar empleados al plan</p>
               <p className="mt-1 text-xs text-[#7a9aaa]">
                 {sub?.employeeCount ? `Tenés ${sub.employeeCount} empleados en tu plan actual.` : ""}
-                {" "}Indicá cuántos querés agregar — el nuevo monto se aplica desde el próximo ciclo.
+                {" "}Indicá cuántos querés agregar — se habilitan de forma inmediata al confirmar el pago.
               </p>
             </div>
             <div>
