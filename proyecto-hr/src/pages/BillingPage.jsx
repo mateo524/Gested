@@ -1,7 +1,59 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { apiFetch } from "../lib/api";
+
+function CancelConfirmModal({ onConfirm, onClose, loading }) {
+  const overlayRef = useRef(null);
+  function handleOverlayClick(e) {
+    if (e.target === overlayRef.current) onClose();
+  }
+  useEffect(() => {
+    function onKey(e) { if (e.key === "Escape") onClose(); }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div ref={overlayRef} onClick={handleOverlayClick}
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      role="dialog" aria-modal="true" aria-labelledby="cancel-modal-title">
+      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0d1f2b] p-6 shadow-2xl">
+        <div className="mb-5 flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-rose-400/30 bg-rose-500/10">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5 text-rose-400">
+              <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </span>
+          <div>
+            <h2 id="cancel-modal-title" className="text-base font-semibold text-white">Cancelar suscripción</h2>
+            <p className="mt-1.5 text-sm text-[#8fa9b7]">
+              ¿Estás seguro que querés cancelar? El acceso a todas las funciones se desactivará inmediatamente.
+            </p>
+            <p className="mt-2 text-xs text-[#5e7d8e]">Esta acción no se puede deshacer. Para reactivar, deberás iniciar una nueva suscripción.</p>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3">
+          <button type="button" onClick={onClose} disabled={loading}
+            className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-[#c5d5de] transition hover:bg-white/5 disabled:opacity-50">
+            Mantener plan
+          </button>
+          <button type="button" onClick={onConfirm} disabled={loading}
+            className="flex items-center gap-2 rounded-xl bg-rose-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-rose-600 disabled:opacity-50">
+            {loading && (
+              <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+              </svg>
+            )}
+            {loading ? "Cancelando…" : "Sí, cancelar"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function CheckIcon() {
   return (
@@ -29,6 +81,7 @@ export default function BillingPage() {
   const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
 
   const [form, setForm] = useState({
     contactName:   user?.nombre ? `${user.nombre}${user.apellido ? " " + user.apellido : ""}` : "",
@@ -80,12 +133,12 @@ export default function BillingPage() {
   }
 
   async function handleCancel() {
-    if (!window.confirm("¿Cancelar la suscripción? El plan seguirá activo hasta el próximo vencimiento.")) return;
     setCancelLoading(true);
     try {
       await apiFetch("/billing/cancel", { token, method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-      addToast({ message: "Suscripción cancelada", type: "success" });
-      setStatus(s => ({ ...s, subscription: { ...s.subscription, status: "cancelled" } }));
+      addToast({ message: "Suscripción cancelada correctamente", type: "success" });
+      setStatus(s => ({ ...s, planExpiresAt: null, subscription: null }));
+      setShowCancelModal(false);
     } catch {
       addToast({ message: "No se pudo cancelar la suscripción", type: "error" });
     } finally {
@@ -176,11 +229,10 @@ export default function BillingPage() {
 
           {(hasActiveSub || hasManualPlan) && (
             <div className="mt-4 border-t border-white/8 pt-4">
-              <button type="button" onClick={handleCancel} disabled={cancelLoading}
-                className="rounded-xl border border-rose-400/25 bg-rose-500/8 px-4 py-2 text-sm text-rose-300 transition hover:bg-rose-500/12 disabled:opacity-50">
-                {cancelLoading ? "Cancelando…" : "Cancelar suscripción"}
+              <button type="button" onClick={() => setShowCancelModal(true)}
+                className="rounded-xl border border-rose-400/25 bg-rose-500/8 px-4 py-2 text-sm text-rose-300 transition hover:bg-rose-500/12">
+                Cancelar suscripción
               </button>
-              <p className="mt-1.5 text-[11px] text-[#5e7d8e]">Al cancelar, el plan sigue activo hasta el próximo vencimiento.</p>
             </div>
           )}
         </section>
@@ -279,6 +331,14 @@ export default function BillingPage() {
       <p className="text-center text-xs text-[#5e7d8e]">
         Los pagos se procesan a través de MercadoPago. Podés cancelar en cualquier momento.
       </p>
+
+      {showCancelModal && (
+        <CancelConfirmModal
+          loading={cancelLoading}
+          onConfirm={handleCancel}
+          onClose={() => setShowCancelModal(false)}
+        />
+      )}
     </div>
   );
 }

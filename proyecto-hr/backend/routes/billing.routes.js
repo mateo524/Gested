@@ -134,19 +134,23 @@ router.post("/cancel", auth, attachTenantScope, async (req, res) => {
   try {
     const companyId = req.scope.companyId;
     const sub = await Subscription.findOne({ companyId, status: "authorized" }).sort({ createdAt: -1 });
-    if (!sub) return res.status(404).json({ ok: false, message: "No hay suscripción activa" });
 
-    if (sub.mpPreapprovalId) {
-      await mpFetch(`/preapproval/${sub.mpPreapprovalId}`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "cancelled" }),
-      }).catch(err => console.warn("[billing/cancel] MP cancel failed", err.message));
+    if (sub) {
+      // Cancel MercadoPago preapproval if present
+      if (sub.mpPreapprovalId) {
+        await mpFetch(`/preapproval/${sub.mpPreapprovalId}`, {
+          method: "PUT",
+          body: JSON.stringify({ status: "cancelled" }),
+        }).catch(err => console.warn("[billing/cancel] MP cancel failed", err.message));
+      }
+      sub.status = "cancelled";
+      sub.cancelledAt = new Date();
+      sub.cancelReason = req.body.reason || "user_request";
+      await sub.save();
     }
 
-    sub.status = "cancelled";
-    sub.cancelledAt = new Date();
-    sub.cancelReason = req.body.reason || "user_request";
-    await sub.save();
+    // Always clear the manual plan from the company record
+    await Company.findByIdAndUpdate(companyId, { plan: "base", planExpiresAt: null });
 
     res.json({ ok: true });
   } catch (err) {
