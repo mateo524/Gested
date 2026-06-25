@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import mongoose from "mongoose";
+import Competency from "../models/Competency.js";
 import Employee from "../models/Employee.js";
 import ImportJob from "../models/ImportJob.js";
 import KPIRecord from "../models/KPIRecord.js";
@@ -153,6 +154,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
     managers: { processed: 0, created: 0, updated: 0, skipped: 0 },
     kpis: { processed: 0, created: 0, updated: 0, skipped: 0 },
     okrs: { processed: 0, created: 0, updated: 0, skipped: 0 },
+    habilidades: { processed: 0, created: 0, updated: 0, skipped: 0 },
     temporaryPasswords: [],
     warnings: [...persistedWarnings],
     errors: [],
@@ -459,6 +461,31 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
         }
       }
 
+      const NIVEL_MAP = { BASICO: "C", INTERMEDIO: "A", AVANZADO: "H" };
+      for (const row of preview.habilidades || []) {
+        result.habilidades.processed += 1;
+        const nombre = normalizeText(row.nombre_habilidad || row.nombre);
+        if (!nombre) { result.habilidades.skipped += 1; continue; }
+        const tipo  = normalizeText(row.tipo).toUpperCase()  || "PERSONALIZADA";
+        const nivel = normalizeText(row.nivel).toUpperCase() || "";
+        const componente = NIVEL_MAP[nivel] || "C";
+        const activa = toBooleanWord(row.activa, true);
+        const existing = await Competency.findOne({
+          companyId: job.companyId, nombre: { $regex: `^${nombre}$`, $options: "i" },
+        }).session(session);
+        if (existing) {
+          Object.assign(existing, { tipo, componente, descripcion: normalizeText(row.descripcion), activa });
+          await existing.save({ session });
+          result.habilidades.updated += 1;
+        } else {
+          await Competency.create([{
+            companyId: job.companyId, nombre, descripcion: normalizeText(row.descripcion),
+            tipo, componente, activa, audienceType: "all",
+          }], { session });
+          result.habilidades.created += 1;
+        }
+      }
+
       const finalIssues = [...result.errors.map((item) => ({ ...item, severity: "error" }))];
       const finalWarnings = result.warnings.map((message) =>
         buildIssue("sistema", "", "persistence", message, "warning")
@@ -473,14 +500,16 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
         result.roleAssignments.created +
         result.managers.created +
         result.kpis.created +
-        result.okrs.created;
+        result.okrs.created +
+        result.habilidades.created;
       job.updatedCount =
         result.employees.updated +
         result.users.updated +
         result.roleAssignments.updated +
         result.managers.updated +
         result.kpis.updated +
-        result.okrs.updated;
+        result.okrs.updated +
+        result.habilidades.updated;
       job.errorCount = finalIssues.length;
       job.issues = sanitizeIssuesForJob([...finalIssues, ...finalWarnings]);
       job.resultSummary = {

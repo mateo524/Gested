@@ -36,8 +36,6 @@ const REQUIRED_SHEETS = [
   "Empleados",
   "Usuarios_y_Roles",
   "Managers",
-  "KPIs",
-  "OKRs",
   "Catálogos",
 ];
 
@@ -45,7 +43,66 @@ const OPTIONAL_SHEETS = [
   "Evaluaciones",
   "Mediciones_Desempeno",
   "Planes_Desarrollo",
+  "Habilidades",
 ];
+
+// Maps Spanish header names (from template) to internal English keys used throughout this file.
+// normalizeHeader() already strips accents/lowercases, so keys here are already normalized.
+const HEADER_ALIASES = {
+  // Organización
+  nombre_organizacion: "organization_name",
+  razon_social:        "legal_name",
+  pais:                "country",
+  region:              "region_country",
+  unidad_negocio:      "business_unit",
+  estado:              "status",
+  notas:               "notes",
+  // Departamentos
+  codigo_departamento: "departamento",
+  nombre_departamento: "department_name",
+  es_area_personas:    "is_people_area",
+  // Empleados
+  nombre:              "first_name",
+  apellido:            "last_name",
+  email_laboral:       "work_email",
+  puesto:              "job_title",
+  fecha_ingreso:       "hire_date",
+  tipo_contrato:       "employment_status",
+  activo:              "active",
+  // Usuarios_y_Roles
+  rol:                 "role_key",
+  alcance:             "scope",
+  puede_iniciar_sesion:"can_login",
+  // Managers
+  tipo_relacion:       "relationship_type",
+  jefe_principal:      "primary_manager",
+  fecha_inicio:        "start_date",
+  fecha_fin:           "end_date",
+  // Evaluaciones / Mediciones / Planes
+  email_empleado:      "employee_email",
+  email_jefe:          "manager_email",
+  nombre_ciclo:        "cycle_name",
+  periodo:             "period",
+  puntaje_general:     "overall_score",
+  comentarios_jefe:    "manager_comments",
+  comentarios_empleado:"employee_comments",
+  tipo_medicion:       "measurement_type",
+  nombre_medicion:     "measurement_name",
+  descripcion:         "description",
+  descriptores:        "descriptors",
+  puntaje_jefe:        "manager_score",
+  autoevaluacion:      "self_score",
+  evidencia:           "evidence",
+  comentarios:         "comments",
+  peso:                "weight",
+  titulo:              "title",
+  email_responsable:   "responsible_email",
+  fecha_limite:        "due_date",
+  notas_seguimiento:   "follow_up_notes",
+  // Catálogos
+  catalogo:            "catalog",
+  valor:               "value",
+};
 
 const SHEET_COLUMN_CONFIG = {
   "Organización": {
@@ -78,12 +135,6 @@ const SHEET_COLUMN_CONFIG = {
   Managers: {
     required: ["legajo", "relationship_type", "primary_manager", "status"],
   },
-  KPIs: {
-    required: ["kpi_name", "status", "active"],
-  },
-  OKRs: {
-    required: ["objective_title", "key_result_title", "status"],
-  },
   "Catálogos": {
     required: ["catalog", "value", "description"],
   },
@@ -95,6 +146,9 @@ const SHEET_COLUMN_CONFIG = {
   },
   Planes_Desarrollo: {
     required: ["employee_email", "title", "status"],
+  },
+  Habilidades: {
+    required: ["nombre_habilidad"],
   },
 };
 
@@ -172,7 +226,9 @@ function readSheetRows(workbook, sheetName) {
   }
 
   const headerRow = worksheet.getRow(1);
-  const headers = headerRow.values.slice(1).map((value) => normalizeHeader(value));
+  const rawHeaders = headerRow.values.slice(1).map((value) => normalizeHeader(value));
+  // Map Spanish header names to internal English keys so all downstream code stays unchanged
+  const headers = rawHeaders.map((h) => HEADER_ALIASES[h] ?? h);
   const rows = [];
 
   worksheet.eachRow((row, rowNumber) => {
@@ -643,6 +699,26 @@ function validateDevelopmentPlansRows(rows, issues, summaryBySheet, context) {
     }
   });
 }
+function validateHabilidadesRows(rows, issues, summaryBySheet) {
+  summaryBySheet.Habilidades = summaryBySheet.Habilidades || emptyCounts();
+  summaryBySheet.Habilidades.totalRows = rows.length;
+  const validTipos  = BULK_IMPORT_CATALOGS.habilidadTipo;
+  const validNiveles = BULK_IMPORT_CATALOGS.habilidadNivel;
+  for (const row of rows) {
+    if (!normalizeText(row.nombre_habilidad)) {
+      issues.push(createIssue({ sheet: "Habilidades", rowNumber: row._rowNumber, field: "nombre_habilidad", message: "nombre_habilidad es obligatorio" }));
+    }
+    const tipo = normalizeText(row.tipo).toUpperCase();
+    if (tipo && !validTipos.includes(tipo)) {
+      issues.push(createIssue({ sheet: "Habilidades", rowNumber: row._rowNumber, field: "tipo", message: `tipo inválido: ${row.tipo}. Valores válidos: ${validTipos.join(", ")}` }));
+    }
+    const nivel = normalizeText(row.nivel).toUpperCase();
+    if (nivel && !validNiveles.includes(nivel)) {
+      issues.push(createIssue({ sheet: "Habilidades", rowNumber: row._rowNumber, field: "nivel", message: `nivel inválido: ${row.nivel}. Valores válidos: ${validNiveles.join(", ")}` }));
+    }
+  }
+}
+
 export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId }) {
   const workbook = await loadWorkbookSafely(buffer);
 
@@ -676,11 +752,10 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
     employees: [],
     usersAndRoles: [],
     managers: [],
-    kpis: [],
-    okrs: [],
     evaluations: [],
     performanceMeasurements: [],
     developmentPlans: [],
+    habilidades: [],
   };
 
   [...REQUIRED_SHEETS, ...OPTIONAL_SHEETS].forEach((sheetName) => {
@@ -710,11 +785,10 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
   const employees = rawSheets.Empleados?.rows || [];
   const usersAndRoles = rawSheets["Usuarios_y_Roles"]?.rows || [];
   const managers = rawSheets.Managers?.rows || [];
-  const kpis = rawSheets.KPIs?.rows || [];
-  const okrs = rawSheets.OKRs?.rows || [];
   const evaluationsRows = rawSheets.Evaluaciones?.rows || [];
   const measurementsRows = rawSheets.Mediciones_Desempeno?.rows || [];
   const developmentRows = rawSheets.Planes_Desarrollo?.rows || [];
+  const habilidadesRows = rawSheets.Habilidades?.rows || [];
 
   validateCatalogSheet(rawSheets["Catálogos"]?.rows || [], issues, summaryBySheet);
   validateOrganizationRows(rawSheets["Organización"]?.rows || [], issues, summaryBySheet);
@@ -731,14 +805,6 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
     employees,
     existingEmployees: collections.employees,
   });
-  validateKpisRows(kpis, issues, summaryBySheet, {
-    employees,
-    existingEmployees: collections.employees,
-  });
-  validateOkrsRows(okrs, issues, summaryBySheet, {
-    employees,
-    existingEmployees: collections.employees,
-  });
   validateEvaluationsRows(evaluationsRows, issues, summaryBySheet, {
     employees,
     existingEmployees: collections.employees,
@@ -748,6 +814,7 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
     employees,
     existingEmployees: collections.employees,
   });
+  validateHabilidadesRows(habilidadesRows, issues, summaryBySheet);
 
   Object.keys(summaryBySheet).forEach((sheetName) => {
     pushSheetIssues(summaryBySheet, issues, sheetName);
@@ -758,23 +825,23 @@ export async function analyzeBulkImportWorkbook({ buffer, companyId, schoolId })
   summaryBySheet.Empleados.validRows = countValidRows(employees, issues, "Empleados");
   summaryBySheet.Usuarios_y_Roles.validRows = countValidRows(usersAndRoles, issues, "Usuarios_y_Roles");
   summaryBySheet.Managers.validRows = countValidRows(managers, issues, "Managers");
-  summaryBySheet.KPIs.validRows = countValidRows(kpis, issues, "KPIs");
-  summaryBySheet.OKRs.validRows = countValidRows(okrs, issues, "OKRs");
   summaryBySheet.Evaluaciones.validRows = countValidRows(evaluationsRows, issues, "Evaluaciones");
   summaryBySheet.Mediciones_Desempeno.validRows = countValidRows(measurementsRows, issues, "Mediciones_Desempeno");
   summaryBySheet.Planes_Desarrollo.validRows = countValidRows(developmentRows, issues, "Planes_Desarrollo");
   summaryBySheet["Catálogos"].validRows = countValidRows(rawSheets["Catálogos"]?.rows || [], issues, "Catálogos");
+  if (summaryBySheet.Habilidades) {
+    summaryBySheet.Habilidades.validRows = countValidRows(habilidadesRows, issues, "Habilidades");
+  }
 
   preview.organization = sanitizePreviewRows(rawSheets["Organización"]?.rows || []);
   preview.departments = sanitizePreviewRows(departments);
   preview.employees = sanitizePreviewRows(employees);
   preview.usersAndRoles = sanitizePreviewRows(usersAndRoles);
   preview.managers = sanitizePreviewRows(managers);
-  preview.kpis = sanitizePreviewRows(kpis);
-  preview.okrs = sanitizePreviewRows(okrs);
   preview.evaluations = sanitizePreviewRows(evaluationsRows);
   preview.performanceMeasurements = sanitizePreviewRows(measurementsRows);
   preview.developmentPlans = sanitizePreviewRows(developmentRows);
+  preview.habilidades = sanitizePreviewRows(habilidadesRows);
 
   const warnings = issues.filter((item) => item.severity === "warning");
   const errors = issues.filter((item) => item.severity === "error");
