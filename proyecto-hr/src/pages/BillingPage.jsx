@@ -82,6 +82,7 @@ export default function BillingPage() {
   const [submitting, setSubmitting] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [addEmployees, setAddEmployees] = useState("");
 
   const [form, setForm] = useState({
     contactName:   user?.nombre ? `${user.nombre}${user.apellido ? " " + user.apellido : ""}` : "",
@@ -133,6 +134,27 @@ export default function BillingPage() {
       }
     } catch (err) {
       addToast({ message: err?.message || "No se pudo iniciar el proceso de pago", type: "error" });
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleAddEmployees(e) {
+    e.preventDefault();
+    const add = parseInt(addEmployees, 10);
+    if (!add || add < 1) { addToast({ message: "Ingresá una cantidad válida", type: "error" }); return; }
+    setSubmitting(true);
+    try {
+      const data = await apiFetch("/billing/update-employees", {
+        token, method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ addEmployees: add }),
+      });
+      await refreshStatus();
+      setAddEmployees("");
+      addToast({ message: `Plan actualizado: ${data.newEmployeeCount} empleados desde el próximo ciclo`, type: "success" });
+    } catch (err) {
+      addToast({ message: err?.message || "No se pudo actualizar el plan", type: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -259,36 +281,36 @@ export default function BillingPage() {
           </ul>
         </div>
 
-        {/* Upgrade form when active, activation form when not */}
-        {(hasActiveSub || hasManualPlan) ? (
-          <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 space-y-4">
+        {/* Upgrade form when MP sub active; activation form when manual or no plan */}
+        {hasActiveSub ? (
+          <form onSubmit={handleAddEmployees} className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 space-y-4">
             <div>
-              <p className="text-sm font-semibold text-white">Modificar cantidad de empleados</p>
-              <p className="mt-1 text-xs text-[#7a9aaa]">Ingresá la nueva cantidad y continuá al pago. Tu suscripción anterior se reemplaza automáticamente.</p>
+              <p className="text-sm font-semibold text-white">Agregar empleados al plan</p>
+              <p className="mt-1 text-xs text-[#7a9aaa]">
+                {sub?.employeeCount ? `Tenés ${sub.employeeCount} empleados en tu plan actual.` : ""}
+                {" "}Indicá cuántos querés agregar — el nuevo monto se aplica desde el próximo ciclo.
+              </p>
             </div>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">Nombre de contacto</label>
-                <input name="contactName" value={form.contactName} onChange={handleChange} required placeholder="Tu nombre"
-                  className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">Email de contacto</label>
-                <input name="contactEmail" type="email" value={form.contactEmail} onChange={handleChange} required placeholder="tu@empresa.com"
-                  className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none" />
-              </div>
-              <div>
-                <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">
-                  Nueva cantidad de empleados <span className="text-rose-400">*</span>
-                </label>
-                <input name="employeeCount" type="number" min="1" max="9999" value={form.employeeCount} onChange={handleChange} required
-                  placeholder={sub?.employeeCount ? `Actual: ${sub.employeeCount}` : "Ej: 50"}
-                  className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none" />
-              </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">
+                Empleados a agregar <span className="text-rose-400">*</span>
+              </label>
+              <input
+                type="number" min="1" max="9999"
+                value={addEmployees}
+                onChange={e => setAddEmployees(e.target.value)}
+                required placeholder="Ej: 10"
+                className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none"
+              />
+              {addEmployees && parseInt(addEmployees) > 0 && sub?.employeeCount && (
+                <p className="mt-1.5 text-xs text-[#14b8a6]">
+                  Nuevo total: {sub.employeeCount + parseInt(addEmployees)} empleados
+                </p>
+              )}
             </div>
             <button type="submit" disabled={submitting}
               className="w-full rounded-xl bg-[#14b8a6] py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:opacity-50">
-              {submitting ? "Procesando…" : "Actualizar plan →"}
+              {submitting ? "Actualizando…" : "Confirmar ampliación →"}
             </button>
           </form>
         ) : (

@@ -96,19 +96,6 @@ router.post("/create-checkout", auth, attachTenantScope, async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || "https://app.zentor.com.ar";
     const totalARS = calcPrice(count);
 
-    // Cancel any existing authorized subscription before creating a new one
-    const existingSub = await Subscription.findOne({ companyId, status: "authorized" }).sort({ createdAt: -1 });
-    if (existingSub?.mpPreapprovalId) {
-      await mpFetch(`/preapproval/${existingSub.mpPreapprovalId}`, {
-        method: "PUT",
-        body: JSON.stringify({ status: "cancelled" }),
-      }).catch(err => console.warn("[billing/create-checkout] cancel old sub failed", err.message));
-      existingSub.status = "cancelled";
-      existingSub.cancelledAt = new Date();
-      existingSub.cancelReason = "plan_upgrade";
-      await existingSub.save();
-    }
-
     const payload = {
       reason: "Zentor — Gestión de desempeño",
       auto_recurring: {
@@ -171,6 +158,41 @@ router.post("/cancel", auth, attachTenantScope, async (req, res) => {
   } catch (err) {
     console.error("[billing/cancel]", err);
     res.status(500).json({ ok: false, message: "Error al cancelar suscripción" });
+  }
+});
+
+// ─── POST /billing/update-employees ──────────────────────────────────────────
+// Body: { addEmployees: number }
+// Adds employees to an existing authorized subscription.
+// Updates the MP preapproval amount — no cancellation, next charge reflects new total.
+router.post("/update-employees", auth, attachTenantScope, async (req, res) => {
+  try {
+    const companyId = req.scope.companyId;
+    const add = parseInt(req.body.addEmployees, 10);
+    if (!add || add < 1) return res.status(400).json({ ok: false, message: "Cantidad inválida" });
+
+    const sub = await Subscription.findOne({ companyId, status: "authorized" }).sort({ createdAt: -1 });
+    if (!sub?.mpPreapprovalId) {
+      return res.status(404).json({ ok: false, message: "No hay suscripción activa para modificar" });
+    }
+
+    const newCount = (sub.employeeCount || 0) + add;
+    const newAmount = calcPrice(newCount);
+
+    await mpFetch(`/preapproval/${sub.mpPreapprovalId}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        auto_recurring: { transaction_amount: newAmount },
+      }),
+    });
+
+    sub.employeeCount = newCount;
+    await sub.save();
+
+    res.json({ ok: true, newEmployeeCount: newCount });
+  } catch (err) {
+    console.error("[billing/update-employees]", err);
+    res.status(500).json({ ok: false, message: err.message || "Error al actualizar la suscripción" });
   }
 });
 
