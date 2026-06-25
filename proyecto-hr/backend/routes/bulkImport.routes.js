@@ -120,6 +120,20 @@ export function buildBulkImportAnalyzeResponsePayload({ analysis, job, previewTo
   };
 }
 
+// Public download — the template contains no tenant data
+router.get("/template/download", async (req, res) => {
+  try {
+    const buffer = await buildBulkImportTemplateBuffer();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${BULK_IMPORT_TEMPLATE_FILENAME}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.send(Buffer.from(buffer));
+  } catch (err) {
+    console.error("[template/download]", err);
+    res.status(500).json({ ok: false, message: "Error al generar la plantilla" });
+  }
+});
+
 router.get(
   "/template",
   auth,
@@ -127,11 +141,7 @@ router.get(
   bulkImportManageAccess,
   async (req, res) => {
     const buffer = await buildBulkImportTemplateBuffer();
-
-    res.setHeader(
-      "Content-Type",
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    );
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
     res.setHeader("Content-Disposition", `attachment; filename="${BULK_IMPORT_TEMPLATE_FILENAME}"`);
     res.setHeader("Cache-Control", "no-store");
     res.send(Buffer.from(buffer));
