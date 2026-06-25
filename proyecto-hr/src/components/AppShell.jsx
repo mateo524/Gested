@@ -780,7 +780,7 @@ export default function AppShell({
                   aria-label="Atajos de teclado" title="Atajos (?)">
                   <span className="text-sm font-semibold">?</span>
                 </button>
-                <div className="hidden sm:block"><LanguageMenu language={language} setLanguage={setLanguage} t={t}/></div>
+
                 <button onClick={logout}
                   className="rounded-xl border border-white/15 bg-[#152833] px-3 py-2 text-sm text-white transition hover:bg-[#1a3240]">
                   {t("topbar.logout", "Salir")}

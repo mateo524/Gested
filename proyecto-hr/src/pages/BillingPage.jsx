@@ -108,6 +108,7 @@ export default function BillingPage() {
   const sub = status?.subscription;
   const hasActiveSub = sub?.status === "authorized";
   const hasPendingSub = sub?.status === "pending";
+  const hasManualPlan = !hasActiveSub && !hasPendingSub && !!status?.planExpiresAt && !status?.expired;
   const needsSubscription = !hasActiveSub && !hasPendingSub && !status?.planExpiresAt;
 
   return (
@@ -134,6 +135,11 @@ export default function BillingPage() {
                 {hasActiveSub && (
                   <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-300">
                     Suscripción activa
+                  </span>
+                )}
+                {hasManualPlan && (
+                  <span className="rounded-full border border-emerald-400/25 bg-emerald-500/15 px-3 py-1 text-sm font-semibold text-emerald-300">
+                    Plan activo
                   </span>
                 )}
                 {hasPendingSub && (
@@ -168,7 +174,7 @@ export default function BillingPage() {
             )}
           </div>
 
-          {hasActiveSub && (
+          {(hasActiveSub || hasManualPlan) && (
             <div className="mt-4 border-t border-white/8 pt-4">
               <button type="button" onClick={handleCancel} disabled={cancelLoading}
                 className="rounded-xl border border-rose-400/25 bg-rose-500/8 px-4 py-2 text-sm text-rose-300 transition hover:bg-rose-500/12 disabled:opacity-50">
@@ -193,9 +199,6 @@ export default function BillingPage() {
               </li>
             ))}
           </ul>
-          <div className="mt-5 rounded-xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-3">
-            <p className="text-xs text-[#14b8a6]">Precio según cantidad de empleados. Se calcula al finalizar el formulario.</p>
-          </div>
         </div>
 
         {/* Form */}
