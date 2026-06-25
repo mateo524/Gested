@@ -136,8 +136,8 @@ export default function BillingPage() {
     setCancelLoading(true);
     try {
       await apiFetch("/billing/cancel", { token, method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({}) });
-      addToast({ message: "Suscripción cancelada correctamente", type: "success" });
-      setStatus(s => ({ ...s, planExpiresAt: null, subscription: null }));
+      addToast({ message: "Suscripción cancelada. El acceso continúa hasta el próximo vencimiento.", type: "success" });
+      setStatus(s => ({ ...s, subscription: s.subscription ? { ...s.subscription, status: "cancelled" } : null }));
       setShowCancelModal(false);
     } catch {
       addToast({ message: "No se pudo cancelar la suscripción", type: "error" });

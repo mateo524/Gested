@@ -136,7 +136,7 @@ router.post("/cancel", auth, attachTenantScope, async (req, res) => {
     const sub = await Subscription.findOne({ companyId, status: "authorized" }).sort({ createdAt: -1 });
 
     if (sub) {
-      // Cancel MercadoPago preapproval if present
+      // Cancel MercadoPago preapproval — stops future charges, current period remains paid
       if (sub.mpPreapprovalId) {
         await mpFetch(`/preapproval/${sub.mpPreapprovalId}`, {
           method: "PUT",
@@ -147,10 +147,12 @@ router.post("/cancel", auth, attachTenantScope, async (req, res) => {
       sub.cancelledAt = new Date();
       sub.cancelReason = req.body.reason || "user_request";
       await sub.save();
+      // Keep planExpiresAt — access continues until end of paid period
+      // The webhook or a scheduled job will downgrade when it lapses
+    } else {
+      // Manual plan — clear immediately (no billing period to respect)
+      await Company.findByIdAndUpdate(companyId, { plan: "base", planExpiresAt: null });
     }
-
-    // Always clear the manual plan from the company record
-    await Company.findByIdAndUpdate(companyId, { plan: "base", planExpiresAt: null });
 
     res.json({ ok: true });
   } catch (err) {
