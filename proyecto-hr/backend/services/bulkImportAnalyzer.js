@@ -80,7 +80,6 @@ const HEADER_ALIASES = {
   fecha_fin:           "end_date",
   // Evaluaciones / Mediciones / Planes
   email_empleado:      "employee_email",
-  email_jefe:          "manager_email",
   nombre_ciclo:        "cycle_name",
   periodo:             "period",
   puntaje_general:     "overall_score",

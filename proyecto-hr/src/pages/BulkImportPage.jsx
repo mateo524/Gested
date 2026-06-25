@@ -47,7 +47,7 @@ const previewTabs = [
 
 const stepDefinitions = [
   { key: "template", number: 1, title: "Descargar plantilla", detail: "Baja la plantilla oficial y revisa sus hojas." },
-  { key: "complete", number: 2, title: "Completar plantilla", detail: "Carga personas, roles, managers, KPIs, OKRs, evaluaciones y planes si ya existen." },
+  { key: "complete", number: 2, title: "Completar plantilla", detail: "Cargá personas, roles, managers, evaluaciones, habilidades y planes de desarrollo si ya existen." },
   { key: "upload", number: 3, title: "Subir archivo", detail: "Selecciona o arrastra el archivo .xlsx." },
   { key: "validation", number: 4, title: "Validación", detail: "Revisamos estructura, filas válidas y bloqueos." },
   { key: "preview", number: 5, title: "Vista previa", detail: "Chequea cada hoja antes de confirmar." },
