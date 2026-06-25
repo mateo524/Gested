@@ -15,7 +15,25 @@ export const BULK_IMPORT_CATALOGS = {
   habilidadNivel: ["BASICO","INTERMEDIO","AVANZADO"],
 };
 
-const DATA_ROWS = 300; // rows with dropdowns/formulas
+const DATA_ROWS = 300;
+
+// Named ranges used for cross-sheet data validation (Excel requires named ranges for this)
+const NR = {
+  EMP_LEGAJOS: "ZT_EmpLegajos",
+  EMP_EMAILS:  "ZT_EmpEmails",
+  DEP_CODIGOS: "ZT_DepCodigos",
+};
+
+/** Convert 1-based column number to Excel letter(s): 1→A, 27→AA */
+function colLetter(n) {
+  let s = "";
+  while (n > 0) {
+    n--;
+    s = String.fromCharCode(65 + (n % 26)) + s;
+    n = Math.floor(n / 26);
+  }
+  return s;
+}
 
 function headerStyle(worksheet) {
   const headerRow = worksheet.getRow(1);
@@ -42,40 +60,41 @@ function applySheetStyle(worksheet, columns) {
   });
 }
 
-/** Apply dropdown (static list) to a whole column, rows fromRow–toRow. */
+/**
+ * Add a static-list dropdown to an entire column.
+ * Uses sheet.dataValidations.add (range-level) which generates valid XLSX.
+ */
 function listDropdown(sheet, col, fromRow, toRow, values) {
-  const formulae = [`"${values.join(",")}"`];
-  for (let r = fromRow; r <= toRow; r++) {
-    sheet.getCell(r, col).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      showDropDown: false,
-      formulae,
-    };
-  }
+  const cl = colLetter(col);
+  sheet.dataValidations.add(`${cl}${fromRow}:${cl}${toRow}`, {
+    type: "list",
+    allowBlank: true,
+    showDropDown: false,
+    formulae: [`"${values.join(",")}"`],
+  });
 }
 
-/** Apply dropdown sourced from another sheet range. */
-function rangeDropdown(sheet, col, fromRow, toRow, sheetRef) {
-  // Sheet names with accents need single quotes in formula references
-  const safe = sheetRef.includes("á") || sheetRef.includes("é") || sheetRef.includes("ó") || sheetRef.includes("ú") || sheetRef.includes("ñ")
-    ? `'${sheetRef}'` : sheetRef;
-  for (let r = fromRow; r <= toRow; r++) {
-    sheet.getCell(r, col).dataValidation = {
-      type: "list",
-      allowBlank: true,
-      showDropDown: false,
-      formulae: [`${safe}`],
-    };
-  }
+/**
+ * Add a dropdown sourced from a named range (required for cross-sheet refs in XLSX).
+ * namedRange must be registered in workbook.definedNames before the file is written.
+ */
+function rangeDropdown(sheet, col, fromRow, toRow, namedRange) {
+  const cl = colLetter(col);
+  sheet.dataValidations.add(`${cl}${fromRow}:${cl}${toRow}`, {
+    type: "list",
+    allowBlank: true,
+    showDropDown: false,
+    formulae: [namedRange],
+  });
 }
 
-/** Pre-fill INDEX/MATCH formula in a column so it auto-populates from another sheet. */
+/** Pre-fill INDEX/MATCH formula so the cell auto-populates from another sheet. */
 function autoFill(sheet, col, fromRow, toRow, formulaFn) {
+  const cl = colLetter(col);
   for (let r = fromRow; r <= toRow; r++) {
-    sheet.getCell(r, col).value = { formula: formulaFn(r), result: "" };
-    // Gray italic so users know it auto-fills
-    sheet.getCell(r, col).font = { color: { argb: "FF8899AA" }, italic: true };
+    const cell = sheet.getCell(`${cl}${r}`);
+    cell.value = { formula: formulaFn(r), result: "" };
+    cell.font = { color: { argb: "FF8899AA" }, italic: true };
   }
 }
 
@@ -91,13 +110,13 @@ function addInstructionSheet(workbook) {
   headerStyle(sheet);
 
   [
-    { section: "Objetivo",        detail: "Completá esta plantilla oficial para preparar la importación masiva de ZENTOR. Usá una fila por registro y respetá los encabezados." },
-    { section: "Orden recomendado", detail: "1) Organización → 2) Departamentos → 3) Empleados → 4) Usuarios_y_Roles → 5) Managers → 6) Habilidades. Empezá por Empleados para que los desplegables de las otras solapas se carguen automáticamente." },
-    { section: "Desplegables",    detail: "Las columnas con valores fijos (estado, rol, tipo, etc.) muestran un menú desplegable. Las columnas de email y legajo en otras solapas muestran los valores que ingresaste en la solapa Empleados." },
-    { section: "Autocompletado",  detail: "En la solapa Usuarios_y_Roles, al seleccionar el legajo, el email_laboral se completa solo. Completá primero toda la solapa Empleados." },
-    { section: "Seguridad",       detail: "No cargues credenciales ni datos sensibles en archivos de prueba. SUPER_ADMIN y PLATFORM no se configuran desde esta plantilla." },
-    { section: "Managers",        detail: "tipo_relacion: direct = jefe directo, dotted_line = jefe funcional, temporary = temporal. jefe_principal: yes/no." },
-    { section: "Habilidades",     detail: "Define el catálogo de competencias de la empresa. tipo: TRANSVERSAL, TECNICA, LIDERAZGO, PERSONALIZADA. nivel: BASICO, INTERMEDIO, AVANZADO." },
+    { section: "Objetivo",         detail: "Completá esta plantilla oficial para preparar la importación masiva de ZENTOR. Usá una fila por registro y respetá los encabezados." },
+    { section: "Orden recomendado",detail: "1) Organización → 2) Departamentos → 3) Empleados → 4) Usuarios_y_Roles → 5) Managers → 6) Habilidades. Empezá por Empleados para que los desplegables de las otras solapas funcionen." },
+    { section: "Desplegables",     detail: "Las columnas con valores fijos (estado, rol, tipo, etc.) muestran un menú desplegable. Las columnas de email y legajo en otras solapas muestran los valores que ingresaste en Empleados." },
+    { section: "Autocompletado",   detail: "En Usuarios_y_Roles, al seleccionar el legajo en la columna A, el email_laboral (columna B) se completa solo. Completá primero toda la solapa Empleados." },
+    { section: "Seguridad",        detail: "No cargues credenciales ni datos sensibles en archivos de prueba. SUPER_ADMIN y PLATFORM no se configuran desde esta plantilla." },
+    { section: "Managers",         detail: "tipo_relacion: direct = jefe directo, dotted_line = jefe funcional, temporary = temporal. jefe_principal: yes/no." },
+    { section: "Habilidades",      detail: "Define el catálogo de competencias de la empresa. tipo: TRANSVERSAL, TECNICA, LIDERAZGO, PERSONALIZADA. nivel: BASICO, INTERMEDIO, AVANZADO." },
   ].forEach((row) => sheet.addRow(row));
   sheet.eachRow((row) => { row.alignment = { vertical: "top", wrapText: true }; });
 }
@@ -113,7 +132,6 @@ function addOrganizationSheet(workbook) {
     { header: "estado",              key: "status",           width: 14 },
     { header: "notas",               key: "notes",            width: 34 },
   ]);
-  // col 6 = estado
   listDropdown(sheet, 6, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.status);
 }
 
@@ -128,11 +146,8 @@ function addDepartmentsSheet(workbook) {
     { header: "estado",              key: "status",               width: 14 },
     { header: "es_area_personas",    key: "isPeopleArea",         width: 18 },
   ]);
-  // col 3 = departamento_padre → dropdown de códigos en la misma solapa
-  rangeDropdown(sheet, 3, 2, DATA_ROWS, "Departamentos!$A$2:$A$300");
-  // col 6 = estado
+  rangeDropdown(sheet, 3, 2, DATA_ROWS, NR.DEP_CODIGOS);
   listDropdown(sheet, 6, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.status);
-  // col 7 = es_area_personas
   listDropdown(sheet, 7, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.yesNo);
 }
 
@@ -151,11 +166,8 @@ function addEmployeesSheet(workbook) {
     { header: "tipo_contrato",  key: "employmentStatus", width: 18 },
     { header: "activo",         key: "active",           width: 12 },
   ]);
-  // col 6 = departamento → dropdown de códigos de Departamentos
-  rangeDropdown(sheet, 6, 2, DATA_ROWS, "Departamentos!$A$2:$A$300");
-  // col 10 = tipo_contrato
+  rangeDropdown(sheet, 6, 2, DATA_ROWS, NR.DEP_CODIGOS);
   listDropdown(sheet, 10, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.tipoContrato);
-  // col 11 = activo
   listDropdown(sheet, 11, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.yesNo);
 }
 
@@ -171,19 +183,13 @@ function addUsersRolesSheet(workbook) {
     { header: "puede_iniciar_sesion", key: "canLogin",           width: 22 },
     { header: "notas",                key: "notes",              width: 34 },
   ]);
-  // col 1 = legajo → dropdown desde Empleados
-  rangeDropdown(sheet, 1, 2, DATA_ROWS, "Empleados!$A$2:$A$300");
-  // col 2 = email_laboral → AUTOCOMPLETADO desde legajo
+  rangeDropdown(sheet, 1, 2, DATA_ROWS, NR.EMP_LEGAJOS);
   autoFill(sheet, 2, 2, DATA_ROWS,
-    (r) => `IFERROR(INDEX(Empleados!$D:$D,MATCH(A${r},Empleados!$A:$A,0)),"")`
+    (r) => `IFERROR(INDEX(Empleados!$D:$D,MATCH(A${r},Empleados!$A:$A,0),1),"")`
   );
-  // col 3 = rol
   listDropdown(sheet, 3, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.roleKey);
-  // col 4 = alcance
   listDropdown(sheet, 4, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.scope);
-  // col 6 = estado
   listDropdown(sheet, 6, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.status);
-  // col 7 = puede_iniciar_sesion
   listDropdown(sheet, 7, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.yesNo);
 }
 
@@ -198,15 +204,10 @@ function addManagersSheet(workbook) {
     { header: "fecha_fin",      key: "endDate",             width: 16 },
     { header: "estado",         key: "status",              width: 14 },
   ]);
-  // col 1 = legajo del colaborador → dropdown Empleados
-  rangeDropdown(sheet, 1, 2, DATA_ROWS, "Empleados!$A$2:$A$300");
-  // col 2 = email del jefe → dropdown de emails de Empleados
-  rangeDropdown(sheet, 2, 2, DATA_ROWS, "Empleados!$D$2:$D$300");
-  // col 3 = tipo_relacion
+  rangeDropdown(sheet, 1, 2, DATA_ROWS, NR.EMP_LEGAJOS);
+  rangeDropdown(sheet, 2, 2, DATA_ROWS, NR.EMP_EMAILS);
   listDropdown(sheet, 3, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.relationshipType);
-  // col 4 = jefe_principal
   listDropdown(sheet, 4, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.yesNo);
-  // col 7 = estado
   listDropdown(sheet, 7, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.status);
 }
 
@@ -222,8 +223,8 @@ function addEvaluationsSheet(workbook) {
     { header: "comentarios_jefe",     key: "managerComments",  width: 38 },
     { header: "comentarios_empleado", key: "employeeComments", width: 38 },
   ]);
-  rangeDropdown(sheet, 1, 2, DATA_ROWS, "Empleados!$D$2:$D$300");
-  rangeDropdown(sheet, 2, 2, DATA_ROWS, "Empleados!$D$2:$D$300");
+  rangeDropdown(sheet, 1, 2, DATA_ROWS, NR.EMP_EMAILS);
+  rangeDropdown(sheet, 2, 2, DATA_ROWS, NR.EMP_EMAILS);
   listDropdown(sheet, 5, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.evaluacionStatus);
 }
 
@@ -241,7 +242,7 @@ function addPerformanceMeasurementsSheet(workbook) {
     { header: "comentarios",     key: "comments",        width: 34 },
     { header: "peso",            key: "weight",          width: 12 },
   ]);
-  rangeDropdown(sheet, 1, 2, DATA_ROWS, "Empleados!$D$2:$D$300");
+  rangeDropdown(sheet, 1, 2, DATA_ROWS, NR.EMP_EMAILS);
   listDropdown(sheet, 2, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.medicionTipo);
 }
 
@@ -256,8 +257,8 @@ function addDevelopmentPlansSheet(workbook) {
     { header: "estado",            key: "status",           width: 14 },
     { header: "notas_seguimiento", key: "followUpNotes",    width: 38 },
   ]);
-  rangeDropdown(sheet, 1, 2, DATA_ROWS, "Empleados!$D$2:$D$300");
-  rangeDropdown(sheet, 4, 2, DATA_ROWS, "Empleados!$D$2:$D$300");
+  rangeDropdown(sheet, 1, 2, DATA_ROWS, NR.EMP_EMAILS);
+  rangeDropdown(sheet, 4, 2, DATA_ROWS, NR.EMP_EMAILS);
   listDropdown(sheet, 6, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.evaluacionStatus);
 }
 
@@ -274,11 +275,10 @@ function addHabilidadesSheet(workbook) {
   listDropdown(sheet, 4, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.habilidadNivel);
   listDropdown(sheet, 5, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.yesNo);
 
-  // Sample rows to guide the user
   [
-    { nombre: "Trabajo en equipo",    descripcion: "Capacidad para colaborar efectivamente con otros.",         tipo: "TRANSVERSAL", nivel: "BASICO",     activa: "yes" },
-    { nombre: "Liderazgo de equipos", descripcion: "Habilidad para guiar, motivar y desarrollar al equipo.",   tipo: "LIDERAZGO",   nivel: "AVANZADO",   activa: "yes" },
-    { nombre: "Análisis de datos",    descripcion: "Capacidad para interpretar datos y extraer conclusiones.",  tipo: "TECNICA",     nivel: "INTERMEDIO", activa: "yes" },
+    { nombre: "Trabajo en equipo",    descripcion: "Capacidad para colaborar efectivamente con otros.",        tipo: "TRANSVERSAL", nivel: "BASICO",     activa: "yes" },
+    { nombre: "Liderazgo de equipos", descripcion: "Habilidad para guiar, motivar y desarrollar al equipo.",  tipo: "LIDERAZGO",   nivel: "AVANZADO",   activa: "yes" },
+    { nombre: "Análisis de datos",    descripcion: "Capacidad para interpretar datos y extraer conclusiones.", tipo: "TECNICA",     nivel: "INTERMEDIO", activa: "yes" },
   ].forEach((row) => sheet.addRow(row));
 }
 
@@ -291,16 +291,16 @@ function addCatalogsSheet(workbook) {
   ]);
 
   const rows = [
-    ...BULK_IMPORT_CATALOGS.roleKey.map((v) => ({ catalog: "rol", value: v, description: "Rol funcional válido para usuarios." })),
-    ...BULK_IMPORT_CATALOGS.scope.map((v) => ({ catalog: "alcance", value: v, description: "Nivel de alcance del usuario." })),
-    ...BULK_IMPORT_CATALOGS.relationshipType.map((v) => ({ catalog: "tipo_relacion", value: v, description: "Tipo de relación manager-colaborador." })),
-    ...BULK_IMPORT_CATALOGS.status.map((v) => ({ catalog: "estado", value: v, description: "Estado general del registro." })),
-    ...BULK_IMPORT_CATALOGS.tipoContrato.map((v) => ({ catalog: "tipo_contrato", value: v, description: "Modalidad de contratación del empleado." })),
-    ...BULK_IMPORT_CATALOGS.evaluacionStatus.map((v) => ({ catalog: "estado_evaluacion", value: v, description: "Estado de evaluación o plan." })),
-    ...BULK_IMPORT_CATALOGS.medicionTipo.map((v) => ({ catalog: "tipo_medicion", value: v, description: "Tipo de medición de desempeño." })),
-    ...BULK_IMPORT_CATALOGS.yesNo.map((v) => ({ catalog: "si/no", value: v, description: "Valor esperado en columnas activo/puede_iniciar_sesion." })),
-    ...BULK_IMPORT_CATALOGS.habilidadTipo.map((v) => ({ catalog: "tipo_habilidad", value: v, description: "Tipo de habilidad o competencia." })),
-    ...BULK_IMPORT_CATALOGS.habilidadNivel.map((v) => ({ catalog: "nivel_habilidad", value: v, description: "Nivel de profundidad de la habilidad." })),
+    ...BULK_IMPORT_CATALOGS.roleKey.map((v)          => ({ catalog: "rol",               value: v, description: "Rol funcional válido para usuarios." })),
+    ...BULK_IMPORT_CATALOGS.scope.map((v)             => ({ catalog: "alcance",           value: v, description: "Nivel de alcance del usuario." })),
+    ...BULK_IMPORT_CATALOGS.relationshipType.map((v)  => ({ catalog: "tipo_relacion",     value: v, description: "Tipo de relación manager-colaborador." })),
+    ...BULK_IMPORT_CATALOGS.status.map((v)            => ({ catalog: "estado",            value: v, description: "Estado general del registro." })),
+    ...BULK_IMPORT_CATALOGS.tipoContrato.map((v)      => ({ catalog: "tipo_contrato",     value: v, description: "Modalidad de contratación del empleado." })),
+    ...BULK_IMPORT_CATALOGS.evaluacionStatus.map((v)  => ({ catalog: "estado_evaluacion", value: v, description: "Estado de evaluación o plan." })),
+    ...BULK_IMPORT_CATALOGS.medicionTipo.map((v)      => ({ catalog: "tipo_medicion",     value: v, description: "Tipo de medición de desempeño." })),
+    ...BULK_IMPORT_CATALOGS.yesNo.map((v)             => ({ catalog: "si/no",             value: v, description: "Valor esperado en columnas activo/puede_iniciar_sesion." })),
+    ...BULK_IMPORT_CATALOGS.habilidadTipo.map((v)     => ({ catalog: "tipo_habilidad",    value: v, description: "Tipo de habilidad o competencia." })),
+    ...BULK_IMPORT_CATALOGS.habilidadNivel.map((v)    => ({ catalog: "nivel_habilidad",   value: v, description: "Nivel de profundidad de la habilidad." })),
   ];
   rows.forEach((row) => sheet.addRow(row));
 }
@@ -309,13 +309,13 @@ function addCatalogsSheet(workbook) {
 
 export async function buildBulkImportTemplateBuffer() {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator       = "ZENTOR";
+  workbook.creator        = "ZENTOR";
   workbook.lastModifiedBy = "ZENTOR";
-  workbook.created       = new Date();
-  workbook.modified      = new Date();
-  workbook.subject       = "Plantilla oficial de importación masiva";
-  workbook.title         = BULK_IMPORT_TEMPLATE_FILENAME;
-  workbook.company       = "ZENTOR";
+  workbook.created        = new Date();
+  workbook.modified       = new Date();
+  workbook.subject        = "Plantilla oficial de importación masiva";
+  workbook.title          = BULK_IMPORT_TEMPLATE_FILENAME;
+  workbook.company        = "ZENTOR";
 
   addInstructionSheet(workbook);
   addOrganizationSheet(workbook);
@@ -328,6 +328,12 @@ export async function buildBulkImportTemplateBuffer() {
   addDevelopmentPlansSheet(workbook);
   addHabilidadesSheet(workbook);
   addCatalogsSheet(workbook);
+
+  // Named ranges are required for cross-sheet data validation in XLSX format.
+  // Excel resolves these names when the user opens the file.
+  workbook.definedNames.add("Empleados!$A$2:$A$300",    NR.EMP_LEGAJOS);
+  workbook.definedNames.add("Empleados!$D$2:$D$300",    NR.EMP_EMAILS);
+  workbook.definedNames.add("Departamentos!$A$2:$A$300", NR.DEP_CODIGOS);
 
   return workbook.xlsx.writeBuffer();
 }
