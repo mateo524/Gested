@@ -6,10 +6,17 @@ import { isAdminOrgUser } from "../lib/roleHelpers";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
+const STEP_ICONS = {
+  employees:    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>,
+  competencies: <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  cycles:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
+  evaluations:  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+  report:       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>,
+};
+
 const STEPS_CONFIG = [
   {
     key: "employees",
-    icon: "👥",
     title: "Cargá a tu equipo",
     desc: "Agregá los empleados de tu organización. Podés importarlos desde Excel.",
     actionLabel: "Ir a Personas",
@@ -17,7 +24,6 @@ const STEPS_CONFIG = [
   },
   {
     key: "competencies",
-    icon: "🎯",
     title: "Definí las competencias",
     desc: "Creá las competencias o indicadores que vas a evaluar en tu equipo.",
     actionLabel: "Ir a Competencias",
@@ -25,7 +31,6 @@ const STEPS_CONFIG = [
   },
   {
     key: "cycles",
-    icon: "🔄",
     title: "Creá un ciclo de evaluación",
     desc: "Configurá el período de evaluación: fechas de inicio y cierre.",
     actionLabel: "Crear ciclo",
@@ -33,7 +38,6 @@ const STEPS_CONFIG = [
   },
   {
     key: "evaluations",
-    icon: "📝",
     title: "Asigná las primeras evaluaciones",
     desc: "Iniciá el proceso de evaluación asignando a los responsables.",
     actionLabel: "Ir a Evaluaciones",
@@ -41,7 +45,6 @@ const STEPS_CONFIG = [
   },
   {
     key: "report",
-    icon: "📊",
     title: "Revisá el reporte ejecutivo",
     desc: "Cuando haya datos, el reporte ejecutivo te muestra el estado de todo el equipo.",
     actionLabel: "Ver reporte",
@@ -259,8 +262,8 @@ function OnboardingChecklistInner({ token, user, activeCompanyId, setView }) {
       <section className="pf-surface pf-surface-pad">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-500/15 text-2xl">
-              🎉
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-emerald-400/30 bg-emerald-500/15">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6 text-emerald-300"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg>
             </span>
             <div>
               <p className="text-xs uppercase tracking-[0.14em] text-[#7a9aaa]">Configuración inicial</p>
@@ -342,7 +345,7 @@ function OnboardingChecklistInner({ token, user, activeCompanyId, setView }) {
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-lg leading-none">{stepCfg.icon}</span>
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center text-[#7a9aaa]">{STEP_ICONS[stepCfg.key]}</span>
                         <p className={`font-semibold ${isDone ? "text-[#8fa9b7] line-through decoration-white/20" : "text-white"}`}>
                           {stepCfg.title}
                         </p>

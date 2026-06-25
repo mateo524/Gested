@@ -147,7 +147,7 @@ function LanguageMenu({ language, setLanguage, t }) {
       </button>
       {open ? (
         <div className="absolute right-0 z-30 mt-2 w-40 rounded-2xl border border-white/10 bg-[#12222d] p-1.5 shadow-[0_18px_40px_rgba(2,8,23,0.4)]">
-          {[{ code: "es", label: "Español" }, { code: "en", label: "English (US)" }].map(lang => (
+          {[{ code: "es", label: "Español" }].map(lang => (
             <button key={lang.code} type="button" onClick={() => { setLanguage(lang.code); setOpen(false); }}
               className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm text-white transition hover:bg-white/5 ${language === lang.code ? "bg-[#122f55]" : ""}`}>
               <span>{lang.label}</span>
@@ -403,6 +403,11 @@ export default function AppShell({
       if (platKids.length) {
         items.push({ type: "group", key: "plataforma-group", label: L("Plataforma", "Platform"), icon: "analytics", children: platKids });
       }
+    }
+
+    // Facturación — solo para admins de empresa (no superadmin, no empleado, no manager)
+    if (!isSuperAdmin && !isEmployee && !isManager && byKey["billing"]) {
+      items.push({ type: "item", key: "billing", label: "Facturación", icon: "billing" });
     }
 
     return items;
