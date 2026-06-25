@@ -145,16 +145,17 @@ export default function BillingPage() {
     if (!add || add < 1) { addToast({ message: "Ingresá una cantidad válida", type: "error" }); return; }
     setSubmitting(true);
     try {
-      const data = await apiFetch("/billing/update-employees", {
+      const data = await apiFetch("/billing/add-employees-checkout", {
         token, method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ addEmployees: add }),
       });
-      await refreshStatus();
-      setAddEmployees("");
-      addToast({ message: `Plan actualizado: ${data.newEmployeeCount} empleados desde el próximo ciclo`, type: "success" });
+      if (data.checkoutUrl) {
+        window.open(data.checkoutUrl, "_blank", "noopener");
+        addToast({ message: "Completá el pago en MercadoPago para activar los empleados adicionales", type: "info" });
+      }
     } catch (err) {
-      addToast({ message: err?.message || "No se pudo actualizar el plan", type: "error" });
+      addToast({ message: err?.message || "No se pudo iniciar el pago", type: "error" });
     } finally {
       setSubmitting(false);
     }

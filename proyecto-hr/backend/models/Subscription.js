@@ -19,6 +19,13 @@ const subscriptionSchema = new mongoose.Schema({
   lastPaymentDate:   { type: Date },
   lastPaymentAmount: { type: Number },
 
+  // Pending employee upgrade (one-time payment in progress)
+  pendingUpgrade: {
+    add:          { type: Number },
+    newCount:     { type: Number },
+    preferenceId: { type: String },
+  },
+
   // Metadata
   cancelledAt:       { type: Date },
   cancelReason:      { type: String },

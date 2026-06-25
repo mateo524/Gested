@@ -161,11 +161,11 @@ router.post("/cancel", auth, attachTenantScope, async (req, res) => {
   }
 });
 
-// ─── POST /billing/update-employees ──────────────────────────────────────────
+// ─── POST /billing/add-employees-checkout ─────────────────────────────────────
 // Body: { addEmployees: number }
-// Adds employees to an existing authorized subscription.
-// Updates the MP preapproval amount — no cancellation, next charge reflects new total.
-router.post("/update-employees", auth, attachTenantScope, async (req, res) => {
+// Creates a one-time MP payment for the prorated extra employees (days remaining
+// in current cycle). On webhook confirmation, updates the preapproval monthly amount.
+router.post("/add-employees-checkout", auth, attachTenantScope, async (req, res) => {
   try {
     const companyId = req.scope.companyId;
     const add = parseInt(req.body.addEmployees, 10);
@@ -177,22 +177,45 @@ router.post("/update-employees", auth, attachTenantScope, async (req, res) => {
     }
 
     const newCount = (sub.employeeCount || 0) + add;
-    const newAmount = calcPrice(newCount);
 
-    await mpFetch(`/preapproval/${sub.mpPreapprovalId}`, {
-      method: "PUT",
+    // Prorate: charge only the fraction of the month remaining
+    const cycleStart = sub.billingCycleStart || sub.createdAt || new Date();
+    const cycleEnd   = sub.nextPaymentDate || new Date(cycleStart.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const totalDays  = Math.max(1, Math.round((cycleEnd - cycleStart) / (1000 * 60 * 60 * 24)));
+    const daysLeft   = Math.max(1, Math.round((cycleEnd - new Date()) / (1000 * 60 * 60 * 24)));
+    const fraction   = Math.min(1, daysLeft / totalDays);
+    const proratedAmount = Math.ceil(add * PRICE_PER_EMPLOYEE_ARS * fraction);
+
+    const frontendUrl = process.env.FRONTEND_URL || "https://app.zentor.com.ar";
+
+    // One-time payment preference — external_reference encodes the upgrade
+    const preference = await mpFetch("/checkout/preferences", {
+      method: "POST",
       body: JSON.stringify({
-        auto_recurring: { transaction_amount: newAmount },
+        items: [{
+          title:       `Zentor — ${add} empleados adicionales`,
+          quantity:    1,
+          unit_price:  proratedAmount,
+          currency_id: "ARS",
+        }],
+        back_urls: {
+          success: `${frontendUrl}?billing_return=1`,
+          failure: `${frontendUrl}?billing_return=0`,
+          pending: `${frontendUrl}?billing_return=1`,
+        },
+        auto_return:        "approved",
+        external_reference: `${companyId}:upgrade:${newCount}`,
       }),
     });
 
-    sub.employeeCount = newCount;
+    // Store pending upgrade so webhook knows what to apply
+    sub.pendingUpgrade = { add, newCount, preferenceId: preference.id };
     await sub.save();
 
-    res.json({ ok: true, newEmployeeCount: newCount });
+    res.json({ ok: true, checkoutUrl: preference.init_point });
   } catch (err) {
-    console.error("[billing/update-employees]", err);
-    res.status(500).json({ ok: false, message: err.message || "Error al actualizar la suscripción" });
+    console.error("[billing/add-employees-checkout]", err);
+    res.status(500).json({ ok: false, message: err.message || "Error al iniciar el pago" });
   }
 });
 
@@ -218,6 +241,30 @@ router.post("/webhook", async (req, res) => {
       transactionAmount = detail.auto_recurring?.transaction_amount;
     } else if (type === "payment") {
       const payment = await mpFetch(`/v1/payments/${resourceId}`);
+
+      // One-time upgrade payment (external_reference = "companyId:upgrade:newCount")
+      const ref = payment.external_reference || "";
+      if (ref.includes(":upgrade:") && payment.status === "approved") {
+        const [rawCompanyId, , newCountStr] = ref.split(":");
+        const newCount = parseInt(newCountStr, 10);
+        if (newCount > 0) {
+          const upgradeSub = await Subscription.findOne({
+            companyId: rawCompanyId, status: "authorized",
+          }).sort({ createdAt: -1 });
+          if (upgradeSub?.mpPreapprovalId) {
+            const newAmount = calcPrice(newCount);
+            await mpFetch(`/preapproval/${upgradeSub.mpPreapprovalId}`, {
+              method: "PUT",
+              body: JSON.stringify({ auto_recurring: { transaction_amount: newAmount } }),
+            }).catch(err => console.warn("[webhook] update preapproval amount failed", err.message));
+            upgradeSub.employeeCount  = newCount;
+            upgradeSub.pendingUpgrade = undefined;
+            await upgradeSub.save();
+          }
+        }
+        return;
+      }
+
       if (payment.payment_type_id !== "recurring") return;
       preapprovalId     = payment.preapproval_id;
       mpStatus          = payment.status === "approved" ? "authorized" : payment.status;
