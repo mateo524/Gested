@@ -259,26 +259,38 @@ export default function BillingPage() {
           </ul>
         </div>
 
-        {/* Upgrade card when active, form when not */}
+        {/* Upgrade form when active, activation form when not */}
         {(hasActiveSub || hasManualPlan) ? (
-          <div className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 flex flex-col justify-between gap-6">
+          <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 space-y-4">
             <div>
-              <p className="text-sm font-semibold text-white">¿Necesitás más usuarios?</p>
-              <p className="mt-2 text-sm text-[#8fa9b7] leading-relaxed">
-                Si tu organización creció y necesitás ajustar la cantidad de empleados facturados, escribinos y lo coordinamos sin interrumpir el servicio.
-              </p>
+              <p className="text-sm font-semibold text-white">Modificar cantidad de empleados</p>
+              <p className="mt-1 text-xs text-[#7a9aaa]">Ingresá la nueva cantidad y continuá al pago. Tu suscripción anterior se reemplaza automáticamente.</p>
             </div>
-            <a
-              href="mailto:hola@zentor.com.ar?subject=Ampliar%20plan%20-%20m%C3%A1s%20usuarios&body=Hola%2C%20quiero%20ampliar%20la%20cantidad%20de%20empleados%20de%20mi%20plan%20actual."
-              className="inline-flex items-center gap-2 rounded-xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] self-start"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-              Escribinos
-            </a>
-          </div>
+            <div className="space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">Nombre de contacto</label>
+                <input name="contactName" value={form.contactName} onChange={handleChange} required placeholder="Tu nombre"
+                  className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">Email de contacto</label>
+                <input name="contactEmail" type="email" value={form.contactEmail} onChange={handleChange} required placeholder="tu@empresa.com"
+                  className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none" />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-[#7a9aaa]">
+                  Nueva cantidad de empleados <span className="text-rose-400">*</span>
+                </label>
+                <input name="employeeCount" type="number" min="1" max="9999" value={form.employeeCount} onChange={handleChange} required
+                  placeholder={sub?.employeeCount ? `Actual: ${sub.employeeCount}` : "Ej: 50"}
+                  className="w-full rounded-xl border border-white/10 bg-[#0a1822] px-3 py-2.5 text-sm text-white placeholder-[#4a6475] focus:border-[#14b8a6]/40 focus:outline-none" />
+              </div>
+            </div>
+            <button type="submit" disabled={submitting}
+              className="w-full rounded-xl bg-[#14b8a6] py-2.5 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488] disabled:opacity-50">
+              {submitting ? "Procesando…" : "Actualizar plan →"}
+            </button>
+          </form>
         ) : (
         <form onSubmit={handleSubmit} className="rounded-2xl border border-white/10 bg-[#0c1e28] p-5 space-y-4">
           <p className="text-sm font-semibold text-white">Activar suscripción</p>

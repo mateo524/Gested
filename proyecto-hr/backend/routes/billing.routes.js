@@ -96,6 +96,19 @@ router.post("/create-checkout", auth, attachTenantScope, async (req, res) => {
     const frontendUrl = process.env.FRONTEND_URL || "https://app.zentor.com.ar";
     const totalARS = calcPrice(count);
 
+    // Cancel any existing authorized subscription before creating a new one
+    const existingSub = await Subscription.findOne({ companyId, status: "authorized" }).sort({ createdAt: -1 });
+    if (existingSub?.mpPreapprovalId) {
+      await mpFetch(`/preapproval/${existingSub.mpPreapprovalId}`, {
+        method: "PUT",
+        body: JSON.stringify({ status: "cancelled" }),
+      }).catch(err => console.warn("[billing/create-checkout] cancel old sub failed", err.message));
+      existingSub.status = "cancelled";
+      existingSub.cancelledAt = new Date();
+      existingSub.cancelReason = "plan_upgrade";
+      await existingSub.save();
+    }
+
     const payload = {
       reason: "Zentor — Gestión de desempeño",
       auto_recurring: {
