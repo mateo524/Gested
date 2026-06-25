@@ -20,11 +20,10 @@ test("la plantilla oficial incluye todas las solapas requeridas", async () => {
     "Empleados",
     "Usuarios_y_Roles",
     "Managers",
-    "KPIs",
-    "OKRs",
     "Evaluaciones",
     "Mediciones_Desempeno",
     "Planes_Desarrollo",
+    "Habilidades",
     "Catálogos",
   ]);
 });

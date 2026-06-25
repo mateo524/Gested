@@ -410,7 +410,7 @@ test("analyze devuelve error controlado cuando el archivo xlsx esta dañado", as
   );
 });
 
-test("analyze no explota con una hoja vacia", async () => {
+test("analyze no explota con hoja Habilidades vacia", async () => {
   const restores = [
     patchCollection(Employee, []),
     patchCollection(User, []),
@@ -420,8 +420,9 @@ test("analyze no explota con una hoja vacia", async () => {
 
   try {
     const buffer = await buildWorkbookBuffer((workbook) => {
-      const kpis = workbook.getWorksheet("KPIs");
-      kpis.spliceRows(2, kpis.rowCount - 1);
+      const hab = workbook.addWorksheet("Habilidades");
+      hab.addRow(["nombre_habilidad", "descripcion", "tipo", "nivel", "activa"]);
+      // no data rows
     });
 
     const analysis = await analyzeBulkImportWorkbook({
@@ -430,14 +431,14 @@ test("analyze no explota con una hoja vacia", async () => {
       schoolId: "school1",
     });
 
-    assert.equal(analysis.summary.bySheet.KPIs.totalRows, 0);
+    assert.equal(analysis.summary.errors, 0);
     assert.equal(Array.isArray(analysis.errors), true);
   } finally {
     restores.forEach((restore) => restore());
   }
 });
 
-test("analyze no explota cuando falta una columna requerida", async () => {
+test("analyze detecta nombre_habilidad obligatorio", async () => {
   const restores = [
     patchCollection(Employee, []),
     patchCollection(User, []),
@@ -447,7 +448,9 @@ test("analyze no explota cuando falta una columna requerida", async () => {
 
   try {
     const buffer = await buildWorkbookBuffer((workbook) => {
-      workbook.getWorksheet("KPIs").getCell("A1").value = "";
+      const hab = workbook.addWorksheet("Habilidades");
+      hab.addRow(["nombre_habilidad", "descripcion", "tipo", "nivel", "activa"]);
+      hab.addRow(["", "desc", "TRANSVERSAL", "BASICO", "yes"]);
     });
 
     const analysis = await analyzeBulkImportWorkbook({
@@ -457,7 +460,7 @@ test("analyze no explota cuando falta una columna requerida", async () => {
     });
 
     assert.equal(
-      analysis.errors.some((item) => item.sheet === "KPIs" && item.message.includes("Falta la columna requerida kpi_name")),
+      analysis.errors.some((item) => item.sheet === "Habilidades" && item.field === "nombre_habilidad"),
       true
     );
   } finally {
@@ -465,7 +468,7 @@ test("analyze no explota cuando falta una columna requerida", async () => {
   }
 });
 
-test("analyze no explota con KPI incompleto y devuelve error de fila", async () => {
+test("analyze detecta tipo de habilidad invalido", async () => {
   const restores = [
     patchCollection(Employee, []),
     patchCollection(User, []),
@@ -475,7 +478,9 @@ test("analyze no explota con KPI incompleto y devuelve error de fila", async () 
 
   try {
     const buffer = await buildWorkbookBuffer((workbook) => {
-      workbook.getWorksheet("KPIs").getCell("C2").value = "";
+      const hab = workbook.addWorksheet("Habilidades");
+      hab.addRow(["nombre_habilidad", "descripcion", "tipo", "nivel", "activa"]);
+      hab.addRow(["Trabajo en equipo", "desc", "INVALIDO", "BASICO", "yes"]);
     });
 
     const analysis = await analyzeBulkImportWorkbook({
@@ -485,7 +490,7 @@ test("analyze no explota con KPI incompleto y devuelve error de fila", async () 
     });
 
     assert.equal(
-      analysis.errors.some((item) => item.sheet === "KPIs" && item.field === "target_value" && item.message.includes("numerico")),
+      analysis.errors.some((item) => item.sheet === "Habilidades" && item.field === "tipo"),
       true
     );
   } finally {
@@ -493,7 +498,7 @@ test("analyze no explota con KPI incompleto y devuelve error de fila", async () 
   }
 });
 
-test("analyze no explota con OKR incompleto y devuelve error de fila", async () => {
+test("analyze acepta habilidad valida sin errores", async () => {
   const restores = [
     patchCollection(Employee, []),
     patchCollection(User, []),
@@ -503,7 +508,9 @@ test("analyze no explota con OKR incompleto y devuelve error de fila", async () 
 
   try {
     const buffer = await buildWorkbookBuffer((workbook) => {
-      workbook.getWorksheet("OKRs").getCell("B2").value = "";
+      const hab = workbook.addWorksheet("Habilidades");
+      hab.addRow(["nombre_habilidad", "descripcion", "tipo", "nivel", "activa"]);
+      hab.addRow(["Liderazgo", "Habilidad de liderazgo", "LIDERAZGO", "AVANZADO", "yes"]);
     });
 
     const analysis = await analyzeBulkImportWorkbook({
@@ -512,10 +519,8 @@ test("analyze no explota con OKR incompleto y devuelve error de fila", async () 
       schoolId: "school1",
     });
 
-    assert.equal(
-      analysis.errors.some((item) => item.sheet === "OKRs" && item.field === "key_result_title" && item.message.includes("obligatorio")),
-      true
-    );
+    assert.equal(analysis.summary.errors, 0);
+    assert.equal(analysis.preview.habilidades.length, 1);
   } finally {
     restores.forEach((restore) => restore());
   }
