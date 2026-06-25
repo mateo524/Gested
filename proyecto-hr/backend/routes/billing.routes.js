@@ -31,7 +31,7 @@ function calcPrice(employeeCount) {
 }
 
 async function mpFetch(path, options = {}) {
-  const token = process.env.MP_ACCESS_TOKEN;
+  const token = (process.env.MP_ACCESS_TOKEN || "").replace(/^﻿/, "").trim();
   if (!token) throw new Error("MP_ACCESS_TOKEN not configured");
   const res = await fetch(`${MP_BASE}${path}`, {
     ...options,
