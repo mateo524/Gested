@@ -3,7 +3,6 @@ import { apiUrl } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
 import { isEmployeeUser, isManagerUser } from "../lib/roleHelpers";
-import WhatsNewModal from "./WhatsNewModal";
 import NpsModal from "./NpsModal";
 import AppLogo from "./brand/AppLogo";
 import useClickOutside from "../hooks/useClickOutside";
@@ -558,7 +557,6 @@ export default function AppShell({
 
   return (
     <div className="h-screen overflow-hidden bg-[#091319] text-[#E8EEF1]">
-      <WhatsNewModal />
       <NpsModal />
       <div className="flex h-full">
         {/* Sidebar */}

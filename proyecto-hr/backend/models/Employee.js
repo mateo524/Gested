@@ -11,7 +11,8 @@ const EmployeeSchema = new mongoose.Schema(
     schoolId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "School",
-      required: true,
+      required: false,
+      default: null,
       index: true,
     },
     managerId: {
