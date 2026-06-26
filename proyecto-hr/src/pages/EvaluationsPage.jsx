@@ -55,6 +55,82 @@ function StarRow({ value, onChange, disabled }) {
   );
 }
 
+// ─── Eval metric rows (defined outside to avoid remount on each render) ────────
+function MetricRow({ id, metric, autoScore, scores, comments, setScores, setComments, showSideBySide, isJefatura, isReadOnly, gridCls }) {
+  const autoNivel = autoScore?.nivel || 0;
+  const currentNivel = scores[id] || 0;
+  const diff = showSideBySide && currentNivel && autoNivel ? currentNivel - autoNivel : null;
+  return (
+    <div className={`grid gap-0 border-t border-white/5 ${gridCls}`}>
+      <div className="px-4 py-3">
+        <p className="text-sm font-medium text-white">{metric?.nombre || "—"}</p>
+        {metric?.descripcion ? <p className="mt-0.5 text-xs text-[#7f99a8] line-clamp-2">{metric.descripcion}</p> : null}
+      </div>
+      {showSideBySide && (
+        <div className="border-l border-violet-500/10 bg-violet-500/[0.04] px-4 py-3">
+          <div className="flex items-center gap-2">
+            <StarRow value={autoNivel} disabled/>
+            {autoNivel > 0 && <span className="text-sm font-semibold text-violet-300">{autoNivel}</span>}
+          </div>
+          {autoScore?.comentario ? (
+            <p className="mt-1 text-[11px] italic text-violet-300/70 line-clamp-2">"{autoScore.comentario}"</p>
+          ) : null}
+        </div>
+      )}
+      <div className={`border-l px-4 py-3 ${isJefatura ? "border-[#14b8a6]/10 bg-[#14b8a6]/[0.04]" : "border-white/10"}`}>
+        <div className="flex items-center gap-2">
+          <StarRow value={currentNivel}
+            onChange={isReadOnly ? undefined : (n) => setScores(s => ({ ...s, [id]: n }))}
+            disabled={isReadOnly}/>
+          {currentNivel > 0 && <span className="text-sm font-semibold text-[#14b8a6]">{currentNivel}</span>}
+        </div>
+        {diff !== null && (
+          <span className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
+            ${diff > 0 ? "bg-emerald-500/15 text-emerald-300" : diff < 0 ? "bg-rose-500/15 text-rose-300" : "bg-white/10 text-[#7f99a8]"}`}>
+            {diff > 0 ? `+${diff}` : diff} vs auto
+          </span>
+        )}
+      </div>
+      <div className="border-l border-white/10 px-4 py-3">
+        {isReadOnly ? (
+          <p className="text-sm text-[#9fb6c4]">{comments[id] || <span className="text-[#5e7d8e]">—</span>}</p>
+        ) : (
+          <input type="text" placeholder="Notas…" value={comments[id] || ""}
+            onChange={e => setComments(c => ({ ...c, [id]: e.target.value }))}
+            className="w-full rounded-lg border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-sm text-white outline-none placeholder:text-[#5e7d8e] focus:border-[#14b8a6]/50"/>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function CompetencySubtotalRow({ metricIds, scores, autoScoreMap, showSideBySide, isJefatura, gridCls }) {
+  const vals = metricIds.map(id => scores[id] || 0).filter(v => v > 0);
+  const avg = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : null;
+  const autoVals = metricIds.map(id => autoScoreMap.get(id)?.nivel || 0).filter(v => v > 0);
+  const autoAvg = showSideBySide && autoVals.length ? (autoVals.reduce((a, b) => a + b, 0) / autoVals.length).toFixed(1) : null;
+  return (
+    <div className={`grid gap-0 border-t border-white/10 bg-white/[0.02] ${gridCls}`}>
+      <div className="px-4 py-2.5 flex items-center gap-1.5">
+        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#5e7d8e]">Puntaje habilidad</span>
+      </div>
+      {showSideBySide && (
+        <div className="border-l border-violet-500/10 bg-violet-500/[0.06] px-4 py-2.5">
+          {autoAvg
+            ? <span className="text-sm font-bold text-violet-200">{autoAvg}<span className="ml-0.5 text-xs font-normal text-violet-400">/5</span></span>
+            : <span className="text-sm text-violet-400/30">—</span>}
+        </div>
+      )}
+      <div className={`border-l px-4 py-2.5 ${isJefatura ? "border-[#14b8a6]/10 bg-[#14b8a6]/[0.06]" : "border-white/10"}`}>
+        {avg
+          ? <span className={`text-sm font-bold ${isJefatura ? "text-[#14b8a6]" : "text-white"}`}>{avg}<span className="ml-0.5 text-xs font-normal opacity-50">/5</span></span>
+          : <span className="text-sm text-white/20">—</span>}
+      </div>
+      <div className="border-l border-white/10 px-4 py-2.5"/>
+    </div>
+  );
+}
+
 // ─── Eval Detail View (Vista Jefe — side by side) ─────────────────────────────
 function EvalDetailView({ evalId, token, onBack, onSaved }) {
   const { addToast } = useToast();
@@ -139,6 +215,24 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
     (autoData?.scores || []).forEach(s => m.set(String(s.metricId?._id || s.metricId), s));
     return m;
   }, [autoData]);
+
+  // Group metric IDs by their parent competency (populated via deep-populate on metricId.competencyId)
+  const groupedByCompetency = useMemo(() => {
+    const groupMap = new Map(); // competencyId string => { competency, metricIds[] }
+    const ungrouped = [];
+    allMetricIds.forEach(id => {
+      const metric = metricMap.get(id);
+      const comp = metric?.competencyId;
+      if (comp && typeof comp === "object" && comp._id && comp.nombre) {
+        const cId = String(comp._id);
+        if (!groupMap.has(cId)) groupMap.set(cId, { competency: comp, metricIds: [] });
+        groupMap.get(cId).metricIds.push(id);
+      } else {
+        ungrouped.push(id);
+      }
+    });
+    return { groups: [...groupMap.values()], ungrouped };
+  }, [allMetricIds, metricMap]);
 
   const summaryAuto = useMemo(() => {
     const vals = (autoData?.scores || []).map(s => s.nivel || 0).filter(v => v > 0);
@@ -262,63 +356,44 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
 
         {allMetricIds.length === 0 ? (
           <div className="px-4 py-10 text-center text-sm text-[#7f99a8]">Sin habilidades asignadas a este empleado.</div>
-        ) : (
-          <div className="divide-y divide-white/5">
-            {allMetricIds.map(id => {
-              const metric = metricMap.get(id);
-              const autoScore = autoScoreMap.get(id);
-              const autoNivel = autoScore?.nivel || 0;
-              const currentNivel = scores[id] || 0;
-              const diff = showSideBySide && currentNivel && autoNivel ? currentNivel - autoNivel : null;
-              return (
-                <div key={id} className={`grid gap-0 ${showSideBySide ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]" : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]"}`}>
-                  {/* Skill name */}
-                  <div className="px-4 py-3.5">
-                    <p className="text-sm font-medium text-white">{metric?.nombre || "—"}</p>
-                    {metric?.descripcion ? <p className="mt-0.5 text-xs text-[#7f99a8] line-clamp-2">{metric.descripcion}</p> : null}
-                  </div>
-                  {/* Auto-eval col */}
-                  {showSideBySide && (
-                    <div className="border-l border-violet-500/10 bg-violet-500/[0.04] px-4 py-3.5">
-                      <div className="flex items-center gap-2">
-                        <StarRow value={autoNivel} disabled/>
-                        {autoNivel > 0 && <span className="text-sm font-semibold text-violet-300">{autoNivel}</span>}
-                      </div>
-                      {autoScore?.comentario ? (
-                        <p className="mt-1 text-[11px] italic text-violet-300/70 line-clamp-2">"{autoScore.comentario}"</p>
-                      ) : null}
-                    </div>
-                  )}
-                  {/* Manager eval col */}
-                  <div className={`border-l px-4 py-3.5 ${isJefatura ? "border-[#14b8a6]/10 bg-[#14b8a6]/[0.04]" : "border-white/10"}`}>
-                    <div className="flex items-center gap-2">
-                      <StarRow value={currentNivel}
-                        onChange={isReadOnly ? undefined : (n) => setScores(s => ({ ...s, [id]: n }))}
-                        disabled={isReadOnly}/>
-                      {currentNivel > 0 && <span className="text-sm font-semibold text-[#14b8a6]">{currentNivel}</span>}
-                    </div>
-                    {diff !== null && (
-                      <span className={`mt-0.5 inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold
-                        ${diff > 0 ? "bg-emerald-500/15 text-emerald-300" : diff < 0 ? "bg-rose-500/15 text-rose-300" : "bg-white/10 text-[#7f99a8]"}`}>
-                        {diff > 0 ? `+${diff}` : diff} vs auto
-                      </span>
+        ) : (() => {
+          const gridCls = showSideBySide
+            ? "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.4fr)]"
+            : "grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1.4fr)]";
+          const rowProps = { scores, comments, setScores, setComments, showSideBySide, isJefatura, isReadOnly, gridCls };
+          const { groups, ungrouped } = groupedByCompetency;
+
+          if (groups.length > 0) return (
+            <div>
+              {groups.map(({ competency, metricIds: mIds }) => (
+                <div key={String(competency._id)} className="border-b border-white/8 last:border-b-0">
+                  <div className="flex items-baseline gap-2 border-b border-white/5 bg-white/[0.025] px-4 py-2.5">
+                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#c7d5dc]">{competency.nombre}</span>
+                    {competency.descripcion && (
+                      <span className="text-[11px] text-[#4a6070] line-clamp-1">{competency.descripcion}</span>
                     )}
                   </div>
-                  {/* Notes col */}
-                  <div className="border-l border-white/10 px-4 py-3.5">
-                    {isReadOnly ? (
-                      <p className="text-sm text-[#9fb6c4]">{comments[id] || <span className="text-[#5e7d8e]">—</span>}</p>
-                    ) : (
-                      <input type="text" placeholder="Notas…" value={comments[id] || ""}
-                        onChange={e => setComments(c => ({ ...c, [id]: e.target.value }))}
-                        className="w-full rounded-lg border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-sm text-white outline-none placeholder:text-[#5e7d8e] focus:border-[#14b8a6]/50"/>
-                    )}
-                  </div>
+                  {mIds.map(id => (
+                    <MetricRow key={id} id={id} metric={metricMap.get(id)} autoScore={autoScoreMap.get(id)} {...rowProps}/>
+                  ))}
+                  <CompetencySubtotalRow metricIds={mIds} scores={scores} autoScoreMap={autoScoreMap} showSideBySide={showSideBySide} isJefatura={isJefatura} gridCls={gridCls}/>
                 </div>
-              );
-            })}
-          </div>
-        )}
+              ))}
+              {ungrouped.map(id => (
+                <MetricRow key={id} id={id} metric={metricMap.get(id)} autoScore={autoScoreMap.get(id)} {...rowProps}/>
+              ))}
+            </div>
+          );
+
+          // Fallback flat list (no grouping)
+          return (
+            <div className="divide-y divide-white/5">
+              {allMetricIds.map(id => (
+                <MetricRow key={id} id={id} metric={metricMap.get(id)} autoScore={autoScoreMap.get(id)} {...rowProps}/>
+              ))}
+            </div>
+          );
+        })()}
       </div>
 
       {/* Comentario general */}

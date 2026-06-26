@@ -315,7 +315,11 @@ router.get(
     }
 
     let scores = await EvaluationScore.find({ evaluationId: evaluation._id })
-      .populate("metricId", "nombre descripcion ponderacion competencyId cargoAplica")
+      .populate({
+        path: "metricId",
+        select: "nombre descripcion ponderacion competencyId cargoAplica",
+        populate: { path: "competencyId", select: "nombre descripcion" },
+      })
       .lean();
 
     // Auto-seed missing scores for metrics that now apply to this employee
@@ -358,7 +362,11 @@ router.get(
       );
       // Re-fetch with new scores
       scores = await EvaluationScore.find({ evaluationId: evaluation._id })
-        .populate("metricId", "nombre descripcion ponderacion competencyId cargoAplica")
+        .populate({
+        path: "metricId",
+        select: "nombre descripcion ponderacion competencyId cargoAplica",
+        populate: { path: "competencyId", select: "nombre descripcion" },
+      })
         .lean();
     }
 

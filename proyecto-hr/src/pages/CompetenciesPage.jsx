@@ -57,6 +57,7 @@ const emptyForm = {
   nombre: "", descripcion: "", tipo: "TRANSVERSAL", componente: "C",
   audienceType: "all", audienceDepartmentCodes: [], audienceEmployeeIds: [],
   metadata: { docenteCategory: "", transversalCategory: "", descriptores: "" },
+  descriptores: [],
 };
 
 function StatCard({ label, value, accent }) {
@@ -81,9 +82,14 @@ function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, nivelLabel, audienc
   return (
     <tr className="hover:bg-white/[0.02] transition border-t border-white/5">
       <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium text-white">{c.nombre}</p>
           {!active ? <Badge variant="inactive">{L("Inactiva", "Inactive")}</Badge> : null}
+          {c.descriptoresCount > 0 ? (
+            <span className="inline-flex items-center rounded-full bg-[#14b8a6]/15 px-2 py-0.5 text-[10px] font-medium text-[#14b8a6]">
+              {c.descriptoresCount} {L("desc.", "desc.")}
+            </span>
+          ) : null}
         </div>
       </td>
       <td className="px-4 py-3">
@@ -221,7 +227,7 @@ export default function CompetenciesPage() {
     setSubmitMsg({ text: "", type: "info" });
   }
 
-  function openEdit(c) {
+  async function openEdit(c) {
     setForm({
       nombre: c.nombre || "",
       descripcion: c.descripcion || "",
@@ -231,9 +237,18 @@ export default function CompetenciesPage() {
       audienceDepartmentCodes: c.audienceDepartmentCodes || [],
       audienceEmployeeIds: (c.audienceEmployeeIds || []).map(e => String(e?._id || e)),
       metadata: { docenteCategory: c.metadata?.docenteCategory || "", transversalCategory: c.metadata?.transversalCategory || "", descriptores: c.metadata?.descriptores || "" },
+      descriptores: [],
     });
     setModal({ open: true, editId: c._id });
     setSubmitMsg({ text: "", type: "info" });
+    try {
+      const metrics = await apiFetch(`/metrics?competencyId=${c._id}`, { token });
+      const list = Array.isArray(metrics) ? metrics : [];
+      setForm(f => ({
+        ...f,
+        descriptores: list.map(m => ({ _id: String(m._id), nombre: m.nombre || "", descripcion: m.descripcion || "" })),
+      }));
+    } catch { /* descriptores stays empty */ }
   }
 
   async function handleSubmit(e) {
@@ -464,6 +479,7 @@ export default function CompetenciesPage() {
               </button>
             </div>
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Nombre + Descripción */}
               <div>
                 <label className="mb-1 block text-xs text-[#7f99a8]">{L("Nombre *", "Name *")}</label>
                 <input className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]/40"
@@ -472,10 +488,70 @@ export default function CompetenciesPage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs text-[#7f99a8]">{L("Descripción", "Description")}</label>
-                <textarea className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]/40 min-h-20 resize-none"
+                <textarea className="w-full rounded-xl border border-white/10 bg-[#12222d] px-3 py-2.5 text-sm text-white outline-none focus:border-[#14b8a6]/40 min-h-[60px] resize-none"
                   placeholder={L("Definición de la habilidad…", "Skill definition…")}
                   value={form.descripcion} onChange={e => setForm(f => ({ ...f, descripcion: e.target.value }))}/>
               </div>
+
+              {/* Descriptores — posición destacada, visible sin scroll */}
+              <div className="rounded-xl border border-[#14b8a6]/20 bg-[#14b8a6]/5 p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <span className="text-xs font-semibold text-[#14b8a6]">{L("Descriptores", "Descriptors")}</span>
+                    <span className="ml-2 text-[10px] text-[#5e7d8e]">{L("Se evalúan por separado · el promedio = puntaje de la habilidad", "Scored separately · average = skill score")}</span>
+                  </div>
+                  <button type="button"
+                    onClick={() => setForm(f => ({ ...f, descriptores: [...f.descriptores, { nombre: "", descripcion: "" }] }))}
+                    className="rounded-lg border border-[#14b8a6]/40 bg-[#14b8a6]/10 px-2.5 py-1 text-xs font-medium text-[#14b8a6] transition hover:bg-[#14b8a6]/20">
+                    + {L("Agregar", "Add")}
+                  </button>
+                </div>
+                {form.descriptores.length === 0 ? (
+                  <button type="button"
+                    onClick={() => setForm(f => ({ ...f, descriptores: [{ nombre: "", descripcion: "" }] }))}
+                    className="w-full rounded-lg border border-dashed border-[#14b8a6]/30 px-3 py-3.5 text-center text-xs text-[#5e7d8e] transition hover:border-[#14b8a6]/60 hover:text-[#14b8a6]">
+                    {L("+ Agregar el primer descriptor", "+ Add the first descriptor")}
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    {form.descriptores.map((d, i) => (
+                      <div key={d._id || i} className="rounded-lg border border-white/10 bg-[#0d1b25] p-2.5 space-y-1.5">
+                        <div className="flex items-center gap-2">
+                          <span className="shrink-0 text-[11px] font-bold text-[#14b8a6] w-5">{i + 1}.</span>
+                          <input
+                            className="flex-1 rounded-lg border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-sm text-white outline-none focus:border-[#14b8a6]/40"
+                            placeholder={L("Nombre del descriptor…", "Descriptor name…")}
+                            value={d.nombre}
+                            onChange={e => {
+                              const next = [...form.descriptores];
+                              next[i] = { ...next[i], nombre: e.target.value };
+                              setForm(f => ({ ...f, descriptores: next }));
+                            }}
+                          />
+                          <button type="button"
+                            onClick={() => setForm(f => ({ ...f, descriptores: f.descriptores.filter((_, j) => j !== i) }))}
+                            className="shrink-0 text-rose-300/50 transition hover:text-rose-300"
+                            aria-label={L("Eliminar descriptor", "Remove descriptor")}>
+                            <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3"><path d="M2 2l8 8M10 2l-8 8"/></svg>
+                          </button>
+                        </div>
+                        <input
+                          className="w-full rounded-lg border border-white/10 bg-[#12222d] px-2.5 py-1.5 text-xs text-white outline-none focus:border-[#14b8a6]/40"
+                          placeholder={L("Descripción breve del descriptor (opcional)…", "Brief descriptor description (optional)…")}
+                          value={d.descripcion}
+                          onChange={e => {
+                            const next = [...form.descriptores];
+                            next[i] = { ...next[i], descripcion: e.target.value };
+                            setForm(f => ({ ...f, descriptores: next }));
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Configuración: Tipo, Nivel, Alcance */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1 block text-xs text-[#7f99a8]">{L("Tipo", "Type")}</label>
@@ -519,6 +595,7 @@ export default function CompetenciesPage() {
                   </select>
                 </div>
               ) : null}
+
               {submitMsg.text ? (
                 <p className={`text-sm px-3 py-2 rounded-xl ${submitMsg.type === "error" ? "bg-rose-500/10 text-rose-200" : submitMsg.type === "warning" ? "bg-amber-500/10 text-amber-200" : "bg-[#14b8a6]/10 text-[#14b8a6]"}`}>{submitMsg.text}</p>
               ) : null}

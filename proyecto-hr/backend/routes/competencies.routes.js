@@ -36,30 +36,32 @@ router.get("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_CO
   const companyId = String(req.scope.companyId || "");
   const hasFilters = req.query.tipo || req.query.componente || req.query.schoolId || req.query.q?.trim();
 
+  async function fetchList() {
+    const filter = buildScopedFilter(req, {});
+    if (req.query.tipo) filter.tipo = req.query.tipo;
+    if (req.query.componente) filter.componente = req.query.componente;
+    if (req.query.schoolId && req.scope.isSuperAdmin) filter.schoolId = req.query.schoolId;
+    if (req.query.q?.trim()) {
+      const regex = { $regex: req.query.q.trim(), $options: "i" };
+      filter.$or = [{ nombre: regex }, { descripcion: regex }];
+    }
+    const competencies = await Competency.find(filter).sort({ nombre: 1 }).lean();
+    if (!competencies.length) return competencies;
+    const ids = competencies.map((c) => c._id);
+    const counts = await Metric.aggregate([
+      { $match: { competencyId: { $in: ids } } },
+      { $group: { _id: "$competencyId", count: { $sum: 1 } } },
+    ]);
+    const countMap = Object.fromEntries(counts.map((c) => [String(c._id), c.count]));
+    return competencies.map((c) => ({ ...c, descriptoresCount: countMap[String(c._id)] || 0 }));
+  }
+
   if (!hasFilters && companyId) {
-    const cached = await cacheGetOrFetch(
-      `competencies:${companyId}`,
-      async () => {
-        const filter = buildScopedFilter(req, {});
-        return Competency.find(filter).sort({ nombre: 1 }).lean();
-      },
-      300 // 5 minutes
-    );
+    const cached = await cacheGetOrFetch(`competencies:${companyId}`, fetchList, 300);
     return res.json(cached);
   }
 
-  const filter = buildScopedFilter(req, {});
-
-  if (req.query.tipo) filter.tipo = req.query.tipo;
-  if (req.query.componente) filter.componente = req.query.componente;
-  if (req.query.schoolId && req.scope.isSuperAdmin) filter.schoolId = req.query.schoolId;
-  if (req.query.q?.trim()) {
-    const regex = { $regex: req.query.q.trim(), $options: "i" };
-    filter.$or = [{ nombre: regex }, { descripcion: regex }];
-  }
-
-  const competencies = await Competency.find(filter).sort({ nombre: 1 }).lean();
-  res.json(competencies);
+  res.json(await fetchList());
 });
 
 router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_COMPETENCIES), async (req, res) => {
@@ -99,6 +101,23 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_C
     audienceEmployeeIds: scopedEmployeeIds.map((item) => item._id),
     metadata: req.body.metadata && typeof req.body.metadata === "object" ? req.body.metadata : {},
   });
+
+  const rawDescriptores = Array.isArray(req.body.descriptores) ? req.body.descriptores : [];
+  const validDescriptores = rawDescriptores.filter((d) => String(d?.nombre || "").trim());
+  if (validDescriptores.length > 0) {
+    await Metric.insertMany(
+      validDescriptores.map((d) => ({
+        companyId,
+        schoolId: schoolId ?? null,
+        competencyId: competency._id,
+        nombre: String(d.nombre).trim(),
+        descripcion: String(d.descripcion || "").trim(),
+        ponderacion: 1,
+        activa: true,
+      }))
+    );
+    cacheDelete(`metrics:${companyId}`);
+  }
 
   cacheDelete(`competencies:${companyId}`);
 
@@ -156,6 +175,50 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
 
   await competency.save();
 
+  if (Array.isArray(req.body.descriptores)) {
+    const incoming = req.body.descriptores
+      .filter((d) => String(d?.nombre || "").trim())
+      .map((d) => ({
+        _id: d._id ? String(d._id) : null,
+        nombre: String(d.nombre).trim(),
+        descripcion: String(d.descripcion || "").trim(),
+      }));
+
+    const currentMetrics = await Metric.find({
+      companyId: competency.companyId,
+      competencyId: competency._id,
+    }).select("_id").lean();
+
+    const incomingIds = new Set(incoming.filter((d) => d._id).map((d) => d._id));
+    const toDelete = currentMetrics
+      .filter((m) => !incomingIds.has(String(m._id)))
+      .map((m) => m._id);
+    if (toDelete.length > 0) await Metric.deleteMany({ _id: { $in: toDelete } });
+
+    if (incoming.length > 0) {
+      const ops = incoming.map((d) => ({
+        updateOne: {
+          filter: d._id
+            ? { _id: d._id, companyId: competency.companyId }
+            : { companyId: competency.companyId, competencyId: competency._id, nombre: d.nombre },
+          update: {
+            $set: { nombre: d.nombre, descripcion: d.descripcion },
+            $setOnInsert: {
+              companyId: competency.companyId,
+              schoolId: competency.schoolId ?? null,
+              competencyId: competency._id,
+              ponderacion: 1,
+              activa: true,
+            },
+          },
+          upsert: true,
+        },
+      }));
+      await Metric.bulkWrite(ops);
+    }
+    cacheDelete(`metrics:${String(competency.companyId)}`);
+  }
+
   cacheDelete(`competencies:${String(competency.companyId)}`);
 
   await logAudit({
@@ -178,18 +241,11 @@ router.delete("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MAN
     return res.status(404).json({ mensaje: "Competencia no encontrada" });
   }
 
-  const metricCount = await Metric.countDocuments({
-    companyId: competency.companyId,
-    schoolId: competency.schoolId,
-    competencyId: competency._id,
-  });
-  if (metricCount > 0) {
-    return res.status(400).json({ mensaje: "No se puede eliminar la competencia porque tiene indicadores asociados" });
-  }
-
+  await Metric.deleteMany({ companyId: competency.companyId, competencyId: competency._id });
   await Competency.deleteOne({ _id: competency._id });
 
   cacheDelete(`competencies:${String(competency.companyId)}`);
+  cacheDelete(`metrics:${String(competency.companyId)}`);
 
   await logAudit({
     companyId: competency.companyId,
