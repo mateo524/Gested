@@ -14,6 +14,17 @@ import {
   createBulkImportAnalysisJob,
 } from "../services/bulkImportAnalyzer.js";
 import { confirmBulkImportJob } from "../services/bulkImportConfirm.js";
+import {
+  buildPersonasTemplate,
+  buildJerarquiasTemplate,
+  buildHabilidadesTemplate,
+  analyzePersonasFile,
+  analyzeJerarquiasFile,
+  analyzeHabilidadesFile,
+  confirmPersonas,
+  confirmJerarquias,
+  confirmHabilidades,
+} from "../services/simpleImportService.js";
 
 const router = express.Router();
 const upload = multer({
@@ -295,6 +306,115 @@ router.get(
     }
 
     res.json({ ok: true, job });
+  }
+);
+
+// ─── Simple Import ───────────────────────────────────────────────────────────
+
+const SIMPLE_TEMPLATES = {
+  personas:    { fn: buildPersonasTemplate,    filename: "Plantilla_Personas.xlsx" },
+  jerarquias:  { fn: buildJerarquiasTemplate,  filename: "Plantilla_Jerarquias.xlsx" },
+  habilidades: { fn: buildHabilidadesTemplate, filename: "Plantilla_Habilidades.xlsx" },
+};
+
+const SIMPLE_ANALYZERS = {
+  personas:    analyzePersonasFile,
+  jerarquias:  analyzeJerarquiasFile,
+  habilidades: analyzeHabilidadesFile,
+};
+
+router.get(
+  "/simple/:type/template",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    const tpl = SIMPLE_TEMPLATES[req.params.type];
+    if (!tpl) return res.status(404).json({ ok: false, message: "Tipo de plantilla no válido." });
+    const buffer = await tpl.fn();
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="${tpl.filename}"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.send(Buffer.from(buffer));
+  }
+);
+
+router.post(
+  "/simple/:type/analyze",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  upload.single("file"),
+  async (req, res) => {
+    const analyze = SIMPLE_ANALYZERS[req.params.type];
+    if (!analyze) return res.status(404).json({ ok: false, message: "Tipo no válido." });
+    if (!req.file) return res.status(400).json({ ok: false, message: "Debes subir un archivo .xlsx" });
+    if (!req.file.originalname.toLowerCase().endsWith(".xlsx"))
+      return res.status(400).json({ ok: false, message: "Solo se aceptan archivos .xlsx" });
+
+    try {
+      const result = await analyze(req.file.buffer);
+      res.status(result.ok ? 200 : 422).json(result);
+    } catch (err) {
+      res.status(500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+router.post(
+  "/simple/personas/confirm",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ ok: false, message: "Falta el token de preview." });
+    const { companyId, schoolId } = resolveBulkTenant(req);
+    if (!companyId) return res.status(400).json({ ok: false, message: "No se pudo resolver la organización." });
+    try {
+      const result = await confirmPersonas({ token, companyId, schoolId, req });
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      res.status(500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+router.post(
+  "/simple/jerarquias/confirm",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ ok: false, message: "Falta el token de preview." });
+    const { companyId } = resolveBulkTenant(req);
+    if (!companyId) return res.status(400).json({ ok: false, message: "No se pudo resolver la organización." });
+    try {
+      const result = await confirmJerarquias({ token, companyId });
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      res.status(500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+router.post(
+  "/simple/habilidades/confirm",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ ok: false, message: "Falta el token de preview." });
+    const { companyId, schoolId } = resolveBulkTenant(req);
+    if (!companyId) return res.status(400).json({ ok: false, message: "No se pudo resolver la organización." });
+    try {
+      const result = await confirmHabilidades({ token, companyId, schoolId });
+      res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      res.status(500).json({ ok: false, message: err.message });
+    }
   }
 );
 

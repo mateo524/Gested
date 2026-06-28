@@ -1,6 +1,7 @@
 ﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useView } from "../context/ViewContext";
+import { useToast } from "../context/ToastContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import CollapsibleList from "../components/CollapsibleList";
 
@@ -292,13 +293,276 @@ function JobResultCards({ result }) {
   );
 }
 
+// ─── Simple Import ────────────────────────────────────────────────────────────
+
+function SimpleImportCard({ type, title, description, icon, authToken, activeCompanyId, addToast }) {
+  const [phase, setPhase]             = useState("idle");
+  const [dragActive, setDragActive]   = useState(false);
+  const [rows, setRows]               = useState([]);
+  const [errors, setErrors]           = useState([]);
+  const [previewToken, setPreviewToken] = useState(null);
+  const [result, setResult]           = useState(null);
+  const fileRef                       = useRef(null);
+
+  async function downloadTemplate() {
+    try {
+      const res = await fetch(`${apiUrl}/bulk-import/simple/${type}/template`, {
+        headers: { Authorization: `Bearer ${authToken}`, ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}) },
+      });
+      if (!res.ok) throw new Error("No se pudo descargar la plantilla.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Plantilla_${type.charAt(0).toUpperCase() + type.slice(1)}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      addToast({ message: e.message, type: "error" });
+    }
+  }
+
+  async function handleFile(file) {
+    if (!file?.name.toLowerCase().endsWith(".xlsx")) {
+      addToast({ message: "Solo se aceptan archivos .xlsx", type: "error" });
+      return;
+    }
+    setPhase("analyzing");
+    setErrors([]);
+    setRows([]);
+    setPreviewToken(null);
+    setResult(null);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const data = await apiFetch(`/bulk-import/simple/${type}/analyze`, { method: "POST", token: authToken, body });
+      if (!Array.isArray(data.rows)) { addToast({ message: "Respuesta inesperada del servidor.", type: "error" }); setPhase("idle"); return; }
+      setRows(data.rows);
+      setErrors(Array.isArray(data.errors) ? data.errors : []);
+      setPreviewToken(data.token || null);
+      setPhase(data.ok ? "preview" : "errors");
+    } catch (e) {
+      addToast({ message: e.message, type: "error" });
+      setPhase("idle");
+    }
+  }
+
+  async function handleConfirm() {
+    if (!previewToken) return;
+    setPhase("confirming");
+    try {
+      const data = await apiFetch(`/bulk-import/simple/${type}/confirm`, {
+        method: "POST",
+        token: authToken,
+        body: JSON.stringify({ token: previewToken }),
+        headers: { "Content-Type": "application/json", ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}) },
+      });
+      if (data.ok) {
+        setResult(data.result);
+        setPhase("done");
+      } else {
+        addToast({ message: data.message || "Error al confirmar la importación.", type: "error" });
+        setPhase("preview");
+      }
+    } catch (e) {
+      addToast({ message: e.message, type: "error" });
+      setPhase("preview");
+    }
+  }
+
+  function reset() { setPhase("idle"); setRows([]); setErrors([]); setPreviewToken(null); setResult(null); }
+
+  const onDrop = (e) => { e.preventDefault(); setDragActive(false); const f = e.dataTransfer.files?.[0]; if (f) handleFile(f); };
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0d1b25] p-4 flex flex-col gap-3">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xl">{icon}</span>
+          <div>
+            <p className="text-sm font-semibold text-white">{title}</p>
+            <p className="text-xs text-[#7f99a8]">{description}</p>
+          </div>
+        </div>
+        <button type="button" onClick={downloadTemplate}
+          className="shrink-0 rounded-lg border border-[#14b8a6]/30 bg-[#14b8a6]/10 px-3 py-1.5 text-xs font-medium text-[#14b8a6] transition hover:bg-[#14b8a6]/20">
+          Plantilla
+        </button>
+      </div>
+
+      {/* Upload area */}
+      {(phase === "idle" || phase === "errors") && (
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={onDrop}
+          onClick={() => fileRef.current?.click()}
+          className={`cursor-pointer rounded-xl border-2 border-dashed px-4 py-5 text-center transition
+            ${dragActive ? "border-[#14b8a6] bg-[#14b8a6]/10" : "border-white/15 bg-white/3 hover:border-white/30"}`}>
+          <input ref={fileRef} type="file" accept=".xlsx" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+          <p className="text-xs text-[#7f99a8]">Arrastrá o hacé clic para subir el <span className="font-medium text-white">.xlsx</span></p>
+        </div>
+      )}
+
+      {/* Analyzing */}
+      {phase === "analyzing" && (
+        <div className="rounded-xl border border-white/10 bg-[#12222d] px-4 py-4 text-center text-xs text-[#8fb8c8]">
+          Analizando archivo…
+        </div>
+      )}
+
+      {/* Errors */}
+      {phase === "errors" && errors.length > 0 && (
+        <div className="space-y-1 max-h-36 overflow-y-auto">
+          {errors.map((err, i) => (
+            <p key={i} className="rounded-lg border border-rose-300/20 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{err}</p>
+          ))}
+        </div>
+      )}
+
+      {/* Preview */}
+      {phase === "preview" && rows.length > 0 && (
+        <div className="space-y-2">
+          <p className="text-xs text-[#7f99a8]">{rows.length} {rows.length === 1 ? "registro" : "registros"} listos para importar</p>
+          <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#12222d]">
+            <table className="min-w-full text-xs">
+              <thead>
+                <tr>
+                  {Object.keys(rows[0] || {}).filter(k => k !== "_rowNumber").slice(0, 5).map(k => (
+                    <th key={k} className="px-3 py-2 text-left text-[#7f99a8] font-medium whitespace-nowrap">{k}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.slice(0, 4).map((row, i) => (
+                  <tr key={i} className="border-t border-white/5">
+                    {Object.entries(row).filter(([k]) => k !== "_rowNumber").slice(0, 5).map(([k, v]) => (
+                      <td key={k} className="px-3 py-1.5 text-[#d6e2e8] max-w-[120px] truncate">{String(v ?? "-")}</td>
+                    ))}
+                  </tr>
+                ))}
+                {rows.length > 4 && (
+                  <tr className="border-t border-white/5">
+                    <td colSpan={5} className="px-3 py-1.5 text-[#5e7d8e] text-center">… y {rows.length - 4} más</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex gap-2">
+            <button type="button" onClick={handleConfirm}
+              className="flex-1 rounded-xl bg-[#14b8a6] py-2 text-xs font-semibold text-[#0d1b25] transition hover:bg-[#0ea89a]">
+              Confirmar importación
+            </button>
+            <button type="button" onClick={reset}
+              className="rounded-xl border border-white/15 px-3 py-2 text-xs text-[#8fa9b7] transition hover:text-white">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Confirming */}
+      {phase === "confirming" && (
+        <div className="rounded-xl border border-white/10 bg-[#12222d] px-4 py-4 text-center text-xs text-[#8fb8c8]">
+          Importando…
+        </div>
+      )}
+
+      {/* Done */}
+      {phase === "done" && result && (
+        <div className="space-y-2">
+          <div className="rounded-xl border border-emerald-300/20 bg-emerald-500/10 px-4 py-3">
+            <p className="text-xs font-semibold text-emerald-200">Importación completada</p>
+            {type === "personas" && (
+              <p className="text-xs text-emerald-100/80 mt-1">
+                {result.created ?? 0} creados · {result.updated ?? 0} actualizados · {result.skipped ?? 0} omitidos
+                {Array.isArray(result.temporaryPasswords) && result.temporaryPasswords.length > 0 && (
+                  <span className="ml-1 text-amber-200">· {result.temporaryPasswords.length} contraseñas temporales generadas</span>
+                )}
+              </p>
+            )}
+            {type === "jerarquias" && (
+              <p className="text-xs text-emerald-100/80 mt-1">{result.created ?? 0} creados · {result.updated ?? 0} actualizados</p>
+            )}
+            {type === "habilidades" && (
+              <p className="text-xs text-emerald-100/80 mt-1">
+                Habilidades: {result.competencias?.created ?? 0} creadas, {result.competencias?.updated ?? 0} actualizadas ·
+                Descriptores: {result.descriptores?.created ?? 0} creados, {result.descriptores?.updated ?? 0} actualizados
+              </p>
+            )}
+          </div>
+          {type === "personas" && Array.isArray(result.temporaryPasswords) && result.temporaryPasswords.length > 0 && (
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-amber-300/20 bg-amber-500/10 p-3 space-y-1">
+              <p className="text-xs font-semibold text-amber-200 mb-2">Contraseñas temporales — guardá esta lista</p>
+              {result.temporaryPasswords.map((pw, i) => (
+                <p key={i} className="text-xs text-amber-100/80 font-mono">{pw.email}: {pw.temporaryPassword}</p>
+              ))}
+            </div>
+          )}
+          <button type="button" onClick={reset}
+            className="w-full rounded-xl border border-white/15 py-2 text-xs text-[#8fa9b7] transition hover:text-white">
+            Nueva importación
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SimpleImportSection({ authToken, activeCompanyId, addToast }) {
+  return (
+    <div className="pf-card p-5 md:p-6">
+      <div className="mb-5">
+        <h3 className="text-lg font-semibold text-white">Carga rápida</h3>
+        <p className="mt-1 text-sm text-[#93acbb]">Descargá la plantilla de cada archivo, completala y subila. Podés importar cada uno de forma independiente.</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        <SimpleImportCard
+          type="personas"
+          title="Personas"
+          description="Empleados, roles y accesos"
+          icon="👤"
+          authToken={authToken}
+          activeCompanyId={activeCompanyId}
+          addToast={addToast}
+        />
+        <SimpleImportCard
+          type="jerarquias"
+          title="Jerarquías"
+          description="Puestos y tipo de acceso por cargo"
+          icon="🏢"
+          authToken={authToken}
+          activeCompanyId={activeCompanyId}
+          addToast={addToast}
+        />
+        <SimpleImportCard
+          type="habilidades"
+          title="Habilidades"
+          description="Competencias y descriptores de evaluación"
+          icon="⭐"
+          authToken={authToken}
+          activeCompanyId={activeCompanyId}
+          addToast={addToast}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ─── Main page ────────────────────────────────────────────────────────────────
+
 export default function BulkImportPage() {
   const { token, user, activeCompanyId } = useAuth();
   const { searchQuery } = useView();
+  const { addToast } = useToast();
   const fileInputRef = useRef(null);
   const historyRef = useRef(null);
   const previewRef = useRef(null);
   const resultRef = useRef(null);
+
+  const [importMode, setImportMode] = useState("simple");
 
   const canManageImport =
     user?.isSuperAdmin ||
@@ -651,6 +915,22 @@ export default function BulkImportPage() {
           <p className="text-xs uppercase tracking-[0.18em] text-[#14b8a6]">Datos</p>
           <h2 className="mt-1 text-xl font-semibold text-white">Importación</h2>
         </div>
+        {/* Mode toggle */}
+        <div className="flex rounded-xl border border-white/10 bg-[#0d1b25] p-1 gap-1">
+          {[{ key: "simple", label: "Carga rápida" }, { key: "advanced", label: "Avanzada" }].map((m) => (
+            <button key={m.key} type="button" onClick={() => setImportMode(m.key)}
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition
+                ${importMode === m.key ? "bg-[#14b8a6] text-[#0d1b25]" : "text-[#7f99a8] hover:text-white"}`}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {importMode === "simple" ? (
+        <SimpleImportSection authToken={token} activeCompanyId={activeCompanyId} addToast={addToast} />
+      ) : (
+      <div className="space-y-4">
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -670,7 +950,6 @@ export default function BulkImportPage() {
             </button>
           ) : null}
         </div>
-      </div>
 
       {isReadOnly ? (
         <div className="rounded-2xl border border-sky-300/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
@@ -1044,6 +1323,8 @@ export default function BulkImportPage() {
         </SurfaceCard>
       </section>
       ) : null}
+      </div>
+      )}
     </div>
   );
 }
