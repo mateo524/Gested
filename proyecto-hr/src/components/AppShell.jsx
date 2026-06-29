@@ -404,11 +404,6 @@ export default function AppShell({
       }
     }
 
-    // Facturación — solo para admins de empresa (no superadmin, no empleado, no manager)
-    if (!isSuperAdmin && !isEmployee && !isManager && byKey["billing"]) {
-      items.push({ type: "item", key: "billing", label: "Facturación", icon: "billing" });
-    }
-
     return items;
   }, [visibleViews, isSuperAdmin, isEmployee, isManager, language]);
 

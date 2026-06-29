@@ -1002,4 +1002,140 @@ router.get(
   }
 );
 
+// ─── Analytics summary for dashboard ─────────────────────────────────────────
+router.get(
+  "/summary",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const { companyId } = await resolveCompanyScope(req);
+      const cycleId = req.query.cycleId || null;
+      const cacheKey = `reports-summary:${String(companyId)}:${cycleId || "all"}`;
+
+      const result = await cacheGetOrFetch(cacheKey, 90, async () => {
+        const evalMatch = { companyId, estado: { $in: ["REVISADA", "CERRADA"] } };
+        if (cycleId) evalMatch.cycleId = cycleId;
+
+        const [employeesTotal, evaluations, competencyAvgs, recentEvals] = await Promise.all([
+          Employee.countDocuments({ companyId }),
+          Evaluation.find(evalMatch, "employeeId resultadoFinal tipo").lean(),
+          EvaluationScore.aggregate([
+            { $lookup: { from: "evaluations", localField: "evaluationId", foreignField: "_id", as: "ev" } },
+            { $unwind: "$ev" },
+            { $match: { "ev.companyId": companyId, "ev.estado": { $in: ["REVISADA", "CERRADA"] } } },
+            { $lookup: { from: "metrics", localField: "metricId", foreignField: "_id", as: "metric" } },
+            { $unwind: "$metric" },
+            { $lookup: { from: "competencies", localField: "metric.competencyId", foreignField: "_id", as: "comp" } },
+            { $unwind: { path: "$comp", preserveNullAndEmptyArrays: true } },
+            { $group: { _id: "$comp._id", nombre: { $first: { $ifNull: ["$comp.nombre", "Sin competencia"] } }, total: { $sum: "$nivel" }, count: { $sum: 1 } } },
+            { $project: { nombre: 1, avg: { $divide: ["$total", "$count"] }, count: 1 } },
+            { $sort: { avg: -1 } },
+          ]),
+          Evaluation.find({ ...evalMatch, tipo: "FINAL" })
+            .sort({ updatedAt: -1 })
+            .limit(12)
+            .populate("employeeId", "nombre apellido cargo area")
+            .lean(),
+        ]);
+
+        const finalEvals = evaluations.filter((e) => e.tipo === "FINAL" && e.resultadoFinal > 0);
+        const evaluatedCount = new Set(finalEvals.map((e) => String(e.employeeId))).size;
+        const scores = finalEvals.map((e) => e.resultadoFinal);
+        const averageScore = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+        const scoreExcepcional = scores.filter((s) => s >= 4.5).length;
+        const scoreNeedsAttention = scores.filter((s) => s > 0 && s < 2.5).length;
+
+        const distMap = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        scores.forEach((s) => { const b = Math.max(1, Math.min(5, Math.round(s))); distMap[b] = (distMap[b] || 0) + 1; });
+        const DIST_LABELS = { 1: "Insatisfactorio", 2: "Mínimo", 3: "En Desarrollo", 4: "Competente", 5: "Excepcional" };
+        const scoreDistribution = [1, 2, 3, 4, 5].map((b) => ({ bucket: b, label: DIST_LABELS[b], count: distMap[b] }));
+
+        const recentEvaluations = recentEvals.map((e) => ({
+          employeeName: e.employeeId ? [e.employeeId.apellido, e.employeeId.nombre].filter(Boolean).join(", ") : "—",
+          cargo: e.employeeId?.cargo || "—",
+          area: e.employeeId?.area || "—",
+          finalScore: e.resultadoFinal || 0,
+        }));
+
+        return {
+          stats: { employeesTotal, evaluatedCount, averageScore: Math.round(averageScore * 100) / 100, scoreExcepcional, scoreNeedsAttention },
+          competencyAverages: competencyAvgs.map((c) => ({ nombre: c.nombre, avg: Math.round(c.avg * 100) / 100, count: c.count })),
+          scoreDistribution,
+          recentEvaluations,
+        };
+      });
+
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+// ─── Reports grouped by area ───────────────────────────────────────────────────
+router.get(
+  "/by-level",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const { companyId } = await resolveCompanyScope(req);
+      const cycleId = req.query.cycleId || null;
+      const cacheKey = `reports-by-level:${String(companyId)}:${cycleId || "all"}`;
+
+      const result = await cacheGetOrFetch(cacheKey, 120, async () => {
+        const data = await Employee.aggregate([
+          { $match: { companyId } },
+          {
+            $lookup: {
+              from: "evaluations",
+              let: { empId: "$_id" },
+              pipeline: [
+                {
+                  $match: {
+                    $expr: {
+                      $and: [
+                        { $eq: ["$employeeId", "$$empId"] },
+                        { $in: ["$estado", ["REVISADA", "CERRADA"]] },
+                        { $eq: ["$tipo", "FINAL"] },
+                      ],
+                    },
+                  },
+                },
+                { $project: { resultadoFinal: 1 } },
+              ],
+              as: "evals",
+            },
+          },
+          {
+            $group: {
+              _id: { $ifNull: ["$area", "Sin área"] },
+              employeeCount: { $sum: 1 },
+              avgScore: { $avg: { $arrayElemAt: ["$evals.resultadoFinal", 0] } },
+              evaluatedCount: { $sum: { $cond: [{ $gt: [{ $size: "$evals" }, 0] }, 1, 0] } },
+            },
+          },
+          { $sort: { _id: 1 } },
+        ]);
+
+        return {
+          areas: data.map((d) => ({
+            area: d._id,
+            employeeCount: d.employeeCount,
+            evaluatedCount: d.evaluatedCount,
+            avgScore: d.avgScore ? Math.round(d.avgScore * 100) / 100 : null,
+          })),
+        };
+      });
+
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
 export default router;

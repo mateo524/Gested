@@ -325,6 +325,8 @@ export default function DashboardPage() {
   const isEmpleado = isEmployeeUser(user);
   const isLector = isReadOnlyUser(user);
 
+  const [reportStats, setReportStats] = useState(null);
+
   useEffect(() => {
     if (!token) return;
     if (user?.isSuperAdmin && !activeCompanyId) {
@@ -378,6 +380,14 @@ export default function DashboardPage() {
       clearTimeout(slowTimer);
     };
   }, [token, activeCompanyId, user, retryCount]);
+
+  useEffect(() => {
+    if (!token || isEmpleado || isLector) return;
+    if (user?.isSuperAdmin && !activeCompanyId) return;
+    apiFetch("/reports/summary", { token })
+      .then((data) => { if (data?.ok !== false) setReportStats(data); })
+      .catch(() => {});
+  }, [token, activeCompanyId, user, isEmpleado, isLector]);
 
   const training = useMemo(() => {
     const raw = summary?.decisionInsights?.trainingRecommendations;
@@ -823,6 +833,111 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      {reportStats && !isEmpleado ? (
+        <div className="space-y-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+            {[
+              { label: "Total empleados", value: reportStats.stats?.employeesTotal ?? 0, hint: "Registrados en la organización", accent: "blue" },
+              { label: "Evaluados", value: reportStats.stats?.evaluatedCount ?? 0, hint: "Con evaluación cerrada", accent: "teal" },
+              { label: "Promedio general", value: reportStats.stats?.averageScore > 0 ? reportStats.stats.averageScore.toFixed(2) : "—", hint: "Escala 1 – 5", accent: "green" },
+              { label: "Nivel Excepcional", value: reportStats.stats?.scoreExcepcional ?? 0, hint: "Puntaje ≥ 4.5", accent: "green" },
+              { label: "Necesitan atención", value: reportStats.stats?.scoreNeedsAttention ?? 0, hint: "Puntaje < 2.5", accent: "amber" },
+            ].map((card) => (
+              <StatCard key={card.label} label={card.label} value={card.value} hint={card.hint} accent={card.accent} onClick={card.goTo ? () => setView(card.goTo) : undefined} />
+            ))}
+          </div>
+
+          {Array.isArray(reportStats.competencyAverages) && reportStats.competencyAverages.length > 0 ? (
+            <div className="grid gap-3 xl:grid-cols-2">
+              <section className="pf-card-premium rounded-2xl p-5">
+                <p className="text-sm font-semibold text-white/95">Promedio por competencia</p>
+                <p className="mt-0.5 mb-4 text-xs text-[#6a8ea0]">Puntaje promedio sobre el total de evaluaciones cerradas</p>
+                <div className="space-y-3">
+                  {reportStats.competencyAverages.slice(0, 8).map((c) => (
+                    <div key={c.nombre}>
+                      <div className="flex justify-between mb-1">
+                        <span className="text-xs text-[#c5d5de] truncate max-w-[70%]">{c.nombre}</span>
+                        <span className="text-xs font-semibold text-[#2dd4bf]">{c.avg.toFixed(2)}</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-white/10 overflow-hidden">
+                        <div className="h-full rounded-full bg-gradient-to-r from-[#14b8a6] to-[#2dd4bf] transition-all"
+                          style={{ width: `${(c.avg / 5) * 100}%` }} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="pf-card-premium rounded-2xl p-5">
+                <p className="text-sm font-semibold text-white/95">Distribución de puntajes</p>
+                <p className="mt-0.5 mb-4 text-xs text-[#6a8ea0]">Cantidad de personas por nivel de desempeño</p>
+                {Array.isArray(reportStats.scoreDistribution) && reportStats.scoreDistribution.some((d) => d.count > 0) ? (
+                  <div className="flex items-end gap-2 h-28">
+                    {reportStats.scoreDistribution.map((d) => {
+                      const maxCount = Math.max(...reportStats.scoreDistribution.map((x) => x.count), 1);
+                      const heightPct = Math.max(4, (d.count / maxCount) * 100);
+                      const color = d.bucket <= 2 ? "#f87171" : d.bucket === 3 ? "#fbbf24" : d.bucket === 4 ? "#34d399" : "#14b8a6";
+                      return (
+                        <div key={d.bucket} className="flex flex-1 flex-col items-center gap-1">
+                          <span className="text-[10px] font-semibold text-white/80">{d.count}</span>
+                          <div className="w-full rounded-t-lg transition-all" style={{ height: `${heightPct}%`, background: color, opacity: 0.85 }} />
+                          <span className="text-[9px] text-[#7a9aaa]">N{d.bucket}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-sm text-[#7a9aaa]">Sin datos de distribución todavía.</p>
+                )}
+                <div className="mt-3 grid grid-cols-5 gap-1">
+                  {reportStats.scoreDistribution.map((d) => (
+                    <p key={d.bucket} className="text-center text-[9px] text-[#6a8898] leading-tight">{d.label}</p>
+                  ))}
+                </div>
+              </section>
+            </div>
+          ) : null}
+
+          {Array.isArray(reportStats.recentEvaluations) && reportStats.recentEvaluations.length > 0 ? (
+            <section className="pf-card-premium rounded-2xl overflow-hidden">
+              <div className="p-5 pb-0">
+                <p className="text-sm font-semibold text-white/95">Últimas evaluaciones</p>
+                <p className="mt-0.5 text-xs text-[#6a8ea0]">Las 12 evaluaciones finales más recientes del período activo</p>
+              </div>
+              <div className="mt-4 overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-white/[0.08]">
+                      {["Persona", "Cargo", "Área", "Puntaje"].map((h) => (
+                        <th key={h} className="px-5 py-2.5 text-left text-[10px] font-semibold uppercase tracking-[0.1em] text-[#7f99a8]">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/[0.05]">
+                    {reportStats.recentEvaluations.map((e, i) => {
+                      const score = Number(e.finalScore);
+                      const scoreColor = score >= 4.5 ? "#34d399" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#7a9aaa";
+                      return (
+                        <tr key={i} className="hover:bg-white/[0.02] transition-colors">
+                          <td className="px-5 py-3 font-medium text-white/90">{e.employeeName}</td>
+                          <td className="px-5 py-3 text-[#9ab8c8]">{e.cargo}</td>
+                          <td className="px-5 py-3 text-[#9ab8c8]">{e.area}</td>
+                          <td className="px-5 py-3">
+                            <span className="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-bold" style={{ color: scoreColor, background: `${scoreColor}18` }}>
+                              {score > 0 ? score.toFixed(2) : "—"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          ) : null}
+        </div>
+      ) : null}
 
       <SurfaceCard title="Próximos hitos" subtitle="Puntos de atención relevantes para el período actual.">
         <div className="space-y-2">

@@ -46,6 +46,9 @@ const PRIMARY_TABS = [
   { key: "general", label: "Reporte general" },
   { key: "individual", label: "Reporte individual" },
   { key: "comparar", label: "Comparar ciclos" },
+  { key: "por-nivel", label: "Por área" },
+  { key: "radar", label: "Radar" },
+  { key: "recomendaciones", label: "Recomendaciones" },
 ];
 
 const FILTERS_STORAGE_KEY = "exec_report_filters";
@@ -1192,6 +1195,9 @@ function ExecutiveReportPage() {
   });
   const filtersRef = useRef(filters);
 
+  const [byLevelData, setByLevelData] = useState(null);
+  const [loadingByLevel, setLoadingByLevel] = useState(false);
+
   // Comparar ciclos state
   const [compareCycleA, setCompareCycleA] = useState("");
   const [compareCycleB, setCompareCycleB] = useState("");
@@ -1228,6 +1234,16 @@ function ExecutiveReportPage() {
   useEffect(() => {
     localStorage.setItem("onboarding_visited_reports", "true");
   }, []);
+
+  useEffect(() => {
+    if (!["por-nivel", "radar", "recomendaciones"].includes(activeTab)) return;
+    if (byLevelData || loadingByLevel || !token || !canViewExecutive) return;
+    setLoadingByLevel(true);
+    apiFetch(`/reports/by-level${filters.cycleId ? `?cycleId=${filters.cycleId}` : ""}`, { token })
+      .then((data) => { setByLevelData(data?.ok !== false ? data : null); })
+      .catch(() => {})
+      .finally(() => setLoadingByLevel(false));
+  }, [activeTab, byLevelData, loadingByLevel, token, canViewExecutive, filters.cycleId]);
 
   const loadOverview = useCallback(async () => {
     if (!token || !canViewExecutive || isEmployee) return;
@@ -1912,6 +1928,101 @@ function ExecutiveReportPage() {
           {!compareData && !loadingCompare ? (
             <EmptyPanel text="Elegí dos ciclos y presioná Comparar para ver las diferencias." />
           ) : null}
+        </div>
+      ) : activeTab === "por-nivel" || activeTab === "radar" || activeTab === "recomendaciones" ? (
+        <div className="space-y-4">
+          {loadingByLevel ? (
+            <EmptyPanel text="Cargando análisis por área..." />
+          ) : !byLevelData ? (
+            <EmptyPanel text="No se pudo cargar el análisis por área." />
+          ) : activeTab === "por-nivel" ? (
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {Array.isArray(byLevelData.areas) && byLevelData.areas.map((a) => {
+                  const scoreColor = !a.avgScore ? "#7a9aaa" : a.avgScore >= 4.5 ? "#34d399" : a.avgScore >= 3 ? "#fbbf24" : "#f87171";
+                  const pct = a.avgScore ? Math.round((a.avgScore / 5) * 100) : 0;
+                  return (
+                    <article key={a.area} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                      <p className="font-semibold text-white/95 truncate">{a.area}</p>
+                      <p className="mt-1 text-xs text-[#7a9aaa]">{a.employeeCount} persona{a.employeeCount !== 1 ? "s" : ""} · {a.evaluatedCount} evaluada{a.evaluatedCount !== 1 ? "s" : ""}</p>
+                      <div className="mt-3 flex items-center justify-between">
+                        <div className="flex-1 mr-3">
+                          <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: scoreColor }} />
+                          </div>
+                        </div>
+                        <span className="text-lg font-bold shrink-0" style={{ color: scoreColor }}>
+                          {a.avgScore ? a.avgScore.toFixed(2) : "—"}
+                        </span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+              {(!byLevelData.areas?.length) && <EmptyPanel text="No hay datos de área disponibles para este ciclo." />}
+            </div>
+          ) : activeTab === "radar" ? (
+            <SurfaceCard title="Radar por área" subtitle="Comparación visual del desempeño promedio por área de la organización.">
+              {Array.isArray(byLevelData.areas) && byLevelData.areas.filter((a) => a.avgScore).length >= 3 ? (
+                <div className="h-80">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <RadarChart data={byLevelData.areas.filter((a) => a.avgScore).map((a) => ({ area: a.area.length > 12 ? a.area.slice(0, 12) + "…" : a.area, promedio: a.avgScore }))}>
+                      <PolarGrid stroke="rgba(255,255,255,0.1)" />
+                      <PolarAngleAxis dataKey="area" tick={{ fill: "#9ab8c8", fontSize: 11 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: "#6a8ea0", fontSize: 9 }} />
+                      <Radar name="Promedio" dataKey="promedio" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.25} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+              ) : (
+                <EmptyPanel text="Se necesitan al menos 3 áreas con evaluaciones para mostrar el radar." />
+              )}
+            </SurfaceCard>
+          ) : (
+            <div className="space-y-3">
+              {Array.isArray(byLevelData.areas) && byLevelData.areas.length > 0 ? (
+                (() => {
+                  const sorted = [...byLevelData.areas].filter((a) => a.avgScore !== null).sort((a, b) => (a.avgScore || 0) - (b.avgScore || 0));
+                  const low = sorted.slice(0, 3);
+                  const high = sorted.slice(-3).reverse();
+                  return (
+                    <div className="grid gap-4 xl:grid-cols-2">
+                      <SurfaceCard title="Áreas que necesitan atención" subtitle="Las áreas con promedio más bajo — prioridad para planes de desarrollo.">
+                        <div className="space-y-3">
+                          {low.length ? low.map((a) => (
+                            <article key={a.area} className="rounded-2xl border border-rose-300/20 bg-rose-500/5 p-4">
+                              <div className="flex justify-between items-center">
+                                <p className="font-semibold text-white/90 truncate">{a.area}</p>
+                                <span className="ml-3 shrink-0 text-rose-300 font-bold">{a.avgScore?.toFixed(2) ?? "—"}</span>
+                              </div>
+                              <p className="mt-1 text-xs text-[#7a9aaa]">{a.evaluatedCount} de {a.employeeCount} personas evaluadas</p>
+                              <p className="mt-2 text-xs text-rose-200/80">Recomendación: revisar planes de desarrollo, asignar jefatura de acompañamiento y definir ciclo de seguimiento.</p>
+                            </article>
+                          )) : <EmptyPanel text="Sin datos suficientes." />}
+                        </div>
+                      </SurfaceCard>
+                      <SurfaceCard title="Áreas destacadas" subtitle="Las áreas con mejor desempeño promedio en el período.">
+                        <div className="space-y-3">
+                          {high.length ? high.map((a) => (
+                            <article key={a.area} className="rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4">
+                              <div className="flex justify-between items-center">
+                                <p className="font-semibold text-white/90 truncate">{a.area}</p>
+                                <span className="ml-3 shrink-0 text-emerald-300 font-bold">{a.avgScore?.toFixed(2) ?? "—"}</span>
+                              </div>
+                              <p className="mt-1 text-xs text-[#7a9aaa]">{a.evaluatedCount} de {a.employeeCount} personas evaluadas</p>
+                              <p className="mt-2 text-xs text-emerald-200/80">Recomendación: documentar prácticas del área, considerar como referencia para otras unidades.</p>
+                            </article>
+                          )) : <EmptyPanel text="Sin datos suficientes." />}
+                        </div>
+                      </SurfaceCard>
+                    </div>
+                  );
+                })()
+              ) : (
+                <EmptyPanel text="No hay suficientes datos para generar recomendaciones." />
+              )}
+            </div>
+          )}
         </div>
       ) : activeTab === "general" ? (
         <div className="space-y-3">
