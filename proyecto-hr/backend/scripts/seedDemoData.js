@@ -169,6 +169,19 @@ async function main() {
   let evalCount = 0;
   let scoreCount = 0;
 
+  // Maps para asignar managers en el segundo pass
+  const nombreToId = new Map(); // nombre completo → emp._id
+  const cargoToId = new Map();  // cargo → emp._id
+  const personaEmpIds = [];     // [{persona, empId}]
+
+  // Normaliza el campo reportaA para buscar por cargo
+  const CARGO_ALIASES = {
+    "Director General": "Director General",
+    "Dir. Secundaria": "Director Secundaria",
+    "Dir. Primaria": "Director Primaria",
+    "Dir. Jardín": "Director Jardín",
+  };
+
   for (const persona of DATA) {
     const parts = persona.nombre.trim().split(" ");
     const nombre = parts[0];
@@ -191,6 +204,11 @@ async function main() {
       { upsert: true, returnDocument: "after" }
     );
     empCount++;
+
+    // Guardar en mapas para el segundo pass
+    nombreToId.set(persona.nombre.trim(), emp._id);
+    cargoToId.set(persona.puesto, emp._id);
+    personaEmpIds.push({ persona, empId: emp._id });
 
     // Upsert AUTOEVALUACION
     const autoEval = await Evaluation.findOneAndUpdate(
@@ -247,6 +265,26 @@ async function main() {
   console.log(`\n✓ ${empCount} empleados insertados`);
   console.log(`✓ ${evalCount} evaluaciones insertadas`);
   console.log(`✓ ${scoreCount} scores insertados`);
+
+  // ─── Segundo pass: asignar managerId ─────────────────────────────────────────
+  console.log("Asignando managers...");
+  let managerCount = 0;
+  const managerOps = [];
+  for (const { persona, empId } of personaEmpIds) {
+    const reportaA = persona.reportaA;
+    if (!reportaA || reportaA === "—") continue;
+    // Primero buscar por cargo (alias), luego por nombre exacto
+    const cargoBuscado = CARGO_ALIASES[reportaA] || reportaA;
+    const managerId = cargoToId.get(cargoBuscado) || nombreToId.get(reportaA);
+    if (!managerId) continue;
+    managerOps.push({
+      updateOne: { filter: { _id: empId }, update: { $set: { managerId } } },
+    });
+    managerCount++;
+  }
+  if (managerOps.length) await Employee.bulkWrite(managerOps, { ordered: false });
+  console.log(`✓ ${managerCount} managers asignados`);
+
   console.log("\nDatos demo listos. Recargá el dashboard para ver los resultados.");
 
   await mongoose.disconnect();

@@ -43,12 +43,13 @@ function ExecChartTooltip({ active, payload, label }) {
 }
 
 const PRIMARY_TABS = [
-  { key: "general", label: "Reporte general" },
-  { key: "individual", label: "Reporte individual" },
-  { key: "comparar", label: "Comparar ciclos" },
-  { key: "por-nivel", label: "Por área" },
+  { key: "dashboard", label: "Dashboard" },
+  { key: "personas", label: "Personas" },
+  { key: "por-nivel", label: "Por nivel" },
+  { key: "comparativo", label: "Comparativo" },
   { key: "radar", label: "Radar" },
   { key: "recomendaciones", label: "Recomendaciones" },
+  { key: "estructura", label: "Estructura" },
 ];
 
 const FILTERS_STORAGE_KEY = "exec_report_filters";
@@ -79,6 +80,166 @@ function pct(value, total) {
 
 function escHtml(str) {
   return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+const AREA_COLORS = ["#3B82F6","#10B981","#F59E0B","#EC4899","#8B5CF6","#14B8A6","#F97316","#06B6D4"];
+function areaColor(idx) { return AREA_COLORS[idx % AREA_COLORS.length]; }
+
+function scColor(v) {
+  if (!v) return "#6b8fa0";
+  if (v <= 1) return "#f87171";
+  if (v <= 2) return "#fb923c";
+  if (v <= 3) return "#facc15";
+  if (v <= 4) return "#2dd4bf";
+  return "#4ade80";
+}
+function scLabel(v) {
+  if (!v) return "Sin datos";
+  if (v <= 1) return "Insatisfactorio";
+  if (v <= 2) return "Mínimo";
+  if (v <= 3) return "En Desarrollo";
+  if (v <= 4) return "Competente";
+  return "Excepcional";
+}
+
+function ScorePill({ v, small }) {
+  const c = scColor(v);
+  const sz = small ? { fontSize: 9, padding: "1px 5px", minWidth: 28 } : { fontSize: 10, padding: "2px 7px", minWidth: 34 };
+  return (
+    <span style={{ background: c + "20", color: c, border: `1px solid ${c}50`, fontWeight: 800, borderRadius: 6, display: "inline-block", textAlign: "center", ...sz }}>
+      {v != null ? (typeof v === "number" && v % 1 ? v.toFixed(1) : v) : "—"}
+    </span>
+  );
+}
+
+function DistBars({ dist }) {
+  const dc = ["#f87171","#fb923c","#facc15","#2dd4bf","#4ade80"];
+  const max = Math.max(...dist, 1);
+  return (
+    <div style={{ display:"flex", gap:3, alignItems:"flex-end" }}>
+      {dist.map((cnt, i) => {
+        const h = Math.max(3, Math.round((cnt / max) * 44));
+        return (
+          <div key={i} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:2 }}>
+            <span style={{ fontSize:8, color:"#7a9aaa" }}>{cnt}</span>
+            <div style={{ width:14, height:h, background:dc[i], borderRadius:3 }} />
+            <span style={{ fontSize:8, color:"#7a9aaa" }}>N{i+1}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function RadarCanvas({ labels, datasets, width, height }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c || !labels.length) return;
+    c.width = width;
+    c.height = height;
+    const ctx = c.getContext("2d");
+    const cx = width / 2, cy = height / 2 - 10;
+    const maxR = Math.min(cx, cy) - 44;
+    const n = labels.length;
+    const step = (Math.PI * 2) / n;
+    ctx.clearRect(0, 0, width, height);
+    for (let ring = 1; ring <= 5; ring++) {
+      const r = (ring / 5) * maxR;
+      ctx.strokeStyle = "rgba(255,255,255,0.06)"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i <= n; i++) {
+        const a = -Math.PI / 2 + i * step;
+        i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a)) : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+      }
+      ctx.closePath(); ctx.stroke();
+      ctx.fillStyle = "rgba(107,143,160,0.5)"; ctx.font = "8px sans-serif"; ctx.textAlign = "center";
+      ctx.fillText(ring, cx + 3, cy - r + 3);
+    }
+    ctx.strokeStyle = "rgba(255,255,255,0.07)"; ctx.lineWidth = 1;
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + i * step;
+      ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx + maxR * Math.cos(a), cy + maxR * Math.sin(a)); ctx.stroke();
+    }
+    ctx.fillStyle = "#9BB5C4"; ctx.font = "bold 9px sans-serif";
+    for (let i = 0; i < n; i++) {
+      const a = -Math.PI / 2 + i * step; const lr = maxR + 22;
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText(labels[i], cx + lr * Math.cos(a), cy + lr * Math.sin(a));
+    }
+    datasets.forEach(({ vals, color }) => {
+      ctx.beginPath();
+      vals.forEach((v, i) => {
+        const a = -Math.PI / 2 + i * step; const r = (v / 5) * maxR;
+        i === 0 ? ctx.moveTo(cx + r * Math.cos(a), cy + r * Math.sin(a)) : ctx.lineTo(cx + r * Math.cos(a), cy + r * Math.sin(a));
+      });
+      ctx.closePath(); ctx.fillStyle = color + "28"; ctx.fill();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.stroke();
+      vals.forEach((v, i) => {
+        const a = -Math.PI / 2 + i * step; const r = (v / 5) * maxR;
+        ctx.beginPath(); ctx.arc(cx + r * Math.cos(a), cy + r * Math.sin(a), 3.5, 0, Math.PI * 2);
+        ctx.fillStyle = color; ctx.fill();
+      });
+    });
+    if (datasets.length > 1) {
+      let lx = 8;
+      datasets.forEach(({ color, label }) => {
+        ctx.fillStyle = color; ctx.fillRect(lx, height - 16, 9, 7);
+        ctx.fillStyle = "#9BB5C4"; ctx.font = "9px sans-serif"; ctx.textAlign = "left";
+        ctx.fillText(label, lx + 13, height - 10);
+        lx += (label || "").length * 5.5 + 18;
+      });
+    }
+  }, [labels, datasets, width, height]);
+  return <canvas ref={ref} style={{ display:"block", margin:"0 auto", maxWidth:"100%" }} />;
+}
+
+function computeRecomendaciones(grupos, competencias) {
+  const recs = [];
+  grupos.forEach((g) => {
+    competencias.forEach(({ id, nombre }) => {
+      const st = g.compStats[id];
+      if (!st) return;
+      if (st.pctLow >= 30) {
+        recs.push({ sev:"crit", area:g.area, comp:nombre, icon:"🚨",
+          title:`Alta concentración de bajo desempeño en ${nombre}`,
+          body:`El ${st.pctLow}% del personal de ${g.area} tiene puntaje menor a 2.5 (promedio: ${st.avg.toFixed(1)}). Afecta a ~${Math.round(g.count * st.pctLow / 100)} personas.`,
+          action:"Capacitación grupal urgente" });
+      } else if (st.pctLow >= 18) {
+        recs.push({ sev:"warn", area:g.area, comp:nombre, icon:"⚠️",
+          title:`Brecha moderada en ${nombre} — ${g.area}`,
+          body:`El ${st.pctLow}% del personal de ${g.area} presenta desempeño insuficiente (promedio: ${st.avg.toFixed(1)}). Intervención preventiva recomendada.`,
+          action:"Taller de desarrollo sugerido" });
+      }
+    });
+  });
+  competencias.forEach(({ id, nombre }) => {
+    const vals = grupos.map((g) => ({ area:g.area, avg:g.compStats[id]?.avg })).filter((x) => x.avg != null);
+    if (vals.length < 2) return;
+    const avgs = vals.map((x) => x.avg);
+    const brecha = Math.max(...avgs) - Math.min(...avgs);
+    if (brecha >= 1.2) {
+      const maxG = vals[avgs.indexOf(Math.max(...avgs))];
+      const minG = vals[avgs.indexOf(Math.min(...avgs))];
+      recs.push({ sev:"info", area:"Comparativo", comp:nombre, icon:"📊",
+        title:`Gran brecha en ${nombre} entre áreas`,
+        body:`Diferencia de ${brecha.toFixed(1)} puntos entre ${maxG.area} (${maxG.avg.toFixed(1)}) y ${minG.area} (${minG.avg.toFixed(1)}).`,
+        action:"Programa de intercambio entre pares" });
+    }
+  });
+  const globalComp = competencias.map(({ id, nombre }) => {
+    const all = grupos.map((g) => g.compStats[id]?.avg).filter((v) => v != null);
+    const avg = all.length ? all.reduce((a, b) => a + b, 0) / all.length : 0;
+    return { nombre, avg };
+  }).filter((c) => c.avg > 0).sort((a, b) => a.avg - b.avg);
+  if (globalComp.length) {
+    const weak = globalComp[0];
+    recs.push({ sev:"info", area:"Toda la organización", comp:weak.nombre, icon:"🏫",
+      title:`Competencia más débil institucional: ${weak.nombre}`,
+      body:`Promedio global: ${weak.avg.toFixed(1)}. Recomendada como eje del plan anual de capacitación.`,
+      action:"Incluir en plan anual de capacitación" });
+  }
+  return recs.sort((a, b) => ({ crit:0, warn:1, info:2 }[a.sev] - { crit:0, warn:1, info:2 }[b.sev]));
 }
 
 function buildPdfDocument({ orgName, execSummaryLines, execSignals, overview, priorityEmployees, topPerformers, overviewActions, evaluationCoverage }) {
@@ -1195,14 +1356,13 @@ function ExecutiveReportPage() {
   });
   const filtersRef = useRef(filters);
 
-  const [byLevelData, setByLevelData] = useState(null);
-  const [loadingByLevel, setLoadingByLevel] = useState(false);
-
-  // Comparar ciclos state
-  const [compareCycleA, setCompareCycleA] = useState("");
-  const [compareCycleB, setCompareCycleB] = useState("");
-  const [compareData, setCompareData] = useState(null);
-  const [loadingCompare, setLoadingCompare] = useState(false);
+  const [analyticsData, setAnalyticsData] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+  const [summaryData, setSummaryData] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
+  const [personaSearch, setPersonaSearch] = useState("");
+  const [personaFilterArea, setPersonaFilterArea] = useState("");
+  const [activeGrafTab, setActiveGrafTab] = useState(0);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [overview, setOverview] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -1235,15 +1395,26 @@ function ExecutiveReportPage() {
     localStorage.setItem("onboarding_visited_reports", "true");
   }, []);
 
+  const ANALYTICS_TABS = ["personas", "por-nivel", "comparativo", "radar", "recomendaciones", "estructura"];
   useEffect(() => {
-    if (!["por-nivel", "radar", "recomendaciones"].includes(activeTab)) return;
-    if (byLevelData || loadingByLevel || !token || !canViewExecutive) return;
-    setLoadingByLevel(true);
-    apiFetch(`/reports/by-level${filters.cycleId ? `?cycleId=${filters.cycleId}` : ""}`, { token })
-      .then((data) => { setByLevelData(data?.ok !== false ? data : null); })
+    if (!ANALYTICS_TABS.includes(activeTab) || !token || !canViewExecutive) return;
+    if (analyticsData || loadingAnalytics) return;
+    setLoadingAnalytics(true);
+    apiFetch(`/reports/analytics${filters.cycleId ? `?cycleId=${filters.cycleId}` : ""}`, { token })
+      .then((d) => { if (d?.ok !== false) setAnalyticsData(d); })
       .catch(() => {})
-      .finally(() => setLoadingByLevel(false));
-  }, [activeTab, byLevelData, loadingByLevel, token, canViewExecutive, filters.cycleId]);
+      .finally(() => setLoadingAnalytics(false));
+  }, [activeTab, analyticsData, loadingAnalytics, token, canViewExecutive, filters.cycleId]);
+
+  useEffect(() => {
+    if (activeTab !== "dashboard" || !token || !canViewExecutive) return;
+    if (summaryData || loadingSummary) return;
+    setLoadingSummary(true);
+    apiFetch(`/reports/summary${filters.cycleId ? `?cycleId=${filters.cycleId}` : ""}`, { token })
+      .then((d) => { if (d?.ok !== false) setSummaryData(d); })
+      .catch(() => {})
+      .finally(() => setLoadingSummary(false));
+  }, [activeTab, summaryData, loadingSummary, token, canViewExecutive, filters.cycleId]);
 
   const loadOverview = useCallback(async () => {
     if (!token || !canViewExecutive || isEmployee) return;
@@ -1819,916 +1990,537 @@ function ExecutiveReportPage() {
 
       {error ? <div className="pf-alert-error">{error}</div> : null}
 
-      {loadingOverview ? (
-        <EmptyPanel text="Estamos preparando el reporte ejecutivo con el alcance visible para este perfil." />
-      ) : !overview ? (
-        <EmptyPanel text="No pudimos cargar el reporte en este momento." />
-      ) : activeTab === "comparar" ? (
-        <div className="space-y-5">
-          <SurfaceCard title="Análisis Comparativo entre Períodos" subtitle="Elegí dos ciclos y confrontá sus métricas clave para identificar tendencias.">
-            <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
-              <label className="block">
-                <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo A</span>
-                <select
-                  className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
-                  value={compareCycleA}
-                  onChange={(e) => setCompareCycleA(e.target.value)}
-                >
-                  <option value="">Elegí un ciclo</option>
-                  {cycles.map((cycle) => (
-                    <option key={cycle._id} value={cycle._id}>{cycle.label}</option>
+      {/* ══ DASHBOARD ══ */}
+      {activeTab === "dashboard" ? (
+        loadingSummary ? (
+          <EmptyPanel text="Cargando dashboard..." />
+        ) : (
+          <div className="space-y-4">
+            {/* Stat cards */}
+            {(() => {
+              const s = summaryData?.stats || (overview ? overview.summary : null);
+              if (!s) return <EmptyPanel text="Cargando estadísticas..." />;
+              const cards = [
+                { val: s.employeesTotal ?? s.employeesTotal, lbl: "Personas evaluadas", color: "#ffffff" },
+                { val: (s.averageScore ?? 0).toFixed(1), lbl: "Promedio general", color: scColor(s.averageScore) },
+                { val: s.evaluatedCount ?? s.completedEvaluations ?? "—", lbl: "Evaluados", color: "#a78bfa" },
+                { val: s.scoreExcepcional ?? "—", lbl: "Nivel Excepcional ≥4.5", color: "#4ade80" },
+                { val: s.scoreNeedsAttention ?? "—", lbl: "Necesitan atención <2.5", color: "#f87171" },
+              ];
+              return (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
+                  {cards.map((c, i) => (
+                    <div key={i} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <div style={{ fontSize:26, fontWeight:900, color:c.color, lineHeight:1.1 }}>{c.val}</div>
+                      <div style={{ fontSize:11, color:"#7a9aaa", marginTop:4 }}>{c.lbl}</div>
+                    </div>
                   ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="mb-2 block text-sm text-[#c5d5de]">Ciclo B</span>
-                <select
-                  className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
-                  value={compareCycleB}
-                  onChange={(e) => setCompareCycleB(e.target.value)}
-                >
-                  <option value="">Elegí un ciclo</option>
-                  {cycles.map((cycle) => (
-                    <option key={cycle._id} value={cycle._id}>{cycle.label}</option>
-                  ))}
-                </select>
-              </label>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={handleCompare}
-                  disabled={loadingCompare || !compareCycleA || !compareCycleB}
-                  className="w-full rounded-2xl bg-[#14b8a6] px-5 py-3 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loadingCompare ? "Comparando..." : "Comparar"}
-                </button>
+                </div>
+              );
+            })()}
+
+            {/* Competency bars + Distribution */}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:12 }}>
+              {/* Competency bars */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>Promedio por competencia</div>
+                {Array.isArray(summaryData?.competencyAverages) && summaryData.competencyAverages.length > 0 ? (
+                  summaryData.competencyAverages.map((c) => {
+                    const pct = Math.round((c.avg / 5) * 100);
+                    const color = scColor(c.avg);
+                    return (
+                      <div key={c.nombre} style={{ marginBottom:8 }}>
+                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
+                          <span style={{ fontSize:11, color:"#c5d5de" }}>{c.nombre}</span>
+                          <span style={{ fontSize:11, fontWeight:800, color }}>{c.avg.toFixed(1)}</span>
+                        </div>
+                        <div style={{ height:6, borderRadius:4, background:"rgba(255,255,255,0.1)", overflow:"hidden" }}>
+                          <div style={{ width:`${pct}%`, height:"100%", background:color, borderRadius:4 }} />
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p style={{ fontSize:11, color:"#7a9aaa" }}>Sin datos de competencias aún.</p>
+                )}
+              </div>
+
+              {/* Distribution */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>Distribución general de desempeño</div>
+                {Array.isArray(summaryData?.scoreDistribution) ? (
+                  <>
+                    <DistBars dist={summaryData.scoreDistribution.map((d) => d.count)} />
+                    <div style={{ display:"flex", gap:4, marginTop:6, flexWrap:"wrap" }}>
+                      {summaryData.scoreDistribution.map((d) => (
+                        <span key={d.bucket} style={{ flex:1, textAlign:"center", fontSize:8, color:"#7a9aaa", minWidth:40 }}>{d.label}</span>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <p style={{ fontSize:11, color:"#7a9aaa" }}>Sin datos de distribución aún.</p>
+                )}
               </div>
             </div>
-          </SurfaceCard>
 
-          {compareData ? (() => {
-            const cycleALabel = cycles.find(c => c._id === compareCycleA)?.label || "Ciclo A";
-            const cycleBLabel = cycles.find(c => c._id === compareCycleB)?.label || "Ciclo B";
-            const aSum = compareData.a?.summary || {};
-            const bSum = compareData.b?.summary || {};
-            const aDev = compareData.a?.development || {};
-            const bDev = compareData.b?.development || {};
-            const aKpi = compareData.a?.kpis?.summaryByStatus || {};
-            const bKpi = compareData.b?.kpis?.summaryByStatus || {};
-            const aOkr = compareData.a?.okrs?.summaryByStatus || {};
-            const bOkr = compareData.b?.okrs?.summaryByStatus || {};
+            {/* Recent evals table */}
+            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+              <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>📋 Últimas evaluaciones registradas</div>
+              <div style={{ overflowX:"auto" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+                  <thead>
+                    <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+                      {["#","Nombre","Puesto","Área","Puntaje"].map((h) => (
+                        <th key={h} style={{ textAlign:"left", padding:"6px 8px", color:"#7a9aaa", fontWeight:600, fontSize:10 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(summaryData?.recentEvaluations) && summaryData.recentEvaluations.length > 0 ? (
+                      summaryData.recentEvaluations.map((e, i) => (
+                        <tr key={i} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                          <td style={{ padding:"6px 8px", color:"#7a9aaa" }}>{i + 1}</td>
+                          <td style={{ padding:"6px 8px", fontWeight:600, color:"#fff" }}>{e.employeeName}</td>
+                          <td style={{ padding:"6px 8px", color:"#9bb5c4", fontSize:10 }}>{e.cargo}</td>
+                          <td style={{ padding:"6px 8px", color:"#9bb5c4", fontSize:10 }}>{e.area}</td>
+                          <td style={{ padding:"6px 8px" }}><ScorePill v={e.finalScore} /></td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr><td colSpan={5} style={{ padding:24, textAlign:"center", color:"#7a9aaa" }}>Sin evaluaciones recientes.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )
 
-            const rows = [
-              { label: "Promedio de desempeño", a: Number(aSum.averageScore || 0), b: Number(bSum.averageScore || 0), fmt: (v) => v > 0 ? v.toFixed(2) : "—" },
-              { label: "Evaluaciones totales", a: Number(aSum.evaluationsTotal || 0), b: Number(bSum.evaluationsTotal || 0), fmt: (v) => v.toLocaleString("es-AR") },
-              { label: "Evaluaciones pendientes", a: Number(aSum.evaluationsPending || 0), b: Number(bSum.evaluationsPending || 0), fmt: (v) => v.toLocaleString("es-AR"), invertDelta: true },
-              { label: "Planes de desarrollo activos", a: Number(aDev.active || 0), b: Number(bDev.active || 0), fmt: (v) => v.toLocaleString("es-AR") },
-              { label: "KPIs cumplidos", a: Number(aKpi.completed || 0), b: Number(bKpi.completed || 0), fmt: (v) => v.toLocaleString("es-AR") },
-              { label: "KPIs en riesgo", a: Number(aKpi.atRisk || 0), b: Number(bKpi.atRisk || 0), fmt: (v) => v.toLocaleString("es-AR"), invertDelta: true },
-              { label: "OKRs cumplidos", a: Number(aOkr.completed || 0), b: Number(bOkr.completed || 0), fmt: (v) => v.toLocaleString("es-AR") },
-              { label: "OKRs en riesgo", a: Number(aOkr.atRisk || 0), b: Number(bOkr.atRisk || 0), fmt: (v) => v.toLocaleString("es-AR"), invertDelta: true },
-            ];
+      /* ══ PERSONAS ══ */
+      ) : activeTab === "personas" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando datos de personas..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const areas = [...new Set(analyticsData.personas.map((p) => p.area))].sort();
+          const filtered = analyticsData.personas.filter((p) => {
+            if (personaSearch && !p.nombre.toLowerCase().includes(personaSearch.toLowerCase()) && !p.cargo.toLowerCase().includes(personaSearch.toLowerCase())) return false;
+            if (personaFilterArea && p.area !== personaFilterArea) return false;
+            return true;
+          });
+          const comps = analyticsData.competencias;
+          return (
+            <div className="space-y-3">
+              {/* Filters */}
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap", marginBottom:4 }}>
+                <input
+                  className="rounded-xl border border-white/15 bg-[#0F1A21] px-3 py-2 text-sm text-white placeholder-[#7a9aaa]"
+                  placeholder="Buscar nombre o cargo..."
+                  value={personaSearch}
+                  onChange={(e) => setPersonaSearch(e.target.value)}
+                  style={{ minWidth:180 }}
+                />
+                <select
+                  className="rounded-xl border border-white/15 bg-[#0F1A21] px-3 py-2 text-sm text-white"
+                  value={personaFilterArea}
+                  onChange={(e) => setPersonaFilterArea(e.target.value)}
+                >
+                  <option value="">Todas las áreas</option>
+                  {areas.map((a) => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              {/* Table */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28]" style={{ overflowX:"auto" }}>
+                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+                  <thead>
+                    <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+                      <th style={{ padding:"8px 10px", textAlign:"left", color:"#7a9aaa", fontWeight:600, fontSize:10, whiteSpace:"nowrap" }}>Nombre</th>
+                      <th style={{ padding:"8px 10px", textAlign:"left", color:"#7a9aaa", fontWeight:600, fontSize:10 }}>Cargo</th>
+                      <th style={{ padding:"8px 10px", textAlign:"left", color:"#7a9aaa", fontWeight:600, fontSize:10 }}>Área</th>
+                      <th style={{ padding:"8px 10px", textAlign:"left", color:"#7a9aaa", fontWeight:600, fontSize:10 }}>Reporta a</th>
+                      {comps.map((c) => (
+                        <th key={c.id} style={{ padding:"8px 6px", textAlign:"center", color:"#7a9aaa", fontWeight:600, fontSize:9, whiteSpace:"nowrap" }} title={c.nombre}>
+                          {c.nombre.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase()}
+                        </th>
+                      ))}
+                      <th style={{ padding:"8px 10px", textAlign:"center", color:"#7a9aaa", fontWeight:700, fontSize:10 }}>⌀</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filtered.length === 0 ? (
+                      <tr><td colSpan={5 + comps.length} style={{ padding:24, textAlign:"center", color:"#7a9aaa" }}>Sin resultados</td></tr>
+                    ) : filtered.map((p) => (
+                      <tr key={p._id} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                        <td style={{ padding:"6px 10px", fontWeight:600, color:"#fff", whiteSpace:"nowrap" }}>{p.nombre}</td>
+                        <td style={{ padding:"6px 10px", color:"#9bb5c4", fontSize:10, maxWidth:140, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.cargo}</td>
+                        <td style={{ padding:"6px 10px", color:"#9bb5c4", fontSize:10, whiteSpace:"nowrap" }}>{p.area}</td>
+                        <td style={{ padding:"6px 10px", color:"#7a9aaa", fontSize:10, maxWidth:120, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.managerName}</td>
+                        {comps.map((c) => {
+                          const s = p.compScores[c.id];
+                          return (
+                            <td key={c.id} style={{ padding:"4px 6px", textAlign:"center" }}>
+                              {s?.auto != null ? <ScorePill v={s.auto} small /> : <span style={{ color:"rgba(255,255,255,0.15)" }}>—</span>}
+                            </td>
+                          );
+                        })}
+                        <td style={{ padding:"4px 10px", textAlign:"center" }}>
+                          {p.general != null ? <ScorePill v={p.general} /> : <span style={{ color:"rgba(255,255,255,0.15)" }}>—</span>}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ fontSize:9, color:"#7a9aaa" }}>Las columnas de competencias muestran el promedio de la autoevaluación.</p>
+            </div>
+          );
+        })()
 
-            return (
-              <SurfaceCard title="Resultados del Análisis Comparativo" subtitle={`${cycleALabel} vs. ${cycleBLabel}`}>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
+      /* ══ POR NIVEL ══ */
+      ) : activeTab === "por-nivel" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando análisis por nivel..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const { grupos, competencias } = analyticsData;
+          const g = grupos[activeGrafTab] || grupos[0];
+          if (!g) return <EmptyPanel text="Sin datos de áreas." />;
+          const color = areaColor(activeGrafTab);
+          const globalAvgByComp = {};
+          competencias.forEach(({ id }) => {
+            const all = grupos.flatMap((gr) => gr.compStats[id] ? [gr.compStats[id].avg] : []);
+            globalAvgByComp[id] = all.length ? all.reduce((a,b)=>a+b,0)/all.length : 0;
+          });
+          return (
+            <div className="space-y-3">
+              {/* Area tabs */}
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+                {grupos.map((gr, i) => (
+                  <button key={gr.area} type="button"
+                    onClick={() => setActiveGrafTab(i)}
+                    style={{
+                      padding:"5px 14px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer",
+                      background: i === activeGrafTab ? areaColor(i) + "20" : "transparent",
+                      color: i === activeGrafTab ? areaColor(i) : "#7a9aaa",
+                      border: `1px solid ${areaColor(i)}${i === activeGrafTab ? "50" : "20"}`,
+                    }}
+                  >
+                    {gr.area}
+                  </button>
+                ))}
+              </div>
+              {/* Header */}
+              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                <span style={{ padding:"4px 14px", borderRadius:16, fontSize:12, fontWeight:700, background:color+"18", color, border:`1px solid ${color}30` }}>{g.area}</span>
+                <span style={{ fontSize:11, color:"#7a9aaa" }}>{g.count} personas</span>
+                {g.avgScore != null && (
+                  <span style={{ marginLeft:"auto", fontSize:12, fontWeight:700, color:scColor(g.avgScore), background:color+"15", border:`1px solid ${color}30`, padding:"4px 12px", borderRadius:8 }}>
+                    Promedio: {g.avgScore.toFixed(1)} — {scLabel(g.avgScore)}
+                  </span>
+                )}
+              </div>
+              {/* Competency cards grid */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10 }}>
+                {competencias.map(({ id, nombre }) => {
+                  const st = g.compStats[id];
+                  if (!st) return null;
+                  const diff = (st.avg - (globalAvgByComp[id] || 0)).toFixed(1);
+                  const diffColor = diff >= 0 ? "#4ade80" : "#f87171";
+                  return (
+                    <div key={id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <div style={{ fontSize:11, fontWeight:700, color:"#fff", marginBottom:4 }}>{nombre}</div>
+                      <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:2 }}>
+                        <div style={{ fontSize:22, fontWeight:900, color:scColor(st.avg) }}>{st.avg.toFixed(1)}</div>
+                        <div style={{ fontSize:10, fontWeight:700, color:diffColor }}>{diff >= 0 ? "+" : ""}{diff} vs global</div>
+                      </div>
+                      <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(st.avg)}</div>
+                      <DistBars dist={st.dist} />
+                      <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#7a9aaa", borderTop:"1px solid rgba(255,255,255,0.08)", paddingTop:6, marginTop:6 }}>
+                        <span>🔴 Bajo: {st.pctLow}%</span>
+                        <span>🟢 Alto: {st.pctHigh}%</span>
+                      </div>
+                    </div>
+                  );
+                })}
+                {/* General card */}
+                {g.avgScore != null && (
+                  <div className="rounded-2xl bg-[#0f1f28] p-4" style={{ border:`1px solid ${color}30` }}>
+                    <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>⌀ General</div>
+                    <div style={{ fontSize:22, fontWeight:900, color, marginBottom:2 }}>{g.avgScore.toFixed(1)}</div>
+                    <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(g.avgScore)} · {g.count} personas</div>
+                    {Array.isArray(g.genDist) && <DistBars dist={g.genDist} />}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })()
+
+      /* ══ COMPARATIVO ══ */
+      ) : activeTab === "comparativo" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando comparativo..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const { grupos, competencias } = analyticsData;
+          return (
+            <div className="space-y-4">
+              {/* Cross-level table */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>Competencias transversales — comparación entre áreas</div>
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                     <thead>
-                      <tr className="border-b border-white/10">
-                        <th className="pb-3 text-left text-xs font-semibold uppercase tracking-[0.1em] text-[#7f99a8]">Métrica</th>
-                        <th className="pb-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#14b8a6]">{cycleALabel}</th>
-                        <th className="pb-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#38bdf8]">{cycleBLabel}</th>
-                        <th className="pb-3 text-center text-xs font-semibold uppercase tracking-[0.1em] text-[#7f99a8]">Diferencia</th>
+                      <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+                        <th style={{ padding:"6px 10px", textAlign:"left", color:"#7a9aaa", fontSize:10, fontWeight:600 }}>Competencia</th>
+                        {grupos.map((g, i) => (
+                          <th key={g.area} style={{ padding:"6px 8px", textAlign:"center", color:areaColor(i), fontSize:10, fontWeight:600, whiteSpace:"nowrap" }}>{g.area}</th>
+                        ))}
+                        <th style={{ padding:"6px 8px", textAlign:"center", color:"#c5d5de", fontSize:10, fontWeight:600 }}>Global</th>
+                        <th style={{ padding:"6px 8px", textAlign:"center", color:"#c5d5de", fontSize:10, fontWeight:600 }}>Brecha</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/6">
-                      {rows.map((row) => {
-                        const delta = row.b - row.a;
-                        const isPositive = row.invertDelta ? delta < 0 : delta > 0;
-                        const isNegative = row.invertDelta ? delta > 0 : delta < 0;
-                        const deltaColor = delta === 0 ? "text-[#7f99a8]" : isPositive ? "text-[#14b8a6]" : "text-rose-400";
-                        const deltaArrow = delta === 0 ? "—" : isPositive ? "↑" : "↓";
-                        const deltaDisplay = delta === 0 ? "Sin cambio" : `${deltaArrow} ${Math.abs(Number.isFinite(delta) ? (Number.isInteger(delta) ? delta : delta.toFixed(2)) : delta)}`;
+                    <tbody>
+                      {competencias.map(({ id, nombre }) => {
+                        const stats = grupos.map((g) => g.compStats[id]);
+                        const avgs = stats.map((s) => s?.avg).filter((v) => v != null);
+                        if (!avgs.length) return null;
+                        const gAvg = avgs.reduce((a,b)=>a+b,0)/avgs.length;
+                        const brecha = (Math.max(...avgs) - Math.min(...avgs)).toFixed(1);
+                        const bColor = brecha >= 1.5 ? "#f87171" : brecha >= 0.8 ? "#facc15" : "#4ade80";
+                        const minV = Math.min(...avgs), maxV = Math.max(...avgs);
                         return (
-                          <tr key={row.label}>
-                            <td className="py-3 pr-4 text-[#c5d5de]">{row.label}</td>
-                            <td className="py-3 text-center font-semibold text-white">{row.fmt(row.a)}</td>
-                            <td className="py-3 text-center font-semibold text-white">{row.fmt(row.b)}</td>
-                            <td className={`py-3 text-center font-semibold ${deltaColor}`}>{deltaDisplay}</td>
+                          <tr key={id} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                            <td style={{ padding:"8px 10px", fontWeight:700, color:"#fff" }}>{nombre}</td>
+                            {grupos.map((g, i) => {
+                              const s = g.compStats[id];
+                              if (!s) return <td key={i} style={{ padding:"8px", textAlign:"center", color:"rgba(255,255,255,0.15)" }}>—</td>;
+                              return (
+                                <td key={i} style={{ padding:"6px 8px" }}>
+                                  <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                                    <div style={{ flex:1, height:4, borderRadius:3, background:"rgba(255,255,255,0.08)", overflow:"hidden" }}>
+                                      <div style={{ width:`${(s.avg/5)*100}%`, height:"100%", background:areaColor(i), borderRadius:3 }} />
+                                    </div>
+                                    <span style={{ fontWeight:800, color:scColor(s.avg), fontSize:11 }}>{s.avg.toFixed(1)}</span>
+                                    {s.avg === minV && brecha > 0.3 && <span style={{ fontSize:9, color:"#f87171" }}>▼</span>}
+                                    {s.avg === maxV && brecha > 0.3 && <span style={{ fontSize:9, color:"#4ade80" }}>▲</span>}
+                                  </div>
+                                </td>
+                              );
+                            })}
+                            <td style={{ padding:"6px 8px", textAlign:"center", fontWeight:800, color:"#fff" }}>{gAvg.toFixed(1)}</td>
+                            <td style={{ padding:"6px 8px", textAlign:"center", fontWeight:700, color:bColor }}>{brecha}</td>
                           </tr>
                         );
                       })}
                     </tbody>
                   </table>
                 </div>
-              </SurfaceCard>
-            );
-          })() : null}
+              </div>
+              {/* Heatmap */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>Mapa de calor — desempeño por área y competencia</div>
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
+                    <thead>
+                      <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+                        <th style={{ padding:"6px 10px", textAlign:"left", color:"#7a9aaa", fontSize:10 }}>Área</th>
+                        {competencias.map((c) => (
+                          <th key={c.id} style={{ padding:"6px 6px", textAlign:"center", color:"#7a9aaa", fontSize:9, whiteSpace:"nowrap" }}
+                              title={c.nombre}>{c.nombre.split(" ").map((w)=>w[0]).join("").slice(0,3).toUpperCase()}</th>
+                        ))}
+                        <th style={{ padding:"6px 8px", textAlign:"center", color:"#c5d5de", fontSize:10 }}>⌀ Área</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {grupos.map((g, gi) => {
+                        const compAvgs = competencias.map(({ id }) => g.compStats[id]?.avg).filter((v) => v != null);
+                        const nAvg = compAvgs.length ? compAvgs.reduce((a,b)=>a+b,0)/compAvgs.length : null;
+                        return (
+                          <tr key={g.area} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
+                            <td style={{ padding:"6px 10px", color:areaColor(gi), fontWeight:700 }}>{g.area}</td>
+                            {competencias.map(({ id }) => {
+                              const s = g.compStats[id];
+                              if (!s) return <td key={id} style={{ textAlign:"center", color:"rgba(255,255,255,0.15)" }}>—</td>;
+                              const bg = s.avg >= 4 ? "rgba(34,197,94,.15)" : s.avg >= 3 ? "rgba(234,179,8,.1)" : s.avg >= 2 ? "rgba(249,115,22,.1)" : "rgba(239,68,68,.15)";
+                              return (
+                                <td key={id} style={{ textAlign:"center", background:bg, padding:"4px 6px" }}>
+                                  <div style={{ fontWeight:800, fontSize:11, color:scColor(s.avg) }}>{s.avg.toFixed(1)}</div>
+                                  <div style={{ fontSize:8, color:"#7a9aaa" }}>{s.pctLow}%↓</div>
+                                </td>
+                              );
+                            })}
+                            <td style={{ textAlign:"center", fontWeight:900, color:nAvg ? scColor(nAvg) : "#7a9aaa" }}>
+                              {nAvg ? nAvg.toFixed(1) : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          );
+        })()
 
-          {!compareData && !loadingCompare ? (
-            <EmptyPanel text="Elegí dos ciclos y presioná Comparar para ver las diferencias." />
-          ) : null}
-        </div>
-      ) : activeTab === "por-nivel" || activeTab === "radar" || activeTab === "recomendaciones" ? (
-        <div className="space-y-4">
-          {loadingByLevel ? (
-            <EmptyPanel text="Cargando análisis por área..." />
-          ) : !byLevelData ? (
-            <EmptyPanel text="No se pudo cargar el análisis por área." />
-          ) : activeTab === "por-nivel" ? (
-            <div className="space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {Array.isArray(byLevelData.areas) && byLevelData.areas.map((a) => {
-                  const scoreColor = !a.avgScore ? "#7a9aaa" : a.avgScore >= 4.5 ? "#34d399" : a.avgScore >= 3 ? "#fbbf24" : "#f87171";
-                  const pct = a.avgScore ? Math.round((a.avgScore / 5) * 100) : 0;
+      /* ══ RADAR ══ */
+      ) : activeTab === "radar" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando radar..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const { grupos, competencias } = analyticsData;
+          const labels = competencias.map((c) => c.nombre.split(" ")[0]);
+          return (
+            <div className="space-y-4">
+              {/* Individual per area */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:12 }}>
+                {grupos.map((g, i) => {
+                  const vals = competencias.map(({ id }) => g.compStats[id]?.avg ?? 0);
+                  const color = areaColor(i);
                   return (
-                    <article key={a.area} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
-                      <p className="font-semibold text-white/95 truncate">{a.area}</p>
-                      <p className="mt-1 text-xs text-[#7a9aaa]">{a.employeeCount} persona{a.employeeCount !== 1 ? "s" : ""} · {a.evaluatedCount} evaluada{a.evaluatedCount !== 1 ? "s" : ""}</p>
-                      <div className="mt-3 flex items-center justify-between">
-                        <div className="flex-1 mr-3">
-                          <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
-                            <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: scoreColor }} />
-                          </div>
-                        </div>
-                        <span className="text-lg font-bold shrink-0" style={{ color: scoreColor }}>
-                          {a.avgScore ? a.avgScore.toFixed(2) : "—"}
-                        </span>
+                    <div key={g.area} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                      <div style={{ fontSize:12, fontWeight:700, color, marginBottom:8 }}>
+                        {g.area} <span style={{ fontSize:10, color:"#7a9aaa", fontWeight:400 }}>{g.count} personas</span>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-              {(!byLevelData.areas?.length) && <EmptyPanel text="No hay datos de área disponibles para este ciclo." />}
-            </div>
-          ) : activeTab === "radar" ? (
-            <SurfaceCard title="Radar por área" subtitle="Comparación visual del desempeño promedio por área de la organización.">
-              {Array.isArray(byLevelData.areas) && byLevelData.areas.filter((a) => a.avgScore).length >= 3 ? (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RadarChart data={byLevelData.areas.filter((a) => a.avgScore).map((a) => ({ area: a.area.length > 12 ? a.area.slice(0, 12) + "…" : a.area, promedio: a.avgScore }))}>
-                      <PolarGrid stroke="rgba(255,255,255,0.1)" />
-                      <PolarAngleAxis dataKey="area" tick={{ fill: "#9ab8c8", fontSize: 11 }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 5]} tick={{ fill: "#6a8ea0", fontSize: 9 }} />
-                      <Radar name="Promedio" dataKey="promedio" stroke="#14b8a6" fill="#14b8a6" fillOpacity={0.25} />
-                    </RadarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <EmptyPanel text="Se necesitan al menos 3 áreas con evaluaciones para mostrar el radar." />
-              )}
-            </SurfaceCard>
-          ) : (
-            <div className="space-y-3">
-              {Array.isArray(byLevelData.areas) && byLevelData.areas.length > 0 ? (
-                (() => {
-                  const sorted = [...byLevelData.areas].filter((a) => a.avgScore !== null).sort((a, b) => (a.avgScore || 0) - (b.avgScore || 0));
-                  const low = sorted.slice(0, 3);
-                  const high = sorted.slice(-3).reverse();
-                  return (
-                    <div className="grid gap-4 xl:grid-cols-2">
-                      <SurfaceCard title="Áreas que necesitan atención" subtitle="Las áreas con promedio más bajo — prioridad para planes de desarrollo.">
-                        <div className="space-y-3">
-                          {low.length ? low.map((a) => (
-                            <article key={a.area} className="rounded-2xl border border-rose-300/20 bg-rose-500/5 p-4">
-                              <div className="flex justify-between items-center">
-                                <p className="font-semibold text-white/90 truncate">{a.area}</p>
-                                <span className="ml-3 shrink-0 text-rose-300 font-bold">{a.avgScore?.toFixed(2) ?? "—"}</span>
-                              </div>
-                              <p className="mt-1 text-xs text-[#7a9aaa]">{a.evaluatedCount} de {a.employeeCount} personas evaluadas</p>
-                              <p className="mt-2 text-xs text-rose-200/80">Recomendación: revisar planes de desarrollo, asignar jefatura de acompañamiento y definir ciclo de seguimiento.</p>
-                            </article>
-                          )) : <EmptyPanel text="Sin datos suficientes." />}
-                        </div>
-                      </SurfaceCard>
-                      <SurfaceCard title="Áreas destacadas" subtitle="Las áreas con mejor desempeño promedio en el período.">
-                        <div className="space-y-3">
-                          {high.length ? high.map((a) => (
-                            <article key={a.area} className="rounded-2xl border border-emerald-300/20 bg-emerald-500/5 p-4">
-                              <div className="flex justify-between items-center">
-                                <p className="font-semibold text-white/90 truncate">{a.area}</p>
-                                <span className="ml-3 shrink-0 text-emerald-300 font-bold">{a.avgScore?.toFixed(2) ?? "—"}</span>
-                              </div>
-                              <p className="mt-1 text-xs text-[#7a9aaa]">{a.evaluatedCount} de {a.employeeCount} personas evaluadas</p>
-                              <p className="mt-2 text-xs text-emerald-200/80">Recomendación: documentar prácticas del área, considerar como referencia para otras unidades.</p>
-                            </article>
-                          )) : <EmptyPanel text="Sin datos suficientes." />}
-                        </div>
-                      </SurfaceCard>
-                    </div>
-                  );
-                })()
-              ) : (
-                <EmptyPanel text="No hay suficientes datos para generar recomendaciones." />
-              )}
-            </div>
-          )}
-        </div>
-      ) : activeTab === "general" ? (
-        <div className="space-y-3">
-          {/* Executive summary */}
-          {overview ? (
-            <SurfaceCard
-              title="Resumen ejecutivo"
-              subtitle={`Síntesis generada a partir de los datos del período visible.`}
-              actions={
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={handleExportExcel}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-sm font-semibold text-emerald-300 transition hover:bg-emerald-500/20"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
-                      <rect x="3" y="3" width="18" height="18" rx="2.5" />
-                      <path d="M8 8l3 4 3-4M8 16l3-4 3 4" />
-                    </svg>
-                    Exportar Excel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePrintPDF}
-                    className="inline-flex items-center gap-2 rounded-2xl bg-[#14b8a6] px-4 py-2.5 text-sm font-semibold text-[#0f172a] shadow-[0_4px_16px_rgba(20,184,166,0.25)] transition hover:bg-[#0d9488]"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
-                      <path d="M12 4v10M8 10l4 4 4-4" />
-                      <path d="M4 20h16" />
-                    </svg>
-                    Exportar PDF
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handlePrintPresentation}
-                    className="inline-flex items-center gap-2 rounded-2xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5 text-sm font-semibold text-violet-300 transition hover:bg-violet-500/20"
-                  >
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4 shrink-0">
-                      <rect x="2" y="5" width="20" height="14" rx="2" />
-                      <path d="M9 9l6 3-6 3V9z" fill="currentColor" stroke="none" />
-                    </svg>
-                    Exportar presentación
-                  </button>
-                </div>
-              }
-            >
-              <div className="space-y-2">
-                {execSummaryLines.length ? (
-                  execSummaryLines.map((line, i) => (
-                    <p key={i} className="text-sm leading-relaxed text-[#c5d5de]">{line}</p>
-                  ))
-                ) : (
-                  <p className="text-sm text-[#8fa9b7]">Actualizá el reporte para ver el resumen ejecutivo.</p>
-                )}
-              </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 md:grid-cols-4">
-                {execSignals.map((signal) => {
-                  const toneClass =
-                    signal.tone === "success" ? "border-emerald-300/20 bg-gradient-to-br from-emerald-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(34,197,94,0.08)]"
-                    : signal.tone === "warning" ? "border-amber-300/20 bg-gradient-to-br from-amber-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(251,191,36,0.08)]"
-                    : signal.tone === "danger" ? "border-rose-300/20 bg-gradient-to-br from-rose-500/12 to-[#0c1920] shadow-[0_4px_20px_rgba(239,68,68,0.08)]"
-                    : "border-white/[0.09] bg-gradient-to-b from-[#162c39] to-[#0f2028]";
-                  return (
-                    <div key={signal.label} className={`rounded-2xl border p-4 ${toneClass}`}>
-                      <p className="text-xs uppercase tracking-[0.12em] text-[#7f99a8]">{signal.label}</p>
-                      <p className="mt-2 text-2xl font-semibold text-white">{signal.value}</p>
-                      <p className="mt-1 text-xs text-[#9fb6c4]">{signal.hint}</p>
+                      <RadarCanvas labels={labels} datasets={[{ vals, color, label:g.area }]} width={260} height={210} />
                     </div>
                   );
                 })}
               </div>
-            </SurfaceCard>
-          ) : null}
-
-          {/* Top stat cards */}
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <StatCard
-              label="Personas visibles"
-              value={(overview.summary?.employeesTotal || 0).toLocaleString("es-AR")}
-              hint="Dentro del alcance actual"
-            />
-            <StatCard
-              label="Desempeño promedio"
-              value={(overview.summary?.averageScore || 0).toFixed(2)}
-              hint="Sobre 5.0"
-              tone={overview.summary?.averageScore >= 4 ? "success" : overview.summary?.averageScore >= 3 ? "warning" : "danger"}
-            />
-            <StatCard
-              label="Evaluaciones pendientes"
-              value={(overview.summary?.evaluationsPending || 0).toLocaleString("es-AR")}
-              hint={overview.summary?.evaluationsTotal > 0 ? `${evaluationCoverage.pct}% completadas` : "Sin datos"}
-              tone={overview.summary?.evaluationsPending > 0 ? "warning" : "success"}
-              progress={evaluationCoverage.pct}
-            />
-            <StatCard
-              label="KPIs/OKRs en riesgo"
-              value={(safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0)).toLocaleString("es-AR")}
-              hint={`${safeNum(overview?.kpis?.total, 0).toLocaleString("es-AR")} KPIs · ${safeNum(overview?.okrs?.total, 0).toLocaleString("es-AR")} OKRs`}
-              tone={safeNum(overview?.kpis?.summaryByStatus?.atRisk, 0) + safeNum(overview?.okrs?.summaryByStatus?.atRisk, 0) > 0 ? "danger" : "default"}
-            />
-            <StatCard
-              label="Planes activos"
-              value={(overview.development?.active || 0).toLocaleString("es-AR")}
-              hint={`${(overview.development?.overdue || 0).toLocaleString("es-AR")} vencidos · ${(overview.development?.completed || 0).toLocaleString("es-AR")} completados`}
-              tone={overview.development?.overdue > 0 ? "warning" : "default"}
-            />
-          </div>
-
-          {/* Coaching signals: priority people + top performers + dept pulse */}
-          {priorityEmployees.length > 0 || topPerformers.length > 0 ? (
-            <div className="grid gap-3 xl:grid-cols-[1.3fr_0.7fr]">
-              {priorityEmployees.length > 0 ? (
-                <SurfaceCard title="Focos de Atención Prioritaria" subtitle="Ordenadas por puntaje más bajo. Una conversación a tiempo puede cambiar la trayectoria.">
-                  <div className="grid gap-2">
-                    {priorityEmployees.slice(0, 6).map((employee) => (
-                      <article key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-amber-300/15 bg-amber-500/5 px-4 py-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-white truncate">{employee.fullName}</p>
-                          <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin área"} · {employee.cargo || "Sin cargo"}</p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-3">
-                          {employee.pendingEvaluations > 0 ? (
-                            <span className="rounded-full bg-rose-500/15 px-2 py-0.5 text-[10px] text-rose-200">{employee.pendingEvaluations} eval. pend.</span>
-                          ) : null}
-                          {employee.overduePlans > 0 ? (
-                            <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] text-amber-200">{employee.overduePlans} planes venc.</span>
-                          ) : null}
-                          {employee.averageScore > 0 ? (
-                            <span className={`text-xs font-semibold ${employee.averageScore >= 4 ? "text-emerald-300" : employee.averageScore >= 3 ? "text-amber-300" : "text-rose-300"}`}>
-                              {employee.averageScore.toFixed(1)}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-[#7f99a8]">Sin score</span>
-                          )}
-                        </div>
-                      </article>
-                    ))}
-                  </div>
-                </SurfaceCard>
-              ) : null}
-
-              <div className="space-y-5">
-                {topPerformers.length > 0 ? (
-                  <SurfaceCard title="Talento de Alto Desempeño" subtitle="Colaboradores con el mayor puntaje en el período analizado.">
-                    <div className="space-y-2">
-                      {topPerformers.map((employee, index) => (
-                        <div key={employee._id} className="flex items-center justify-between gap-3 rounded-2xl border border-emerald-300/15 bg-emerald-500/5 px-4 py-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <span className="shrink-0 text-lg font-bold text-emerald-300">#{index + 1}</span>
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-white truncate">{employee.fullName}</p>
-                              <p className="text-xs text-[#9fb6c4] truncate">{employee.area || "Sin área"}</p>
-                            </div>
-                          </div>
-                          <span className="shrink-0 text-sm font-bold text-white">{employee.averageScore.toFixed(1)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </SurfaceCard>
-                ) : null}
-
-                {departmentScores.length > 1 && departmentScores.some((d) => d.averageScore > 0) ? (
-                  <SurfaceCard title="Pulso de Desempeño por Unidad" subtitle="Promedio por equipo, de menor a mayor. Identificá brechas estructurales.">
-                    <div className="space-y-2">
-                      {departmentScores.filter((d) => d.averageScore > 0).slice(0, 5).map((dept) => (
-                        <div key={dept.name} className="flex items-center gap-3">
-                          <span className="w-28 shrink-0 truncate text-xs text-[#9fb6c4]">{dept.name}</span>
-                          <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-white/10">
-                            <div
-                              className={`h-full rounded-full ${dept.averageScore >= 4 ? "bg-emerald-400" : dept.averageScore >= 3 ? "bg-amber-400" : "bg-rose-400"}`}
-                              style={{ width: `${(dept.averageScore / 5) * 100}%` }}
-                            />
-                          </div>
-                          <span className="w-12 text-right text-xs font-semibold text-white">{dept.averageScore.toFixed(1)}</span>
-                          <span className="w-8 text-right text-[10px] text-[#7f99a8]">{dept.count}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </SurfaceCard>
-                ) : null}
+              {/* Combined */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:8 }}>🕸 Comparativo — todas las áreas</div>
+                <RadarCanvas
+                  labels={competencias.map((c) => c.nombre)}
+                  datasets={grupos.map((g, i) => ({ vals: competencias.map(({ id }) => g.compStats[id]?.avg ?? 0), color: areaColor(i), label: g.area }))}
+                  width={460}
+                  height={320}
+                />
               </div>
             </div>
-          ) : null}
+          );
+        })()
 
-          {/* Acciones compactas */}
-          {overviewActions.length > 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-[#0f1f28] px-5 py-4">
-              <div className="flex items-center justify-between gap-4 mb-3">
-                <p className="text-sm font-semibold text-white">Agenda de Acciones Estratégicas</p>
-                <div className="flex gap-2">
-                  <span className="rounded-full border border-rose-300/30 bg-rose-500/10 px-2.5 py-0.5 text-xs font-semibold text-rose-200">Alta {actionPrioritySummary.high}</span>
-                  <span className="rounded-full border border-amber-300/30 bg-amber-500/10 px-2.5 py-0.5 text-xs font-semibold text-amber-200">Media {actionPrioritySummary.medium}</span>
-                  <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-xs font-semibold text-[#c5d5de]">Baja {actionPrioritySummary.low}</span>
-                </div>
+      /* ══ RECOMENDACIONES ══ */
+      ) : activeTab === "recomendaciones" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando recomendaciones..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const recs = computeRecomendaciones(analyticsData.grupos, analyticsData.competencias);
+          const critCount = recs.filter((r) => r.sev === "crit").length;
+          const warnCount = recs.filter((r) => r.sev === "warn").length;
+          const infoCount = recs.filter((r) => r.sev === "info").length;
+          return (
+            <div className="space-y-4">
+              {/* Summary badges */}
+              <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                <span style={{ padding:"7px 14px", borderRadius:8, background:"rgba(239,68,68,.1)", border:"1px solid rgba(239,68,68,.2)", fontSize:12, fontWeight:700, color:"#f87171" }}>🚨 Críticas: {critCount}</span>
+                <span style={{ padding:"7px 14px", borderRadius:8, background:"rgba(249,115,22,.1)", border:"1px solid rgba(249,115,22,.2)", fontSize:12, fontWeight:700, color:"#fb923c" }}>⚠️ Advertencias: {warnCount}</span>
+                <span style={{ padding:"7px 14px", borderRadius:8, background:"rgba(20,184,166,.1)", border:"1px solid rgba(20,184,166,.2)", fontSize:12, fontWeight:700, color:"#14b8a6" }}>💡 Informativas: {infoCount}</span>
               </div>
-              <div className="space-y-2">
-                {overviewActions.slice(0, 4).map((action, index) => {
-                  const destination = mapActionDestination(action);
-                  return (
-                    <div key={`${action.key || action.title}-${index}`} className="flex items-center justify-between gap-3 rounded-xl border border-white/8 bg-[#0c1e28] px-4 py-2.5">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <ActionBadge severity={action.severity} />
-                        <p className="text-sm text-white truncate">{action.title}</p>
-                      </div>
-                      {destination ? (
-                        <button type="button" onClick={() => setView(destination)} className="shrink-0 rounded-xl border border-white/15 px-3 py-1.5 text-xs text-[#c5d5de] hover:bg-white/5 transition">
-                          Ir
-                        </button>
-                      ) : null}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Score distribution */}
-          <SurfaceCard title="Mapa de Distribución del Desempeño" subtitle="Cantidad de colaboradores por banda de puntaje en el período analizado.">
-            <ScoreDistributionPanel employees={allEmployees} />
-          </SurfaceCard>
-
-          {/* Progress charts */}
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-            <MiniBarChart title="Cobertura del Ciclo Evaluativo" items={evaluationChart} emptyText="No hay evaluaciones visibles." />
-
-            <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-4">
-              <p className="text-sm font-semibold text-white">Portfolio de Desarrollo de Talento</p>
-              {Number(overview.development?.total) > 0 ? (
-                <>
-                  <div className="mt-4 flex items-center justify-around">
-                    <MiniDonut value={overview.development?.completed || 0} total={overview.development?.total} label="Completados" gradientId="donut-completed" colorStart="#14b8a6" colorEnd="#34d399" />
-                    <MiniDonut value={overview.development?.active || 0} total={overview.development?.total} label="Activos" gradientId="donut-active" colorStart="#38bdf8" colorEnd="#818cf8" />
-                    <MiniDonut value={overview.development?.overdue || 0} total={overview.development?.total} label="Vencidos" gradientId="donut-overdue" colorStart="#fb7185" colorEnd="#f43f5e" />
-                  </div>
-                  <div className="mt-4 text-center text-sm text-[#9fb6c4]">
-                    {overview.development?.total} planes en total
-                  </div>
-                </>
+              {/* Cards */}
+              {recs.length === 0 ? (
+                <EmptyPanel text="No hay recomendaciones con los datos disponibles." />
               ) : (
-                <p className="mt-4 text-sm text-[#8fa9b7]">No hay planes de desarrollo visibles.</p>
-              )}
-            </article>
-
-            <article className="col-span-full rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
-              <p className="text-sm font-semibold text-white">Cumplimiento de Objetivos Estratégicos</p>
-              <p className="mt-0.5 text-xs text-[#7a9aaa]">Comparativa de avance entre KPIs y OKRs por estado del período.</p>
-              {kpiOkrGrouped.some((r) => r.kpi > 0 || r.okr > 0) ? (
-                <div className="mt-4 h-[180px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={kpiOkrGrouped} barCategoryGap="30%" barGap={4}>
-                      <defs>
-                        <linearGradient id="gradKpi" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#14b8a6" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#0d9488" stopOpacity={0.55} />
-                        </linearGradient>
-                        <linearGradient id="gradOkr" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="0%" stopColor="#a78bfa" stopOpacity={1} />
-                          <stop offset="100%" stopColor="#7c3aed" stopOpacity={0.55} />
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
-                      <YAxis tick={{ fontSize: 12, fill: "#8fa9b7" }} tickLine={false} axisLine={false} allowDecimals={false} width={28} />
-                      <Tooltip content={<ExecChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 6 }} />
-                      <Bar dataKey="kpi" name="KPIs" fill="url(#gradKpi)" radius={[5, 5, 0, 0]} maxBarSize={38} animationDuration={500} activeBar={{ fill: "#14b8a6", fillOpacity: 0.9 }} />
-                      <Bar dataKey="okr" name="OKRs" fill="url(#gradOkr)" radius={[5, 5, 0, 0]} maxBarSize={38} animationDuration={600} activeBar={{ fill: "#a78bfa", fillOpacity: 0.9 }} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <p className="mt-4 text-sm text-[#8fa9b7]">No hay KPIs ni OKRs con datos visibles.</p>
-              )}
-              <div className="mt-3 flex gap-5">
-                <div className="flex items-center gap-1.5 text-xs text-[#8fa9b7]">
-                  <span className="h-2 w-4 rounded-full bg-gradient-to-r from-[#14b8a6] to-[#0d9488]" />
-                  KPIs
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-[#8fa9b7]">
-                  <span className="h-2 w-4 rounded-full bg-gradient-to-r from-[#a78bfa] to-[#7c3aed]" />
-                  OKRs
-                </div>
-              </div>
-            </article>
-          </div>
-
-          {/* Department average score chart */}
-          {departmentScores.length > 0 && departmentScores.some((d) => d.averageScore > 0) ? (
-            <SurfaceCard title="Benchmarking de Desempeño por Área" subtitle="Promedio por unidad, ordenado de menor a mayor. Escala 0–5.">
-              <div style={{ height: Math.max(180, departmentScores.length * 44) }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={departmentScores} layout="vertical" barCategoryGap="22%">
-                    <defs>
-                      <linearGradient id="gradDeptScore" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.8} />
-                        <stop offset="100%" stopColor="#38bdf8" stopOpacity={1} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="4 4" stroke="rgba(255,255,255,0.06)" horizontal={false} />
-                    <XAxis type="number" domain={[0, 5]} ticks={[0, 1, 2, 3, 4, 5]} tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} />
-                    <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#8fa9b7" }} tickLine={false} axisLine={false} width={100} />
-                    <Tooltip content={<ExecChartTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)", radius: 4 }} />
-                    <Bar dataKey="averageScore" name="Puntaje promedio" fill="url(#gradDeptScore)" radius={[0, 5, 5, 0]} maxBarSize={26} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </SurfaceCard>
-          ) : null}
-
-          {/* Scatter + 9-box */}
-          <div className="grid gap-3 xl:grid-cols-2">
-            <SurfaceCard title="Matriz de Posicionamiento de Talento" subtitle="Puntaje de desempeño vs. planes de desarrollo activos por colaborador.">
-              <TeamScatterPlot employees={allEmployees} />
-            </SurfaceCard>
-            <SurfaceCard title="Matriz 9-Box: Performance × Potencial" subtitle="Posicionamiento por desempeño y potencial de crecimiento (estimado por participación).">
-              <NineBoxGrid employees={allEmployees} />
-            </SurfaceCard>
-          </div>
-
-          {/* Department distribution */}
-          <SurfaceCard title="Cobertura Organizacional por Unidad" subtitle="Distribución del seguimiento de desempeño entre las unidades visibles.">
-            {overview?.departments?.length ? (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                {overview.departments.map((item) => {
-                  const deptEmployeeCount = item.employees || item.count || 0;
-                  const maxEmployeeCount = Math.max(...overview.departments.map((d) => d.employees || d.count || 0), 1);
-                  const deptWidth = Math.max(8, Math.round((deptEmployeeCount / maxEmployeeCount) * 100));
-                  return (
-                    <article key={item.code} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex-1">
-                          <p className="font-semibold text-white">{item.label}</p>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
-                            <div className="h-full rounded-full bg-sky-400" style={{ width: `${deptWidth}%` }} />
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:12 }}>
+                  {recs.map((r, idx) => {
+                    const borderColor = r.sev === "crit" ? "rgba(239,68,68,.3)" : r.sev === "warn" ? "rgba(249,115,22,.3)" : "rgba(20,184,166,.2)";
+                    const bg = r.sev === "crit" ? "rgba(239,68,68,.08)" : r.sev === "warn" ? "rgba(249,115,22,.08)" : "rgba(20,184,166,.05)";
+                    const actionColor = r.sev === "crit" ? "#f87171" : r.sev === "warn" ? "#fb923c" : "#14b8a6";
+                    return (
+                      <div key={idx} className="rounded-2xl p-4" style={{ border:`1px solid ${borderColor}`, background:bg }}>
+                        <div style={{ display:"flex", gap:8, marginBottom:7 }}>
+                          <span style={{ fontSize:18, flexShrink:0 }}>{r.icon}</span>
+                          <div>
+                            <div style={{ fontSize:10, fontWeight:700, color:actionColor, marginBottom:2 }}>{r.area} · {r.comp}</div>
+                            <div style={{ fontSize:12, fontWeight:700, color:"#fff" }}>{r.title}</div>
                           </div>
                         </div>
-                        <span className="whitespace-nowrap rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-xs text-[#d8e4ea]">
-                          {deptEmployeeCount} personas
-                        </span>
-                      </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">KPIs</p>
-                          <p className="mt-2 text-base font-semibold text-white">{item.kpis || 0}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">OKRs</p>
-                          <p className="mt-2 text-base font-semibold text-white">{item.okrs || 0}</p>
-                        </div>
-                        <div className="rounded-2xl border border-white/10 bg-[#122530] px-4 py-3">
-                          <p className="text-xs uppercase tracking-[0.08em] text-[#7f99a8]">Planes pendientes</p>
-                          <p className="mt-2 text-base font-semibold text-white">{item.pendingPlans || 0}</p>
+                        <div style={{ fontSize:11, color:"#c5d5de", lineHeight:1.6, marginBottom:8 }}>{r.body}</div>
+                        <div style={{ fontSize:10, fontWeight:700, color:actionColor, padding:"4px 10px", border:`1px solid ${actionColor}30`, borderRadius:6, display:"inline-block" }}>
+                          → {r.action}
                         </div>
                       </div>
-                    </article>
-                  );
-                })}
-              </div>
-            ) : (
-              <EmptyPanel text="No hay departamentos con datos suficientes para resumir." />
-            )}
-          </SurfaceCard>
-
-          {/* Employee list */}
-          <SurfaceCard title="Universo de Colaboradores en Alcance" subtitle="Accedé al análisis individual de cualquier persona con un clic.">
-            {employees.length ? (
-              <CollapsibleList
-                items={employees}
-                initialCount={5}
-                className="grid gap-3 md:grid-cols-2 xl:grid-cols-2"
-                renderItem={(employee) => (
-                  <article
-                    key={employee._id}
-                    className={`cursor-pointer rounded-3xl border p-4 transition hover:brightness-110 ${employee.needsAttention ? "border-amber-300/20 bg-amber-500/5" : "border-white/10 bg-[#0f1f28]"}`}
-                    onClick={() => focusEmployeeDetail(employee._id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => { if (e.key === "Enter") focusEmployeeDetail(employee._id); }}
-                  >
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="font-semibold text-white truncate">{employee.fullName}</p>
-                          {employee.needsAttention ? (
-                            <span className="shrink-0 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-medium text-amber-200">Atención</span>
-                          ) : null}
-                          {employee.hasManager ? null : (
-                            <span className="shrink-0 rounded-full bg-rose-500/20 px-2 py-0.5 text-[10px] font-medium text-rose-200">Sin manager</span>
-                          )}
-                        </div>
-                        <p className="text-xs text-[#8FA9B7] truncate">{employee.cargo || "Sin cargo"}</p>
-                        <p className="text-xs text-[#6a8a9a] truncate">{employee.area || "Sin área"}</p>
-                      </div>
-                      <div className="flex flex-wrap gap-2 text-xs shrink-0">
-                        <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                          Eval: {employee.evaluationCount}
-                        </span>
-                        <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                          Planes: {employee.planCount}
-                        </span>
-                      </div>
-                    </div>
-                    {employee.averageScore > 0 ? (
-                      <div className="mt-3 flex items-center gap-2">
-                        <span className="text-xs text-[#9fb6c4]">Promedio</span>
-                        <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className={`h-full rounded-full ${employee.averageScore >= 4 ? "bg-emerald-400" : employee.averageScore >= 3 ? "bg-amber-400" : "bg-rose-400"}`}
-                            style={{ width: `${(employee.averageScore / 5) * 100}%` }}
-                          />
-                        </div>
-                        <span className="text-xs font-semibold text-white">{employee.averageScore.toFixed(1)}</span>
-                      </div>
-                    ) : null}
-                  </article>
-                )}
-              />
-            ) : (
-              <EmptyPanel text="No hay personas visibles para los filtros seleccionados." />
-            )}
-          </SurfaceCard>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          <SurfaceCard title="Análisis Individual de Desempeño" subtitle="Seleccioná un colaborador para ver su perfil completo: evaluaciones, objetivos y desarrollo en un solo lugar.">
-            <div className="grid gap-4 xl:grid-cols-[1.2fr_auto]">
-              <label className="block">
-                <span className="mb-2 block text-sm text-[#c5d5de]">Persona</span>
-                <select
-                  className="w-full rounded-2xl border border-white/15 bg-[#0F1A21] px-4 py-3 text-white"
-                  value={selectedEmployeeId}
-                  onChange={(event) => {
-                    const nextId = event.target.value;
-                    setDraftFilters((current) => ({ ...current, employeeId: nextId }));
-                    if (!nextId) {
-                      pendingDetailScrollRef.current = false;
-                      setSelectedEmployeeId("");
-                      return;
-                    }
-                    focusEmployeeDetail(nextId, { activateTab: false });
-                  }}
-                >
-                  <option value="">Elegí una persona</option>
-                  {employees.map((employee) => (
-                    <option key={employee._id} value={employee._id}>
-                      {employee.fullName} {employee.area ? `· ${employee.area}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <div className="flex items-end">
-                <button
-                  type="button"
-                  onClick={() => selectedEmployeeId && scrollDetailIntoView()}
-                  disabled={!selectedEmployeeId}
-                  className="w-full rounded-2xl bg-[#14b8a6] px-4 py-3 text-sm font-semibold text-[#0f172a] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  Ver detalle
-                </button>
-              </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </SurfaceCard>
+          );
+        })()
 
-          {!selectedEmployeeId ? (
-            <EmptyPanel text="Elegí una persona para ver su reporte individual." />
-          ) : (
-            <div ref={detailRef} className="space-y-3">
-              <SurfaceCard
-                title="Perfil Ejecutivo del Colaborador"
-                subtitle={
-                  selectedEmployee
-                    ? `${selectedEmployee.fullName} · ${selectedEmployee.cargo || "Sin cargo"}${selectedEmployee.area ? ` · ${selectedEmployee.area}` : ""}`
-                    : "Preparando perfil ejecutivo..."
-                }
-                actions={
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setView("evaluaciones")}
-                      className="rounded-2xl bg-[#14b8a6] px-3 py-2 text-sm font-semibold text-[#0f172a] transition hover:bg-[#0d9488]"
-                    >
-                      Evaluaciones
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setView("planes")}
-                      className="rounded-2xl border border-white/15 px-3 py-2 text-sm text-[#c5d5de] transition hover:bg-white/5"
-                    >
-                      Desarrollo
-                    </button>
-                  </div>
-                }
-              >
-                {loadingDetail ? (
-                  <EmptyPanel text="Cargando el detalle de la persona seleccionada..." />
-                ) : !detail ? (
-                  <EmptyPanel text="No hay detalle disponible para esta persona en el alcance actual." />
-                ) : (
-                  <div className="space-y-5">
-                    {/* Summary stat cards */}
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <StatCard label="Evaluaciones" value={detail.summary?.evaluationCount || 0} />
-                      <StatCard
-                        label="Pendientes"
-                        value={detail.summary?.pendingEvaluations || 0}
-                        tone={detail.summary?.pendingEvaluations > 0 ? "warning" : "success"}
-                      />
-                      <StatCard
-                        label="Promedio"
-                        value={detail.summary?.averageScore || 0}
-                        tone={detail.summary?.averageScore >= 4 ? "success" : detail.summary?.averageScore >= 3 ? "warning" : "danger"}
-                        progress={detail.summary?.averageScore > 0 ? (detail.summary.averageScore / 5) * 100 : 0}
-                      />
-                      <StatCard label="Planes abiertos" value={detail.summary?.openPlans || 0} hint={`${detail.summary?.overduePlans || 0} vencidos`} />
+      /* ══ ESTRUCTURA ══ */
+      ) : activeTab === "estructura" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando estructura..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const { personas } = analyticsData;
+          const areaMap = {};
+          personas.forEach((p) => {
+            if (!areaMap[p.area]) areaMap[p.area] = [];
+            areaMap[p.area].push(p);
+          });
+          return (
+            <div className="space-y-4">
+              {Object.entries(areaMap).map(([area, people], gi) => {
+                const color = areaColor(gi);
+                const jefaturas = people.filter((p) => p.esJefatura);
+                const others = people.filter((p) => !p.esJefatura);
+                return (
+                  <div key={area} style={{ padding:14, background:`${color}06`, borderRadius:11, border:`1px solid ${color}18` }}>
+                    <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:.6, color, padding:"4px 10px", background:`${color}15`, borderRadius:6, width:"fit-content", marginBottom:10 }}>
+                      {area}
                     </div>
-
-                    {/* Person info */}
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Nombre</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{detail.employee?.fullName || selectedEmployee?.fullName || "Sin dato visible"}</p>
-                      </article>
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Cargo / rol</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{detail.employee?.cargo || selectedEmployee?.cargo || "Sin dato visible"}</p>
-                      </article>
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Departamento / equipo</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{detail.employee?.area || selectedEmployee?.area || "Sin dato visible"}</p>
-                      </article>
-                      <article className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                        <p className="text-xs uppercase tracking-[0.08em] text-[#7A9AAA]">Ciclo / período</p>
-                        <p className="mt-2 text-sm font-semibold text-white">{overview?.selectedCycle?.label || "Sin ciclo visible"}</p>
-                      </article>
-                    </div>
-
-                    {/* Charts: Radar + Auto vs Manager */}
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                      <article className="rounded-3xl border border-white/10 bg-[#0f1f28] p-5">
-                        <p className="text-sm font-semibold text-white">Radar de habilidades</p>
-                        <p className="mt-0.5 text-xs text-[#7a9aaa]">Perfil de competencias visible para este período.</p>
-                        <div className="mt-3 h-[220px]">
-                          <SkillRadarChart metricSignals={detail?.metricSignals || []} />
-                        </div>
-                      </article>
-                      <MiniBarChart
-                        title="Autoevaluación vs superior"
-                        items={individualEvaluationChart}
-                        emptyText="Todavía no hay evaluaciones suficientes para comparar."
-                      />
-                    </div>
-
-                    {/* KPI / OKR cards */}
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                      <SurfaceCard title="Indicadores Clave de Rendimiento (KPIs)" subtitle="Métricas cuantitativas y avance contra las metas comprometidas.">
-                        {detail.kpis?.items?.length ? (
-                          <div className="grid gap-3">
-                            <CollapsibleList
-                              items={detail.kpis.items}
-                              initialCount={2}
-                              className="grid gap-3"
-                              buttonLabelMore={`Ver más KPIs (+${(detail.kpis.items.length - 2)})`}
-                              renderItem={(item) => <KpiCard item={item} />}
-                            />
-                          </div>
-                        ) : (
-                          <EmptyPanel text={detail.kpis?.message || "No hay KPIs visibles para esta persona."} />
-                        )}
-                      </SurfaceCard>
-
-                      <SurfaceCard title="Objetivos y Resultados Clave (OKRs)" subtitle="Alineación estratégica y avance en los resultados comprometidos.">
-                        {detail.okrs?.items?.length ? (
-                          <div className="grid gap-3">
-                            <CollapsibleList
-                              items={detail.okrs.items}
-                              initialCount={2}
-                              className="grid gap-3"
-                              buttonLabelMore={`Ver más OKRs (+${(detail.okrs.items.length - 2)})`}
-                              renderItem={(item) => <OkrCard item={item} />}
-                            />
-                          </div>
-                        ) : (
-                          <EmptyPanel text={detail.okrs?.message || "No hay OKRs visibles para esta persona."} />
-                        )}
-                      </SurfaceCard>
-                    </div>
-
-                    {/* Evaluations + Development plans */}
-                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                      <SurfaceCard title="Historial de Evaluaciones" subtitle="Autoevaluación, evaluación de la jefatura y cierre final del período.">
-                        {detail.evaluations?.length ? (
-                          <CollapsibleList
-                            items={detail.evaluations}
-                            initialCount={3}
-                            className="space-y-3"
-                            renderItem={(evaluation) => (
-                              <article key={evaluation._id} className={`rounded-2xl border p-4 ${
-                                evaluation.estado === "CERRADA" || evaluation.estado === "REVISADA"
-                                  ? "border-emerald-300/20 bg-emerald-500/5"
-                                  : "border-amber-300/20 bg-amber-500/5"
-                              }`}>
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                  <div>
-                                    <p className="font-semibold text-white">{evaluation.tipo}</p>
-                                    <p className="mt-1 text-sm text-[#8FA9B7]">
-                                      {evaluation.cycle?.label || "Sin ciclo"} · {formatDate(evaluation.createdAt)}
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-2 text-xs">
-                                    <span className={`rounded-full border px-3 py-1 ${
-                                      evaluation.estado === "CERRADA" || evaluation.estado === "REVISADA"
-                                        ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
-                                        : "border-amber-300/30 bg-amber-500/10 text-amber-100"
-                                    }`}>{evaluation.estado}</span>
-                                    <span className="rounded-full border border-white/10 bg-[#122530] px-3 py-1 text-[#d8e4ea]">
-                                      {evaluation.resultadoFinal || 0}/5
-                                    </span>
-                                  </div>
+                    {jefaturas.length > 0 && (
+                      <div style={{ marginBottom:8 }}>
+                        <div style={{ fontSize:9, color:"#7a9aaa", marginBottom:6 }}>Jefaturas ({jefaturas.length})</div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
+                          {jefaturas.map((p) => (
+                            <div key={p._id} style={{ background:"#0f1f28", border:`1px solid ${color}25`, borderRadius:9, padding:"8px 12px", minWidth:140 }}>
+                              <div style={{ fontSize:11, fontWeight:700, color:"#fff" }}>{p.nombre}</div>
+                              <div style={{ fontSize:9, color:`${color}99`, marginTop:2 }}>{p.cargo}</div>
+                              {p.general != null && (
+                                <div style={{ marginTop:5 }}>
+                                  <ScorePill v={p.general} small />
+                                  <span style={{ fontSize:9, color:"#7a9aaa", marginLeft:4 }}>{scLabel(p.general)}</span>
                                 </div>
-                                {evaluation.comentariosGenerales ? (
-                                  <p className="mt-3 text-sm text-[#c8d8df]">{evaluation.comentariosGenerales}</p>
-                                ) : null}
-                              </article>
-                            )}
-                          />
-                        ) : (
-                          <EmptyPanel text="No hay evaluaciones visibles para esta persona." />
-                        )}
-                      </SurfaceCard>
-
-                      <SurfaceCard title="Hoja de Ruta de Desarrollo" subtitle="Planes activos, completados y vencidos vinculados a este colaborador.">
-                        {detail.developmentPlans?.length ? (
-                          <div className="space-y-3">
-                            <CollapsibleList
-                              items={detail.developmentPlans || []}
-                              initialCount={3}
-                              buttonLabelMore={`Ver más (${(detail.developmentPlans?.length || 0) - 3})`}
-                              renderItem={(plan) => (
-                                <article key={plan._id} className={`rounded-2xl border p-4 ${
-                                  plan.estado === "CERRADO"
-                                    ? "border-emerald-300/20 bg-emerald-500/5"
-                                    : plan.estado === "EN_CURSO"
-                                      ? "border-sky-300/20 bg-sky-500/5"
-                                      : "border-white/10 bg-[#0f1f28]"
-                                }`}>
-                                  <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                      <p className="font-semibold text-white">{plan.aspectoDesarrollar}</p>
-                                      <p className="mt-1 text-sm text-[#8FA9B7]">
-                                        Seguimiento {formatDate(plan.fechaSeguimiento)} · creado {formatDate(plan.createdAt)}
-                                      </p>
-                                    </div>
-                                    <span className={`rounded-full border px-2 py-0.5 text-[10px] ${
-                                      plan.estado === "CERRADO"
-                                        ? "border-emerald-300/30 bg-emerald-500/10 text-emerald-100"
-                                        : plan.estado === "EN_CURSO"
-                                          ? "border-sky-300/30 bg-sky-500/10 text-sky-100"
-                                          : "border-white/10 bg-[#122530] text-[#d8e4ea]"
-                                    }`}>{plan.estado}</span>
-                                  </div>
-                                  {plan.fortalezas?.length ? (
-                                    <p className="mt-3 text-sm text-[#c8d8df]">Fortalezas: {plan.fortalezas.join(", ")}</p>
-                                  ) : null}
-                                  {plan.medicion ? <p className="mt-2 text-sm text-[#c8d8df]">Medición: {plan.medicion}</p> : null}
-                                </article>
                               )}
-                            />
-                          </div>
-                        ) : (
-                          <EmptyPanel text="No hay planes de desarrollo visibles para esta persona." />
-                        )}
-                      </SurfaceCard>
-                    </div>
-
-                    {/* Actions */}
-                    <SurfaceCard title="Agenda de Intervención Individual" subtitle="Acciones concretas a tomar según la lectura ejecutiva del perfil actual.">
-                      {detail.actions?.length ? (
-                        <div className="space-y-3">
-                          <CollapsibleList
-                            items={detail.actions || []}
-                            initialCount={3}
-                            buttonLabelMore={`Ver más (${(detail.actions?.length || 0) - 3})`}
-                            renderItem={(action, index) => (
-                              <article key={`${action.title}-${index}`} className={`rounded-2xl border p-4 ${severityTone[action.severity] || severityTone.low}`}>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <p className="font-semibold">{action.title}</p>
-                                  <ActionBadge severity={action.severity} />
-                                </div>
-                                <p className="mt-2 text-sm opacity-90">{action.description}</p>
-                              </article>
-                            )}
-                          />
+                            </div>
+                          ))}
                         </div>
-                      ) : (
-                        <EmptyPanel text="No hay acciones pendientes para esta persona con los datos visibles hoy." />
-                      )}
-                    </SurfaceCard>
+                      </div>
+                    )}
+                    {others.length > 0 && (
+                      <div style={{ marginLeft:16, borderLeft:`2px solid ${color}25`, paddingLeft:12 }}>
+                        <div style={{ fontSize:9, color:"#7a9aaa", marginBottom:6 }}>↳ Personal ({others.length})</div>
+                        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+                          {others.slice(0, 8).map((p) => (
+                            <div key={p._id} style={{ background:"#0f1f28", border:`1px solid ${color}15`, borderRadius:8, padding:"6px 10px" }}>
+                              <div style={{ fontSize:10, fontWeight:600, color:"#e2e8f0" }}>{p.nombre}</div>
+                              <div style={{ fontSize:8, color:`${color}80`, marginTop:1 }}>{p.cargo}</div>
+                              {p.general != null && <ScorePill v={p.general} small />}
+                            </div>
+                          ))}
+                          {others.length > 8 && (
+                            <div style={{ background:"#0f1f28", border:`1px dashed ${color}20`, borderRadius:8, padding:"6px 10px", display:"flex", alignItems:"center", justifyContent:"center", minWidth:60 }}>
+                              <div style={{ textAlign:"center", color:"#7a9aaa", fontSize:10 }}>+{others.length - 8}<br />más</div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </SurfaceCard>
+                );
+              })}
             </div>
-          )}
-        </div>
-      )}
+          );
+        })()
+
+      ) : null}
     </div>
   );
 }
+
+// ─── STUB so old tab-rendering references don't break ───
+function _OldTabsRemoved() { return null; }
+void _OldTabsRemoved;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The block below replaces the old comparar / por-nivel / radar / general / individual tabs.
+// All of that content is now handled above by the new demo-style tab system.
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function ExecutiveReportPageBounded() {
   return (

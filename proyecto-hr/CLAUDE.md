@@ -1,82 +1,42 @@
-# CLAUDE.md — Proyecto ZENTOR / Gested
+# Zentor — Contexto del proyecto
 
-## REGLA PRINCIPAL: Usar agentes para cada tarea
+## Stack
+Frontend: React 19 + Vite — src/
+Backend: Express 5 + Node 20 — backend/
+Base de datos: MongoDB Atlas (hrdb)
+Deploy frontend: Vercel
+Deploy backend: Google Cloud Run (GitHub Actions)
+Pagos: MercadoPago
 
-**Antes de escribir código, leer un archivo o planificar cualquier cambio**, revisá los agentes disponibles en `~/.claude/agents/` y seleccioná los más adecuados para la tarea. Usá 1 o más en paralelo según corresponda.
+## Repos
+App + Backend: github.com/mateo524/Gested (rama: main)
+Landing: github.com/mateo524/performia-web (rama: master)
 
-### Agentes más relevantes para este proyecto
+## Reglas que nunca se rompen
+• NUNCA tocar AnnouncementsPage.jsx
+• NUNCA instalar lucide-react — usar SVGs inline
+• NUNCA cerrar sesión por errores de red — solo logout en error?.status === 401
+• NUNCA usar insertMany para EvaluationScore — siempre bulkWrite con upsert
+• NUNCA llamar .map() en respuestas paginadas sin Array.isArray() primero
+• Toasts siempre con objeto: addToast({ message, type })
+• NUNCA mostrar precios en la landing
+• Antes de pushear la landing: npx tsc --noEmit
 
-| Tarea | Agentes a usar |
-|-------|----------------|
-| Crear/modificar componentes React, UI | `engineering-frontend-developer` + `design-ui-designer` |
-| Backend routes, lógica de negocio | `engineering-backend-architect` + `engineering-senior-developer` |
-| Corrección de bugs | `engineering-code-reviewer` + `engineering-minimal-change-engineer` |
-| Optimización queries MongoDB | `engineering-database-optimizer` |
-| Seguridad, auth, permisos | `security-appsec-engineer` + `security-architect` |
-| CI/CD, GitHub Actions, Cloud Run | `engineering-devops-automator` + `engineering-sre` |
-| Testing, validación | `testing-api-tester` + `testing-reality-checker` |
-| Diseño visual, UX | `design-ux-architect` + `design-visual-storyteller` |
-| Feature nueva compleja | `engineering-rapid-prototyper` + `engineering-software-architect` |
-| Revisión de código | `engineering-code-reviewer` + `security-appsec-engineer` |
-| Performance | `testing-performance-benchmarker` + `engineering-database-optimizer` |
-| Arquitectura / decisiones técnicas | `engineering-software-architect` + `engineering-multi-agent-systems-architect` |
+## Git
+Siempre pushear juntas: git push origin main restore-good-app
+Si restore-good-app quedó atrás: git push origin main:restore-good-app --force
 
-### Cómo seleccionar agentes
+## Archivos clave
+backend/utils/bulkImportTemplate.js — genera el Excel
+backend/services/bulkImportAnalyzer.js — valida el Excel (HEADER_ALIASES español→inglés)
+backend/services/bulkImportConfirm.js — persiste en MongoDB
+backend/routes/bulkImport.routes.js — rutas de importación
+backend/routes/billing.routes.js — MercadoPago
+backend/models/Employee.js — schoolId es optional
+src/components/AppShell.jsx — shell principal
+src/pages/BillingPage.jsx — billing, detecta ?billing_return=1
+src/context/AuthContext.jsx — solo logout en status 401
 
-1. Leer el nombre de la tarea pedida
-2. Identificar la categoría principal (frontend / backend / seguridad / diseño / CI-CD / etc.)
-3. Elegir el agente principal de esa categoría
-4. Si la tarea toca más de una capa (ej: frontend + backend), agregar el agente de la otra capa
-5. Si hay riesgo de regresión o seguridad, agregar `engineering-code-reviewer` o `security-appsec-engineer`
-6. Lanzar los agentes en paralelo con el tool `Agent`
-
----
-
-## Restricciones de seguridad — NUNCA violar
-
-- **NUNCA** pushear solo a `main` — siempre `restore-good-app` + `main` juntos
-- **NUNCA** hacer logout en network errors — solo en `error?.status === 401`
-- **NUNCA** tocar `AnnouncementsPage.jsx`
-- **NUNCA** retornar contraseñas en texto plano en respuestas HTTP
-
-## Stack técnico
-
-- **Frontend**: React 19 + Vite 8 + Tailwind 4 — dark only, CTA `#14b8a6` teal, bg `#091319`/`#0c1e28`
-- **Backend**: Node.js + Express + MongoDB (Mongoose 9) — ES modules (`"type": "module"`)
-- **Infra**: GCP Cloud Run (`zentor-backend`), Vercel (frontend), GitHub Actions CI/CD
-- **Auth**: JWT, `requireAnyPermission`, `attachTenantScope`, `buildScopedFilter`
-
-## Patrones establecidos
-
-- Cache: `cacheGet/cacheSet/cacheGetOrFetch/cacheClearByPrefix` — llamar `invalidateReportCache(companyId)` e `invalidateDashboardCache(companyId)` en mutaciones
-- Background tasks: `runInBackground(fn, label)`
-- Toast: siempre `addToast({ message, type })` — nunca `addToast(string, type)`
-- Seeding de scores: `bulkWrite` con upsert, nunca `insertMany` (duplicados)
-- Git: commit en `restore-good-app` → merge a `main` → push ambos simultáneamente
-
-## Comandos útiles
-
-```bash
-# Backend local
-cd backend && node --env-file=.env server.js
-
-# Frontend local
-npm run dev
-
-# Reset DB (preserva superadmin)
-cd backend && node --env-file=.env scripts/wipeTenantData.js
-
-# Push correcto (nunca solo main)
-git push origin main restore-good-app
-```
-
-## MCPs disponibles
-
-- **shadcn** — componentes UI del registry shadcn/ui (`/mcp` para verificar)
-- **magic** (@21st-dev) — generación de componentes con IA (`/mcp` para verificar)
-
-## Credenciales de producción
-
-- MongoDB: `performia_app` en cluster `admin.s9kg1qj.mongodb.net`, DB `hrdb`
-- Cloud Run: proyecto `zentor-cloud-credits-guardrail`, región `us-east1`, servicio `zentor-backend`
-- Superadmin: `admin@demo.com`
+## Tests
+cd backend && npm test — correr antes de cada push
+Instalá las dependencias: npm install en la raíz y en backend/

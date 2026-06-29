@@ -1014,7 +1014,7 @@ router.get(
       const cycleId = req.query.cycleId || null;
       const cacheKey = `reports-summary:${String(companyId)}:${cycleId || "all"}`;
 
-      const result = await cacheGetOrFetch(cacheKey, 90, async () => {
+      const result = await cacheGetOrFetch(cacheKey, async () => {
         const evalMatch = { companyId, estado: { $in: ["REVISADA", "CERRADA"] } };
         if (cycleId) evalMatch.cycleId = cycleId;
 
@@ -1065,7 +1065,7 @@ router.get(
           scoreDistribution,
           recentEvaluations,
         };
-      });
+      }, 300);
 
       res.json({ ok: true, ...result });
     } catch (err) {
@@ -1086,7 +1086,7 @@ router.get(
       const cycleId = req.query.cycleId || null;
       const cacheKey = `reports-by-level:${String(companyId)}:${cycleId || "all"}`;
 
-      const result = await cacheGetOrFetch(cacheKey, 120, async () => {
+      const result = await cacheGetOrFetch(cacheKey, async () => {
         const data = await Employee.aggregate([
           { $match: { companyId } },
           {
@@ -1129,7 +1129,175 @@ router.get(
             avgScore: d.avgScore ? Math.round(d.avgScore * 100) / 100 : null,
           })),
         };
-      });
+      }, 300);
+
+      res.json({ ok: true, ...result });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+// ─── Full analytics dataset for demo-style reports ───────────────────────────
+router.get(
+  "/analytics",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const { companyId } = await resolveCompanyScope(req);
+      const cycleId = req.query.cycleId || null;
+      const cacheKey = `reports-analytics:${String(companyId)}:${cycleId || "all"}`;
+
+      const result = await cacheGetOrFetch(cacheKey, async () => {
+        const employees = await Employee.find({ companyId, activo: true })
+          .select("nombre apellido cargo area managerId")
+          .lean();
+
+        const empMap = new Map(employees.map((e) => [String(e._id), e]));
+        const managerIdSet = new Set(
+          employees.map((e) => (e.managerId ? String(e.managerId) : null)).filter(Boolean)
+        );
+
+        const evalMatch = { companyId, estado: { $in: ["REVISADA", "CERRADA"] } };
+        if (cycleId) evalMatch.cycleId = cycleId;
+
+        const [evaluations, scores] = await (async () => {
+          const evs = await Evaluation.find(evalMatch).select("employeeId tipo resultadoFinal").lean();
+          if (!evs.length) return [evs, []];
+          const evalIds = evs.map((e) => e._id);
+          const sc = await EvaluationScore.find({ evaluationId: { $in: evalIds } })
+            .populate({
+              path: "metricId",
+              select: "nombre competencyId",
+              populate: { path: "competencyId", select: "nombre" },
+            })
+            .lean();
+          return [evs, sc];
+        })();
+
+        const compMap = new Map();
+        scores.forEach((s) => {
+          const comp = s.metricId?.competencyId;
+          if (comp?._id) compMap.set(String(comp._id), comp.nombre);
+        });
+        const competencias = [...compMap.entries()].map(([id, nombre]) => ({ id, nombre }));
+
+        const evalById = new Map(evaluations.map((e) => [String(e._id), e]));
+
+        const scoreMatrix = {};
+        scores.forEach((s) => {
+          const ev = evalById.get(String(s.evaluationId));
+          if (!ev) return;
+          const empId = String(ev.employeeId);
+          const tipo = ev.tipo;
+          const comp = s.metricId?.competencyId;
+          if (!comp) return;
+          const compId = String(comp._id);
+          if (!scoreMatrix[empId]) scoreMatrix[empId] = {};
+          if (!scoreMatrix[empId][tipo]) scoreMatrix[empId][tipo] = {};
+          if (!scoreMatrix[empId][tipo][compId]) scoreMatrix[empId][tipo][compId] = { total: 0, count: 0 };
+          scoreMatrix[empId][tipo][compId].total += Number(s.nivel || 0);
+          scoreMatrix[empId][tipo][compId].count += 1;
+        });
+
+        const finalEvalByEmp = {};
+        evaluations.filter((e) => e.tipo === "FINAL").forEach((e) => {
+          const empId = String(e.employeeId);
+          if (!finalEvalByEmp[empId]) finalEvalByEmp[empId] = [];
+          finalEvalByEmp[empId].push(Number(e.resultadoFinal || 0));
+        });
+
+        const personas = employees.map((emp) => {
+          const empId = String(emp._id);
+          const matrix = scoreMatrix[empId] || {};
+          const compScores = {};
+          competencias.forEach(({ id, nombre }) => {
+            const autoE = matrix["AUTO"]?.[id];
+            const jefeE = matrix["JEFE"]?.[id];
+            const autoAvg = autoE?.count ? autoE.total / autoE.count : null;
+            const jefeAvg = jefeE?.count ? jefeE.total / jefeE.count : null;
+            if (autoAvg !== null || jefeAvg !== null) {
+              compScores[id] = {
+                nombre,
+                auto: autoAvg !== null ? Math.round(autoAvg * 100) / 100 : null,
+                jefe: jefeAvg !== null ? Math.round(jefeAvg * 100) / 100 : null,
+              };
+            }
+          });
+
+          const autoVals = Object.values(compScores).map((c) => c.auto).filter((v) => v !== null);
+          const jefeVals = Object.values(compScores).map((c) => c.jefe).filter((v) => v !== null);
+          const autoGeneral = autoVals.length ? autoVals.reduce((a, b) => a + b, 0) / autoVals.length : null;
+          const jefeGeneral = jefeVals.length ? jefeVals.reduce((a, b) => a + b, 0) / jefeVals.length : null;
+          const finalScores = (finalEvalByEmp[empId] || []).filter((v) => v > 0);
+          const general =
+            finalScores.length
+              ? finalScores.reduce((a, b) => a + b, 0) / finalScores.length
+              : autoGeneral !== null && jefeGeneral !== null
+              ? (autoGeneral + jefeGeneral) / 2
+              : autoGeneral ?? jefeGeneral ?? null;
+
+          const mgr = emp.managerId ? empMap.get(String(emp.managerId)) : null;
+          const managerName = mgr
+            ? [mgr.apellido, mgr.nombre].filter(Boolean).join(", ")
+            : null;
+
+          return {
+            _id: empId,
+            nombre: [emp.apellido, emp.nombre].filter(Boolean).join(", "),
+            cargo: emp.cargo || "",
+            area: emp.area || "Sin área",
+            esJefatura: managerIdSet.has(empId),
+            managerName: managerName || "—",
+            compScores,
+            autoGeneral: autoGeneral !== null ? Math.round(autoGeneral * 100) / 100 : null,
+            jefeGeneral: jefeGeneral !== null ? Math.round(jefeGeneral * 100) / 100 : null,
+            general: general !== null ? Math.round(general * 100) / 100 : null,
+          };
+        });
+
+        const areaMap = {};
+        personas.forEach((p) => {
+          if (!areaMap[p.area]) areaMap[p.area] = [];
+          areaMap[p.area].push(p);
+        });
+
+        const grupos = Object.entries(areaMap)
+          .map(([area, people]) => {
+            const compStats = {};
+            competencias.forEach(({ id, nombre }) => {
+              const vals = people.map((p) => p.compScores[id]?.auto).filter((v) => v != null);
+              if (!vals.length) return;
+              const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+              const dist = [1, 2, 3, 4, 5].map((n) => vals.filter((v) => Math.round(v) === n).length);
+              compStats[id] = {
+                nombre,
+                avg: Math.round(avg * 100) / 100,
+                dist,
+                pctLow: Math.round((vals.filter((v) => v < 2.5).length / vals.length) * 100),
+                pctHigh: Math.round((vals.filter((v) => v >= 4).length / vals.length) * 100),
+                count: vals.length,
+              };
+            });
+            const genVals = people.map((p) => p.general).filter((v) => v != null);
+            const genAvg = genVals.length ? genVals.reduce((a, b) => a + b, 0) / genVals.length : null;
+            const genDist = [1, 2, 3, 4, 5].map((n) =>
+              genVals.filter((v) => Math.round(v) === n).length
+            );
+            return {
+              area,
+              count: people.length,
+              avgScore: genAvg !== null ? Math.round(genAvg * 100) / 100 : null,
+              genDist,
+              compStats,
+            };
+          })
+          .sort((a, b) => a.area.localeCompare(b.area));
+
+        return { personas, competencias, grupos };
+      }, 300);
 
       res.json({ ok: true, ...result });
     } catch (err) {
