@@ -313,7 +313,7 @@ function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId, area
     <div
       data-node-id={node._id}
       data-child-of={parentId || undefined}
-      className={`relative z-10 w-44 cursor-pointer rounded-2xl border bg-[#0c1e28] p-3 text-center transition-all ${
+      className={`relative z-10 w-32 cursor-pointer rounded-xl border bg-[#0c1e28] p-2 text-center transition-all ${
         isHighlighted
           ? "border-[#14b8a6] shadow-[0_0_16px_rgba(20,184,166,0.3)]"
           : "border-white/10"
@@ -324,30 +324,22 @@ function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId, area
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") onClick(); }}
     >
       <div
-        className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[#0f172a]"
+        className="mx-auto mb-1.5 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold text-[#0f172a]"
         style={{ backgroundColor: badgeColor }}
       >
         {initials(nombre, apellido)}
       </div>
-      <p className="truncate text-xs font-semibold text-white">
+      <p className="truncate text-[10px] font-semibold text-white leading-tight">
         {nombre} {apellido}
       </p>
       {cargo ? (
-        <p className="mt-0.5 truncate text-[11px] text-[#14b8a6]">{cargo}</p>
-      ) : null}
-      {area ? (
-        <span
-          className="mt-1.5 inline-block max-w-full truncate rounded-full px-2 py-0.5 text-[10px] font-semibold"
-          style={{ backgroundColor: `${badgeColor}20`, color: badgeColor, border: `1px solid ${badgeColor}40` }}
-        >
-          {area}
-        </span>
+        <p className="mt-0.5 truncate text-[9px] text-[#14b8a6] leading-tight">{cargo}</p>
       ) : null}
       {hasChildren ? (
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onToggle(); }}
-          className="absolute -bottom-3 left-1/2 z-20 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full border border-white/20 bg-[#12222d] text-[#14b8a6] transition hover:bg-[#14b8a6] hover:text-[#0f172a]"
+          className="absolute -bottom-2.5 left-1/2 z-20 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border border-white/20 bg-[#12222d] text-[#14b8a6] transition hover:bg-[#14b8a6] hover:text-[#0f172a]"
           aria-label={collapsed ? "Expandir" : "Colapsar"}
         >
           <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" className="h-3 w-3">
@@ -363,8 +355,8 @@ function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId, area
 
 function TreeLevel({ nodes, highlight, collapsedIds, onToggle, onSelect, parentId, depth, areaList }) {
   return (
-    <div className={`flex flex-col items-center ${depth > 0 ? "mt-10" : ""}`}>
-      <div className="flex flex-wrap items-start justify-center gap-8">
+    <div className={`flex flex-col items-center ${depth > 0 ? "mt-8" : ""}`}>
+      <div className="flex flex-wrap items-start justify-center gap-4">
         {nodes.map((node) => (
           <div key={node._id} className="flex flex-col items-center">
             <OrgCard
