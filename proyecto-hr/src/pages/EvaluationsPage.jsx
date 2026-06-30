@@ -63,8 +63,12 @@ function MetricRow({ id, metric, autoScore, scores, comments, setScores, setComm
   return (
     <div className={`grid gap-0 border-t border-white/5 ${gridCls}`}>
       <div className="px-4 py-3">
-        <p className="text-sm font-medium text-white">{metric?.nombre || "—"}</p>
-        {metric?.descripcion ? <p className="mt-0.5 text-xs text-[#7f99a8] line-clamp-2">{metric.descripcion}</p> : null}
+        <div className="flex items-start gap-2">
+          {metric?.orden > 0 && (
+            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/8 text-[10px] font-bold text-[#7a9aaa]">{metric.orden}</span>
+          )}
+          <p className="text-sm font-medium text-[#e2eaf0]">{metric?.nombre || "—"}</p>
+        </div>
       </div>
       {showSideBySide && (
         <div className="border-l border-violet-500/10 bg-violet-500/[0.04] px-4 py-3">
@@ -367,10 +371,10 @@ function EvalDetailView({ evalId, token, onBack, onSaved }) {
             <div>
               {groups.map(({ competency, metricIds: mIds }) => (
                 <div key={String(competency._id)} className="border-b border-white/8 last:border-b-0">
-                  <div className="flex items-baseline gap-2 border-b border-white/5 bg-white/[0.025] px-4 py-2.5">
-                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-[#c7d5dc]">{competency.nombre}</span>
+                  <div className="border-b border-white/8 bg-white/[0.03] px-4 py-3">
+                    <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-[#14b8a6]">{competency.nombre}</p>
                     {competency.descripcion && (
-                      <span className="text-[11px] text-[#4a6070] line-clamp-1">{competency.descripcion}</span>
+                      <p className="mt-1 text-[11px] leading-relaxed text-[#7a9aaa]">{competency.descripcion}</p>
                     )}
                   </div>
                   {mIds.map(id => (
