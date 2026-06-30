@@ -734,7 +734,7 @@ function ManagerView({ token, user }) {
     try {
       setIsLoading(true); setError("");
       const [empRes, cyc, evalsRes] = await Promise.all([
-        apiFetch("/employees?includeSelf=true", { token, signal }),
+        apiFetch("/employees?includeSelf=true&limit=200", { token, signal }),
         apiFetch("/evaluation-cycles", { token, signal }),
         apiFetch("/evaluations", { token, signal }),
       ]);
@@ -766,6 +766,18 @@ function ManagerView({ token, user }) {
     const avg = results.length ? (results.reduce((s, v) => s + v, 0) / results.length).toFixed(1) : "—";
     return { active, pending, completed, avg };
   }, [evaluations]);
+
+  // Employees who have no evaluation in the active cycle
+  const withoutEval = useMemo(() => {
+    if (!activeCycle) return [];
+    const cycleId = String(activeCycle._id);
+    const evalledIds = new Set(
+      evaluations
+        .filter(e => String(e.cycleId?._id || e.cycleId) === cycleId)
+        .map(e => String(e.employeeId?._id || e.employeeId))
+    );
+    return (Array.isArray(employees) ? employees : []).filter(emp => !evalledIds.has(String(emp._id)));
+  }, [employees, evaluations, activeCycle]);
 
   const scoreDistribution = useMemo(() => {
     const inCycle = filters.cicloId
@@ -969,6 +981,44 @@ function ManagerView({ token, user }) {
           </div>
         ))}
       </div>
+
+      {/* Warning: employees without evaluation in current cycle */}
+      {withoutEval.length > 0 && (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/8 px-5 py-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <svg viewBox="0 0 20 20" fill="currentColor" className="mt-0.5 h-5 w-5 shrink-0 text-amber-400">
+                <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM10 5a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 5zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd"/>
+              </svg>
+              <div>
+                <p className="text-sm font-semibold text-amber-300">
+                  {withoutEval.length} {withoutEval.length === 1 ? "persona sin evaluación" : "personas sin evaluación"} en el ciclo activo
+                </p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {withoutEval.slice(0, 10).map(emp => (
+                    <span key={emp._id} className="inline-flex items-center rounded-full bg-amber-400/12 px-2.5 py-0.5 text-xs font-medium text-amber-200 border border-amber-400/25">
+                      {emp.apellido}, {emp.nombre}
+                    </span>
+                  ))}
+                  {withoutEval.length > 10 && (
+                    <span className="inline-flex items-center rounded-full bg-white/5 px-2.5 py-0.5 text-xs text-[#9fb6c4]">
+                      +{withoutEval.length - 10} más
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleBulkCreate}
+              disabled={bulkCreating || !activeCycle}
+              className="shrink-0 rounded-xl border border-amber-400/40 bg-amber-400/15 px-4 py-2 text-sm font-medium text-amber-300 transition hover:bg-amber-400/25 disabled:opacity-50"
+            >
+              {bulkCreating ? "Creando…" : "Crear evaluaciones para todos"}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <CycleProgressBadge evaluations={evaluations} cycleId={filters.cicloId || activeCycle?._id}/>
