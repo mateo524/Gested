@@ -12,6 +12,19 @@ import {
   buildAutoMapping,
   syncFromBuffer,
 } from "../services/excelSyncService.js";
+import {
+  getOneDriveAuthUrl,
+  exchangeOneDriveCode,
+  refreshOneDriveToken,
+  listOneDriveExcelFiles,
+  downloadOneDriveFile,
+} from "../services/oneDriveService.js";
+import {
+  getGoogleAuthUrl,
+  exchangeGoogleCode,
+  refreshGoogleToken,
+  listGoogleSheets,
+} from "../services/googleSheetsService.js";
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
@@ -169,6 +182,180 @@ router.delete("/connection/:id", canManage, async (req, res) => {
   await connection.save();
 
   res.json({ ok: true });
+});
+
+// ─── GET /api/excel-sync/onedrive/auth-url ──────────────────────────────────
+router.get("/onedrive/auth-url", canManage, (req, res) => {
+  const companyId = req.scope.companyId;
+  res.json({ url: getOneDriveAuthUrl(companyId) });
+});
+
+// ─── GET /api/excel-sync/onedrive/callback ──────────────────────────────────
+// No auth middleware — OAuth redirect from Microsoft
+router.get("/onedrive/callback", async (req, res) => {
+  const { code, state } = req.query;
+  try {
+    const { msAccessToken, msRefreshToken, msTokenExpiresAt, companyId } =
+      await exchangeOneDriveCode(code, state);
+
+    await ExcelSyncConnection.findOneAndUpdate(
+      { companyId, source: "onedrive" },
+      {
+        $set: {
+          source: "onedrive",
+          msAccessToken,
+          msRefreshToken,
+          msTokenExpiresAt,
+          status: "pending_file",
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.redirect(process.env.FRONTEND_URL + "/app?view=excel-sync&onedrive=connected");
+  } catch (err) {
+    res.redirect(process.env.FRONTEND_URL + "/app?view=excel-sync&onedrive=error");
+  }
+});
+
+// ─── GET /api/excel-sync/onedrive/files ─────────────────────────────────────
+router.get("/onedrive/files", canManage, async (req, res) => {
+  const companyId = req.scope.companyId;
+  try {
+    const connection = await ExcelSyncConnection.findOne({ companyId, source: "onedrive" });
+    if (!connection) return res.status(404).json({ error: "Conexión de OneDrive no encontrada." });
+
+    const { accessToken } = await refreshOneDriveToken(connection);
+    const files = await listOneDriveExcelFiles(accessToken);
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/excel-sync/onedrive/select-file ──────────────────────────────
+router.post("/onedrive/select-file", canManage, async (req, res) => {
+  const companyId = req.scope.companyId;
+  const { fileId, fileName, webUrl, sheetName } = req.body;
+
+  try {
+    const connection = await ExcelSyncConnection.findOne({ companyId, source: "onedrive" });
+    if (!connection) return res.status(404).json({ error: "Conexión de OneDrive no encontrada." });
+
+    const { accessToken } = await refreshOneDriveToken(connection);
+    const buffer = await downloadOneDriveFile(accessToken, fileId);
+
+    const sheets = await getSheetNames(buffer);
+    const selectedSheet = sheetName || sheets[0];
+    const { headers } = await readExcelBuffer(buffer, selectedSheet);
+    const suggestedMapping = buildAutoMapping(headers, connection.columnMapping ?? []);
+
+    const updated = await ExcelSyncConnection.findOneAndUpdate(
+      { companyId, source: "onedrive" },
+      {
+        $set: {
+          oneDriveFileId: fileId,
+          oneDriveFileName: fileName,
+          oneDriveWebUrl: webUrl,
+          sheetName: selectedSheet,
+          detectedColumns: headers,
+          columnMapping: suggestedMapping,
+          status: "pending_mapping",
+        },
+      },
+      { new: true }
+    );
+
+    res.json({ connection: updated, suggestedMapping, detectedColumns: headers, sheets });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── GET /api/excel-sync/google/auth-url ────────────────────────────────────
+router.get("/google/auth-url", canManage, (req, res) => {
+  const companyId = req.scope.companyId;
+  res.json({ url: getGoogleAuthUrl(companyId) });
+});
+
+// ─── GET /api/excel-sync/google/callback ────────────────────────────────────
+// No auth middleware — OAuth redirect from Google
+router.get("/google/callback", async (req, res) => {
+  const { code, state } = req.query;
+  try {
+    const { googleAccessToken, googleRefreshToken, googleTokenExpiresAt, companyId } =
+      await exchangeGoogleCode(code, state);
+
+    await ExcelSyncConnection.findOneAndUpdate(
+      { companyId, source: "google_sheets" },
+      {
+        $set: {
+          source: "google_sheets",
+          googleAccessToken,
+          googleRefreshToken,
+          googleTokenExpiresAt,
+          status: "pending_file",
+        },
+      },
+      { upsert: true, new: true }
+    );
+
+    res.redirect(process.env.FRONTEND_URL + "/app?view=excel-sync&google=connected");
+  } catch (err) {
+    res.redirect(process.env.FRONTEND_URL + "/app?view=excel-sync&google=error");
+  }
+});
+
+// ─── GET /api/excel-sync/google/files ───────────────────────────────────────
+router.get("/google/files", canManage, async (req, res) => {
+  const companyId = req.scope.companyId;
+  try {
+    const connection = await ExcelSyncConnection.findOne({ companyId, source: "google_sheets" });
+    if (!connection) return res.status(404).json({ error: "Conexión de Google Sheets no encontrada." });
+
+    const { accessToken } = await refreshGoogleToken(connection);
+    const files = await listGoogleSheets(accessToken);
+    res.json({ files });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /api/excel-sync/google/select-file ────────────────────────────────
+router.post("/google/select-file", canManage, async (req, res) => {
+  const companyId = req.scope.companyId;
+  const { spreadsheetId, spreadsheetName, sheetName } = req.body;
+
+  try {
+    const connection = await ExcelSyncConnection.findOne({ companyId, source: "google_sheets" });
+    if (!connection) return res.status(404).json({ error: "Conexión de Google Sheets no encontrada." });
+
+    const { accessToken } = await refreshGoogleToken(connection);
+    const sheets = await listGoogleSheets(accessToken, spreadsheetId);
+    const selectedSheet = sheetName || sheets[0];
+
+    const { headers } = await readExcelBuffer(null, selectedSheet, { spreadsheetId, accessToken });
+    const suggestedMapping = buildAutoMapping(headers, connection.columnMapping ?? []);
+
+    const updated = await ExcelSyncConnection.findOneAndUpdate(
+      { companyId, source: "google_sheets" },
+      {
+        $set: {
+          googleSpreadsheetId: spreadsheetId,
+          googleSpreadsheetName: spreadsheetName,
+          sheetName: selectedSheet,
+          detectedColumns: headers,
+          columnMapping: suggestedMapping,
+          status: "pending_mapping",
+        },
+      },
+      { new: true }
+    );
+
+    res.json({ connection: updated, suggestedMapping, detectedColumns: headers, sheets });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 export default router;

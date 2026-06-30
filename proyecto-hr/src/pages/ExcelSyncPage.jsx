@@ -16,31 +16,43 @@ const SOURCE_OPTIONS = [
     icon: "☁️",
     title: "Microsoft OneDrive / 365",
     desc: "Conectá tu Excel Online. Zentor lo lee automáticamente cuando cambia.",
-    badge: "Próximamente",
   },
   {
     key: "google_sheets",
     icon: "📊",
     title: "Google Sheets",
     desc: "Conectá una hoja de Google Sheets y mantené los datos sincronizados.",
-    badge: "Próximamente",
   },
 ];
 
 const IGNORE_LABEL = "— Ignorar columna —";
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function relativeTime(dateStr) {
+  if (!dateStr) return null;
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2) return "hace un momento";
+  if (mins < 60) return `hace ${mins} minutos`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs} hora${hrs > 1 ? "s" : ""}`;
+  const days = Math.floor(hrs / 24);
+  return `hace ${days} día${days > 1 ? "s" : ""}`;
+}
+
 // ─── Utilities ────────────────────────────────────────────────────────────────
 
 function StatusBadge({ status }) {
   const map = {
-    active:          { label: "Activa",           cls: "bg-green-100 text-green-700" },
-    pending_mapping: { label: "Mapeo pendiente",  cls: "bg-yellow-100 text-yellow-700" },
-    error:           { label: "Error",            cls: "bg-red-100 text-red-700" },
-    disconnected:    { label: "Desconectada",     cls: "bg-gray-100 text-gray-500" },
+    active:          { label: "Activa",           cls: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200" },
+    pending_mapping: { label: "Mapeo pendiente",  cls: "bg-amber-50 text-amber-700 ring-1 ring-amber-200" },
+    error:           { label: "Error",            cls: "bg-red-50 text-red-700 ring-1 ring-red-200" },
+    disconnected:    { label: "Desconectada",     cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200" },
   };
-  const { label, cls } = map[status] ?? { label: status, cls: "bg-gray-100 text-gray-500" };
+  const { label, cls } = map[status] ?? { label: status, cls: "bg-slate-100 text-slate-500 ring-1 ring-slate-200" };
   return (
-    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${cls}`}>
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${cls}`}>
       {label}
     </span>
   );
@@ -49,52 +61,261 @@ function StatusBadge({ status }) {
 function SyncStatBar({ stats }) {
   if (!stats) return null;
   return (
-    <div className="flex gap-4 text-sm">
-      <span className="text-green-600 font-medium">+{stats.created} creados</span>
-      <span className="text-blue-600 font-medium">↺ {stats.updated} actualizados</span>
-      {stats.errors > 0 && <span className="text-red-600 font-medium">⚠ {stats.errors} errores</span>}
-      {stats.skipped > 0 && <span className="text-gray-400">{stats.skipped} omitidos</span>}
+    <div className="flex flex-wrap gap-3 text-sm font-variant-numeric tabular-nums">
+      <span className="inline-flex items-center gap-1 text-emerald-600 font-medium">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
+        {stats.created} creados
+      </span>
+      <span className="inline-flex items-center gap-1 text-blue-600 font-medium">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+        {stats.updated} actualizados
+      </span>
+      {stats.errors > 0 && (
+        <span className="inline-flex items-center gap-1 text-red-600 font-medium">
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+          {stats.errors} errores
+        </span>
+      )}
+      {stats.skipped > 0 && (
+        <span className="text-slate-400">{stats.skipped} omitidos</span>
+      )}
     </div>
+  );
+}
+
+function ErrorBanner({ error, onDismiss }) {
+  if (!error) return null;
+  return (
+    <div className="flex items-start gap-3 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+      <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+      <span className="flex-1">{error}</span>
+      {onDismiss && (
+        <button onClick={onDismiss} className="text-red-400 hover:text-red-600 leading-none">✕</button>
+      )}
+    </div>
+  );
+}
+
+// ─── Step breadcrumb ──────────────────────────────────────────────────────────
+
+const STEP_LABELS = [
+  { key: "source",  label: "Fuente" },
+  { key: "upload",  label: "Archivo" },
+  { key: "files",   label: "Archivo" },   // cloud file picker — same visual slot as upload
+  { key: "mapping", label: "Columnas" },
+  { key: "sync",    label: "Sincronizar" },
+];
+
+const STEP_DISPLAY_ORDER = ["source", "upload", "mapping", "sync"];
+
+function StepBreadcrumb({ step }) {
+  // normalize "files" to "upload" position for breadcrumb display
+  const active = step === "files" ? "upload" : step;
+  return (
+    <nav aria-label="Progreso" className="flex items-center gap-1.5 text-xs">
+      {STEP_DISPLAY_ORDER.map((s, i, arr) => {
+        const idx = STEP_DISPLAY_ORDER.indexOf(active);
+        const isActive = s === active;
+        const isPast = i < idx;
+        return (
+          <span key={s} className="flex items-center gap-1.5">
+            <span
+              className={[
+                "flex items-center gap-1 font-medium transition-colors",
+                isActive ? "text-blue-600" : isPast ? "text-slate-400 line-through" : "text-slate-400",
+              ].join(" ")}
+            >
+              {isPast && (
+                <svg className="w-3 h-3 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+              )}
+              {STEP_LABELS.find(l => l.key === s)?.label}
+            </span>
+            {i < arr.length - 1 && (
+              <svg className="w-3 h-3 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+            )}
+          </span>
+        );
+      })}
+    </nav>
   );
 }
 
 // ─── Step 1 — Source selector ─────────────────────────────────────────────────
 
-function SourceSelector({ onSelect }) {
+function SourceSelector({ onSelect, loading }) {
+  const [redirecting, setRedirecting] = useState(null);
+
+  async function handleSelect(key) {
+    if (key === "manual") {
+      onSelect("manual");
+      return;
+    }
+    setRedirecting(key);
+    try {
+      const path = key === "onedrive"
+        ? "/excel-sync/onedrive/auth-url"
+        : "/excel-sync/google/auth-url";
+      const res = await onSelect(key, path);
+      // onSelect handles the redirect
+    } catch {
+      setRedirecting(null);
+    }
+  }
+
   return (
     <div>
-      <h2 className="text-lg font-semibold mb-1">¿Desde dónde viene el Excel?</h2>
-      <p className="text-sm text-gray-500 mb-5">
+      <h2 className="text-base font-semibold text-slate-800 mb-1">¿Desde dónde viene el Excel?</h2>
+      <p className="text-sm text-slate-500 mb-5">
         Elegí la fuente de datos de empleados para tu empresa.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
-        {SOURCE_OPTIONS.map((opt) => (
-          <button
-            key={opt.key}
-            onClick={() => !opt.badge && onSelect(opt.key)}
-            className={[
-              "relative flex flex-col gap-2 rounded-xl border p-4 text-left transition",
-              opt.badge
-                ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-60"
-                : "cursor-pointer border-gray-200 bg-white hover:border-blue-400 hover:shadow-md",
-            ].join(" ")}
-          >
-            {opt.badge && (
-              <span className="absolute right-3 top-3 rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-600">
-                {opt.badge}
-              </span>
-            )}
-            <span className="text-2xl">{opt.icon}</span>
-            <span className="font-semibold text-gray-800">{opt.title}</span>
-            <span className="text-xs text-gray-500">{opt.desc}</span>
-          </button>
-        ))}
+        {SOURCE_OPTIONS.map((opt) => {
+          const isRedirecting = redirecting === opt.key;
+          return (
+            <button
+              key={opt.key}
+              onClick={() => handleSelect(opt.key)}
+              disabled={!!redirecting || loading}
+              className={[
+                "relative flex flex-col gap-3 rounded-xl border p-4 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
+                "cursor-pointer border-slate-200 bg-white hover:border-blue-400 hover:shadow-md disabled:cursor-wait disabled:opacity-60",
+              ].join(" ")}
+            >
+              <span className="text-2xl leading-none">{opt.icon}</span>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-slate-800 mb-0.5">{opt.title}</p>
+                <p className="text-xs text-slate-500 leading-relaxed">{opt.desc}</p>
+              </div>
+              {isRedirecting && (
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80">
+                  <svg className="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-// ─── Step 2 — File upload & sheet selector ────────────────────────────────────
+// ─── Step 2a — Cloud file picker (OneDrive / Google) ─────────────────────────
+
+function CloudFilePicker({ source, token, onFileSelected, onBack }) {
+  const [files, setFiles] = useState(null);
+  const [loadingFiles, setLoadingFiles] = useState(true);
+  const [selecting, setSelecting] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    async function loadFiles() {
+      setLoadingFiles(true);
+      setError(null);
+      try {
+        const path = source === "onedrive"
+          ? "/excel-sync/onedrive/files"
+          : "/excel-sync/google/files";
+        const res = await apiFetch(path, { token });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Error al cargar archivos");
+        setFiles(data.files ?? []);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoadingFiles(false);
+      }
+    }
+    loadFiles();
+  }, [source, token]);
+
+  async function handleSelect(file) {
+    setSelecting(file.id);
+    setError(null);
+    try {
+      const path = source === "onedrive"
+        ? "/excel-sync/onedrive/select-file"
+        : "/excel-sync/google/select-file";
+      const res = await apiFetch(path, {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ fileId: file.id, fileName: file.name }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al seleccionar archivo");
+      onFileSelected(data);
+    } catch (err) {
+      setError(err.message);
+      setSelecting(null);
+    }
+  }
+
+  const sourceName = source === "onedrive" ? "OneDrive" : "Google Sheets";
+
+  return (
+    <div className="space-y-5">
+      <div>
+        <h2 className="text-base font-semibold text-slate-800 mb-1">Seleccioná tu archivo</h2>
+        <p className="text-sm text-slate-500">
+          Archivos de {sourceName} disponibles en tu cuenta.
+        </p>
+      </div>
+
+      <ErrorBanner error={error} onDismiss={() => setError(null)} />
+
+      {loadingFiles ? (
+        <div className="space-y-2">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton h-14 w-full rounded-lg" />
+          ))}
+        </div>
+      ) : files && files.length === 0 ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+          No se encontraron archivos Excel en tu {sourceName}.
+        </div>
+      ) : (
+        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
+          {(files ?? []).map((file) => (
+            <li key={file.id}>
+              <button
+                onClick={() => handleSelect(file)}
+                disabled={!!selecting}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-blue-400"
+              >
+                <span className="text-xl leading-none shrink-0">
+                  {source === "google_sheets" ? "📊" : "📗"}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
+                  {file.modifiedAt && (
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Modificado {relativeTime(file.modifiedAt) ?? new Date(file.modifiedAt).toLocaleDateString("es-AR")}
+                    </p>
+                  )}
+                </div>
+                {selecting === file.id ? (
+                  <svg className="w-4 h-4 animate-spin text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                ) : (
+                  <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <button
+        onClick={onBack}
+        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+      >
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+        Cambiar fuente
+      </button>
+    </div>
+  );
+}
+
+// ─── Step 2b — Manual file upload ────────────────────────────────────────────
 
 function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
   const { token } = useAuth();
@@ -114,7 +335,6 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
     setSelectedSheet(null);
     setError(null);
 
-    // Detect sheets first
     setLoading(true);
     try {
       const form = new FormData();
@@ -169,8 +389,8 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold mb-1">Subí tu archivo Excel</h2>
-        <p className="text-sm text-gray-500">
+        <h2 className="text-base font-semibold text-slate-800 mb-1">Subí tu archivo Excel</h2>
+        <p className="text-sm text-slate-500">
           Soporta .xlsx y .xls. El archivo no se almacena en Zentor.
         </p>
       </div>
@@ -180,17 +400,38 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
         onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
         onDragLeave={() => setDragging(false)}
         onClick={() => inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => e.key === "Enter" && inputRef.current?.click()}
         className={[
-          "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 cursor-pointer transition",
-          dragging ? "border-blue-400 bg-blue-50" : "border-gray-200 hover:border-blue-300 hover:bg-gray-50",
+          "flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed p-10 cursor-pointer transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400",
+          dragging
+            ? "border-blue-400 bg-blue-50/60"
+            : "border-slate-200 hover:border-blue-300 hover:bg-slate-50",
         ].join(" ")}
       >
-        <span className="text-4xl">📂</span>
-        <p className="text-sm text-gray-600">
-          {fileName
-            ? <><strong>{fileName}</strong> — cambiá el archivo haciendo clic acá</>
-            : <>Arrastrá tu Excel acá o <span className="text-blue-600 underline">hacé clic para seleccionar</span></>}
-        </p>
+        <div className={[
+          "flex h-12 w-12 items-center justify-center rounded-xl transition-colors",
+          dragging ? "bg-blue-100" : "bg-slate-100",
+        ].join(" ")}>
+          <svg className={`w-6 h-6 ${dragging ? "text-blue-500" : "text-slate-400"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+        </div>
+        <div className="text-center">
+          {fileName ? (
+            <>
+              <p className="text-sm font-medium text-slate-800">{fileName}</p>
+              <p className="text-xs text-slate-400 mt-0.5">Clic para cambiar el archivo</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-600">
+                Arrastrá tu Excel acá o{" "}
+                <span className="text-blue-600 font-medium underline underline-offset-2">seleccioná un archivo</span>
+              </p>
+              <p className="text-xs text-slate-400 mt-1">.xlsx o .xls, cualquier tamaño</p>
+            </>
+          )}
+        </div>
         <input
           ref={inputRef}
           type="file"
@@ -202,19 +443,19 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
 
       {sheets && sheets.length > 1 && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-500 mb-2">
             ¿Qué hoja contiene los empleados?
-          </label>
+          </p>
           <div className="flex flex-wrap gap-2">
             {sheets.map((s) => (
               <button
                 key={s}
                 onClick={() => setSelectedSheet(s)}
                 className={[
-                  "rounded-lg border px-3 py-1.5 text-sm transition",
+                  "rounded-lg border px-3 py-1.5 text-sm transition-all",
                   selectedSheet === s
                     ? "border-blue-500 bg-blue-50 text-blue-700 font-medium"
-                    : "border-gray-200 text-gray-600 hover:border-blue-300",
+                    : "border-slate-200 text-slate-600 hover:border-blue-300",
                 ].join(" ")}
               >
                 {s}
@@ -228,9 +469,16 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
         <button
           onClick={handleAnalyze}
           disabled={loading}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
         >
-          {loading ? "Analizando..." : "Analizar columnas →"}
+          {loading ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+              Analizando…
+            </>
+          ) : (
+            <>Analizar columnas <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg></>
+          )}
         </button>
       )}
     </div>
@@ -247,6 +495,7 @@ function ColumnMappingStep({ connectionId, suggestedMapping, zentorFields, onSav
 
   const pendingCount = mapping.filter((m) => m.status === "pending").length;
   const mappedCount  = mapping.filter((m) => m.status === "mapped").length;
+  const ignoredItems = mapping.filter((m) => m.status === "ignored");
 
   function setField(excelColumn, zentorField) {
     setMapping((prev) =>
@@ -278,124 +527,150 @@ function ColumnMappingStep({ connectionId, suggestedMapping, zentorFields, onSav
     }
   }
 
-  // group by status for display
-  const pendingItems  = mapping.filter((m) => m.status === "pending");
-  const mappedItems   = mapping.filter((m) => m.status === "mapped");
-  const ignoredItems  = mapping.filter((m) => m.status === "ignored");
+  const pendingItems = mapping.filter((m) => m.status === "pending");
+  const mappedItems  = mapping.filter((m) => m.status === "mapped");
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold mb-1">Mapeá las columnas</h2>
-        <p className="text-sm text-gray-500">
+        <h2 className="text-base font-semibold text-slate-800 mb-1">Mapeá las columnas</h2>
+        <p className="text-sm text-slate-500">
           Decile a Zentor qué significa cada columna de tu Excel. Lo hacés una sola vez.
         </p>
       </div>
 
       <div className="flex gap-4 text-sm">
-        <span className="text-green-600 font-medium">{mappedCount} mapeadas</span>
+        <span className="text-emerald-600 font-medium">{mappedCount} mapeadas</span>
         {pendingCount > 0 && (
-          <span className="text-yellow-600 font-medium">{pendingCount} sin asignar</span>
+          <span className="text-amber-600 font-medium">{pendingCount} sin asignar</span>
         )}
-        <span className="text-gray-400">{ignoredItems.length} ignoradas</span>
+        {ignoredItems.length > 0 && (
+          <span className="text-slate-400">{ignoredItems.length} ignoradas</span>
+        )}
       </div>
 
       {pendingCount > 0 && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-700">
+        <div className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
+          <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
           Tenés {pendingCount} columna{pendingCount > 1 ? "s" : ""} sin asignar.
-          Podés ignorarlas o mapeárlas a un campo de Zentor.
+          Podés ignorarlas o asignarlas a un campo de Zentor.
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-200 overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-2.5 text-left font-medium text-gray-600 w-1/2">Columna en tu Excel</th>
-              <th className="px-4 py-2.5 text-left font-medium text-gray-600 w-1/2">Campo en Zentor</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {[...pendingItems, ...mappedItems, ...ignoredItems].map((item) => (
-              <tr
-                key={item.excelColumn}
-                className={item.status === "ignored" ? "bg-gray-50 opacity-60" : "bg-white"}
-              >
-                <td className="px-4 py-2.5">
-                  <span className="font-mono text-gray-700">{item.excelColumn}</span>
-                  {item.status === "pending" && (
-                    <span className="ml-2 inline-block rounded-full bg-yellow-100 px-1.5 py-0.5 text-xs text-yellow-600">
-                      sin asignar
-                    </span>
-                  )}
-                </td>
-                <td className="px-4 py-2.5">
-                  <select
-                    value={item.zentorField ?? ""}
-                    onChange={(e) => setField(item.excelColumn, e.target.value)}
-                    className={[
-                      "w-full rounded-lg border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300",
-                      item.status === "pending" ? "border-yellow-300 bg-yellow-50" : "border-gray-200",
-                    ].join(" ")}
-                  >
-                    <option value="">{IGNORE_LABEL}</option>
-                    {zentorFields.map((f) => (
-                      <option key={f.key} value={f.key}>
-                        {f.label}{f.required ? " *" : ""}
-                      </option>
-                    ))}
-                  </select>
-                </td>
+      <div className="rounded-xl border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-slate-500 w-1/2">Columna en tu Excel</th>
+                <th className="px-4 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-slate-500 w-1/2">Campo en Zentor</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {[...pendingItems, ...mappedItems, ...ignoredItems].map((item) => (
+                <tr
+                  key={item.excelColumn}
+                  className={item.status === "ignored" ? "bg-slate-50/60" : "bg-white"}
+                >
+                  <td className="px-4 py-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className={`font-mono text-sm ${item.status === "ignored" ? "text-slate-400" : "text-slate-700"}`}>
+                        {item.excelColumn}
+                      </span>
+                      {item.status === "pending" && (
+                        <span className="inline-flex items-center rounded-full bg-amber-100 px-1.5 py-0.5 text-xs text-amber-600 font-medium">
+                          sin asignar
+                        </span>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-4 py-2.5">
+                    <select
+                      value={item.zentorField ?? ""}
+                      onChange={(e) => setField(item.excelColumn, e.target.value)}
+                      className={[
+                        "w-full rounded-lg border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors",
+                        item.status === "pending"
+                          ? "border-amber-300 bg-amber-50/60"
+                          : "border-slate-200 bg-white",
+                      ].join(" ")}
+                    >
+                      <option value="">{IGNORE_LABEL}</option>
+                      {zentorFields.map((f) => (
+                        <option key={f.key} value={f.key}>
+                          {f.label}{f.required ? " *" : ""}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-      )}
+      <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
       <div className="flex gap-3">
         <button
           onClick={onBack}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         >
-          ← Atrás
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+          Atrás
         </button>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
+          className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
         >
-          {saving ? "Guardando..." : "Guardar mapeo →"}
+          {saving ? (
+            <>
+              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+              Guardando…
+            </>
+          ) : (
+            <>Guardar mapeo <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg></>
+          )}
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Step 4 — Sync & confirm ──────────────────────────────────────────────────
+// ─── Step 4 — Sync ────────────────────────────────────────────────────────────
 
-function SyncStep({ connection, fileBuffer, fileName, onSynced, onBack }) {
+function SyncStep({ connection, source, fileBuffer, fileName, onSynced, onBack }) {
   const { token } = useAuth();
   const [syncing, setSyncing] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  const isCloud = source === "onedrive" || source === "google_sheets";
+
   async function handleSync() {
-    if (!fileBuffer) return;
     setSyncing(true);
     setError(null);
     try {
-      const blob = new Blob([fileBuffer]);
-      const form = new FormData();
-      form.append("file", blob, fileName ?? "archivo.xlsx");
-      const res = await apiFetch(`/excel-sync/sync/${connection._id}`, {
-        method: "POST",
-        body: form,
-        token,
-      });
+      let res;
+      if (isCloud) {
+        res = await apiFetch(`/excel-sync/sync/${connection._id}`, {
+          method: "POST",
+          token,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        });
+      } else {
+        const blob = new Blob([fileBuffer]);
+        const form = new FormData();
+        form.append("file", blob, fileName ?? "archivo.xlsx");
+        res = await apiFetch(`/excel-sync/sync/${connection._id}`, {
+          method: "POST",
+          body: form,
+          token,
+        });
+      }
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       setResult(data);
@@ -407,67 +682,88 @@ function SyncStep({ connection, fileBuffer, fileName, onSynced, onBack }) {
     }
   }
 
+  const sourceInfo = SOURCE_OPTIONS.find((s) => s.key === (source || connection.source));
+
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold mb-1">Todo listo — sincronizá los datos</h2>
-        <p className="text-sm text-gray-500">
-          Zentor va a leer tu Excel y crear o actualizar los empleados en la plataforma.
+        <h2 className="text-base font-semibold text-slate-800 mb-1">Todo listo — sincronizá los datos</h2>
+        <p className="text-sm text-slate-500">
+          Zentor va a leer tu {sourceInfo?.title ?? "archivo"} y crear o actualizar los empleados en la plataforma.
         </p>
       </div>
 
-      <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 space-y-2">
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Estado de la conexión</span>
+          <span className="text-sm text-slate-500">Fuente</span>
+          <span className="text-sm font-medium text-slate-700">
+            {sourceInfo?.icon} {sourceInfo?.title}
+          </span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-slate-500">Estado</span>
           <StatusBadge status={connection.status} />
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Columnas mapeadas</span>
-          <span className="text-sm font-medium">
+          <span className="text-sm text-slate-500">Columnas mapeadas</span>
+          <span className="text-sm font-medium text-slate-700 tabular-nums">
             {connection.columnMapping?.filter((m) => m.status === "mapped").length ?? 0}
           </span>
         </div>
         {connection.pendingColumns?.length > 0 && (
-          <div className="rounded-lg bg-yellow-50 border border-yellow-200 px-3 py-2 text-sm text-yellow-700">
-            {connection.pendingColumns.length} columna{connection.pendingColumns.length > 1 ? "s" : ""} nueva{connection.pendingColumns.length > 1 ? "s" : ""} detectada{connection.pendingColumns.length > 1 ? "s" : ""} — se importará sin esas columnas por ahora.
+          <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm text-amber-700">
+            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" /></svg>
+            {connection.pendingColumns.length} columna{connection.pendingColumns.length > 1 ? "s" : ""} nueva{connection.pendingColumns.length > 1 ? "s" : ""} — se importará sin esas columnas por ahora.
           </div>
         )}
       </div>
 
       {result && (
-        <div className="rounded-xl border border-green-200 bg-green-50 p-4 space-y-2">
-          <p className="text-sm font-semibold text-green-700">Sincronización completada</p>
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2.5">
+          <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            Sincronización completada
+          </div>
           <SyncStatBar stats={result.stats} />
         </div>
       )}
 
-      {error && (
-        <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</p>
-      )}
+      <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
       <div className="flex gap-3">
         <button
           onClick={onBack}
           disabled={syncing || !!result}
-          className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition"
+          className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 disabled:opacity-40 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         >
-          ← Atrás
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+          Atrás
         </button>
-        {!result && (
+        {!result ? (
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition"
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
           >
-            {syncing ? "Sincronizando..." : "Sincronizar ahora"}
+            {syncing ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                Sincronizando…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Sincronizar ahora
+              </>
+            )}
           </button>
-        )}
-        {result && (
+        ) : (
           <button
             onClick={() => onSynced(result)}
-            className="rounded-lg bg-green-600 px-5 py-2 text-sm font-medium text-white hover:bg-green-700 transition"
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-sm font-medium text-white hover:bg-emerald-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-1"
           >
-            Ver empleados →
+            Ver empleados
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
           </button>
         )}
       </div>
@@ -475,38 +771,78 @@ function SyncStep({ connection, fileBuffer, fileName, onSynced, onBack }) {
   );
 }
 
-// ─── Dashboard view (existing connection) ─────────────────────────────────────
+// ─── Dashboard view ────────────────────────────────────────────────────────────
 
 function ConnectionDashboard({ connection, zentorFields, onDisconnect, onReSync }) {
-  const pendingCount  = connection.pendingColumns?.length ?? 0;
-  const removedCount  = connection.removedColumns?.length ?? 0;
+  const { token } = useAuth();
+  const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState(null);
+  const [lastResult, setLastResult] = useState(null);
+
+  const pendingCount = connection.pendingColumns?.length ?? 0;
+  const removedCount = connection.removedColumns?.length ?? 0;
+  const sourceInfo   = SOURCE_OPTIONS.find((s) => s.key === connection.source);
+  const isCloud      = connection.source === "onedrive" || connection.source === "google_sheets";
+
+  async function handleSyncNow() {
+    setSyncing(true);
+    setSyncError(null);
+    setLastResult(null);
+    try {
+      const res = await apiFetch(`/excel-sync/sync/${connection._id}`, {
+        method: "POST",
+        token,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al sincronizar");
+      setLastResult(data.stats);
+    } catch (err) {
+      setSyncError(err.message);
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Sincronización Excel</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {SOURCE_OPTIONS.find((s) => s.key === connection.source)?.title ?? connection.source}
-          </p>
+      {/* Header row */}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-xl shrink-0">
+            {sourceInfo?.icon ?? "📂"}
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-800 leading-tight">
+              {sourceInfo?.title ?? connection.source}
+            </h2>
+            {connection.lastSyncAt && (
+              <p className="text-xs text-slate-400 mt-0.5">
+                {isCloud
+                  ? `Última sincronización automática: ${relativeTime(connection.lastSyncAt)}`
+                  : `Última sincronización: ${relativeTime(connection.lastSyncAt)}`}
+              </p>
+            )}
+          </div>
         </div>
         <StatusBadge status={connection.status} />
       </div>
 
       {/* Alerts */}
       {pendingCount > 0 && (
-        <div className="rounded-xl border border-yellow-300 bg-yellow-50 p-4">
-          <p className="text-sm font-semibold text-yellow-700 mb-1">
-            Hay {pendingCount} columna{pendingCount > 1 ? "s" : ""} nueva{pendingCount > 1 ? "s" : ""} sin mapear
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-700 mb-1.5">
+            {pendingCount} columna{pendingCount > 1 ? "s" : ""} nueva{pendingCount > 1 ? "s" : ""} sin mapear
           </p>
           <ul className="space-y-1 mb-3">
             {connection.pendingColumns.map((c) => (
-              <li key={c} className="text-sm font-mono text-yellow-800">• {c}</li>
+              <li key={c} className="text-xs font-mono text-amber-800">· {c}</li>
             ))}
           </ul>
           <button
             onClick={onReSync}
-            className="text-sm font-medium text-yellow-700 underline"
+            className="text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900"
           >
             Ir a mapeo de columnas →
           </button>
@@ -515,71 +851,118 @@ function ConnectionDashboard({ connection, zentorFields, onDisconnect, onReSync 
 
       {removedCount > 0 && (
         <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
-          <p className="text-sm font-semibold text-orange-700 mb-1">
-            {removedCount} columna{removedCount > 1 ? "s" : ""} ya no existe{removedCount > 1 ? "n" : ""} en el Excel
+          <p className="text-sm font-semibold text-orange-700 mb-1.5">
+            {removedCount} columna{removedCount > 1 ? "s" : ""} ya no existe{removedCount > 1 ? "n" : ""} en el archivo
           </p>
           <ul className="space-y-1">
             {connection.removedColumns.map((c) => (
-              <li key={c} className="text-sm font-mono text-orange-800">• {c}</li>
+              <li key={c} className="text-xs font-mono text-orange-800">· {c}</li>
             ))}
           </ul>
         </div>
       )}
 
-      {/* Last sync stats */}
-      <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-        <p className="text-sm font-medium text-gray-700">Última sincronización</p>
+      {/* Last sync result (from "Sincronizar ahora") */}
+      {lastResult && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 space-y-2">
+          <p className="text-sm font-semibold text-emerald-700">Sincronización completada</p>
+          <SyncStatBar stats={lastResult} />
+        </div>
+      )}
+
+      <ErrorBanner error={syncError} onDismiss={() => setSyncError(null)} />
+
+      {/* Last sync stats card */}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">Última sincronización</p>
         {connection.lastSyncAt ? (
-          <>
-            <p className="text-xs text-gray-400">
+          <div className="space-y-2">
+            <p className="text-xs text-slate-400">
               {new Date(connection.lastSyncAt).toLocaleString("es-AR")}
             </p>
             <SyncStatBar stats={connection.lastSyncStats} />
-          </>
+          </div>
         ) : (
-          <p className="text-sm text-gray-400">Nunca sincronizado</p>
+          <p className="text-sm text-slate-400">Nunca sincronizado</p>
         )}
       </div>
 
       {/* Column mapping summary */}
-      <details className="rounded-xl border border-gray-200 overflow-hidden">
-        <summary className="px-4 py-3 bg-gray-50 cursor-pointer text-sm font-medium text-gray-700 hover:bg-gray-100">
-          Ver mapeo de columnas ({connection.columnMapping?.filter(m => m.status === "mapped").length ?? 0} mapeadas)
+      <details className="rounded-xl border border-slate-200 overflow-hidden group">
+        <summary className="flex items-center justify-between px-4 py-3 bg-slate-50 cursor-pointer text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors list-none">
+          <span>Mapeo de columnas</span>
+          <span className="flex items-center gap-2 text-xs text-slate-400 font-normal">
+            {connection.columnMapping?.filter(m => m.status === "mapped").length ?? 0} mapeadas
+            <svg className="w-4 h-4 transition-transform group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" /></svg>
+          </span>
         </summary>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 border-b border-gray-200">
-            <tr>
-              <th className="px-4 py-2 text-left font-medium text-gray-600">Columna en Excel</th>
-              <th className="px-4 py-2 text-left font-medium text-gray-600">Campo Zentor</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {(connection.columnMapping ?? []).map((m) => {
-              const field = zentorFields.find((f) => f.key === m.zentorField);
-              return (
-                <tr key={m.excelColumn} className={m.status === "ignored" ? "opacity-50" : ""}>
-                  <td className="px-4 py-2 font-mono text-gray-700">{m.excelColumn}</td>
-                  <td className="px-4 py-2 text-gray-600">
-                    {field ? field.label : <span className="text-gray-400 italic">Ignorada</span>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 border-y border-slate-200">
+              <tr>
+                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Columna en Excel</th>
+                <th className="px-4 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Campo Zentor</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {(connection.columnMapping ?? []).map((m) => {
+                const field = zentorFields.find((f) => f.key === m.zentorField);
+                return (
+                  <tr key={m.excelColumn} className={m.status === "ignored" ? "opacity-50" : ""}>
+                    <td className="px-4 py-2.5 font-mono text-xs text-slate-700">{m.excelColumn}</td>
+                    <td className="px-4 py-2.5 text-slate-600 text-sm">
+                      {field ? field.label : <span className="text-slate-300 italic">Ignorada</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </details>
 
-      <div className="flex gap-3">
+      {/* Actions */}
+      <div className="flex flex-wrap gap-3">
+        {isCloud && (
+          <button
+            onClick={handleSyncNow}
+            disabled={syncing}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+          >
+            {syncing ? (
+              <>
+                <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                Sincronizando…
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                Sincronizar ahora
+              </>
+            )}
+          </button>
+        )}
+        {!isCloud && (
+          <button
+            onClick={onReSync}
+            className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" /></svg>
+            Sincronizar de nuevo
+          </button>
+        )}
         <button
           onClick={onReSync}
-          className="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white hover:bg-blue-700 transition"
+          className="inline-flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300"
         >
-          Sincronizar de nuevo
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" /></svg>
+          Re-mapear columnas
         </button>
         <button
           onClick={onDisconnect}
-          className="rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition"
+          className="inline-flex items-center gap-2 rounded-lg border border-red-200 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300 ml-auto"
         >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>
           Desconectar
         </button>
       </div>
@@ -589,8 +972,6 @@ function ConnectionDashboard({ connection, zentorFields, onDisconnect, onReSync 
 
 // ─── Main page ────────────────────────────────────────────────────────────────
 
-const STEPS = ["source", "upload", "mapping", "sync", "dashboard"];
-
 export default function ExcelSyncPage() {
   const { token } = useAuth();
   const [step, setStep] = useState("loading");
@@ -598,14 +979,25 @@ export default function ExcelSyncPage() {
   const [loading, setLoading] = useState(false);
 
   // Data state
-  const [zentorFields, setZentorFields] = useState([]);
-  const [connection, setConnection] = useState(null);
+  const [zentorFields, setZentorFields]   = useState([]);
+  const [connection, setConnection]       = useState(null);
   const [analyzeResult, setAnalyzeResult] = useState(null);
-  const [fileBuffer, setFileBuffer] = useState(null);
-  const [fileName, setFileName] = useState(null);
+  const [fileBuffer, setFileBuffer]       = useState(null);
+  const [fileName, setFileName]           = useState(null);
+  const [activeSource, setActiveSource]   = useState(null); // "manual" | "onedrive" | "google_sheets"
 
-  // Load on mount
+  // Load on mount — also detect OAuth callback params
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const odriveBack  = params.get("onedrive") === "connected";
+    const googleBack  = params.get("google")   === "connected";
+
+    if (odriveBack || googleBack) {
+      // Clean the URL immediately
+      window.history.replaceState({}, "", window.location.pathname);
+      setActiveSource(odriveBack ? "onedrive" : "google_sheets");
+    }
+
     async function load() {
       try {
         const [fieldsRes, connRes] = await Promise.all([
@@ -618,6 +1010,8 @@ export default function ExcelSyncPage() {
         if (connData.connection) {
           setConnection(connData.connection);
           setStep("dashboard");
+        } else if (odriveBack || googleBack) {
+          setStep("files");
         } else {
           setStep("source");
         }
@@ -629,10 +1023,36 @@ export default function ExcelSyncPage() {
     load();
   }, [token]);
 
+  // Source selector handler — initiates redirect for cloud sources
+  async function handleSourceSelect(src, authPath) {
+    if (src === "manual") {
+      setActiveSource("manual");
+      setStep("upload");
+      return;
+    }
+    // Cloud: fetch auth URL and redirect
+    setActiveSource(src);
+    try {
+      const res  = await apiFetch(authPath, { token });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error al obtener URL de autenticación");
+      window.location.href = data.url;
+    } catch (err) {
+      setError(err.message);
+      setActiveSource(null);
+    }
+  }
+
   const handleAnalyzed = useCallback((result, buf, fName) => {
     setAnalyzeResult(result);
     setFileBuffer(buf);
     setFileName(fName);
+    setStep("mapping");
+  }, []);
+
+  // Called after cloud file is selected — result has connectionId + suggestedMapping
+  const handleCloudFileSelected = useCallback((result) => {
+    setAnalyzeResult(result);
     setStep("mapping");
   }, []);
 
@@ -648,10 +1068,11 @@ export default function ExcelSyncPage() {
 
   async function handleDisconnect() {
     if (!connection) return;
-    if (!window.confirm("¿Desconectar la sincronización Excel? Los empleados ya importados no se borran.")) return;
+    if (!window.confirm("¿Desconectar la sincronización? Los empleados ya importados no se borran.")) return;
     try {
       await apiFetch(`/excel-sync/connection/${connection._id}`, { method: "DELETE", token });
       setConnection(null);
+      setActiveSource(null);
       setStep("source");
     } catch (err) {
       setError(err.message);
@@ -659,61 +1080,52 @@ export default function ExcelSyncPage() {
   }
 
   function handleReSync() {
-    setStep("upload");
+    if (connection?.source === "manual" || activeSource === "manual") {
+      setStep("upload");
+    } else if (connection?.source === "onedrive" || connection?.source === "google_sheets") {
+      setStep("mapping");
+    } else {
+      setStep("upload");
+    }
   }
 
   // ─── Render
 
   if (step === "loading") {
     return (
-      <div className="p-6">
-        <div className="skeleton h-8 w-48 mb-4" />
-        <div className="skeleton h-40 w-full rounded-xl" />
+      <div className="mx-auto max-w-3xl px-4 py-6 space-y-5">
+        <div className="skeleton h-7 w-52 rounded-lg" />
+        <div className="skeleton h-5 w-80 rounded" />
+        <div className="skeleton h-56 w-full rounded-2xl" />
       </div>
     );
   }
 
+  const showBreadcrumb = step !== "dashboard" && step !== "loading";
+
   return (
-    <div className="mx-auto max-w-3xl px-4 py-6 space-y-6">
-      {/* Header */}
+    <div className="mx-auto max-w-3xl px-4 py-6 space-y-5">
+      {/* Page header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Sincronización Excel</h1>
-        <p className="mt-1 text-sm text-gray-500">
+        <h1 className="text-xl font-semibold text-slate-900">Sincronización Excel</h1>
+        <p className="mt-1 text-sm text-slate-500">
           Conectá el Excel de tu empresa y mantené los datos de empleados siempre actualizados.
         </p>
       </div>
 
-      {/* Progress breadcrumb */}
-      {step !== "dashboard" && step !== "loading" && (
-        <div className="flex items-center gap-2 text-xs text-gray-400">
-          {[
-            { key: "source",  label: "Fuente" },
-            { key: "upload",  label: "Archivo" },
-            { key: "mapping", label: "Columnas" },
-            { key: "sync",    label: "Sincronizar" },
-          ].map((s, i, arr) => (
-            <span key={s.key} className="flex items-center gap-2">
-              <span className={step === s.key ? "text-blue-600 font-semibold" : ""}>
-                {i + 1}. {s.label}
-              </span>
-              {i < arr.length - 1 && <span>›</span>}
-            </span>
-          ))}
-        </div>
-      )}
+      {/* Breadcrumb */}
+      {showBreadcrumb && <StepBreadcrumb step={step} />}
 
-      {/* Error banner */}
-      {error && (
-        <div className="rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700 flex justify-between">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-red-600">✕</button>
-        </div>
-      )}
+      {/* Global error banner */}
+      <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
-      {/* Card */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {/* Main card */}
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         {step === "source" && (
-          <SourceSelector onSelect={(src) => setStep(src === "manual" ? "upload" : "source")} />
+          <SourceSelector
+            onSelect={handleSourceSelect}
+            loading={loading}
+          />
         )}
 
         {step === "upload" && (
@@ -725,19 +1137,29 @@ export default function ExcelSyncPage() {
           />
         )}
 
+        {step === "files" && activeSource && (
+          <CloudFilePicker
+            source={activeSource}
+            token={token}
+            onFileSelected={handleCloudFileSelected}
+            onBack={() => setStep("source")}
+          />
+        )}
+
         {step === "mapping" && analyzeResult && (
           <ColumnMappingStep
             connectionId={analyzeResult.connectionId}
             suggestedMapping={analyzeResult.suggestedMapping}
             zentorFields={zentorFields}
             onSaved={handleMappingSaved}
-            onBack={() => setStep("upload")}
+            onBack={() => setStep(activeSource === "manual" ? "upload" : "files")}
           />
         )}
 
         {step === "sync" && connection && (
           <SyncStep
             connection={connection}
+            source={activeSource ?? connection.source}
             fileBuffer={fileBuffer}
             fileName={fileName}
             onSynced={handleSynced}
