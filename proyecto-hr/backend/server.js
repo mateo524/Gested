@@ -48,6 +48,7 @@ import dripRoutes from "./routes/drip.routes.js";
 import twoFactorRoutes from "./routes/twoFactor.routes.js";
 import pdfExportRoutes from "./routes/pdfExport.routes.js";
 import billingRoutes from "./routes/billing.routes.js";
+import excelSyncRoutes from "./routes/excelSync.routes.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { ensureIndexes } from "./utils/ensureIndexes.js";
 import { buildHealthStatus } from "./utils/health.js";
@@ -301,6 +302,7 @@ app.use("/webhooks-config", webhooksConfigRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/drip", dripRoutes);
 app.use("/billing", billingRoutes);
+app.use("/excel-sync", excelSyncRoutes);
 
 // Request logging — emits one structured log line per completed request.
 // Skips /health to avoid noise in Cloud Logging dashboards.

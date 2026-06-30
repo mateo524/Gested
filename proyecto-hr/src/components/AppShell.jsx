@@ -207,6 +207,8 @@ function AppIcon({ name, active, size = "md" }) {
       return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M5 20V8"/><path d="M12 20V4"/><path d="M19 20v-6"/></svg>;
     case "carga-masiva":
       return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M12 4v10"/><path d="M8 10l4 4 4-4"/><path d="M4 20h16"/></svg>;
+    case "excel-sync":
+      return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M4 6h16M4 12h16M4 18h10"/><path d="M17 15l3 3-3 3"/></svg>;
     case "novedades":
       return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className={className}><path d="M6 5h12"/><path d="M6 10h12"/><path d="M6 15h8"/><rect x="4" y="3" width="16" height="18" rx="2.5"/></svg>;
     case "organigrama":
@@ -324,7 +326,8 @@ export default function AppShell({
     { key: "metricas", label: "Mediciones", show: false, keywords: [] },
     { key: "planes", label: isEmployee ? "Mi desarrollo" : "Planes de acción", show: hasPermission("manage_development_plans") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("download_self_report") || hasPermission("view_reports"), keywords: ["desarrollo", "planes", "seguimiento"] },
     { key: "reporte-ejecutivo", label: "Reportes", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["reportes", "reporte ejecutivo", "insights"] },
-    { key: "carga-masiva", label: "Importación", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "excel", "carga", "plantilla", "migracion"] },
+    { key: "carga-masiva", label: "Importación", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "carga", "plantilla", "migracion"] },
+    { key: "excel-sync", label: "Sincronizar Excel", show: hasPermission("manage_employees") || hasPermission("manage_users"), keywords: ["excel", "sync", "sincronizar", "sincronizacion", "sincronización", "excel online", "onedrive", "google sheets"] },
     { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
     { key: "organizaciones", label: "Organizaciones", show: isSuperAdmin, keywords: ["organizaciones", "tenants", "empresas"] },
     { key: "roles", label: "Accesos", show: isSuperAdmin && (hasPermission("manage_roles") || hasPermission("view_audit")), keywords: ["roles", "accesos", "permisos"] },
@@ -382,11 +385,12 @@ export default function AppShell({
       items.push({ type: "group", key: "eval-group", label: L("Evaluaciones", "Evaluations"), icon: "evaluaciones", children: evalKids });
     }
 
-    // Standalone items: Reportes (right after Evaluaciones), then Importación, Novedades
+    // Standalone items: Reportes, Importación, Sync Excel, Novedades
     [
-      { key: "reporte-ejecutivo", es: "Reportes", en: "Reports" },
-      { key: "carga-masiva", es: "Importación", en: "Import" },
-      { key: "novedades", es: "Novedades", en: "Updates" },
+      { key: "reporte-ejecutivo", es: "Reportes",           en: "Reports" },
+      { key: "carga-masiva",      es: "Importación",        en: "Import" },
+      { key: "excel-sync",        es: "Sincronizar Excel",  en: "Excel Sync" },
+      { key: "novedades",         es: "Novedades",          en: "Updates" },
     ].forEach(item => {
       if (byKey[item.key]) items.push({ type: "item", key: item.key, label: L(item.es, item.en), icon: item.key });
     });

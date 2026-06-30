@@ -33,6 +33,7 @@ const loadUsageAnalyticsPage = () => import("./pages/UsageAnalyticsPage");
 const loadOrgChartPage = () => import("./pages/OrgChartPage");
 const loadCalibracionPage = () => import("./pages/CalibracionPage");
 const loadBillingPage = () => import("./pages/BillingPage");
+const loadExcelSyncPage = () => import("./pages/ExcelSyncPage");
 
 const DashboardPage = lazy(loadDashboardPage);
 const OrganizationsPage = lazy(loadOrganizationsPage);
@@ -55,12 +56,13 @@ const UsageAnalyticsPage = lazy(loadUsageAnalyticsPage);
 const OrgChartPage = lazy(loadOrgChartPage);
 const CalibracionPage = lazy(loadCalibracionPage);
 const BillingPage = lazy(loadBillingPage);
+const ExcelSyncPage = lazy(loadExcelSyncPage);
 
 const KNOWN_VIEWS = new Set([
   "dashboard","novedades","perfil","organizaciones","empleados","organigrama",
   "competencias","metricas","metricas-ejecutivo","ciclos","evaluaciones","planes",
   "bases-descargas","reporte-ejecutivo","carga-masiva","archivo-central","analytics",
-  "usuarios","roles","settings","calibracion","billing",
+  "usuarios","roles","settings","calibracion","billing","excel-sync",
 ]);
 
 function ViewLoader() {
@@ -190,6 +192,7 @@ function AppContent() {
           hasPermission("manage_roles") ||
           hasPermission("view_audit")
         ) ? "carga-masiva" : null,
+        hasPermission("manage_employees") || hasPermission("manage_users") ? "excel-sync" : null,
         user?.isSuperAdmin ? "archivo-central" : null,
         user?.isSuperAdmin ? "analytics" : null,
         !isEmployeeUser(user) && !isManagerUser(user) && (user?.isSuperAdmin || hasPermission("manage_users"))
@@ -368,6 +371,7 @@ function AppContent() {
           {activeView === "bases-descargas" && <EducationalExportsPage />}
           {activeView === "reporte-ejecutivo" && <PlanGate feature="Reporte ejecutivo"><ExecutiveReportPage /></PlanGate>}
           {activeView === "carga-masiva" && <BulkImportPage />}
+          {activeView === "excel-sync" && <ExcelSyncPage />}
           {activeView === "archivo-central" && <StorageCenterPage />}
           {activeView === "analytics" && <UsageAnalyticsPage />}
           {activeView === "usuarios" && <UsersPage />}
