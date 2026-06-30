@@ -574,25 +574,11 @@ export default function DashboardPage() {
           goTo: "organizaciones",
         },
         {
-          label: "Empleados visibles",
-          value: summary.cards?.[0]?.value || 0,
-          hint: "Dentro de la organización activa",
-          accent: "green",
-          goTo: "empleados",
-        },
-        {
           label: "Evaluaciones pendientes",
           value: summary.educational?.pendingEvaluations || 0,
           hint: `${summary.educational?.evaluationsTotal || 0} registradas`,
           accent: "amber",
           goTo: "evaluaciones",
-        },
-        {
-          label: "Ciclos activos",
-          value: summary.cards?.[2]?.value || 0,
-          hint: "Estado actual del período",
-          accent: "blue",
-          goTo: "ciclos",
         }
       );
       return cards;
@@ -600,25 +586,11 @@ export default function DashboardPage() {
 
     cards.push(
       {
-        label: isEmpleado ? "Mi desempeño actual" : "Empleados activos",
-        value: isEmpleado ? summary.cards?.[3]?.value || "0.00" : summary.cards?.[0]?.value || 0,
-        hint: isEmpleado ? summary.cards?.[3]?.hint || "Sin datos" : `${summary.educational?.activeUsers || 0} usuarios activos`,
-        accent: "blue",
-        goTo: isEmpleado ? "planes" : "empleados",
-      },
-      {
         label: "Evaluaciones pendientes",
         value: summary.educational?.pendingEvaluations || 0,
         hint: `${summary.educational?.evaluationsTotal || 0} evaluaciones visibles`,
         accent: "amber",
         goTo: "evaluaciones",
-      },
-      {
-        label: "Ciclos activos",
-        value: summary.cards?.[2]?.value || 0,
-        hint: "Seguimiento del período actual",
-        accent: "blue",
-        goTo: "ciclos",
       },
       {
         label: "Planes de desarrollo",
@@ -838,11 +810,11 @@ export default function DashboardPage() {
         <div className="space-y-3">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {[
-              { label: "Total empleados", value: reportStats.stats?.employeesTotal ?? 0, hint: "Registrados en la organización", accent: "blue" },
-              { label: "Evaluados", value: reportStats.stats?.evaluatedCount ?? 0, hint: "Con evaluación cerrada", accent: "teal" },
-              { label: "Promedio general", value: reportStats.stats?.averageScore > 0 ? reportStats.stats.averageScore.toFixed(2) : "—", hint: "Escala 1 – 5", accent: "green" },
-              { label: "Nivel Excepcional", value: reportStats.stats?.scoreExcepcional ?? 0, hint: "Puntaje ≥ 4.5", accent: "green" },
-              { label: "Necesitan atención", value: reportStats.stats?.scoreNeedsAttention ?? 0, hint: "Puntaje < 2.5", accent: "amber" },
+              { label: "Total empleados", value: reportStats.stats?.employeesTotal ?? 0, hint: "Registrados en la organización", accent: "blue", goTo: "reporte-ejecutivo" },
+              { label: "Evaluados", value: reportStats.stats?.evaluatedCount ?? 0, hint: "Con evaluación cerrada", accent: "teal", goTo: "reporte-ejecutivo" },
+              { label: "Promedio general", value: reportStats.stats?.averageScore > 0 ? reportStats.stats.averageScore.toFixed(2) : "—", hint: "Escala 1 – 5", accent: "green", goTo: "reporte-ejecutivo" },
+              { label: "Nivel Excepcional", value: reportStats.stats?.scoreExcepcional ?? 0, hint: "Puntaje ≥ 4.5", accent: "green", goTo: "reporte-ejecutivo" },
+              { label: "Necesitan atención", value: reportStats.stats?.scoreNeedsAttention ?? 0, hint: "Puntaje < 2.5", accent: "amber", goTo: "reporte-ejecutivo" },
             ].map((card) => (
               <StatCard key={card.label} label={card.label} value={card.value} hint={card.hint} accent={card.accent} onClick={card.goTo ? () => setView(card.goTo) : undefined} />
             ))}

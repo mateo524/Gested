@@ -1362,7 +1362,7 @@ function ExecutiveReportPage() {
   const [loadingSummary, setLoadingSummary] = useState(false);
   const [personaSearch, setPersonaSearch] = useState("");
   const [personaFilterArea, setPersonaFilterArea] = useState("");
-  const [activeGrafTab, setActiveGrafTab] = useState(0);
+  const [selectedGrafTabs, setSelectedGrafTabs] = useState(new Set([0]));
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [overview, setOverview] = useState(null);
   const [detail, setDetail] = useState(null);
@@ -2179,74 +2179,100 @@ function ExecutiveReportPage() {
         loadingAnalytics ? <EmptyPanel text="Cargando análisis por nivel..." /> :
         !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
           const { grupos, competencias } = analyticsData;
-          const g = grupos[activeGrafTab] || grupos[0];
-          if (!g) return <EmptyPanel text="Sin datos de áreas." />;
-          const color = areaColor(activeGrafTab);
+          if (!grupos.length) return <EmptyPanel text="Sin datos de áreas." />;
           const globalAvgByComp = {};
           competencias.forEach(({ id }) => {
             const all = grupos.flatMap((gr) => gr.compStats[id] ? [gr.compStats[id].avg] : []);
             globalAvgByComp[id] = all.length ? all.reduce((a,b)=>a+b,0)/all.length : 0;
           });
+          const toggleTab = (i) => {
+            setSelectedGrafTabs((prev) => {
+              const next = new Set(prev);
+              if (next.has(i)) {
+                if (next.size === 1) return prev; // never allow empty
+                next.delete(i);
+              } else {
+                next.add(i);
+              }
+              return next;
+            });
+          };
+          const activeTabs = [...selectedGrafTabs].sort();
           return (
             <div className="space-y-3">
-              {/* Area tabs */}
+              {/* Area multi-select buttons */}
               <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                {grupos.map((gr, i) => (
-                  <button key={gr.area} type="button"
-                    onClick={() => setActiveGrafTab(i)}
-                    style={{
-                      padding:"5px 14px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer",
-                      background: i === activeGrafTab ? areaColor(i) + "20" : "transparent",
-                      color: i === activeGrafTab ? areaColor(i) : "#7a9aaa",
-                      border: `1px solid ${areaColor(i)}${i === activeGrafTab ? "50" : "20"}`,
-                    }}
-                  >
-                    {gr.area}
-                  </button>
-                ))}
-              </div>
-              {/* Header */}
-              <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                <span style={{ padding:"4px 14px", borderRadius:16, fontSize:12, fontWeight:700, background:color+"18", color, border:`1px solid ${color}30` }}>{g.area}</span>
-                <span style={{ fontSize:11, color:"#7a9aaa" }}>{g.count} personas</span>
-                {g.avgScore != null && (
-                  <span style={{ marginLeft:"auto", fontSize:12, fontWeight:700, color:scColor(g.avgScore), background:color+"15", border:`1px solid ${color}30`, padding:"4px 12px", borderRadius:8 }}>
-                    Promedio: {g.avgScore.toFixed(1)} — {scLabel(g.avgScore)}
-                  </span>
-                )}
-              </div>
-              {/* Competency cards grid */}
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10 }}>
-                {competencias.map(({ id, nombre }) => {
-                  const st = g.compStats[id];
-                  if (!st) return null;
-                  const diff = (st.avg - (globalAvgByComp[id] || 0)).toFixed(1);
-                  const diffColor = diff >= 0 ? "#4ade80" : "#f87171";
+                {grupos.map((gr, i) => {
+                  const selected = selectedGrafTabs.has(i);
                   return (
-                    <div key={id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                      <div style={{ fontSize:11, fontWeight:700, color:"#fff", marginBottom:4 }}>{nombre}</div>
-                      <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:2 }}>
-                        <div style={{ fontSize:22, fontWeight:900, color:scColor(st.avg) }}>{st.avg.toFixed(1)}</div>
-                        <div style={{ fontSize:10, fontWeight:700, color:diffColor }}>{diff >= 0 ? "+" : ""}{diff} vs global</div>
+                    <button key={gr.area} type="button"
+                      onClick={() => toggleTab(i)}
+                      style={{
+                        padding:"5px 14px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer",
+                        background: selected ? areaColor(i) + "20" : "transparent",
+                        color: selected ? areaColor(i) : "#7a9aaa",
+                        border: `1px solid ${areaColor(i)}${selected ? "50" : "20"}`,
+                      }}
+                    >
+                      {gr.area}
+                    </button>
+                  );
+                })}
+              </div>
+              {/* One panel per selected area, side by side */}
+              <div style={{ display:"grid", gridTemplateColumns:`repeat(${activeTabs.length}, minmax(280px, 1fr))`, gap:12 }}>
+                {activeTabs.map((tabIdx) => {
+                  const g = grupos[tabIdx];
+                  if (!g) return null;
+                  const color = areaColor(tabIdx);
+                  return (
+                    <div key={g.area} className="space-y-3">
+                      {/* Header */}
+                      <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
+                        <span style={{ padding:"4px 14px", borderRadius:16, fontSize:12, fontWeight:700, background:color+"18", color, border:`1px solid ${color}30` }}>{g.area}</span>
+                        <span style={{ fontSize:11, color:"#7a9aaa" }}>{g.count} personas</span>
+                        {g.avgScore != null && (
+                          <span style={{ marginLeft:"auto", fontSize:12, fontWeight:700, color:scColor(g.avgScore), background:color+"15", border:`1px solid ${color}30`, padding:"4px 12px", borderRadius:8 }}>
+                            {g.avgScore.toFixed(1)} — {scLabel(g.avgScore)}
+                          </span>
+                        )}
                       </div>
-                      <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(st.avg)}</div>
-                      <DistBars dist={st.dist} />
-                      <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#7a9aaa", borderTop:"1px solid rgba(255,255,255,0.08)", paddingTop:6, marginTop:6 }}>
-                        <span>🔴 Bajo: {st.pctLow}%</span>
-                        <span>🟢 Alto: {st.pctHigh}%</span>
+                      {/* Competency cards grid */}
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10 }}>
+                        {competencias.map(({ id, nombre }) => {
+                          const st = g.compStats[id];
+                          if (!st) return null;
+                          const diff = (st.avg - (globalAvgByComp[id] || 0)).toFixed(1);
+                          const diffColor = diff >= 0 ? "#4ade80" : "#f87171";
+                          return (
+                            <div key={id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                              <div style={{ fontSize:11, fontWeight:700, color:"#fff", marginBottom:4 }}>{nombre}</div>
+                              <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:2 }}>
+                                <div style={{ fontSize:22, fontWeight:900, color:scColor(st.avg) }}>{st.avg.toFixed(1)}</div>
+                                <div style={{ fontSize:10, fontWeight:700, color:diffColor }}>{diff >= 0 ? "+" : ""}{diff} vs global</div>
+                              </div>
+                              <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(st.avg)}</div>
+                              <DistBars dist={st.dist} />
+                              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#7a9aaa", borderTop:"1px solid rgba(255,255,255,0.08)", paddingTop:6, marginTop:6 }}>
+                                <span>Bajo: {st.pctLow}%</span>
+                                <span>Alto: {st.pctHigh}%</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        {/* General card */}
+                        {g.avgScore != null && (
+                          <div className="rounded-2xl bg-[#0f1f28] p-4" style={{ border:`1px solid ${color}30` }}>
+                            <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>⌀ General</div>
+                            <div style={{ fontSize:22, fontWeight:900, color, marginBottom:2 }}>{g.avgScore.toFixed(1)}</div>
+                            <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(g.avgScore)} · {g.count} personas</div>
+                            {Array.isArray(g.genDist) && <DistBars dist={g.genDist} />}
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
-                {/* General card */}
-                {g.avgScore != null && (
-                  <div className="rounded-2xl bg-[#0f1f28] p-4" style={{ border:`1px solid ${color}30` }}>
-                    <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>⌀ General</div>
-                    <div style={{ fontSize:22, fontWeight:900, color, marginBottom:2 }}>{g.avgScore.toFixed(1)}</div>
-                    <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(g.avgScore)} · {g.count} personas</div>
-                    {Array.isArray(g.genDist) && <DistBars dist={g.genDist} />}
-                  </div>
-                )}
               </div>
             </div>
           );
@@ -2447,63 +2473,79 @@ function ExecutiveReportPage() {
         loadingAnalytics ? <EmptyPanel text="Cargando estructura..." /> :
         !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
           const { personas } = analyticsData;
-          const areaMap = {};
+          // Build id→persona map
+          const personaMap = new Map(personas.map((p) => [p._id, p]));
+          // Find roots: managerId is null or not found in map
+          const roots = personas.filter((p) => !p.managerId || !personaMap.has(p.managerId));
+          // Build children map
+          const childrenOf = {};
           personas.forEach((p) => {
-            if (!areaMap[p.area]) areaMap[p.area] = [];
-            areaMap[p.area].push(p);
+            if (p.managerId && personaMap.has(p.managerId)) {
+              if (!childrenOf[p.managerId]) childrenOf[p.managerId] = [];
+              childrenOf[p.managerId].push(p);
+            }
           });
-          return (
-            <div className="space-y-4">
-              {Object.entries(areaMap).map(([area, people], gi) => {
-                const color = areaColor(gi);
-                const jefaturas = people.filter((p) => p.esJefatura);
-                const others = people.filter((p) => !p.esJefatura);
-                return (
-                  <div key={area} style={{ padding:14, background:`${color}06`, borderRadius:11, border:`1px solid ${color}18` }}>
-                    <div style={{ fontSize:11, fontWeight:700, textTransform:"uppercase", letterSpacing:.6, color, padding:"4px 10px", background:`${color}15`, borderRadius:6, width:"fit-content", marginBottom:10 }}>
-                      {area}
+
+          function OrgNode({ p, level, color }) {
+            const children = childrenOf[p._id] || [];
+            const MAX_CHILDREN_SHOWN = level < 2 ? children.length : 3;
+            const shownChildren = children.slice(0, MAX_CHILDREN_SHOWN);
+            const hiddenCount = children.length - shownChildren.length;
+            const nodeBorder = level === 0 ? `2px solid ${color}50` : `1px solid ${color}25`;
+            const nodeBg = level === 0 ? `${color}12` : "#0f1f28";
+            return (
+              <div style={{ marginBottom: level < 2 ? 10 : 6 }}>
+                {/* Node box */}
+                <div style={{ display:"inline-flex", flexDirection:"column", gap:3, padding: level === 0 ? "10px 14px" : "6px 10px", borderRadius:10, border:nodeBorder, background:nodeBg, minWidth:130, maxWidth:200 }}>
+                  <div style={{ fontSize: level === 0 ? 12 : 10, fontWeight:700, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.nombre}</div>
+                  {p.cargo && <div style={{ fontSize:9, color:`${color}99`, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.cargo}</div>}
+                  {p.general != null && (
+                    <div style={{ marginTop:2 }}>
+                      <ScorePill v={p.general} small />
                     </div>
-                    {jefaturas.length > 0 && (
-                      <div style={{ marginBottom:8 }}>
-                        <div style={{ fontSize:9, color:"#7a9aaa", marginBottom:6 }}>Jefaturas ({jefaturas.length})</div>
-                        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-                          {jefaturas.map((p) => (
-                            <div key={p._id} style={{ background:"#0f1f28", border:`1px solid ${color}25`, borderRadius:9, padding:"8px 12px", minWidth:140 }}>
-                              <div style={{ fontSize:11, fontWeight:700, color:"#fff" }}>{p.nombre}</div>
-                              <div style={{ fontSize:9, color:`${color}99`, marginTop:2 }}>{p.cargo}</div>
-                              {p.general != null && (
-                                <div style={{ marginTop:5 }}>
-                                  <ScorePill v={p.general} small />
-                                  <span style={{ fontSize:9, color:"#7a9aaa", marginLeft:4 }}>{scLabel(p.general)}</span>
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    {others.length > 0 && (
-                      <div style={{ marginLeft:16, borderLeft:`2px solid ${color}25`, paddingLeft:12 }}>
-                        <div style={{ fontSize:9, color:"#7a9aaa", marginBottom:6 }}>↳ Personal ({others.length})</div>
-                        <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
-                          {others.slice(0, 8).map((p) => (
-                            <div key={p._id} style={{ background:"#0f1f28", border:`1px solid ${color}15`, borderRadius:8, padding:"6px 10px" }}>
-                              <div style={{ fontSize:10, fontWeight:600, color:"#e2e8f0" }}>{p.nombre}</div>
-                              <div style={{ fontSize:8, color:`${color}80`, marginTop:1 }}>{p.cargo}</div>
-                              {p.general != null && <ScorePill v={p.general} small />}
-                            </div>
-                          ))}
-                          {others.length > 8 && (
-                            <div style={{ background:"#0f1f28", border:`1px dashed ${color}20`, borderRadius:8, padding:"6px 10px", display:"flex", alignItems:"center", justifyContent:"center", minWidth:60 }}>
-                              <div style={{ textAlign:"center", color:"#7a9aaa", fontSize:10 }}>+{others.length - 8}<br />más</div>
-                            </div>
-                          )}
-                        </div>
+                  )}
+                </div>
+                {/* Children at next level */}
+                {(shownChildren.length > 0 || hiddenCount > 0) && level < 2 && (
+                  <div style={{ marginLeft:16, borderLeft:`2px solid ${color}20`, paddingLeft:10, marginTop:6 }}>
+                    {shownChildren.map((child) => (
+                      <OrgNode key={child._id} p={child} level={level + 1} color={color} />
+                    ))}
+                    {hiddenCount > 0 && (
+                      <div style={{ fontSize:9, color:"#7a9aaa", padding:"4px 8px", border:"1px dashed rgba(255,255,255,0.1)", borderRadius:6, display:"inline-block", marginTop:4 }}>
+                        +{hiddenCount} más
                       </div>
                     )}
                   </div>
-                );
-              })}
+                )}
+              </div>
+            );
+          }
+
+          if (!roots.length) return <EmptyPanel text="Sin estructura jerárquica disponible." />;
+
+          // Group roots by area for color coding
+          const areaColorMap = {};
+          let areaIdx = 0;
+          roots.forEach((r) => {
+            if (!areaColorMap[r.area]) {
+              areaColorMap[r.area] = areaColor(areaIdx++);
+            }
+          });
+
+          return (
+            <div className="space-y-4">
+              <p style={{ fontSize:11, color:"#7a9aaa" }}>Organigrama jerárquico basado en relaciones de reporte. Se muestran hasta 3 niveles.</p>
+              <div style={{ display:"flex", flexWrap:"wrap", gap:12 }}>
+                {roots.map((root) => {
+                  const color = areaColorMap[root.area] || areaColor(0);
+                  return (
+                    <div key={root._id} style={{ padding:14, background:`${color}06`, borderRadius:11, border:`1px solid ${color}18`, minWidth:180 }}>
+                      <OrgNode p={root} level={0} color={color} />
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           );
         })()

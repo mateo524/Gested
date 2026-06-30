@@ -1214,8 +1214,8 @@ router.get(
           const matrix = scoreMatrix[empId] || {};
           const compScores = {};
           competencias.forEach(({ id, nombre }) => {
-            const autoE = matrix["AUTO"]?.[id];
-            const jefeE = matrix["JEFE"]?.[id];
+            const autoE = matrix["AUTOEVALUACION"]?.[id];
+            const jefeE = matrix["JEFATURA"]?.[id];
             const autoAvg = autoE?.count ? autoE.total / autoE.count : null;
             const jefeAvg = jefeE?.count ? jefeE.total / jefeE.count : null;
             if (autoAvg !== null || jefeAvg !== null) {
@@ -1251,6 +1251,7 @@ router.get(
             area: emp.area || "Sin área",
             esJefatura: managerIdSet.has(empId),
             managerName: managerName || "—",
+            managerId: emp.managerId ? String(emp.managerId) : null,
             compScores,
             autoGeneral: autoGeneral !== null ? Math.round(autoGeneral * 100) / 100 : null,
             jefeGeneral: jefeGeneral !== null ? Math.round(jefeGeneral * 100) / 100 : null,
