@@ -5,18 +5,22 @@ import { apiFetch } from "../lib/api";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
 import ConfirmDialog from "../components/ConfirmDialog";
 
-const TIPO_OPTIONS = ["TRANSVERSAL", "TECNICA", "LIDERAZGO"];
+const TIPO_OPTIONS = ["TRANSVERSAL", "LIDERAZGO", "DOCENTE", "TECNICA"];
 
 const TIPO_LABEL = {
-  TRANSVERSAL: { es: "Transversal", en: "Transversal" },
-  TECNICA:     { es: "Técnica",     en: "Technical"    },
-  LIDERAZGO:   { es: "Liderazgo",   en: "Leadership"   },
+  TRANSVERSAL:    { es: "Transversal",  en: "Transversal" },
+  LIDERAZGO:      { es: "Liderazgo",    en: "Leadership"  },
+  DOCENTE:        { es: "Docente",      en: "Teaching"    },
+  TECNICA:        { es: "Técnica",      en: "Technical"   },
+  COMPORTAMENTAL: { es: "Transversal",  en: "Transversal" },
 };
 
 const TIPO_BADGE_CLS = {
-  TRANSVERSAL: "bg-sky-500/15 text-sky-200",
-  TECNICA:     "bg-emerald-500/15 text-emerald-200",
-  LIDERAZGO:   "bg-violet-500/15 text-violet-200",
+  TRANSVERSAL:    "bg-sky-500/15 text-sky-200",
+  LIDERAZGO:      "bg-violet-500/15 text-violet-200",
+  DOCENTE:        "bg-amber-500/15 text-amber-200",
+  TECNICA:        "bg-emerald-500/15 text-emerald-200",
+  COMPORTAMENTAL: "bg-sky-500/15 text-sky-200",
 };
 
 const TIPO_TO_CATEGORIA = {
@@ -78,18 +82,16 @@ function Badge({ children, variant = "default" }) {
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>;
 }
 
-function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, nivelLabel, audienceLabel, L, onEdit, onDelete }) {
+const CODIGO_COLOR = { H: "bg-violet-500/15 text-violet-300", A: "bg-sky-500/15 text-sky-300", C: "bg-emerald-500/15 text-emerald-300" };
+
+function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, audienceLabel, L, onEdit, onDelete }) {
+  const descs = Array.isArray(c.descriptores) ? c.descriptores : [];
   return (
     <tr className="hover:bg-white/[0.02] transition border-t border-white/5">
       <td className="px-4 py-3">
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium text-white">{c.nombre}</p>
           {!active ? <Badge variant="inactive">{L("Inactiva", "Inactive")}</Badge> : null}
-          {c.descriptoresCount > 0 ? (
-            <span className="inline-flex items-center rounded-full bg-[#14b8a6]/15 px-2 py-0.5 text-[10px] font-medium text-[#14b8a6]">
-              {c.descriptoresCount} {L("desc.", "desc.")}
-            </span>
-          ) : null}
         </div>
       </td>
       <td className="px-4 py-3">
@@ -98,10 +100,21 @@ function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, nivelLabel, audienc
         </span>
       </td>
       <td className="px-4 py-3 max-w-xs">
-        <p className="text-[#9fb6c4] truncate">{c.descripcion || "—"}</p>
+        <p className="text-[#9fb6c4] truncate text-xs">{c.descripcion || "—"}</p>
       </td>
-      <td className="px-4 py-3">
-        <span className="text-[#c7d5dc]">{nivelLabel(c.componente)}</span>
+      <td className="px-4 py-3 max-w-sm">
+        {descs.length > 0 ? (
+          <ul className="space-y-1">
+            {descs.map((d, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-xs text-[#c7d5dc]">
+                <span className={`mt-0.5 inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold ${CODIGO_COLOR[d.codigo] || "bg-white/10 text-white"}`}>
+                  {d.codigo}
+                </span>
+                <span className="leading-snug">{d.texto}</span>
+              </li>
+            ))}
+          </ul>
+        ) : <span className="text-xs text-[#5e7d8e]">—</span>}
       </td>
       <td className="px-4 py-3 text-xs text-[#9fb6c4]">{audienceLabel(c)}</td>
       <td className="px-4 py-3">
@@ -120,7 +133,7 @@ function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, nivelLabel, audienc
   );
 }
 
-function CompetencyGroup({ tipo, items, tipoLabel, tipoBadgeCls, nivelLabel, audienceLabel, L, onEdit, onDelete }) {
+function CompetencyGroup({ tipo, items, tipoLabel, tipoBadgeCls, audienceLabel, L, onEdit, onDelete }) {
   return (
     <>
       <tr className="border-t border-white/10 bg-white/[0.015]">
@@ -138,7 +151,6 @@ function CompetencyGroup({ tipo, items, tipoLabel, tipoBadgeCls, nivelLabel, aud
           active={c.activa !== false}
           tipoLabel={tipoLabel}
           tipoBadgeCls={tipoBadgeCls}
-          nivelLabel={nivelLabel}
           audienceLabel={audienceLabel}
           L={L}
           onEdit={onEdit}
@@ -372,25 +384,12 @@ export default function CompetenciesPage() {
           onChange={e => setFilters(f => ({ ...f, q: e.target.value }))}
         />
         <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
-          value={filters.categoria} onChange={e => setFilters(f => ({ ...f, categoria: e.target.value }))}>
-          <option value="">{L("Categoría", "Category")}</option>
-          <option value="technical">{L("Técnica", "Technical")}</option>
-          <option value="soft">{L("Blanda", "Soft")}</option>
-        </select>
-        <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
-          value={filters.nivel} onChange={e => setFilters(f => ({ ...f, nivel: e.target.value }))}>
-          <option value="">{L("Nivel", "Level")}</option>
-          <option value="basic">{L("Básico", "Basic")}</option>
-          <option value="intermediate">{L("Intermedio", "Intermediate")}</option>
-          <option value="advanced">{L("Avanzado", "Advanced")}</option>
-        </select>
-        <select className="rounded-xl border border-white/10 bg-[#0c1e28] px-3 py-2 text-sm text-white outline-none"
           value={filters.estado} onChange={e => setFilters(f => ({ ...f, estado: e.target.value }))}>
           <option value="">{L("Estado", "Status")}</option>
           <option value="active">{L("Activa", "Active")}</option>
           <option value="inactive">{L("Inactiva", "Inactive")}</option>
         </select>
-        {(filters.q || filters.categoria || filters.nivel || filters.estado) ? (
+        {(filters.q || filters.estado) ? (
           <button type="button" onClick={() => setFilters({ q: "", categoria: "", nivel: "", estado: "" })}
             className="rounded-xl border border-white/10 px-3 py-2 text-sm text-[#9fb6c4] transition hover:bg-white/5">
             {L("Limpiar", "Clear")}
@@ -420,7 +419,7 @@ export default function CompetenciesPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-white/10">
-                  {[L("Habilidad", "Skill"), L("Tipo", "Type"), L("Descripción", "Description"), L("Nivel", "Level"), L("Alcance", "Scope"), L("Acciones", "Actions")].map(h => (
+                  {[L("Habilidad", "Skill"), L("Tipo", "Type"), L("Descripción", "Description"), L("Comportamental", "Behavioral"), L("Alcance", "Scope"), L("Acciones", "Actions")].map(h => (
                     <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">{h}</th>
                   ))}
                 </tr>
@@ -436,7 +435,6 @@ export default function CompetenciesPage() {
                       items={group}
                       tipoLabel={tipoLabel}
                       tipoBadgeCls={tipoBadgeCls}
-                      nivelLabel={nivelLabel}
                       audienceLabel={audienceLabel}
                       L={L}
                       onEdit={openEdit}
@@ -453,7 +451,6 @@ export default function CompetenciesPage() {
                       active={active}
                       tipoLabel={tipoLabel}
                       tipoBadgeCls={tipoBadgeCls}
-                      nivelLabel={nivelLabel}
                       audienceLabel={audienceLabel}
                       L={L}
                       onEdit={openEdit}
