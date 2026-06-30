@@ -2181,99 +2181,176 @@ function ExecutiveReportPage() {
         !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
           const { grupos, competencias } = analyticsData;
           if (!grupos.length) return <EmptyPanel text="Sin datos de áreas." />;
-          const globalAvgByComp = {};
+
+          // Institution total avg per competency
+          const totalAvgByComp = {};
           competencias.forEach(({ id }) => {
-            const all = grupos.flatMap((gr) => gr.compStats[id] ? [gr.compStats[id].avg] : []);
-            globalAvgByComp[id] = all.length ? all.reduce((a,b)=>a+b,0)/all.length : 0;
+            const vals = grupos.flatMap((gr) => gr.compStats[id] ? [gr.compStats[id].avg] : []);
+            totalAvgByComp[id] = vals.length ? vals.reduce((a,b)=>a+b,0)/vals.length : 0;
           });
-          const toggleTab = (i) => {
+          const totalOverall = (() => {
+            const all = grupos.flatMap(g => g.avgScore != null ? [g.avgScore] : []);
+            return all.length ? all.reduce((a,b)=>a+b,0)/all.length : 0;
+          })();
+
+          // Toggle selected area
+          const toggleArea = (i) => {
             setSelectedGrafTabs((prev) => {
               const next = new Set(prev);
-              if (next.has(i)) {
-                if (next.size === 1) return prev; // never allow empty
-                next.delete(i);
-              } else {
-                next.add(i);
-              }
+              if (next.has(i)) { if (next.size === 1) return prev; next.delete(i); }
+              else next.add(i);
               return next;
             });
           };
-          const activeTabs = [...selectedGrafTabs].sort();
+
+          // Build chart data: one row per competency, columns = each area + "Total"
+          const chartData = competencias.map(({ id, nombre }) => {
+            const row = { nombre: nombre.replace(/^CT\d+:\s*|^CL\d+:\s*|^CD\d+:\s*/,""), fullNombre: nombre };
+            grupos.forEach((g) => {
+              row[g.area] = g.compStats[id] ? +g.compStats[id].avg.toFixed(2) : 0;
+            });
+            row["Total"] = +totalAvgByComp[id].toFixed(2);
+            return row;
+          });
+
+          // Summary cards for selected areas + Total
+          const selectedIdxs = [...selectedGrafTabs].sort();
+
           return (
-            <div className="space-y-3">
-              {/* Area multi-select buttons */}
-              <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
+            <div className="space-y-5">
+              {/* Area selector */}
+              <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
+                <span style={{ fontSize:11, color:"#7a9aaa", marginRight:4 }}>Seleccioná áreas:</span>
                 {grupos.map((gr, i) => {
                   const selected = selectedGrafTabs.has(i);
                   return (
-                    <button key={gr.area} type="button"
-                      onClick={() => toggleTab(i)}
+                    <button key={gr.area} type="button" onClick={() => toggleArea(i)}
                       style={{
                         padding:"5px 14px", borderRadius:20, fontSize:12, fontWeight:700, cursor:"pointer",
-                        background: selected ? areaColor(i) + "20" : "transparent",
+                        background: selected ? areaColor(i)+"25" : "transparent",
                         color: selected ? areaColor(i) : "#7a9aaa",
-                        border: `1px solid ${areaColor(i)}${selected ? "50" : "20"}`,
-                      }}
-                    >
+                        border:`1px solid ${areaColor(i)}${selected ? "60":"20"}`,
+                        transition:"all 0.15s",
+                      }}>
                       {gr.area}
                     </button>
                   );
                 })}
               </div>
-              {/* One panel per selected area, side by side */}
-              <div style={{ display:"grid", gridTemplateColumns:`repeat(${activeTabs.length}, minmax(280px, 1fr))`, gap:12 }}>
-                {activeTabs.map((tabIdx) => {
-                  const g = grupos[tabIdx];
-                  if (!g) return null;
-                  const color = areaColor(tabIdx);
+
+              {/* Summary score pills */}
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap", alignItems:"center" }}>
+                {selectedIdxs.map((i) => {
+                  const g = grupos[i];
+                  if (!g || g.avgScore == null) return null;
+                  const c = areaColor(i);
                   return (
-                    <div key={g.area} className="space-y-3">
-                      {/* Header */}
-                      <div style={{ display:"flex", alignItems:"center", gap:10, flexWrap:"wrap" }}>
-                        <span style={{ padding:"4px 14px", borderRadius:16, fontSize:12, fontWeight:700, background:color+"18", color, border:`1px solid ${color}30` }}>{g.area}</span>
-                        <span style={{ fontSize:11, color:"#7a9aaa" }}>{g.count} personas</span>
-                        {g.avgScore != null && (
-                          <span style={{ marginLeft:"auto", fontSize:12, fontWeight:700, color:scColor(g.avgScore), background:color+"15", border:`1px solid ${color}30`, padding:"4px 12px", borderRadius:8 }}>
-                            {g.avgScore.toFixed(1)} — {scLabel(g.avgScore)}
-                          </span>
-                        )}
-                      </div>
-                      {/* Competency cards grid */}
-                      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(190px,1fr))", gap:10 }}>
-                        {competencias.map(({ id, nombre }) => {
-                          const st = g.compStats[id];
-                          if (!st) return null;
-                          const diff = (st.avg - (globalAvgByComp[id] || 0)).toFixed(1);
-                          const diffColor = diff >= 0 ? "#4ade80" : "#f87171";
-                          return (
-                            <div key={id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                              <div style={{ fontSize:11, fontWeight:700, color:"#fff", marginBottom:4 }}>{nombre}</div>
-                              <div style={{ display:"flex", alignItems:"baseline", gap:6, marginBottom:2 }}>
-                                <div style={{ fontSize:22, fontWeight:900, color:scColor(st.avg) }}>{st.avg.toFixed(1)}</div>
-                                <div style={{ fontSize:10, fontWeight:700, color:diffColor }}>{diff >= 0 ? "+" : ""}{diff} vs global</div>
-                              </div>
-                              <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(st.avg)}</div>
-                              <DistBars dist={st.dist} />
-                              <div style={{ display:"flex", justifyContent:"space-between", fontSize:9, color:"#7a9aaa", borderTop:"1px solid rgba(255,255,255,0.08)", paddingTop:6, marginTop:6 }}>
-                                <span>Bajo: {st.pctLow}%</span>
-                                <span>Alto: {st.pctHigh}%</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {/* General card */}
-                        {g.avgScore != null && (
-                          <div className="rounded-2xl bg-[#0f1f28] p-4" style={{ border:`1px solid ${color}30` }}>
-                            <div style={{ fontSize:11, fontWeight:700, color, marginBottom:4 }}>⌀ General</div>
-                            <div style={{ fontSize:22, fontWeight:900, color, marginBottom:2 }}>{g.avgScore.toFixed(1)}</div>
-                            <div style={{ fontSize:10, color:"#7a9aaa", marginBottom:10 }}>{scLabel(g.avgScore)} · {g.count} personas</div>
-                            {Array.isArray(g.genDist) && <DistBars dist={g.genDist} />}
-                          </div>
-                        )}
-                      </div>
+                    <div key={g.area} style={{ padding:"8px 16px", borderRadius:12, background:c+"12", border:`1px solid ${c}30`, display:"flex", gap:8, alignItems:"center" }}>
+                      <span style={{ fontSize:11, fontWeight:700, color:c }}>{g.area}</span>
+                      <span style={{ fontSize:18, fontWeight:900, color:scColor(g.avgScore) }}>{g.avgScore.toFixed(1)}</span>
+                      <span style={{ fontSize:10, color:"#7a9aaa" }}>{g.count} personas</span>
                     </div>
                   );
                 })}
+                <div style={{ padding:"8px 16px", borderRadius:12, background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.12)", display:"flex", gap:8, alignItems:"center" }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:"#94a3b8" }}>Total institución</span>
+                  <span style={{ fontSize:18, fontWeight:900, color:scColor(totalOverall) }}>{totalOverall.toFixed(1)}</span>
+                </div>
+              </div>
+
+              {/* Grouped bar chart: competency vs areas + Total */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                <p style={{ fontSize:11, fontWeight:700, color:"#7a9aaa", marginBottom:16, textTransform:"uppercase", letterSpacing:"0.1em" }}>
+                  Resultado por competencia — comparativo entre niveles
+                </p>
+                <ResponsiveContainer width="100%" height={340}>
+                  <BarChart data={chartData} margin={{ top:4, right:20, left:0, bottom:60 }}
+                    barCategoryGap="25%" barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                    <XAxis dataKey="nombre" tick={{ fill:"#7a9aaa", fontSize:10 }}
+                      angle={-35} textAnchor="end" interval={0} />
+                    <YAxis domain={[0,5]} tick={{ fill:"#5e7d8e", fontSize:10 }} tickCount={6} />
+                    <Tooltip
+                      contentStyle={{ background:"#0b1d27", border:"1px solid rgba(255,255,255,0.12)", borderRadius:10, fontSize:12 }}
+                      labelStyle={{ color:"#fff", fontWeight:700, marginBottom:4 }}
+                      formatter={(val, name) => [val.toFixed(2), name]}
+                    />
+                    {/* Bar per selected area */}
+                    {selectedIdxs.map((i) => {
+                      const g = grupos[i];
+                      if (!g) return null;
+                      return (
+                        <Bar key={g.area} dataKey={g.area} fill={areaColor(i)} radius={[4,4,0,0]} maxBarSize={28} />
+                      );
+                    })}
+                    {/* Non-selected areas as faded bars */}
+                    {grupos.map((g, i) => {
+                      if (selectedGrafTabs.has(i)) return null;
+                      return (
+                        <Bar key={g.area} dataKey={g.area} fill={areaColor(i)+"55"} radius={[4,4,0,0]} maxBarSize={28} />
+                      );
+                    })}
+                    {/* Total bar */}
+                    <Bar dataKey="Total" fill="#94a3b8" radius={[4,4,0,0]} maxBarSize={28} />
+                  </BarChart>
+                </ResponsiveContainer>
+
+                {/* Legend */}
+                <div style={{ display:"flex", gap:12, flexWrap:"wrap", marginTop:10, justifyContent:"center" }}>
+                  {grupos.map((g, i) => (
+                    <div key={g.area} style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
+                      <span style={{ width:10, height:10, borderRadius:2, background:selectedGrafTabs.has(i) ? areaColor(i) : areaColor(i)+"55", display:"inline-block" }} />
+                      <span style={{ color: selectedGrafTabs.has(i) ? "#c5d5de" : "#7a9aaa" }}>{g.area}</span>
+                    </div>
+                  ))}
+                  <div style={{ display:"flex", alignItems:"center", gap:5, fontSize:11 }}>
+                    <span style={{ width:10, height:10, borderRadius:2, background:"#94a3b8", display:"inline-block" }} />
+                    <span style={{ color:"#94a3b8" }}>Total</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Per-competency detail table for selected areas */}
+              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] overflow-hidden">
+                <table style={{ width:"100%", borderCollapse:"collapse", fontSize:12 }}>
+                  <thead>
+                    <tr style={{ borderBottom:"1px solid rgba(255,255,255,0.1)" }}>
+                      <th style={{ padding:"10px 14px", textAlign:"left", color:"#7a9aaa", fontSize:10, fontWeight:600, textTransform:"uppercase" }}>Competencia</th>
+                      {selectedIdxs.map(i => (
+                        <th key={i} style={{ padding:"10px 10px", textAlign:"center", color:areaColor(i), fontSize:10, fontWeight:700 }}>{grupos[i]?.area}</th>
+                      ))}
+                      <th style={{ padding:"10px 10px", textAlign:"center", color:"#94a3b8", fontSize:10, fontWeight:600 }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {competencias.map(({ id, nombre }) => (
+                      <tr key={id} style={{ borderTop:"1px solid rgba(255,255,255,0.05)" }}>
+                        <td style={{ padding:"9px 14px", color:"#c5d5de", fontSize:12 }}>{nombre.replace(/^CT\d+:\s*|^CL\d+:\s*|^CD\d+:\s*/,"")}</td>
+                        {selectedIdxs.map(i => {
+                          const st = grupos[i]?.compStats[id];
+                          const v = st ? st.avg : null;
+                          const tot = totalAvgByComp[id] || 0;
+                          const diff = v != null ? (v - tot).toFixed(1) : null;
+                          return (
+                            <td key={i} style={{ padding:"9px 10px", textAlign:"center" }}>
+                              {v != null ? (
+                                <div>
+                                  <span style={{ fontWeight:700, color:scColor(v), fontSize:13 }}>{v.toFixed(1)}</span>
+                                  <span style={{ fontSize:9, marginLeft:4, color: diff >= 0 ? "#4ade80" : "#f87171" }}>
+                                    {diff >= 0 ? "+" : ""}{diff}
+                                  </span>
+                                </div>
+                              ) : "—"}
+                            </td>
+                          );
+                        })}
+                        <td style={{ padding:"9px 10px", textAlign:"center", color:"#94a3b8", fontWeight:600, fontSize:13 }}>
+                          {totalAvgByComp[id] != null ? totalAvgByComp[id].toFixed(1) : "—"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           );
