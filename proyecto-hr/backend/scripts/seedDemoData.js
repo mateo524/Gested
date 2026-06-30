@@ -157,8 +157,8 @@ async function main() {
 
   // ─── Ciclo de evaluación ─────────────────────────────────────────────────────
   const cycle = await EvaluationCycle.findOneAndUpdate(
-    { companyId, anio: 2024, periodo: "Anual", etapa: "EVALUACION_FINAL" },
-    { $setOnInsert: { companyId, schoolId, anio: 2024, periodo: "Anual", etapa: "EVALUACION_FINAL", estado: "ABIERTO", fechaInicio: new Date("2024-03-01"), fechaFin: new Date("2024-11-30") } },
+    { companyId, anio: 2025, periodo: "Anual", etapa: "EVALUACION_FINAL" },
+    { $setOnInsert: { companyId, schoolId, anio: 2025, periodo: "Anual", etapa: "EVALUACION_FINAL", estado: "ABIERTO", fechaInicio: new Date("2025-03-01"), fechaFin: new Date("2025-11-30") } },
     { upsert: true, returnDocument: "after" }
   );
   console.log(`Ciclo: ${cycle.anio} ${cycle.periodo} (${cycle._id})`);
