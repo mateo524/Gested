@@ -503,7 +503,7 @@ router.get("/", auth, attachTenantScope, requireAnyPermission(PERMISSIONS.MANAGE
       `metrics:${companyId}`,
       async () => {
         const filter = buildScopedFilter(req, {});
-        const metrics = await Metric.find(filter).sort({ nombre: 1 }).lean();
+        const metrics = await Metric.find(filter).sort({ orden: 1, nombre: 1 }).lean();
         const ids = metrics.map((item) => item._id);
         const levels = await MetricLevel.find({ metricId: { $in: ids } }).sort({ nivel: 1 }).lean();
         const levelMap = new Map();
@@ -512,7 +512,15 @@ router.get("/", auth, attachTenantScope, requireAnyPermission(PERMISSIONS.MANAGE
           if (!levelMap.has(key)) levelMap.set(key, []);
           levelMap.get(key).push(level);
         });
-        return metrics.map((metric) => ({ ...metric, levels: levelMap.get(String(metric._id)) || [] }));
+        // Populate competencyId with name + description for grouping in eval form
+        const compIds = [...new Set(metrics.map(m => String(m.competencyId)).filter(Boolean))];
+        const comps = await Competency.find({ _id: { $in: compIds } }, { nombre: 1, descripcion: 1, tipo: 1 }).lean();
+        const compMap = new Map(comps.map(c => [String(c._id), c]));
+        return metrics.map((metric) => ({
+          ...metric,
+          competencyId: compMap.get(String(metric.competencyId)) || metric.competencyId,
+          levels: levelMap.get(String(metric._id)) || [],
+        }));
       },
       300 // 5 minutes
     );
@@ -528,7 +536,7 @@ router.get("/", auth, attachTenantScope, requireAnyPermission(PERMISSIONS.MANAGE
     filter.$or = [{ nombre: regex }, { descripcion: regex }, { cargoAplica: regex }];
   }
 
-  const metrics = await Metric.find(filter).sort({ nombre: 1 }).lean();
+  const metrics = await Metric.find(filter).sort({ orden: 1, nombre: 1 }).lean();
   const ids = metrics.map((item) => item._id);
   const levels = await MetricLevel.find({ metricId: { $in: ids } }).sort({ nivel: 1 }).lean();
   const levelMap = new Map();
@@ -539,7 +547,15 @@ router.get("/", auth, attachTenantScope, requireAnyPermission(PERMISSIONS.MANAGE
     levelMap.get(key).push(level);
   });
 
-  res.json(metrics.map((metric) => ({ ...metric, levels: levelMap.get(String(metric._id)) || [] })));
+  const compIds2 = [...new Set(metrics.map(m => String(m.competencyId)).filter(Boolean))];
+  const comps2 = await Competency.find({ _id: { $in: compIds2 } }, { nombre: 1, descripcion: 1, tipo: 1 }).lean();
+  const compMap2 = new Map(comps2.map(c => [String(c._id), c]));
+
+  res.json(metrics.map((metric) => ({
+    ...metric,
+    competencyId: compMap2.get(String(metric.competencyId)) || metric.competencyId,
+    levels: levelMap.get(String(metric._id)) || [],
+  })));
 });
 
 router.get("/kpi-records", auth, attachTenantScope, readMetricRecordsAccess, async (req, res) => {
