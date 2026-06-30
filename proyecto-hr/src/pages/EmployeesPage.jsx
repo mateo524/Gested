@@ -318,7 +318,7 @@ export default function EmployeesPage() {
     const params = new URLSearchParams();
     if (nextFilters.q.trim()) params.set("q", nextFilters.q.trim());
     if (nextFilters.schoolId) params.set("schoolId", nextFilters.schoolId);
-    params.set("page", String(page || 1));
+    params.set("skip", String(((page || 1) - 1) * PAGE_SIZE));
     params.set("limit", String(PAGE_SIZE));
     return `?${params.toString()}`;
   }
@@ -343,12 +343,13 @@ export default function EmployeesPage() {
       ]);
       const safeSchools = Array.isArray(schoolsData) ? schoolsData : [];
       setSchools(safeSchools);
-      // Support both a plain array response and a { employees, total } envelope
+      // Backend returns { data: [...], total } — also handle plain array and { employees: [...] }
       if (Array.isArray(employeesResponse)) {
         setEmployees(employeesResponse);
         setTotalCount(employeesResponse.length);
       } else {
-        setEmployees(Array.isArray(employeesResponse.employees) ? employeesResponse.employees : []);
+        const list = employeesResponse.data ?? employeesResponse.employees ?? [];
+        setEmployees(Array.isArray(list) ? list : []);
         setTotalCount(typeof employeesResponse.total === "number" ? employeesResponse.total : 0);
       }
       setRoles(Array.isArray(rolesData) ? rolesData : []);
