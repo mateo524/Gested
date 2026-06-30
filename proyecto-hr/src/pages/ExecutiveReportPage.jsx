@@ -25,6 +25,7 @@ import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
 import CollapsibleList from "../components/CollapsibleList";
+import OrgChartPage from "./OrgChartPage";
 
 function ExecChartTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -2470,85 +2471,7 @@ function ExecutiveReportPage() {
 
       /* ══ ESTRUCTURA ══ */
       ) : activeTab === "estructura" ? (
-        loadingAnalytics ? <EmptyPanel text="Cargando estructura..." /> :
-        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
-          const { personas } = analyticsData;
-          // Build id→persona map
-          const personaMap = new Map(personas.map((p) => [p._id, p]));
-          // Find roots: managerId is null or not found in map
-          const roots = personas.filter((p) => !p.managerId || !personaMap.has(p.managerId));
-          // Build children map
-          const childrenOf = {};
-          personas.forEach((p) => {
-            if (p.managerId && personaMap.has(p.managerId)) {
-              if (!childrenOf[p.managerId]) childrenOf[p.managerId] = [];
-              childrenOf[p.managerId].push(p);
-            }
-          });
-
-          function OrgNode({ p, level, color }) {
-            const children = childrenOf[p._id] || [];
-            const MAX_CHILDREN_SHOWN = level < 2 ? children.length : 3;
-            const shownChildren = children.slice(0, MAX_CHILDREN_SHOWN);
-            const hiddenCount = children.length - shownChildren.length;
-            const nodeBorder = level === 0 ? `2px solid ${color}50` : `1px solid ${color}25`;
-            const nodeBg = level === 0 ? `${color}12` : "#0f1f28";
-            return (
-              <div style={{ marginBottom: level < 2 ? 10 : 6 }}>
-                {/* Node box */}
-                <div style={{ display:"inline-flex", flexDirection:"column", gap:3, padding: level === 0 ? "10px 14px" : "6px 10px", borderRadius:10, border:nodeBorder, background:nodeBg, minWidth:130, maxWidth:200 }}>
-                  <div style={{ fontSize: level === 0 ? 12 : 10, fontWeight:700, color:"#fff", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.nombre}</div>
-                  {p.cargo && <div style={{ fontSize:9, color:`${color}99`, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.cargo}</div>}
-                  {p.general != null && (
-                    <div style={{ marginTop:2 }}>
-                      <ScorePill v={p.general} small />
-                    </div>
-                  )}
-                </div>
-                {/* Children at next level */}
-                {(shownChildren.length > 0 || hiddenCount > 0) && level < 2 && (
-                  <div style={{ marginLeft:16, borderLeft:`2px solid ${color}20`, paddingLeft:10, marginTop:6 }}>
-                    {shownChildren.map((child) => (
-                      <OrgNode key={child._id} p={child} level={level + 1} color={color} />
-                    ))}
-                    {hiddenCount > 0 && (
-                      <div style={{ fontSize:9, color:"#7a9aaa", padding:"4px 8px", border:"1px dashed rgba(255,255,255,0.1)", borderRadius:6, display:"inline-block", marginTop:4 }}>
-                        +{hiddenCount} más
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          if (!roots.length) return <EmptyPanel text="Sin estructura jerárquica disponible." />;
-
-          // Group roots by area for color coding
-          const areaColorMap = {};
-          let areaIdx = 0;
-          roots.forEach((r) => {
-            if (!areaColorMap[r.area]) {
-              areaColorMap[r.area] = areaColor(areaIdx++);
-            }
-          });
-
-          return (
-            <div className="space-y-4">
-              <p style={{ fontSize:11, color:"#7a9aaa" }}>Organigrama jerárquico basado en relaciones de reporte. Se muestran hasta 3 niveles.</p>
-              <div style={{ display:"flex", flexWrap:"wrap", gap:12 }}>
-                {roots.map((root) => {
-                  const color = areaColorMap[root.area] || areaColor(0);
-                  return (
-                    <div key={root._id} style={{ padding:14, background:`${color}06`, borderRadius:11, border:`1px solid ${color}18`, minWidth:180 }}>
-                      <OrgNode p={root} level={0} color={color} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()
+        <OrgChartPage />
 
       ) : null}
     </div>
