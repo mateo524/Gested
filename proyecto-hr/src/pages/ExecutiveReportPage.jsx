@@ -2002,7 +2002,6 @@ function ExecutiveReportPage() {
               const s = summaryData?.stats || (overview ? overview.summary : null);
               if (!s) return <EmptyPanel text="Cargando estadísticas..." />;
               const cards = [
-                { val: s.employeesTotal ?? s.employeesTotal, lbl: "Personas evaluadas", color: "#ffffff" },
                 { val: (s.averageScore ?? 0).toFixed(1), lbl: "Promedio general", color: scColor(s.averageScore) },
                 { val: s.evaluatedCount ?? s.completedEvaluations ?? "—", lbl: "Evaluados", color: "#a78bfa" },
                 { val: s.scoreExcepcional ?? "—", lbl: "Nivel Excepcional ≥4.5", color: "#4ade80" },
