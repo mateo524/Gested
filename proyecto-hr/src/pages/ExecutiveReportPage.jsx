@@ -92,7 +92,7 @@ function scColor(v) {
   if (v <= 2) return "#fb923c";
   if (v <= 3) return "#facc15";
   if (v <= 4) return "#2dd4bf";
-  return "#4ade80";
+  return "#16A34A";
 }
 function scLabel(v) {
   if (!v) return "Sin datos";
@@ -114,7 +114,7 @@ function ScorePill({ v, small }) {
 }
 
 function DistBars({ dist }) {
-  const dc = ["#f87171","#fb923c","#facc15","#2dd4bf","#4ade80"];
+  const dc = ["#f87171","#fb923c","#facc15","#2dd4bf","#16A34A"];
   const max = Math.max(...dist, 1);
   return (
     <div style={{ display:"flex", gap:3, alignItems:"flex-end" }}>
@@ -303,7 +303,7 @@ function buildPdfDocument({ orgName, execSummaryLines, execSignals, overview, pr
     /* Progress bar */
     .pb { height: 4px; border-radius: 3px; background: #e2e8f0; margin-top: 7px; overflow: hidden; }
     .pb-fill { height: 100%; border-radius: 3px; }
-    .pb-green { background: #22c55e; }
+    .pb-green { background: #16A34A; }
     .pb-amber { background: #f59e0b; }
     .pb-red { background: #ef4444; }
 
@@ -485,7 +485,7 @@ function buildExecutivePdf({ orgName, cycleName, execSummaryLines, execSignals, 
     return "En riesgo";
   }
   function barColor(score) {
-    if (score >= 4) return "#22c55e";
+    if (score >= 4) return "#16A34A";
     if (score >= 3) return "#f59e0b";
     return "#ef4444";
   }
@@ -669,7 +669,7 @@ ${slide(`
         <div class="sc-label">Completado</div>
         <div class="sc-value">${coveragePct}%</div>
         <div class="sc-hint">${evaluationCoverage.completed} de ${evaluationCoverage.total} ev.</div>
-        <div class="pb"><div class="pb-fill" style="width:${coveragePct}%;background:${coveragePct >= 80 ? "#22c55e" : coveragePct >= 50 ? "#f59e0b" : "#ef4444"}"></div></div>
+        <div class="pb"><div class="pb-fill" style="width:${coveragePct}%;background:${coveragePct >= 80 ? "#16A34A" : coveragePct >= 50 ? "#f59e0b" : "#ef4444"}"></div></div>
       </div>
       <div class="sc ${overduePlans > 0 ? "sc-warning" : ""}">
         <div class="sc-label">Planes activos</div>
@@ -1141,7 +1141,7 @@ function ScoreDistributionPanel({ employees = [] }) {
       { label: "Insuficiente", range: "1–2", minV: 0,    maxV: 2.005, color: "#f43f5e", bg: "rgba(244,63,94,0.10)",    border: "rgba(244,63,94,0.25)",   count: 0, pct: 0 },
       { label: "En desarrollo", range: "2–3", minV: 2.005, maxV: 3.005, color: "#fb923c", bg: "rgba(251,146,60,0.10)", border: "rgba(251,146,60,0.25)",  count: 0, pct: 0 },
       { label: "Esperado",     range: "3–4", minV: 3.005, maxV: 4.005, color: "#facc15", bg: "rgba(250,204,21,0.10)",  border: "rgba(250,204,21,0.25)",   count: 0, pct: 0 },
-      { label: "Destacado",    range: "4–5", minV: 4.005, maxV: 5.01,  color: "#34d399", bg: "rgba(52,211,153,0.10)",  border: "rgba(52,211,153,0.25)",  count: 0, pct: 0 },
+      { label: "Destacado",    range: "4–5", minV: 4.005, maxV: 5.01,  color: "#16A34A", bg: "rgba(52,211,153,0.10)",  border: "rgba(52,211,153,0.25)",  count: 0, pct: 0 },
     ];
     const scored = employees.filter(e => e.averageScore > 0);
     scored.forEach(e => {
@@ -1168,7 +1168,7 @@ function TeamScatterPlot({ employees = [] }) {
     area: e.area || "",
   }));
   if (!data.length) return <p className="text-sm text-[#7a9aaa]">Sin datos suficientes.</p>;
-  const getColor = x => x >= 4 ? "#34d399" : x >= 3 ? "#facc15" : "#f43f5e";
+  const getColor = x => x >= 4 ? "#16A34A" : x >= 3 ? "#facc15" : "#f43f5e";
   return (
     <ResponsiveContainer width="100%" height={220}>
       <ScatterChart margin={{ top: 10, right: 10, bottom: 28, left: 0 }}>
@@ -1250,7 +1250,7 @@ function NineBoxGrid({ employees = [] }) {
           { pMin:3.5,pMax:5, gMin:3.33, gMax:5,   label:"⭐ Estrella",    sub:"Rendimiento y\npotencial altos",   color:"#14b8a6" },
           { pMin:0, pMax:2, gMin:1.66, gMax:3.33, label:"Bajo riesgo",    sub:"Necesita apoyo\nactivo",            color:"#f43f5e" },
           { pMin:2, pMax:3.5, gMin:1.66, gMax:3.33,label:"Núcleo",        sub:"Confiable, estable",               color:"#facc15" },
-          { pMin:3.5,pMax:5, gMin:1.66, gMax:3.33, label:"Alto desempeño",sub:"Sólido, puede crecer\nmás",        color:"#34d399" },
+          { pMin:3.5,pMax:5, gMin:1.66, gMax:3.33, label:"Alto desempeño",sub:"Sólido, puede crecer\nmás",        color:"#16A34A" },
           { pMin:0, pMax:2, gMin:0, gMax:1.66,    label:"Riesgo crítico", sub:"Bajo en ambos\nejes",              color:"#fb923c" },
           { pMin:2, pMax:3.5, gMin:0, gMax:1.66,  label:"Aprendiz",      sub:"Bajo engagement,\npotencial medio", color:"#94a3b8" },
           { pMin:3.5,pMax:5, gMin:0, gMax:1.66,   label:"Experto",       sub:"Gran desempeño,\nbajo engagement",  color:"#818cf8" },
@@ -2004,7 +2004,7 @@ function ExecutiveReportPage() {
               const cards = [
                 { val: (s.averageScore ?? 0).toFixed(1), lbl: "Promedio general", color: scColor(s.averageScore) },
                 { val: s.evaluatedCount ?? s.completedEvaluations ?? "—", lbl: "Evaluados", color: "#a78bfa" },
-                { val: s.scoreExcepcional ?? "—", lbl: "Nivel Excepcional ≥4.5", color: "#4ade80" },
+                { val: s.scoreExcepcional ?? "—", lbl: "Nivel Excepcional ≥4.5", color: "#16A34A" },
                 { val: s.scoreNeedsAttention ?? "—", lbl: "Necesitan atención <2.5", color: "#f87171" },
               ];
               return (
@@ -2335,7 +2335,7 @@ function ExecutiveReportPage() {
                               {v != null ? (
                                 <div>
                                   <span style={{ fontWeight:700, color:scColor(v), fontSize:13 }}>{v.toFixed(1)}</span>
-                                  <span style={{ fontSize:9, marginLeft:4, color: diff >= 0 ? "#4ade80" : "#f87171" }}>
+                                  <span style={{ fontSize:9, marginLeft:4, color: diff >= 0 ? "#16A34A" : "#f87171" }}>
                                     {diff >= 0 ? "+" : ""}{diff}
                                   </span>
                                 </div>
@@ -2384,7 +2384,7 @@ function ExecutiveReportPage() {
                         if (!avgs.length) return null;
                         const gAvg = avgs.reduce((a,b)=>a+b,0)/avgs.length;
                         const brecha = (Math.max(...avgs) - Math.min(...avgs)).toFixed(1);
-                        const bColor = brecha >= 1.5 ? "#f87171" : brecha >= 0.8 ? "#facc15" : "#4ade80";
+                        const bColor = brecha >= 1.5 ? "#f87171" : brecha >= 0.8 ? "#facc15" : "#16A34A";
                         const minV = Math.min(...avgs), maxV = Math.max(...avgs);
                         return (
                           <tr key={id} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
@@ -2400,7 +2400,7 @@ function ExecutiveReportPage() {
                                     </div>
                                     <span style={{ fontWeight:800, color:scColor(s.avg), fontSize:11 }}>{s.avg.toFixed(1)}</span>
                                     {s.avg === minV && brecha > 0.3 && <span style={{ fontSize:9, color:"#f87171" }}>▼</span>}
-                                    {s.avg === maxV && brecha > 0.3 && <span style={{ fontSize:9, color:"#4ade80" }}>▲</span>}
+                                    {s.avg === maxV && brecha > 0.3 && <span style={{ fontSize:9, color:"#16A34A" }}>▲</span>}
                                   </div>
                                 </td>
                               );

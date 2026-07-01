@@ -889,7 +889,7 @@ export default function DashboardPage() {
                   <tbody className="divide-y divide-white/[0.05]">
                     {reportStats.recentEvaluations.map((e, i) => {
                       const score = Number(e.finalScore);
-                      const scoreColor = score >= 4.5 ? "#34d399" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#7a9aaa";
+                      const scoreColor = score >= 4.5 ? "#16A34A" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#7a9aaa";
                       return (
                         <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                           <td className="px-5 py-3 font-medium text-white/90">{e.employeeName}</td>

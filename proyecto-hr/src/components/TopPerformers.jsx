@@ -43,7 +43,7 @@ export default function TopPerformers({ companyId, cycleId }) {
           </div>
           <div className="text-right shrink-0">
             <span className={`text-sm font-bold ${
-              p.score >= 4 ? "text-[#22c55e]" : p.score >= 3 ? "text-[#f59e0b]" : "text-[#ef4444]"
+              p.score >= 4 ? "text-[#16A34A]" : p.score >= 3 ? "text-[#f59e0b]" : "text-[#ef4444]"
             }`}>
               {typeof p.score === "number" ? p.score.toFixed(1) : p.score}
             </span>

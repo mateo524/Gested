@@ -77,7 +77,7 @@ const TIPO_COLOR = {
 
 function ScoreMeter({ score, max = 5 }) {
   const pct = score > 0 ? Math.min(100, (score / max) * 100) : 0;
-  const color = score >= 4 ? "#34d399" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#3d5a6a";
+  const color = score >= 4 ? "#16A34A" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#3d5a6a";
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
