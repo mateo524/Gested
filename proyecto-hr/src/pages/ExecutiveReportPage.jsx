@@ -1402,9 +1402,12 @@ function ExecutiveReportPage() {
     if (!ANALYTICS_TABS.includes(activeTab) || !token || !canViewExecutive) return;
     if (analyticsData || loadingAnalytics) return;
     setLoadingAnalytics(true);
-    apiFetch(`/reports/analytics${filters.cycleId ? `?cycleId=${filters.cycleId}` : ""}`, { token })
-      .then((d) => { if (d?.ok !== false) setAnalyticsData(d); })
-      .catch(() => {})
+    const aParams = new URLSearchParams();
+    if (filters.cycleId) aParams.set("cycleId", filters.cycleId);
+    if (filters.department) aParams.set("department", filters.department);
+    apiFetch(`/reports/analytics?${aParams.toString()}`, { token })
+      .then((d) => { setAnalyticsData(d?.ok !== false ? d : { _error: true, personas: [], grupos: [], competencias: [] }); })
+      .catch(() => { setAnalyticsData({ _error: true, personas: [], grupos: [], competencias: [] }); })
       .finally(() => setLoadingAnalytics(false));
   }, [activeTab, analyticsData, loadingAnalytics, token, canViewExecutive, filters.cycleId]);
 
@@ -1412,9 +1415,12 @@ function ExecutiveReportPage() {
     if (activeTab !== "dashboard" || !token || !canViewExecutive) return;
     if (summaryData || loadingSummary) return;
     setLoadingSummary(true);
-    apiFetch(`/reports/summary${filters.cycleId ? `?cycleId=${filters.cycleId}` : ""}`, { token })
-      .then((d) => { if (d?.ok !== false) setSummaryData(d); })
-      .catch(() => {})
+    const sParams = new URLSearchParams();
+    if (filters.cycleId) sParams.set("cycleId", filters.cycleId);
+    if (filters.department) sParams.set("department", filters.department);
+    apiFetch(`/reports/summary?${sParams.toString()}`, { token })
+      .then((d) => { setSummaryData(d?.ok !== false ? d : { _error: true }); })
+      .catch(() => { setSummaryData({ _error: true }); })
       .finally(() => setLoadingSummary(false));
   }, [activeTab, summaryData, loadingSummary, token, canViewExecutive, filters.cycleId]);
 
@@ -1536,6 +1542,9 @@ function ExecutiveReportPage() {
     filterDebounceRef.current = setTimeout(() => {
       filtersRef.current = { ...draftFilters };
       setFilters({ ...draftFilters });
+      // Reset cached data so they re-fetch with new filters
+      setAnalyticsData(null);
+      setSummaryData(null);
       try { localStorage.setItem(FILTERS_STORAGE_KEY, JSON.stringify(draftFilters)); } catch (_) { /* ignore */ }
       loadOverview();
     }, 300);

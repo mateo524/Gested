@@ -1012,19 +1012,32 @@ router.get(
     try {
       const { companyId } = await resolveCompanyScope(req);
       const cycleId = req.query.cycleId || null;
-      const cacheKey = `reports-summary:${String(companyId)}:${cycleId || "all"}`;
+      const schoolId = req.scope?.schoolId ? String(req.scope.schoolId) : null;
+      const department = req.query.department || null;
+      const cacheKey = `reports-summary:${String(companyId)}:${schoolId || "all"}:${cycleId || "all"}:${department || "all"}`;
 
       const result = await cacheGetOrFetch(cacheKey, async () => {
+        const empFilter = { companyId };
+        if (schoolId) empFilter.schoolId = schoolId;
+        if (department) empFilter.area = department;
+
         const evalMatch = { companyId, estado: { $in: ["REVISADA", "CERRADA"] } };
         if (cycleId) evalMatch.cycleId = cycleId;
+        if (schoolId) evalMatch.schoolId = schoolId;
+
+        // Restrict evaluations to employees in scope
+        const scopedEmpIds = schoolId || department
+          ? (await Employee.find(empFilter, "_id").lean()).map(e => e._id)
+          : null;
+        if (scopedEmpIds) evalMatch.employeeId = { $in: scopedEmpIds };
 
         const [employeesTotal, evaluations, competencyAvgs, recentEvals, competencyByAreaRaw] = await Promise.all([
-          Employee.countDocuments({ companyId }),
+          Employee.countDocuments(empFilter),
           Evaluation.find(evalMatch, "employeeId resultadoFinal tipo").lean(),
           EvaluationScore.aggregate([
             { $lookup: { from: "evaluations", localField: "evaluationId", foreignField: "_id", as: "ev" } },
             { $unwind: "$ev" },
-            { $match: { "ev.companyId": companyId, "ev.estado": { $in: ["REVISADA", "CERRADA"] } } },
+            { $match: { "ev.companyId": companyId, "ev.estado": { $in: ["REVISADA", "CERRADA"] }, ...(scopedEmpIds ? { "ev.employeeId": { $in: scopedEmpIds } } : {}) } },
             { $lookup: { from: "metrics", localField: "metricId", foreignField: "_id", as: "metric" } },
             { $unwind: "$metric" },
             { $lookup: { from: "competencies", localField: "metric.competencyId", foreignField: "_id", as: "comp" } },
@@ -1042,7 +1055,7 @@ router.get(
           EvaluationScore.aggregate([
             { $lookup: { from: "evaluations", localField: "evaluationId", foreignField: "_id", as: "ev" } },
             { $unwind: "$ev" },
-            { $match: { "ev.companyId": companyId, "ev.estado": { $in: ["REVISADA", "CERRADA"] }, "ev.tipo": "FINAL" } },
+            { $match: { "ev.companyId": companyId, "ev.estado": { $in: ["REVISADA", "CERRADA"] }, "ev.tipo": "FINAL", ...(scopedEmpIds ? { "ev.employeeId": { $in: scopedEmpIds } } : {}) } },
             { $lookup: { from: "employees", localField: "ev.employeeId", foreignField: "_id", as: "emp" } },
             { $unwind: { path: "$emp", preserveNullAndEmptyArrays: true } },
             { $lookup: { from: "metrics", localField: "metricId", foreignField: "_id", as: "metric" } },
@@ -1113,11 +1126,16 @@ router.get(
     try {
       const { companyId } = await resolveCompanyScope(req);
       const cycleId = req.query.cycleId || null;
-      const cacheKey = `reports-by-level:${String(companyId)}:${cycleId || "all"}`;
+      const schoolId = req.scope?.schoolId ? String(req.scope.schoolId) : null;
+      const department = req.query.department || null;
+      const cacheKey = `reports-by-level:${String(companyId)}:${schoolId || "all"}:${cycleId || "all"}:${department || "all"}`;
 
       const result = await cacheGetOrFetch(cacheKey, async () => {
+        const empMatch = { companyId };
+        if (schoolId) empMatch.schoolId = schoolId;
+        if (department) empMatch.area = department;
         const data = await Employee.aggregate([
-          { $match: { companyId } },
+          { $match: empMatch },
           {
             $lookup: {
               from: "evaluations",
@@ -1177,10 +1195,15 @@ router.get(
     try {
       const { companyId } = await resolveCompanyScope(req);
       const cycleId = req.query.cycleId || null;
-      const cacheKey = `reports-analytics:${String(companyId)}:${cycleId || "all"}`;
+      const schoolId = req.scope?.schoolId ? String(req.scope.schoolId) : null;
+      const department = req.query.department || null;
+      const cacheKey = `reports-analytics:${String(companyId)}:${schoolId || "all"}:${cycleId || "all"}:${department || "all"}`;
 
       const result = await cacheGetOrFetch(cacheKey, async () => {
-        const employees = await Employee.find({ companyId, activo: true })
+        const empFilter = { companyId, activo: true };
+        if (schoolId) empFilter.schoolId = schoolId;
+        if (department) empFilter.area = department;
+        const employees = await Employee.find(empFilter)
           .select("nombre apellido cargo area managerId")
           .lean();
 
@@ -1191,6 +1214,8 @@ router.get(
 
         const evalMatch = { companyId, estado: { $in: ["REVISADA", "CERRADA"] } };
         if (cycleId) evalMatch.cycleId = cycleId;
+        if (schoolId) evalMatch.schoolId = schoolId;
+        if (schoolId || department) evalMatch.employeeId = { $in: employees.map(e => e._id) };
 
         const [evaluations, scores] = await (async () => {
           const evs = await Evaluation.find(evalMatch).select("employeeId tipo resultadoFinal").lean();
