@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
+import { perfColor, AREA_PALETTE as AREA_PAL } from "../lib/colors";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -77,7 +78,7 @@ const TIPO_COLOR = {
 
 function ScoreMeter({ score, max = 5 }) {
   const pct = score > 0 ? Math.min(100, (score / max) * 100) : 0;
-  const color = score >= 4 ? "#16A34A" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#3d5a6a";
+  const color = score > 0 ? perfColor(score) : "#3d5a6a";
   return (
     <div className="space-y-1.5">
       <div className="flex items-baseline justify-between">
@@ -280,15 +281,10 @@ function ConnectorLines({ containerRef, treeRef, collapsedIds, scrollVersion }) 
 
 // ─── area badge colors ───────────────────────────────────────────────────────
 
-const AREA_PALETTE = [
-  "#3B82F6","#0EA5E9","#EC4899","#A855F7","#0F766E",
-  "#6366F1","#64748B","#0891B2","#7C3AED","#0284C7",
-];
-
 function areaColor(area, areaList) {
   if (!area) return "#5e7d8e";
   const idx = areaList.indexOf(area);
-  return AREA_PALETTE[idx % AREA_PALETTE.length];
+  return AREA_PAL[idx % AREA_PAL.length];
 }
 
 // ─── org node card ───────────────────────────────────────────────────────────

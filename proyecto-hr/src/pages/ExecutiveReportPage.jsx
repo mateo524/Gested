@@ -24,6 +24,7 @@ import { useToast } from "../context/ToastContext";
 import { useView } from "../context/ViewContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { isEmployeeUser } from "../lib/roleHelpers";
+import { perfColor, perfLabel, PERF_PALETTE, PERF_COLORS, areaColor as areaColorFn, AREA_PALETTE } from "../lib/colors";
 import CollapsibleList from "../components/CollapsibleList";
 import OrgChartPage from "./OrgChartPage";
 
@@ -83,28 +84,14 @@ function escHtml(str) {
   return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-const AREA_COLORS = ["#3B82F6","#0EA5E9","#EC4899","#A855F7","#0F766E","#6366F1","#64748B","#0891B2"];
-function areaColor(idx) { return AREA_COLORS[idx % AREA_COLORS.length]; }
+function areaColor(idx) { return AREA_PALETTE[idx % AREA_PALETTE.length]; }
 
-function scColor(v) {
-  if (!v) return "#6b8fa0";
-  if (v <= 1) return "#f87171";
-  if (v <= 2) return "#fb923c";
-  if (v <= 3) return "#facc15";
-  if (v <= 4) return "#2dd4bf";
-  return "#16A34A";
-}
-function scLabel(v) {
-  if (!v) return "Sin datos";
-  if (v <= 1) return "Insatisfactorio";
-  if (v <= 2) return "Mínimo";
-  if (v <= 3) return "En Desarrollo";
-  if (v <= 4) return "Competente";
-  return "Excepcional";
-}
+// Aliases to centralized color functions
+const scColor = perfColor;
+const scLabel = perfLabel;
 
 function ScorePill({ v, small }) {
-  const c = scColor(v);
+  const c = perfColor(v);
   const sz = small ? { fontSize: 9, padding: "1px 5px", minWidth: 28 } : { fontSize: 10, padding: "2px 7px", minWidth: 34 };
   return (
     <span style={{ background: c + "20", color: c, border: `1px solid ${c}50`, fontWeight: 800, borderRadius: 6, display: "inline-block", textAlign: "center", ...sz }}>
@@ -114,7 +101,7 @@ function ScorePill({ v, small }) {
 }
 
 function DistBars({ dist }) {
-  const dc = ["#f87171","#fb923c","#facc15","#2dd4bf","#16A34A"];
+  const dc = PERF_PALETTE;
   const max = Math.max(...dist, 1);
   return (
     <div style={{ display:"flex", gap:3, alignItems:"flex-end" }}>
@@ -464,31 +451,11 @@ function buildExecutivePdf({ orgName, cycleName, execSummaryLines, execSignals, 
 
   const maxDeptScore = Math.max(...deptRows.map(d => d.averageScore), 1);
 
-  function scoreColor(score) {
-    if (score >= 4) return "#15803d";
-    if (score >= 3) return "#b45309";
-    return "#b91c1c";
-  }
-  function scoreBg(score) {
-    if (score >= 4) return "#f0fdf4";
-    if (score >= 3) return "#fffbeb";
-    return "#fef2f2";
-  }
-  function scoreBorder(score) {
-    if (score >= 4) return "#bbf7d0";
-    if (score >= 3) return "#fde68a";
-    return "#fecaca";
-  }
-  function scoreLabel(score) {
-    if (score >= 4) return "Destacado";
-    if (score >= 3) return "Esperado";
-    return "En riesgo";
-  }
-  function barColor(score) {
-    if (score >= 4) return "#16A34A";
-    if (score >= 3) return "#f59e0b";
-    return "#ef4444";
-  }
+  function scoreColor(score) { return perfColor(score); }
+  function scoreBg(score) { return perfColor(score) + "22"; }
+  function scoreBorder(score) { return perfColor(score) + "55"; }
+  function scoreLabel(score) { return perfLabel(score); }
+  function barColor(score) { return perfColor(score); }
 
   // Build next steps based on data
   const nextSteps = [];
@@ -1138,10 +1105,10 @@ function ScoreBand({ band }) {
 function ScoreDistributionPanel({ employees = [] }) {
   const bands = useMemo(() => {
     const b = [
-      { label: "Insuficiente", range: "1–2", minV: 0,    maxV: 2.005, color: "#f43f5e", bg: "rgba(244,63,94,0.10)",    border: "rgba(244,63,94,0.25)",   count: 0, pct: 0 },
-      { label: "En desarrollo", range: "2–3", minV: 2.005, maxV: 3.005, color: "#fb923c", bg: "rgba(251,146,60,0.10)", border: "rgba(251,146,60,0.25)",  count: 0, pct: 0 },
-      { label: "Esperado",     range: "3–4", minV: 3.005, maxV: 4.005, color: "#facc15", bg: "rgba(250,204,21,0.10)",  border: "rgba(250,204,21,0.25)",   count: 0, pct: 0 },
-      { label: "Destacado",    range: "4–5", minV: 4.005, maxV: 5.01,  color: "#16A34A", bg: "rgba(52,211,153,0.10)",  border: "rgba(52,211,153,0.25)",  count: 0, pct: 0 },
+      { label: "Insuficiente", range: "1–2", minV: 0,    maxV: 2.005, color: PERF_COLORS.N1, bg: PERF_COLORS.N1+"1a", border: PERF_COLORS.N1+"40", count: 0, pct: 0 },
+      { label: "En desarrollo", range: "2–3", minV: 2.005, maxV: 3.005, color: PERF_COLORS.N3, bg: PERF_COLORS.N3+"1a", border: PERF_COLORS.N3+"40", count: 0, pct: 0 },
+      { label: "Esperado",     range: "3–4", minV: 3.005, maxV: 4.005, color: PERF_COLORS.N4, bg: PERF_COLORS.N4+"1a", border: PERF_COLORS.N4+"40", count: 0, pct: 0 },
+      { label: "Destacado",    range: "4–5", minV: 4.005, maxV: 5.01,  color: PERF_COLORS.N5, bg: PERF_COLORS.N5+"1a", border: PERF_COLORS.N5+"40", count: 0, pct: 0 },
     ];
     const scored = employees.filter(e => e.averageScore > 0);
     scored.forEach(e => {
@@ -1168,7 +1135,7 @@ function TeamScatterPlot({ employees = [] }) {
     area: e.area || "",
   }));
   if (!data.length) return <p className="text-sm text-[#7a9aaa]">Sin datos suficientes.</p>;
-  const getColor = x => x >= 4 ? "#16A34A" : x >= 3 ? "#facc15" : "#f43f5e";
+  const getColor = x => perfColor(x);
   return (
     <ResponsiveContainer width="100%" height={220}>
       <ScatterChart margin={{ top: 10, right: 10, bottom: 28, left: 0 }}>
@@ -2014,8 +1981,8 @@ function ExecutiveReportPage() {
               const cards = [
                 { val: (s.averageScore ?? 0).toFixed(1), lbl: "Promedio general", color: scColor(s.averageScore) },
                 { val: s.evaluatedCount ?? s.completedEvaluations ?? "—", lbl: "Evaluados", color: "#a78bfa" },
-                { val: s.scoreExcepcional ?? "—", lbl: "Nivel Excepcional ≥4.5", color: "#16A34A" },
-                { val: s.scoreNeedsAttention ?? "—", lbl: "Necesitan atención <2.5", color: "#f87171" },
+                { val: s.scoreExcepcional ?? "—", lbl: "Nivel Excepcional ≥4.5", color: PERF_COLORS.N5 },
+                { val: s.scoreNeedsAttention ?? "—", lbl: "Necesitan atención <2.5", color: PERF_COLORS.N1 },
               ];
               return (
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(150px,1fr))", gap:10 }}>
@@ -2124,7 +2091,7 @@ function ExecutiveReportPage() {
 
                   {/* N scale reference */}
                   <div style={{ display:"flex", gap:8, marginTop:16, flexWrap:"wrap" }}>
-                    {[["#FD6668","N1 Insatisfactorio"],["#FF883E","N2 Mínimo"],["#FCC72F","N3 En desarrollo"],["#00CEB7","N4 Competente"],["#16A34A","N5 Excepcional"]].map(([col, lbl]) => (
+                    {[[PERF_COLORS.N1,"N1 Insatisfactorio"],[PERF_COLORS.N2,"N2 Mínimo"],[PERF_COLORS.N3,"N3 En desarrollo"],[PERF_COLORS.N4,"N4 Competente"],[PERF_COLORS.N5,"N5 Excepcional"]].map(([col, lbl]) => (
                       <div key={lbl} style={{ display:"flex", alignItems:"center", gap:4 }}>
                         <div style={{ width:8, height:8, borderRadius:2, background:col }} />
                         <span style={{ fontSize:9, color:"#7a9aaa" }}>{lbl}</span>
@@ -2407,7 +2374,7 @@ function ExecutiveReportPage() {
                               {v != null ? (
                                 <div>
                                   <span style={{ fontWeight:700, color:scColor(v), fontSize:13 }}>{v.toFixed(1)}</span>
-                                  <span style={{ fontSize:9, marginLeft:4, color: diff >= 0 ? "#16A34A" : "#f87171" }}>
+                                  <span style={{ fontSize:9, marginLeft:4, color: diff >= 0 ? PERF_COLORS.N5 : PERF_COLORS.N1 }}>
                                     {diff >= 0 ? "+" : ""}{diff}
                                   </span>
                                 </div>
@@ -2456,7 +2423,7 @@ function ExecutiveReportPage() {
                         if (!avgs.length) return null;
                         const gAvg = avgs.reduce((a,b)=>a+b,0)/avgs.length;
                         const brecha = (Math.max(...avgs) - Math.min(...avgs)).toFixed(1);
-                        const bColor = brecha >= 1.5 ? "#f87171" : brecha >= 0.8 ? "#facc15" : "#16A34A";
+                        const bColor = brecha >= 1.5 ? PERF_COLORS.N1 : brecha >= 0.8 ? PERF_COLORS.N3 : PERF_COLORS.N5;
                         const minV = Math.min(...avgs), maxV = Math.max(...avgs);
                         return (
                           <tr key={id} style={{ borderBottom:"1px solid rgba(255,255,255,0.05)" }}>
@@ -2594,7 +2561,7 @@ function ExecutiveReportPage() {
                   {recs.map((r, idx) => {
                     const borderColor = r.sev === "crit" ? "rgba(239,68,68,.3)" : r.sev === "warn" ? "rgba(249,115,22,.3)" : "rgba(20,184,166,.2)";
                     const bg = r.sev === "crit" ? "rgba(239,68,68,.08)" : r.sev === "warn" ? "rgba(249,115,22,.08)" : "rgba(20,184,166,.05)";
-                    const actionColor = r.sev === "crit" ? "#f87171" : r.sev === "warn" ? "#fb923c" : "#14b8a6";
+                    const actionColor = r.sev === "crit" ? PERF_COLORS.N1 : r.sev === "warn" ? PERF_COLORS.N2 : "#14b8a6";
                     return (
                       <div key={idx} className="rounded-2xl p-4" style={{ border:`1px solid ${borderColor}`, background:bg }}>
                         <div style={{ display:"flex", gap:8, marginBottom:7 }}>

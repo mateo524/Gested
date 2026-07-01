@@ -1,15 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../lib/api";
-
-function scoreColor(score) {
-  if (score === null || score === undefined) return "bg-white/5 text-[#7a9aaa]";
-  if (score <= 2) return "bg-rose-500/20 text-rose-200";
-  if (score <= 2.9) return "bg-amber-500/20 text-amber-200";
-  if (score <= 3.9) return "bg-amber-400/20 text-amber-100";
-  if (score <= 4.9) return "bg-teal-500/20 text-teal-200";
-  return "bg-emerald-500/20 text-emerald-200";
-}
+import { perfColorTw as scoreColor } from "../lib/colors";
 
 function rowQuadrant(average) {
   if (average === null || average === undefined) return null;

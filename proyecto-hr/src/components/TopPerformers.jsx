@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { apiFetch } from "../lib/api";
 import { useAuth } from "../context/AuthContext";
+import { perfColor } from "../lib/colors";
 
 export default function TopPerformers({ companyId, cycleId }) {
   const { token } = useAuth();
@@ -42,9 +43,7 @@ export default function TopPerformers({ companyId, cycleId }) {
             <p className="text-xs text-[#6a8ea0] truncate">{p.area || p.department || ""}</p>
           </div>
           <div className="text-right shrink-0">
-            <span className={`text-sm font-bold ${
-              p.score >= 4 ? "text-[#16A34A]" : p.score >= 3 ? "text-[#f59e0b]" : "text-[#ef4444]"
-            }`}>
+            <span className="text-sm font-bold" style={{ color: perfColor(p.score) }}>
               {typeof p.score === "number" ? p.score.toFixed(1) : p.score}
             </span>
             <p className="text-[10px] text-[#6a8ea0]">/ 5</p>

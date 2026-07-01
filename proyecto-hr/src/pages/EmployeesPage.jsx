@@ -4,6 +4,7 @@ import { useToast } from "../context/ToastContext";
 import { apiFetch, apiUrl } from "../lib/api";
 import { useView } from "../context/ViewContext";
 import { EmptyState, ErrorState, LoadingState } from "../components/AppStates";
+import { AREA_PALETTE } from "../lib/colors";
 import ConfirmDialog from "../components/ConfirmDialog";
 import {
   LineChart,
@@ -19,16 +20,7 @@ import {
 } from "recharts";
 
 // Chart color palette for competency lines
-const CHART_COLORS = [
-  "#3B82F6", // blue
-  "#0EA5E9", // sky
-  "#EC4899", // pink
-  "#A855F7", // purple
-  "#0F766E", // teal dark
-  "#6366F1", // indigo
-  "#64748B", // slate
-  "#0891B2", // cyan
-];
+const CHART_COLORS = AREA_PALETTE;
 
 const PAGE_SIZE = 10;
 

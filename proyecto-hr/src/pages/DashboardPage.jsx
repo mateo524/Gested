@@ -3,6 +3,7 @@ import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { apiFetch, apiUrl } from "../lib/api";
+import { perfColor, PERF_COLORS, PERF_PALETTE } from "../lib/colors";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import { useView } from "../context/ViewContext";
 import OnboardingChecklist from "../components/OnboardingChecklist";
@@ -849,7 +850,7 @@ export default function DashboardPage() {
                     {reportStats.scoreDistribution.map((d) => {
                       const maxCount = Math.max(...reportStats.scoreDistribution.map((x) => x.count), 1);
                       const heightPct = Math.max(4, (d.count / maxCount) * 100);
-                      const color = d.bucket <= 2 ? "#f87171" : d.bucket === 3 ? "#fbbf24" : d.bucket === 4 ? "#34d399" : "#14b8a6";
+                      const color = PERF_PALETTE[d.bucket - 1] || PERF_COLORS.N5;
                       return (
                         <div key={d.bucket} className="flex flex-1 flex-col items-center gap-1">
                           <span className="text-[10px] font-semibold text-white/80">{d.count}</span>
@@ -889,7 +890,7 @@ export default function DashboardPage() {
                   <tbody className="divide-y divide-white/[0.05]">
                     {reportStats.recentEvaluations.map((e, i) => {
                       const score = Number(e.finalScore);
-                      const scoreColor = score >= 4.5 ? "#16A34A" : score >= 3 ? "#fbbf24" : score > 0 ? "#f87171" : "#7a9aaa";
+                      const scoreColor = score > 0 ? perfColor(score) : "#7a9aaa";
                       return (
                         <tr key={i} className="hover:bg-white/[0.02] transition-colors">
                           <td className="px-5 py-3 font-medium text-white/90">{e.employeeName}</td>
