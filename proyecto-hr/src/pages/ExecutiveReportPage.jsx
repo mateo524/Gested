@@ -83,7 +83,7 @@ function escHtml(str) {
   return String(str || "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-const AREA_COLORS = ["#3B82F6","#10B981","#F59E0B","#EC4899","#8B5CF6","#14B8A6","#F97316","#06B6D4"];
+const AREA_COLORS = ["#3B82F6","#0EA5E9","#EC4899","#A855F7","#0F766E","#6366F1","#64748B","#0891B2"];
 function areaColor(idx) { return AREA_COLORS[idx % AREA_COLORS.length]; }
 
 function scColor(v) {

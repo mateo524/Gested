@@ -281,8 +281,8 @@ function ConnectorLines({ containerRef, treeRef, collapsedIds, scrollVersion }) 
 // ─── area badge colors ───────────────────────────────────────────────────────
 
 const AREA_PALETTE = [
-  "#818cf8","#34d399","#f59e0b","#38bdf8","#f472b6",
-  "#a78bfa","#fb923c","#4ade80","#e879f9","#22d3ee",
+  "#3B82F6","#0EA5E9","#EC4899","#A855F7","#0F766E",
+  "#6366F1","#64748B","#0891B2","#7C3AED","#0284C7",
 ];
 
 function areaColor(area, areaList) {

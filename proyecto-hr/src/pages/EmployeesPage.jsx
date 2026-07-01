@@ -20,14 +20,14 @@ import {
 
 // Chart color palette for competency lines
 const CHART_COLORS = [
-  "#14b8a6", // teal
-  "#60a5fa", // blue
-  "#f472b6", // pink
-  "#a78bfa", // violet
-  "#fb923c", // orange
-  "#34d399", // emerald
-  "#fbbf24", // amber
-  "#f87171", // red
+  "#3B82F6", // blue
+  "#0EA5E9", // sky
+  "#EC4899", // pink
+  "#A855F7", // purple
+  "#0F766E", // teal dark
+  "#6366F1", // indigo
+  "#64748B", // slate
+  "#0891B2", // cyan
 ];
 
 const PAGE_SIZE = 10;
