@@ -1361,6 +1361,7 @@ function ExecutiveReportPage() {
   const [loadingAnalytics, setLoadingAnalytics] = useState(false);
   const [summaryData, setSummaryData] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [dashSelectedArea, setDashSelectedArea] = useState("");
   const [personaSearch, setPersonaSearch] = useState("");
   const [personaFilterArea, setPersonaFilterArea] = useState("");
   const [selectedGrafTabs, setSelectedGrafTabs] = useState(new Set([0]));
@@ -2019,49 +2020,111 @@ function ExecutiveReportPage() {
               );
             })()}
 
-            {/* Competency bars + Distribution */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:12 }}>
-              {/* Competency bars */}
-              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>Promedio por competencia</div>
-                {Array.isArray(summaryData?.competencyAverages) && summaryData.competencyAverages.length > 0 ? (
-                  summaryData.competencyAverages.map((c) => {
-                    const pct = Math.round((c.avg / 5) * 100);
-                    const color = scColor(c.avg);
-                    return (
-                      <div key={c.nombre} style={{ marginBottom:8 }}>
-                        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:3 }}>
-                          <span style={{ fontSize:11, color:"#c5d5de" }}>{c.nombre}</span>
-                          <span style={{ fontSize:11, fontWeight:800, color }}>{c.avg.toFixed(1)}</span>
-                        </div>
-                        <div style={{ height:6, borderRadius:4, background:"rgba(255,255,255,0.1)", overflow:"hidden" }}>
-                          <div style={{ width:`${pct}%`, height:"100%", background:color, borderRadius:4 }} />
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <p style={{ fontSize:11, color:"#7a9aaa" }}>Sin datos de competencias aún.</p>
-                )}
-              </div>
-
-              {/* Distribution */}
-              <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
-                <div style={{ fontSize:12, fontWeight:700, color:"#c5d5de", marginBottom:12 }}>Distribución general de desempeño</div>
-                {Array.isArray(summaryData?.scoreDistribution) ? (
-                  <>
-                    <DistBars dist={summaryData.scoreDistribution.map((d) => d.count)} />
-                    <div style={{ display:"flex", gap:4, marginTop:6, flexWrap:"wrap" }}>
-                      {summaryData.scoreDistribution.map((d) => (
-                        <span key={d.bucket} style={{ flex:1, textAlign:"center", fontSize:8, color:"#7a9aaa", minWidth:40 }}>{d.label}</span>
-                      ))}
+            {/* Competency comparison chart */}
+            {(() => {
+              const compAvgs = summaryData?.competencyAverages;
+              const byArea = summaryData?.competencyByArea || {};
+              const areas = Object.keys(byArea).sort();
+              if (!Array.isArray(compAvgs) || compAvgs.length === 0) return null;
+              const areaAvgs = dashSelectedArea ? byArea[dashSelectedArea] || {} : null;
+              const BAR_H = 22;
+              const GAP = dashSelectedArea ? 6 : 0;
+              return (
+                <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                  {/* Header + area selector */}
+                  <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:10, marginBottom:16 }}>
+                    <div style={{ fontSize:13, fontWeight:700, color:"#c5d5de" }}>Desempeño por competencia</div>
+                    <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                      {areas.length > 0 && (
+                        <select
+                          value={dashSelectedArea}
+                          onChange={e => setDashSelectedArea(e.target.value)}
+                          style={{ background:"#0d1e2b", border:"1px solid rgba(255,255,255,0.12)", borderRadius:8, color:"#c5d5de", fontSize:11, padding:"4px 10px", cursor:"pointer" }}
+                        >
+                          <option value="">— Área / Departamento —</option>
+                          {areas.map(a => <option key={a} value={a}>{a}</option>)}
+                        </select>
+                      )}
+                      {dashSelectedArea && (
+                        <button onClick={() => setDashSelectedArea("")} style={{ fontSize:10, color:"#7a9aaa", background:"none", border:"none", cursor:"pointer", textDecoration:"underline" }}>
+                          Limpiar
+                        </button>
+                      )}
                     </div>
-                  </>
-                ) : (
-                  <p style={{ fontSize:11, color:"#7a9aaa" }}>Sin datos de distribución aún.</p>
-                )}
-              </div>
-            </div>
+                  </div>
+
+                  {/* Legend */}
+                  {dashSelectedArea && (
+                    <div style={{ display:"flex", gap:16, marginBottom:14, flexWrap:"wrap" }}>
+                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                        <div style={{ width:12, height:12, borderRadius:3, background:"rgba(255,255,255,0.18)" }} />
+                        <span style={{ fontSize:10, color:"#7a9aaa" }}>Total institución</span>
+                      </div>
+                      <div style={{ display:"flex", alignItems:"center", gap:5 }}>
+                        <div style={{ width:12, height:12, borderRadius:3, background:"#3B82F6" }} />
+                        <span style={{ fontSize:10, color:"#7a9aaa" }}>{dashSelectedArea}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Bars */}
+                  <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
+                    {compAvgs.map((c) => {
+                      const totalColor = scColor(c.avg);
+                      const areaVal = areaAvgs ? (areaAvgs[c.nombre] ?? null) : null;
+                      const areaColor_ = areaVal != null ? scColor(areaVal) : null;
+                      return (
+                        <div key={c.nombre}>
+                          <div style={{ display:"flex", justifyContent:"space-between", marginBottom:4 }}>
+                            <span style={{ fontSize:11, color:"#c5d5de", fontWeight:600 }}>{c.nombre}</span>
+                            <div style={{ display:"flex", gap:10 }}>
+                              <span style={{ fontSize:11, fontWeight:800, color:totalColor }}>{c.avg.toFixed(1)}</span>
+                              {areaVal != null && <span style={{ fontSize:11, fontWeight:800, color:areaColor_ }}>{areaVal.toFixed(1)}</span>}
+                            </div>
+                          </div>
+                          <div style={{ display:"flex", flexDirection:"column", gap:GAP }}>
+                            {/* Total bar */}
+                            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                              {dashSelectedArea && <span style={{ fontSize:9, color:"#4a6070", width:54, textAlign:"right", flexShrink:0 }}>Total</span>}
+                              <div style={{ flex:1, height:BAR_H, borderRadius:6, background:"rgba(255,255,255,0.07)", overflow:"hidden", position:"relative" }}>
+                                <div style={{ width:`${(c.avg/5)*100}%`, height:"100%", background:totalColor, borderRadius:6, opacity:0.85, transition:"width 0.4s" }} />
+                                <span style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", fontSize:10, fontWeight:800, color:"#fff" }}>{scLabel(c.avg)}</span>
+                              </div>
+                            </div>
+                            {/* Area bar */}
+                            {dashSelectedArea && (
+                              <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+                                <span style={{ fontSize:9, color:"#4a6070", width:54, textAlign:"right", flexShrink:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{dashSelectedArea.split(" ")[0]}</span>
+                                <div style={{ flex:1, height:BAR_H, borderRadius:6, background:"rgba(255,255,255,0.04)", overflow:"hidden", position:"relative" }}>
+                                  {areaVal != null ? (
+                                    <>
+                                      <div style={{ width:`${(areaVal/5)*100}%`, height:"100%", background:areaColor_, borderRadius:6, transition:"width 0.4s" }} />
+                                      <span style={{ position:"absolute", right:8, top:"50%", transform:"translateY(-50%)", fontSize:10, fontWeight:800, color:"#fff" }}>{scLabel(areaVal)}</span>
+                                    </>
+                                  ) : (
+                                    <span style={{ position:"absolute", left:8, top:"50%", transform:"translateY(-50%)", fontSize:10, color:"#4a6070" }}>Sin datos</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* N scale reference */}
+                  <div style={{ display:"flex", gap:8, marginTop:16, flexWrap:"wrap" }}>
+                    {[["#FD6668","N1 Insatisfactorio"],["#FF883E","N2 Mínimo"],["#FCC72F","N3 En desarrollo"],["#00CEB7","N4 Competente"],["#16A34A","N5 Excepcional"]].map(([col, lbl]) => (
+                      <div key={lbl} style={{ display:"flex", alignItems:"center", gap:4 }}>
+                        <div style={{ width:8, height:8, borderRadius:2, background:col }} />
+                        <span style={{ fontSize:9, color:"#7a9aaa" }}>{lbl}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Recent evals table */}
             <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">

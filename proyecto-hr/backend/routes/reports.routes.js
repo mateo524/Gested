@@ -1018,7 +1018,7 @@ router.get(
         const evalMatch = { companyId, estado: { $in: ["REVISADA", "CERRADA"] } };
         if (cycleId) evalMatch.cycleId = cycleId;
 
-        const [employeesTotal, evaluations, competencyAvgs, recentEvals] = await Promise.all([
+        const [employeesTotal, evaluations, competencyAvgs, recentEvals, competencyByAreaRaw] = await Promise.all([
           Employee.countDocuments({ companyId }),
           Evaluation.find(evalMatch, "employeeId resultadoFinal tipo").lean(),
           EvaluationScore.aggregate([
@@ -1038,6 +1038,26 @@ router.get(
             .limit(12)
             .populate("employeeId", "nombre apellido cargo area")
             .lean(),
+          // competency averages broken down by area
+          EvaluationScore.aggregate([
+            { $lookup: { from: "evaluations", localField: "evaluationId", foreignField: "_id", as: "ev" } },
+            { $unwind: "$ev" },
+            { $match: { "ev.companyId": companyId, "ev.estado": { $in: ["REVISADA", "CERRADA"] }, "ev.tipo": "FINAL" } },
+            { $lookup: { from: "employees", localField: "ev.employeeId", foreignField: "_id", as: "emp" } },
+            { $unwind: { path: "$emp", preserveNullAndEmptyArrays: true } },
+            { $lookup: { from: "metrics", localField: "metricId", foreignField: "_id", as: "metric" } },
+            { $unwind: "$metric" },
+            { $lookup: { from: "competencies", localField: "metric.competencyId", foreignField: "_id", as: "comp" } },
+            { $unwind: { path: "$comp", preserveNullAndEmptyArrays: true } },
+            { $group: {
+              _id: { area: { $ifNull: ["$emp.area", "Sin área"] }, compId: "$comp._id" },
+              nombre: { $first: { $ifNull: ["$comp.nombre", "Sin competencia"] } },
+              total: { $sum: "$nivel" },
+              count: { $sum: 1 },
+            }},
+            { $project: { area: "$_id.area", nombre: 1, avg: { $divide: ["$total", "$count"] }, count: 1 } },
+            { $sort: { area: 1, nombre: 1 } },
+          ]),
         ]);
 
         const finalEvals = evaluations.filter((e) => e.tipo === "FINAL" && e.resultadoFinal > 0);
@@ -1059,11 +1079,20 @@ router.get(
           finalScore: e.resultadoFinal || 0,
         }));
 
+        // Build area → { compName → avg } map
+        const areaCompMap = {};
+        for (const row of competencyByAreaRaw) {
+          const area = row.area;
+          if (!areaCompMap[area]) areaCompMap[area] = {};
+          areaCompMap[area][row.nombre] = Math.round(row.avg * 100) / 100;
+        }
+
         return {
           stats: { employeesTotal, evaluatedCount, averageScore: Math.round(averageScore * 100) / 100, scoreExcepcional, scoreNeedsAttention },
           competencyAverages: competencyAvgs.map((c) => ({ nombre: c.nombre, avg: Math.round(c.avg * 100) / 100, count: c.count })),
           scoreDistribution,
           recentEvaluations,
+          competencyByArea: areaCompMap,
         };
       }, 300);
 
