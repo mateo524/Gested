@@ -16,7 +16,11 @@ import { logAudit } from "../utils/audit.js";
 const router = express.Router();
 const uploadsDir = path.resolve("uploads");
 
-await fs.mkdir(uploadsDir, { recursive: true });
+try {
+  await fs.mkdir(uploadsDir, { recursive: true });
+} catch {
+  /* read-only fs in production — uploads go through storageProvider */
+}
 
 const storage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, uploadsDir),

@@ -48,6 +48,8 @@ import dripRoutes from "./routes/drip.routes.js";
 import twoFactorRoutes from "./routes/twoFactor.routes.js";
 import pdfExportRoutes from "./routes/pdfExport.routes.js";
 import billingRoutes from "./routes/billing.routes.js";
+import excelSyncRoutes from "./routes/excelSync.routes.js";
+import { startSyncPoller } from "./services/syncPoller.js";
 import { ensureInitialAccess } from "./utils/bootstrap.js";
 import { ensureIndexes } from "./utils/ensureIndexes.js";
 import { buildHealthStatus } from "./utils/health.js";
@@ -301,6 +303,7 @@ app.use("/webhooks-config", webhooksConfigRoutes);
 app.use("/analytics", analyticsRoutes);
 app.use("/drip", dripRoutes);
 app.use("/billing", billingRoutes);
+app.use("/excel-sync", excelSyncRoutes);
 
 // Request logging — emits one structured log line per completed request.
 // Skips /health to avoid noise in Cloud Logging dashboards.
@@ -368,6 +371,8 @@ async function start() {
     app.listen(process.env.PORT || 3000, () => {
       console.log(`Servidor corriendo en puerto ${process.env.PORT || 3000}`);
     });
+
+    startSyncPoller();
   } catch (err) {
     console.log("Error MongoDB:", err);
     process.exit(1);

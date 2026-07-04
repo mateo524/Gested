@@ -13,7 +13,7 @@
 import "dotenv/config";
 import mongoose from "mongoose";
 import { ensureCompanyStructure } from "../utils/bootstrap.js";
-import { ensureEducationalRoles } from "../utils/bootstrap.js";
+import { ensureEducationalRoles } from "../utils/seedRolesPermissions.js";
 import Company from "../models/Company.js";
 
 const TENANT_COLLECTIONS = [

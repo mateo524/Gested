@@ -311,7 +311,7 @@ export function AuthProvider({ children }) {
       logout,
       sessionBootstrapping,
       isAuthenticated: !!token,
-      hasPermission: (perm) => user?.permisos?.includes(perm),
+      hasPermission: (perm) => user?.isSuperAdmin || user?.permisos?.includes(perm),
       modules: user?.modules ?? null,
       hasModule: (key) => {
         if (user?.isSuperAdmin) return true;
