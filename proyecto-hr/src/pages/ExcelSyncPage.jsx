@@ -164,8 +164,8 @@ function SourceSelector({ onSelect, loading }) {
 
   return (
     <div>
-      <h2 className="text-base font-semibold text-slate-800 mb-1">¿Desde dónde viene el Excel?</h2>
-      <p className="text-sm text-slate-500 mb-5">
+      <h2 className="text-base font-semibold text-[#E8EEF1] mb-1">¿Desde dónde viene el Excel?</h2>
+      <p className="text-sm text-slate-400 mb-5">
         Elegí la fuente de datos de empleados para tu empresa.
       </p>
       <div className="grid gap-3 sm:grid-cols-3">
@@ -177,18 +177,18 @@ function SourceSelector({ onSelect, loading }) {
               onClick={() => handleSelect(opt.key)}
               disabled={!!redirecting || loading}
               className={[
-                "relative flex flex-col gap-3 rounded-xl border p-4 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 focus-visible:ring-offset-1",
-                "cursor-pointer border-slate-200 bg-white hover:border-blue-400 hover:shadow-md disabled:cursor-wait disabled:opacity-60",
+                "relative flex flex-col gap-3 rounded-xl border p-4 text-left transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 focus-visible:ring-offset-1",
+                "cursor-pointer border-white/[0.12] bg-white/[0.04] hover:border-teal-500/50 hover:bg-white/[0.08] disabled:cursor-wait disabled:opacity-60",
               ].join(" ")}
             >
               <span className="text-2xl leading-none">{opt.icon}</span>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-slate-800 mb-0.5">{opt.title}</p>
-                <p className="text-xs text-slate-500 leading-relaxed">{opt.desc}</p>
+                <p className="text-sm font-semibold text-[#E8EEF1] mb-0.5">{opt.title}</p>
+                <p className="text-xs text-slate-400 leading-relaxed">{opt.desc}</p>
               </div>
               {isRedirecting && (
-                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80">
-                  <svg className="w-5 h-5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-[#0f2028]/80">
+                  <svg className="w-5 h-5 animate-spin text-teal-400" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
                 </div>
               )}
             </button>
@@ -201,7 +201,7 @@ function SourceSelector({ onSelect, loading }) {
 
 // ─── Step 2a — Cloud file picker (OneDrive / Google) ─────────────────────────
 
-function CloudFilePicker({ source, token, onFileSelected, onBack }) {
+function CloudFilePicker({ source, token, connId, onFileSelected, onBack }) {
   const [files, setFiles] = useState(null);
   const [loadingFiles, setLoadingFiles] = useState(true);
   const [selecting, setSelecting] = useState(null);
@@ -212,12 +212,11 @@ function CloudFilePicker({ source, token, onFileSelected, onBack }) {
       setLoadingFiles(true);
       setError(null);
       try {
+        const qs = connId ? `?connId=${connId}` : "";
         const path = source === "onedrive"
-          ? "/excel-sync/onedrive/files"
-          : "/excel-sync/google/files";
-        const res = await apiFetch(path, { token });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "Error al cargar archivos");
+          ? `/excel-sync/onedrive/files${qs}`
+          : `/excel-sync/google/files${qs}`;
+        const data = await apiFetch(path, { token });
         setFiles(data.files ?? []);
       } catch (err) {
         setError(err.message);
@@ -235,14 +234,12 @@ function CloudFilePicker({ source, token, onFileSelected, onBack }) {
       const path = source === "onedrive"
         ? "/excel-sync/onedrive/select-file"
         : "/excel-sync/google/select-file";
-      const res = await apiFetch(path, {
+      const data = await apiFetch(path, {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileId: file.id, fileName: file.name }),
+        body: JSON.stringify({ fileId: file.id, fileName: file.name, mimeType: file.mimeType, connId }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al seleccionar archivo");
       onFileSelected(data);
     } catch (err) {
       setError(err.message);
@@ -255,8 +252,8 @@ function CloudFilePicker({ source, token, onFileSelected, onBack }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-base font-semibold text-slate-800 mb-1">Seleccioná tu archivo</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-base font-semibold text-[#E8EEF1] mb-1">Seleccioná tu archivo</h2>
+        <p className="text-sm text-slate-400">
           Archivos de {sourceName} disponibles en tu cuenta.
         </p>
       </div>
@@ -270,33 +267,33 @@ function CloudFilePicker({ source, token, onFileSelected, onBack }) {
           ))}
         </div>
       ) : files && files.length === 0 ? (
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">
+        <div className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-4 py-8 text-center text-sm text-slate-400">
           No se encontraron archivos Excel en tu {sourceName}.
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 overflow-hidden">
+        <ul className="divide-y divide-white/[0.06] rounded-xl border border-white/[0.1] overflow-hidden">
           {(files ?? []).map((file) => (
             <li key={file.id}>
               <button
                 onClick={() => handleSelect(file)}
                 disabled={!!selecting}
-                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-blue-400"
+                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-white/[0.06] transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-inset focus-visible:ring-2 focus-visible:ring-teal-400"
               >
                 <span className="text-xl leading-none shrink-0">
                   {source === "google_sheets" ? "📊" : "📗"}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-800 truncate">{file.name}</p>
+                  <p className="text-sm font-medium text-[#E8EEF1] truncate">{file.name}</p>
                   {file.modifiedAt && (
-                    <p className="text-xs text-slate-400 mt-0.5">
+                    <p className="text-xs text-slate-500 mt-0.5">
                       Modificado {relativeTime(file.modifiedAt) ?? new Date(file.modifiedAt).toLocaleDateString("es-AR")}
                     </p>
                   )}
                 </div>
                 {selecting === file.id ? (
-                  <svg className="w-4 h-4 animate-spin text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
+                  <svg className="w-4 h-4 animate-spin text-teal-400 shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>
                 ) : (
-                  <svg className="w-4 h-4 text-slate-300 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                  <svg className="w-4 h-4 text-slate-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 )}
               </button>
             </li>
@@ -306,7 +303,7 @@ function CloudFilePicker({ source, token, onFileSelected, onBack }) {
 
       <button
         onClick={onBack}
-        className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+        className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-200 transition-colors"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
         Cambiar fuente
@@ -339,13 +336,11 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const res = await apiFetch("/excel-sync/detect-sheets", {
+      const data = await apiFetch("/excel-sync/detect-sheets", {
         method: "POST",
         body: form,
         token,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
       setSheets(data.sheets);
       setSelectedSheet(data.sheets[0]);
     } catch (err) {
@@ -364,13 +359,11 @@ function FileUploadStep({ onAnalyzed, loading, setLoading, setError }) {
       const form = new FormData();
       form.append("file", blob, fileName ?? "archivo.xlsx");
       form.append("sheetName", selectedSheet);
-      const res = await apiFetch("/excel-sync/upload", {
+      const data = await apiFetch("/excel-sync/upload", {
         method: "POST",
         body: form,
         token,
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
       onAnalyzed(data, fileBuffer, fileName);
     } catch (err) {
       setError(err.message);
@@ -511,14 +504,12 @@ function ColumnMappingStep({ connectionId, suggestedMapping, zentorFields, onSav
     setSaving(true);
     setError(null);
     try {
-      const res = await apiFetch(`/excel-sync/mapping/${connectionId}`, {
+      const data = await apiFetch(`/excel-sync/mapping/${connectionId}`, {
         method: "PATCH",
         token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mapping }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
       onSaved(data.connection);
     } catch (err) {
       setError(err.message);
@@ -671,8 +662,6 @@ function SyncStep({ connection, source, fileBuffer, fileName, onSynced, onBack }
           token,
         });
       }
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
       setResult(data);
       onSynced(data);
     } catch (err) {
@@ -789,14 +778,12 @@ function ConnectionDashboard({ connection, zentorFields, onDisconnect, onReSync 
     setSyncError(null);
     setLastResult(null);
     try {
-      const res = await apiFetch(`/excel-sync/sync/${connection._id}`, {
+      const data = await apiFetch(`/excel-sync/sync/${connection._id}`, {
         method: "POST",
         token,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({}),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al sincronizar");
       setLastResult(data.stats);
     } catch (err) {
       setSyncError(err.message);
@@ -986,32 +973,61 @@ export default function ExcelSyncPage() {
   const [fileName, setFileName]           = useState(null);
   const [activeSource, setActiveSource]   = useState(null); // "manual" | "onedrive" | "google_sheets"
 
+  const [activeConnId, setActiveConnId] = useState(null); // connId being configured right now
+
   // Load on mount — also detect OAuth callback params
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const odriveBack  = params.get("onedrive") === "connected";
-    const googleBack  = params.get("google")   === "connected";
+    const odriveBack = params.get("onedrive") === "connected";
+    const googleBack = params.get("google")   === "connected";
+    const connId     = params.get("connId");
 
     if (odriveBack || googleBack) {
-      // Clean the URL immediately
       window.history.replaceState({}, "", window.location.pathname);
       setActiveSource(odriveBack ? "onedrive" : "google_sheets");
+      if (connId) setActiveConnId(connId);
     }
 
     async function load() {
       try {
-        const [fieldsRes, connRes] = await Promise.all([
+        const [fieldsData, connData] = await Promise.all([
           apiFetch("/excel-sync/fields", { token }),
-          apiFetch("/excel-sync/connection", { token }),
+          connId
+            ? apiFetch(`/excel-sync/connection?id=${connId}`, { token })
+            : apiFetch("/excel-sync/connections", { token }),
         ]);
-        const fieldsData = await fieldsRes.json();
-        const connData   = await connRes.json();
         setZentorFields(fieldsData.fields ?? []);
-        if (connData.connection) {
-          setConnection(connData.connection);
-          setStep("dashboard");
-        } else if (odriveBack || googleBack) {
+
+        // Multi-connection: connData may be { connections: [...] } or { connection: ... }
+        const connections = connData.connections ?? (connData.connection ? [connData.connection] : []);
+        const activeConns = connections.filter(c => c.status !== "disconnected");
+
+        if (googleBack || odriveBack) {
+          // Coming back from OAuth — go to file picker for the new connection
+          setError(null);
           setStep("files");
+        } else if (activeConns.length === 1 && ["pending_file", "pending_mapping"].includes(activeConns[0].status)) {
+          // Mid-setup connection — resume it
+          const c = activeConns[0];
+          setConnection(c);
+          setActiveConnId(c._id);
+          setActiveSource(c.source);
+          setError(null);
+          if (c.status === "pending_file") {
+            setStep("files");
+          } else {
+            // pending_mapping: populate analyzeResult from saved connection so mapping UI renders
+            setAnalyzeResult({
+              connectionId: c._id,
+              suggestedMapping: c.columnMapping ?? [],
+              detectedColumns: c.detectedColumns ?? [],
+              sheets: c.sheetName ? [c.sheetName] : [],
+            });
+            setStep("mapping");
+          }
+        } else if (activeConns.length > 0) {
+          setConnection(activeConns[0]);
+          setStep("dashboard");
         } else {
           setStep("source");
         }
@@ -1033,9 +1049,7 @@ export default function ExcelSyncPage() {
     // Cloud: fetch auth URL and redirect
     setActiveSource(src);
     try {
-      const res  = await apiFetch(authPath, { token });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error al obtener URL de autenticación");
+      const data = await apiFetch(authPath, { token });
       window.location.href = data.url;
     } catch (err) {
       setError(err.message);
@@ -1107,8 +1121,8 @@ export default function ExcelSyncPage() {
     <div className="mx-auto max-w-3xl px-4 py-6 space-y-5">
       {/* Page header */}
       <div>
-        <h1 className="text-xl font-semibold text-slate-900">Sincronización Excel</h1>
-        <p className="mt-1 text-sm text-slate-500">
+        <h1 className="text-xl font-semibold text-white">Sincronización Excel</h1>
+        <p className="mt-1 text-sm text-slate-400">
           Conectá el Excel de tu empresa y mantené los datos de empleados siempre actualizados.
         </p>
       </div>
@@ -1120,7 +1134,7 @@ export default function ExcelSyncPage() {
       <ErrorBanner error={error} onDismiss={() => setError(null)} />
 
       {/* Main card */}
-      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <div className="pf-card p-6">
         {step === "source" && (
           <SourceSelector
             onSelect={handleSourceSelect}
@@ -1141,6 +1155,7 @@ export default function ExcelSyncPage() {
           <CloudFilePicker
             source={activeSource}
             token={token}
+            connId={activeConnId}
             onFileSelected={handleCloudFileSelected}
             onBack={() => setStep("source")}
           />

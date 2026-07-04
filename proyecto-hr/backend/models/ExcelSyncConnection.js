@@ -21,6 +21,8 @@ const ExcelSyncConnectionSchema = new mongoose.Schema({
     index: true,
   },
 
+  connectionName: { type: String, trim: true, default: null }, // user-given label
+
   source: {
     type: String,
     enum: ["manual", "onedrive", "google_sheets"],
@@ -48,6 +50,7 @@ const ExcelSyncConnectionSchema = new mongoose.Schema({
   googleSpreadsheetId:  { type: String, default: null },
   googleSheetName:      { type: String, default: null },
   googleSpreadsheetName:{ type: String, default: null },
+  googleFileIsNative:   { type: Boolean, default: true },
 
   // --- Column mapping ---
   sheetName:        { type: String, default: null }, // which tab to read

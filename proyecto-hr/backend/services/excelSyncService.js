@@ -5,15 +5,17 @@ import ExcelSyncConnection from "../models/ExcelSyncConnection.js";
 
 // ─── Zentor canonical fields ───────────────────────────────────────────────
 export const ZENTOR_FIELDS = {
-  legajo:       { label: "Legajo / N° de empleado", required: false },
-  nombre:       { label: "Nombre",                  required: true  },
-  apellido:     { label: "Apellido",                required: true  },
-  email:        { label: "Email laboral",           required: true  },
-  cargo:        { label: "Cargo / Puesto",          required: false },
-  area:         { label: "Área / Departamento",     required: false },
-  tipoEmpleado: { label: "Tipo de empleado",        required: false },
-  fechaIngreso: { label: "Fecha de ingreso",        required: false },
-  activo:       { label: "Activo (sí/no)",          required: false },
+  legajo:       { label: "Legajo / N° de empleado",       required: false },
+  nombre:       { label: "Nombre",                        required: true  },
+  apellido:     { label: "Apellido",                      required: true  },
+  dni:          { label: "DNI / Documento",               required: false },
+  email:        { label: "Email laboral",                 required: true  },
+  telefono:     { label: "Teléfono",                      required: false },
+  cargo:        { label: "Cargo / Puesto",                required: false },
+  area:         { label: "Área / Departamento",           required: false },
+  tipoEmpleado: { label: "Tipo de empleado",              required: false },
+  fechaIngreso: { label: "Fecha de ingreso",              required: false },
+  activo:       { label: "Activo (sí/no)",                required: false },
   manager:      { label: "Jefe directo (email o nombre)", required: false },
 };
 
@@ -22,7 +24,9 @@ const FIELD_ALIASES = {
   legajo:       ["legajo", "nro", "numero", "numeroempleado", "nroempleado", "id", "idempleado", "codigoempleado", "codigo"],
   nombre:       ["nombre", "nombreempleado", "nombredelempleado", "firstname", "name", "nombrepila", "nombres"],
   apellido:     ["apellido", "apellidos", "apellidoempleado", "lastname", "surname"],
+  dni:          ["dni", "documento", "nrodocumento", "numerodocumento", "cuit", "cuil", "cedula", "pasaporte", "documentoidentidad", "nid"],
   email:        ["email", "emaillaboral", "correo", "correoelectronico", "mail", "emailcorporativo", "correoempresa"],
+  telefono:     ["telefono", "telefonomovil", "celular", "movil", "phone", "mobile", "cel", "contacto", "telefonocontacto"],
   cargo:        ["cargo", "puesto", "posicion", "jobtitle", "title", "rol", "funcion", "position"],
   area:         ["area", "departamento", "sector", "division", "gerencia", "unidad", "department", "division"],
   tipoEmpleado: ["tipoempleado", "tipo", "categoria", "modalidad", "employeetype"],
@@ -79,7 +83,9 @@ export function buildAutoMapping(detectedColumns, savedMapping = []) {
   const savedMap = new Map(savedMapping.map(m => [m.excelColumn, m]));
 
   return detectedColumns.map(col => {
-    if (savedMap.has(col)) return savedMap.get(col);
+    const saved = savedMap.get(col);
+    // Re-run auto-detection if column was pending and still unassigned
+    if (saved && (saved.status !== "pending" || saved.zentorField)) return saved;
     const suggested = detectFieldForColumn(col);
     return {
       excelColumn: col,
@@ -177,6 +183,8 @@ function rowToEmployeeData(row, mapping) {
     apellido:     apellido ?? "Sin apellido",
     email,
     legajo:       cellToString(get("legajo")),
+    dni:          cellToString(get("dni")),
+    telefono:     cellToString(get("telefono")),
     cargo:        cellToString(get("cargo")),
     area:         cellToString(get("area")),
     tipoEmpleado: cellToString(get("tipoEmpleado")) || "OTRO",

@@ -385,10 +385,9 @@ export default function AppShell({
       items.push({ type: "group", key: "eval-group", label: L("Evaluaciones", "Evaluations"), icon: "evaluaciones", children: evalKids });
     }
 
-    // Standalone items: Reportes, Importación, Sync Excel, Novedades
+    // Standalone items: Reportes, Sync Excel (reemplaza Importación), Novedades
     [
       { key: "reporte-ejecutivo", es: "Reportes",           en: "Reports" },
-      { key: "carga-masiva",      es: "Importación",        en: "Import" },
       { key: "excel-sync",        es: "Sincronizar Excel",  en: "Excel Sync" },
       { key: "novedades",         es: "Novedades",          en: "Updates" },
     ].forEach(item => {

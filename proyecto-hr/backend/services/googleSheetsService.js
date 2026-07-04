@@ -28,9 +28,9 @@ export async function exchangeGoogleCode(code, state) {
   const { tokens } = await oauth2Client.getToken(code);
   const { companyId } = JSON.parse(state);
   return {
-    accessToken: tokens.access_token,
-    refreshToken: tokens.refresh_token,
-    expiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+    googleAccessToken: tokens.access_token,
+    googleRefreshToken: tokens.refresh_token,
+    googleTokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
     companyId,
   };
 }
@@ -43,7 +43,7 @@ export async function refreshGoogleToken(connection) {
     connection.googleTokenExpiresAt &&
     connection.googleTokenExpiresAt > fiveMinutesFromNow
   ) {
-    return connection.googleAccessToken;
+    return { accessToken: connection.googleAccessToken };
   }
 
   const oauth2Client = getGoogleAuthClient();
@@ -62,8 +62,9 @@ export async function refreshGoogleToken(connection) {
   }
   await connection.save();
 
-  return connection.googleAccessToken;
+  return { accessToken: connection.googleAccessToken };
 }
+
 
 export async function listGoogleSheets(accessToken) {
   const oauth2Client = getGoogleAuthClient();
@@ -80,7 +81,7 @@ export async function listGoogleSheets(accessToken) {
 
   const response = await drive.files.list({
     q: query,
-    fields: "files(id, name, webViewLink, modifiedTime)",
+    fields: "files(id, name, mimeType, webViewLink, modifiedTime)",
     orderBy: "modifiedTime desc",
     pageSize: 100,
   });
@@ -88,9 +89,21 @@ export async function listGoogleSheets(accessToken) {
   return (response.data.files || []).map((f) => ({
     id: f.id,
     name: f.name,
+    mimeType: f.mimeType,
     webViewLink: f.webViewLink,
     modifiedTime: f.modifiedTime,
   }));
+}
+
+export async function downloadDriveFileAsBuffer(fileId, accessToken) {
+  const oauth2Client = getGoogleAuthClient();
+  oauth2Client.setCredentials({ access_token: accessToken });
+  const drive = google.drive({ version: "v3", auth: oauth2Client });
+  const response = await drive.files.get(
+    { fileId, alt: "media" },
+    { responseType: "arraybuffer" }
+  );
+  return Buffer.from(response.data);
 }
 
 export async function readGoogleSheet(spreadsheetId, sheetName, accessToken) {
