@@ -18,7 +18,7 @@ const CompetencySchema = new mongoose.Schema(
     descripcion: { type: String, trim: true },
     tipo: {
       type: String,
-      enum: ["TRANSVERSAL", "DOCENTE", "LIDERAZGO", "PERSONALIZADA"],
+      enum: ["TRANSVERSAL", "DOCENTE", "LIDERAZGO", "TECNICA", "PERSONALIZADA"],
       required: true,
     },
     componente: {

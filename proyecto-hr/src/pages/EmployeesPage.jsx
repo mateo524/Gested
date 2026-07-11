@@ -236,6 +236,7 @@ const emptyForm = {
   email: "",
   cargo: "",
   area: "",
+  sector: "",
   tipoEmpleado: "DOCENTE",
   managerId: "",
   fechaIngreso: "",
@@ -489,6 +490,7 @@ export default function EmployeesPage() {
       email: employee.email || "",
       cargo: employee.cargo || "",
       area: employee.area || "",
+      sector: employee.sector || "",
       tipoEmpleado: employee.tipoEmpleado || "DOCENTE",
       managerId: employee.managerId || "",
       fechaIngreso: employee.fechaIngreso ? new Date(employee.fechaIngreso).toISOString().slice(0, 10) : "",
@@ -637,6 +639,12 @@ export default function EmployeesPage() {
                   <option value="OTRO">Otro</option>
                 </select>
               </div>
+              {form.tipoEmpleado === "DOCENTE" ? (
+                <div>
+                  <label className="mb-1 block text-xs text-[#9fb6c4]">Sector</label>
+                  <input className="pf-input" placeholder="Ej: Secundaria, Primaria, Jardín" value={form.sector} onChange={(event) => setForm({ ...form, sector: event.target.value })} />
+                </div>
+              ) : null}
               <div>
                 <label className="mb-1 block text-xs text-[#9fb6c4]">Fecha de ingreso</label>
                 <input type="date" className="pf-input" value={form.fechaIngreso} onChange={(event) => setForm({ ...form, fechaIngreso: event.target.value })} />
@@ -790,6 +798,9 @@ export default function EmployeesPage() {
                               <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${getAreaBadgeStyle(employee.area)}`}>
                                 {employee.area}
                               </span>
+                            ) : null}
+                            {employee.tipoEmpleado === "DOCENTE" && employee.sector ? (
+                              <span className="text-xs text-[#6a8a9a]">· {employee.sector}</span>
                             ) : null}
                             {employee.tipoEmpleado ? (
                               <span className="text-xs text-[#6a8a9a]">· {employee.tipoEmpleado}</span>

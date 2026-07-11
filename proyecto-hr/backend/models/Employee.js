@@ -29,6 +29,7 @@ const EmployeeSchema = new mongoose.Schema(
     telefono: { type: String, trim: true, default: null },
     cargo: { type: String, required: true, trim: true },
     area: { type: String, trim: true },
+    sector: { type: String, trim: true, default: "" },
     tipoEmpleado: {
       type: String,
       enum: ["DOCENTE", "NO_DOCENTE", "DIRECTIVO", "RRHH", "OTRO"],

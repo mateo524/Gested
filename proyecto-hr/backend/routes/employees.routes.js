@@ -19,6 +19,7 @@ import {
 } from "../utils/userEmployeeSync.js";
 import { triggerSheetSync } from "../utils/sheetSync.js";
 import { runInBackground } from "../utils/background.js";
+import { resolveFinalScore } from "../utils/evaluationScoring.js";
 
 const router = express.Router();
 
@@ -153,20 +154,59 @@ router.get(
     try {
       const filter = buildScopedFilter(req, { activo: true });
       const employees = await Employee.find(filter)
-        .select("_id nombre apellido cargo area managerId tipoEmpleado")
+        .select("_id nombre apellido cargo area managerId tipoEmpleado email")
         .sort({ apellido: 1, nombre: 1 })
         .lean();
 
-      const nodes = employees.map((emp) => ({
-        _id: String(emp._id),
-        nombre: emp.nombre,
-        apellido: emp.apellido,
-        cargo: emp.cargo,
-        area: emp.area || "",
-        tipoEmpleado: emp.tipoEmpleado || "",
-        managerId: emp.managerId ? String(emp.managerId) : null,
-        avatarUrl: null,
-      }));
+      const employeeIds = employees.map((emp) => emp._id);
+      const evaluations = employeeIds.length
+        ? await Evaluation.find({
+            employeeId: { $in: employeeIds },
+            estado: { $in: ["REVISADA", "CERRADA"] },
+          })
+            .select("employeeId tipo resultadoFinal")
+            .lean()
+        : [];
+
+      const scoresByEmp = {};
+      evaluations.forEach((ev) => {
+        if (!Number(ev.resultadoFinal) || ev.tipo === "FINAL") return;
+        const empId = String(ev.employeeId);
+        if (!scoresByEmp[empId]) scoresByEmp[empId] = {};
+        if (!scoresByEmp[empId][ev.tipo]) scoresByEmp[empId][ev.tipo] = { total: 0, count: 0 };
+        scoresByEmp[empId][ev.tipo].total += Number(ev.resultadoFinal);
+        scoresByEmp[empId][ev.tipo].count += 1;
+      });
+      const finalByEmp = {};
+      evaluations.filter((e) => e.tipo === "FINAL" && Number(e.resultadoFinal) > 0).forEach((e) => {
+        const empId = String(e.employeeId);
+        if (!finalByEmp[empId]) finalByEmp[empId] = [];
+        finalByEmp[empId].push(Number(e.resultadoFinal));
+      });
+
+      const nodes = employees.map((emp) => {
+        const empId = String(emp._id);
+        const s = scoresByEmp[empId] || {};
+        const autoAvg = s.AUTOEVALUACION?.count ? s.AUTOEVALUACION.total / s.AUTOEVALUACION.count : null;
+        const jefeAvg = s.JEFATURA?.count ? s.JEFATURA.total / s.JEFATURA.count : null;
+        const finalVals = finalByEmp[empId] || [];
+        const averageScore = finalVals.length
+          ? finalVals.reduce((a, b) => a + b, 0) / finalVals.length
+          : resolveFinalScore(jefeAvg, autoAvg);
+
+        return {
+          _id: empId,
+          nombre: emp.nombre,
+          apellido: emp.apellido,
+          cargo: emp.cargo,
+          area: emp.area || "",
+          tipoEmpleado: emp.tipoEmpleado || "",
+          email: emp.email || "",
+          managerId: emp.managerId ? String(emp.managerId) : null,
+          averageScore: averageScore !== null ? Math.round(averageScore * 100) / 100 : 0,
+          avatarUrl: null,
+        };
+      });
 
       res.json({ nodes });
     } catch (err) {
@@ -521,6 +561,7 @@ router.post("/", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE_E
     email: normalizedEmail || "",
     cargo: req.body.cargo.trim(),
     area: req.body.area?.trim() || "",
+    sector: req.body.sector?.trim() || "",
     tipoEmpleado: req.body.tipoEmpleado || "DOCENTE",
     fechaIngreso: req.body.fechaIngreso || null,
     activo: req.body.activo !== false,
@@ -570,6 +611,7 @@ router.put("/:id", auth, attachTenantScope, requirePermission(PERMISSIONS.MANAGE
     "email",
     "cargo",
     "area",
+    "sector",
     "tipoEmpleado",
     "fechaIngreso",
     "activo",

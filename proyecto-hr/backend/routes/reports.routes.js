@@ -16,6 +16,7 @@ import { requireAnyPermission } from "../middleware/rbac.js";
 import { PERMISSIONS } from "../utils/permissions.js";
 import { resolveCompanyScope } from "../utils/companyScope.js";
 import { getScopedEmployeeIds, isEmployeeScope, isManagerScope } from "../utils/employeeScope.js";
+import { resolveFinalScore } from "../utils/evaluationScoring.js";
 
 const router = express.Router();
 const EXECUTIVE_PERMISSION_SET = [
@@ -1256,6 +1257,62 @@ router.get(
           scoreMatrix[empId][tipo][compId].count += 1;
         });
 
+        const metricMap = new Map();
+        scores.forEach((s) => {
+          const metric = s.metricId;
+          if (!metric?._id) return;
+          metricMap.set(String(metric._id), {
+            nombre: metric.nombre,
+            competencyNombre: metric.competencyId?.nombre || "",
+          });
+        });
+
+        const indicatorMatrix = {};
+        scores.forEach((s) => {
+          const ev = evalById.get(String(s.evaluationId));
+          if (!ev) return;
+          const metricId = s.metricId?._id ? String(s.metricId._id) : null;
+          if (!metricId) return;
+          const empId = String(ev.employeeId);
+          const tipo = ev.tipo;
+          if (!indicatorMatrix[empId]) indicatorMatrix[empId] = {};
+          if (!indicatorMatrix[empId][tipo]) indicatorMatrix[empId][tipo] = {};
+          if (!indicatorMatrix[empId][tipo][metricId]) indicatorMatrix[empId][tipo][metricId] = { total: 0, count: 0 };
+          indicatorMatrix[empId][tipo][metricId].total += Number(s.nivel || 0);
+          indicatorMatrix[empId][tipo][metricId].count += 1;
+        });
+
+        const indicatorAgg = {};
+        employees.forEach((emp) => {
+          const empId = String(emp._id);
+          const im = indicatorMatrix[empId] || {};
+          metricMap.forEach((_meta, metricId) => {
+            const autoE = im["AUTOEVALUACION"]?.[metricId];
+            const jefeE = im["JEFATURA"]?.[metricId];
+            const autoAvg = autoE?.count ? autoE.total / autoE.count : null;
+            const jefeAvg = jefeE?.count ? jefeE.total / jefeE.count : null;
+            const final = resolveFinalScore(jefeAvg, autoAvg);
+            if (final == null) return;
+            if (!indicatorAgg[metricId]) indicatorAgg[metricId] = { total: 0, count: 0 };
+            indicatorAgg[metricId].total += final;
+            indicatorAgg[metricId].count += 1;
+          });
+        });
+
+        const indicadores = [...metricMap.entries()]
+          .map(([metricId, meta]) => {
+            const agg = indicatorAgg[metricId];
+            if (!agg?.count) return null;
+            return {
+              id: metricId,
+              nombre: meta.nombre,
+              competencyNombre: meta.competencyNombre,
+              avg: Math.round((agg.total / agg.count) * 100) / 100,
+              count: agg.count,
+            };
+          })
+          .filter(Boolean);
+
         const finalEvalByEmp = {};
         evaluations.filter((e) => e.tipo === "FINAL").forEach((e) => {
           const empId = String(e.employeeId);
@@ -1286,12 +1343,9 @@ router.get(
           const autoGeneral = autoVals.length ? autoVals.reduce((a, b) => a + b, 0) / autoVals.length : null;
           const jefeGeneral = jefeVals.length ? jefeVals.reduce((a, b) => a + b, 0) / jefeVals.length : null;
           const finalScores = (finalEvalByEmp[empId] || []).filter((v) => v > 0);
-          const general =
-            finalScores.length
-              ? finalScores.reduce((a, b) => a + b, 0) / finalScores.length
-              : autoGeneral !== null && jefeGeneral !== null
-              ? (autoGeneral + jefeGeneral) / 2
-              : autoGeneral ?? jefeGeneral ?? null;
+          const general = finalScores.length
+            ? finalScores.reduce((a, b) => a + b, 0) / finalScores.length
+            : resolveFinalScore(jefeGeneral, autoGeneral);
 
           const mgr = emp.managerId ? empMap.get(String(emp.managerId)) : null;
           const managerName = mgr
@@ -1323,7 +1377,9 @@ router.get(
           .map(([area, people]) => {
             const compStats = {};
             competencias.forEach(({ id, nombre }) => {
-              const vals = people.map((p) => p.compScores[id]?.auto).filter((v) => v != null);
+              const vals = people
+                .map((p) => resolveFinalScore(p.compScores[id]?.jefe, p.compScores[id]?.auto))
+                .filter((v) => v != null);
               if (!vals.length) return;
               const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
               const dist = [1, 2, 3, 4, 5].map((n) => vals.filter((v) => Math.round(v) === n).length);
@@ -1351,7 +1407,7 @@ router.get(
           })
           .sort((a, b) => a.area.localeCompare(b.area));
 
-        return { personas, competencias, grupos };
+        return { personas, competencias, grupos, indicadores };
       }, 300);
 
       res.json({ ok: true, ...result });

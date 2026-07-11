@@ -265,7 +265,20 @@ router.get(
 
     const performers = await Evaluation.aggregate([
       { $match: matchStage },
-      { $addFields: { _tp: { $cond: [{ $eq: ["$tipo", "FINAL"] }, 0, 1] } } },
+      {
+        $addFields: {
+          // Prioridad: FINAL > JEFATURA (jefe directo) > AUTOEVALUACION (fallback)
+          _tp: {
+            $switch: {
+              branches: [
+                { case: { $eq: ["$tipo", "FINAL"] }, then: 0 },
+                { case: { $eq: ["$tipo", "JEFATURA"] }, then: 1 },
+              ],
+              default: 2,
+            },
+          },
+        },
+      },
       { $sort: { _tp: 1, resultadoFinal: -1 } },
       { $group: { _id: "$employeeId", score: { $first: "$resultadoFinal" } } },
       { $sort: { score: -1 } },

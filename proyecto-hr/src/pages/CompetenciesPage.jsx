@@ -558,6 +558,7 @@ export default function CompetenciesPage() {
                     <option value="TRANSVERSAL">{L("Transversal", "Transversal")}</option>
                     <option value="TECNICA">{L("Técnica", "Technical")}</option>
                     <option value="LIDERAZGO">{L("Liderazgo", "Leadership")}</option>
+                    <option value="DOCENTE">{L("Docente", "Teaching")}</option>
                   </select>
                 </div>
                 <div>

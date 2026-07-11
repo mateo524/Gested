@@ -62,7 +62,7 @@ export default function UsersPage() {
         apiFetch("/users", { token, cache: "no-cache" }),
         apiFetch("/roles", { token, cache: "no-cache" }),
       ]);
-      setUsers(Array.isArray(usersData) ? usersData : (usersData?.data ?? []));
+      setUsers(Array.isArray(usersData) ? usersData : (usersData?.users ?? []));
       setRoles(Array.isArray(rolesData) ? rolesData : (rolesData?.data ?? []));
       setMessage("");
       setMessageType("info");

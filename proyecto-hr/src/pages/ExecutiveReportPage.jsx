@@ -2217,7 +2217,7 @@ function ExecutiveReportPage() {
       ) : activeTab === "por-nivel" ? (
         loadingAnalytics ? <EmptyPanel text="Cargando análisis por nivel..." /> :
         !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
-          const { grupos, competencias } = analyticsData;
+          const { grupos, competencias, indicadores = [] } = analyticsData;
           if (!grupos.length) return <EmptyPanel text="Sin datos de áreas." />;
 
           // Institution total avg per competency
@@ -2230,6 +2230,22 @@ function ExecutiveReportPage() {
             const all = grupos.flatMap(g => g.avgScore != null ? [g.avgScore] : []);
             return all.length ? all.reduce((a,b)=>a+b,0)/all.length : 0;
           })();
+
+          const compAvgEntries = competencias
+            .map(({ id, nombre }) => ({ id, nombre, avg: totalAvgByComp[id] }))
+            .filter((c) => c.avg > 0);
+          const bestComp = compAvgEntries.length
+            ? compAvgEntries.reduce((a, b) => (b.avg > a.avg ? b : a))
+            : null;
+          const weakComp = compAvgEntries.length
+            ? compAvgEntries.reduce((a, b) => (b.avg < a.avg ? b : a))
+            : null;
+          const bestInd = indicadores.length
+            ? indicadores.reduce((a, b) => (b.avg > a.avg ? b : a))
+            : null;
+          const weakInd = indicadores.length
+            ? indicadores.reduce((a, b) => (b.avg < a.avg ? b : a))
+            : null;
 
           // Toggle selected area
           const toggleArea = (i) => {
@@ -2256,6 +2272,38 @@ function ExecutiveReportPage() {
 
           return (
             <div className="space-y-5">
+              {/* Fortaleza y debilidad principal a nivel institucional */}
+              {bestComp && weakComp ? (
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))", gap:10 }}>
+                  <div style={{ background:"#0f1f28", border:"1px solid #16A34A50", borderRadius:14, padding:14 }}>
+                    <div style={{ fontSize:10, fontWeight:900, letterSpacing:"0.04em", color:"#16A34A", textTransform:"uppercase", marginBottom:6 }}>Fortaleza principal</div>
+                    <div style={{ fontSize:14, fontWeight:800, color:"#fff", marginBottom:4 }}>{bestComp.nombre}</div>
+                    <div style={{ fontSize:22, fontWeight:900, color:"#16A34A" }}>{bestComp.avg.toFixed(1)}</div>
+                  </div>
+                  <div style={{ background:"#0f1f28", border:"1px solid #FD666850", borderRadius:14, padding:14 }}>
+                    <div style={{ fontSize:10, fontWeight:900, letterSpacing:"0.04em", color:"#FD6668", textTransform:"uppercase", marginBottom:6 }}>Área de mejora principal</div>
+                    <div style={{ fontSize:14, fontWeight:800, color:"#fff", marginBottom:4 }}>{weakComp.nombre}</div>
+                    <div style={{ fontSize:22, fontWeight:900, color:"#FD6668" }}>{weakComp.avg.toFixed(1)}</div>
+                  </div>
+                  {bestInd ? (
+                    <div style={{ background:"#0f1f28", border:"1px solid #16A34A50", borderRadius:14, padding:14 }}>
+                      <div style={{ fontSize:10, fontWeight:900, letterSpacing:"0.04em", color:"#16A34A", textTransform:"uppercase", marginBottom:6 }}>Indicador más fuerte</div>
+                      <div style={{ fontSize:11, color:"#7a9aaa", marginBottom:2 }}>{bestInd.competencyNombre}</div>
+                      <div style={{ fontSize:14, fontWeight:800, color:"#fff", marginBottom:4 }}>{bestInd.nombre}</div>
+                      <div style={{ fontSize:22, fontWeight:900, color:"#16A34A" }}>{bestInd.avg.toFixed(1)}</div>
+                    </div>
+                  ) : null}
+                  {weakInd ? (
+                    <div style={{ background:"#0f1f28", border:"1px solid #FD666850", borderRadius:14, padding:14 }}>
+                      <div style={{ fontSize:10, fontWeight:900, letterSpacing:"0.04em", color:"#FD6668", textTransform:"uppercase", marginBottom:6 }}>Indicador más descendido</div>
+                      <div style={{ fontSize:11, color:"#7a9aaa", marginBottom:2 }}>{weakInd.competencyNombre}</div>
+                      <div style={{ fontSize:14, fontWeight:800, color:"#fff", marginBottom:4 }}>{weakInd.nombre}</div>
+                      <div style={{ fontSize:22, fontWeight:900, color:"#FD6668" }}>{weakInd.avg.toFixed(1)}</div>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               {/* Area selector */}
               <div style={{ display:"flex", gap:6, flexWrap:"wrap", alignItems:"center" }}>
                 <span style={{ fontSize:11, color:"#7a9aaa", marginRight:4 }}>Seleccioná áreas:</span>

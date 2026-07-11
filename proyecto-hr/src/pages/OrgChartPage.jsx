@@ -331,6 +331,16 @@ function OrgCard({ node, highlight, collapsed, onToggle, onClick, parentId, area
       {cargo ? (
         <p className="mt-0.5 truncate text-[9px] text-[#14b8a6] leading-tight">{cargo}</p>
       ) : null}
+      {node.averageScore > 0 ? (
+        <div className="mt-1 flex items-center justify-center gap-1">
+          <span
+            className="inline-flex h-4 min-w-[26px] items-center justify-center rounded px-1 text-[10px] font-bold text-[#0f172a]"
+            style={{ backgroundColor: perfColor(node.averageScore) }}
+          >
+            {node.averageScore.toFixed(1)}
+          </span>
+        </div>
+      ) : null}
       {hasChildren ? (
         <button
           type="button"
