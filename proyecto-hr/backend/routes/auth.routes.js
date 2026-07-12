@@ -268,7 +268,10 @@ function setRefreshCookie(res, refreshToken) {
     secure: true,
     sameSite: "none", // cross-origin: Vercel frontend → Cloud Run backend
     maxAge: REFRESH_MAX_AGE_MS,
-    path: "/auth",
+    // "/" en vez de "/auth": el frontend en Vercel llama a /api/auth/* (prefijo
+    // agregado por la funcion serverless), asi que un path "/auth" nunca
+    // matcheaba y el browser nunca reenviaba la cookie -> logout en cada reload.
+    path: "/",
   });
 }
 
@@ -277,7 +280,10 @@ function clearRefreshCookie(res) {
     httpOnly: true,
     secure: true,
     sameSite: "none",
-    path: "/auth",
+    // "/" en vez de "/auth": el frontend en Vercel llama a /api/auth/* (prefijo
+    // agregado por la funcion serverless), asi que un path "/auth" nunca
+    // matcheaba y el browser nunca reenviaba la cookie -> logout en cada reload.
+    path: "/",
   });
 }
 
