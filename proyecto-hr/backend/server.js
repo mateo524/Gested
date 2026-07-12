@@ -71,6 +71,11 @@ function buildAllowedOrigins() {
   const allowed = new Set([...fromList, ...fromCorsOrigins]);
   if (fromSingle) allowed.add(fromSingle);
 
+  // Dominio de produccion conocido: siempre permitido, sin depender de que las
+  // variables de entorno de Cloud Run esten replicadas en Vercel (la funcion
+  // serverless de Vercel corre bajo el mismo dominio pero con su propio env).
+  allowed.add("https://app.zentor.com.ar");
+
   if (process.env.NODE_ENV !== "production") {
     allowed.add("http://localhost:5173");
     allowed.add("http://localhost:3000");
@@ -100,8 +105,10 @@ function buildCorsOptions() {
   return {
     origin(origin, callback) {
       if (!origin) return callback(null, true);
-      if (isAllowedOrigin(origin)) return callback(null, true);
-      return callback(new Error("CORS: origen no permitido"));
+      // No permitido: se resuelve sin CORS headers (rechazo limpio en el
+      // browser) en vez de lanzar un error que el handler global convierte
+      // en 500 y tumba requests legitimos por un origen mal configurado.
+      return callback(null, isAllowedOrigin(origin));
     },
     credentials: true,
   };
