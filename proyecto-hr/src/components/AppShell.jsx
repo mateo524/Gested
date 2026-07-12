@@ -318,14 +318,14 @@ export default function AppShell({
   const allViews = useMemo(() => [
     { key: "dashboard", label: "Inicio", show: true, keywords: ["inicio", "dashboard", "panel", "resumen"] },
     { key: "empleados", label: isEmployee ? "Mi perfil" : isManager ? "Mi equipo" : "Personas", show: hasPermission("manage_employees"), keywords: ["personas", "empleados", "equipo", "perfil"] },
-    { key: "organigrama", label: "Organigrama", show: hasPermission("manage_employees"), keywords: ["organigrama", "org chart", "jerarquía"] },
+    { key: "organigrama", label: "Estructura jerárquica", show: hasPermission("manage_employees"), keywords: ["organigrama", "estructura jerárquica", "org chart", "jerarquía"] },
     { key: "usuarios", label: "Usuarios", show: hasPermission("manage_users"), keywords: ["usuarios", "credenciales", "accesos"] },
     { key: "ciclos", label: "Ciclos", show: hasPermission("manage_evaluation_cycles") || (hasPermission("view_reports") && !isEmployee), keywords: ["ciclos", "periodo", "período"] },
     { key: "evaluaciones", label: "Evaluaciones", show: hasPermission("manage_evaluations") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("view_reports"), keywords: ["evaluaciones", "autoevaluacion", "feedback", "desempeño"] },
-    { key: "competencias", label: "Habilidades", show: hasPermission("manage_competencies"), keywords: ["competencias", "habilidades", "skills"] },
+    { key: "competencias", label: "Competencias", show: hasPermission("manage_competencies"), keywords: ["competencias", "habilidades", "skills"] },
     { key: "metricas", label: "Mediciones", show: false, keywords: [] },
     { key: "planes", label: isEmployee ? "Mi desarrollo" : "Planes de acción", show: hasPermission("manage_development_plans") || hasPermission("evaluate_team") || hasPermission("self_evaluate") || hasPermission("download_self_report") || hasPermission("view_reports"), keywords: ["desarrollo", "planes", "seguimiento"] },
-    { key: "reporte-ejecutivo", label: "Reportes", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["reportes", "reporte ejecutivo", "insights"] },
+    { key: "reporte-ejecutivo", label: "Dashboard", show: hasPermission("view_reports") || hasPermission("download_reports") || hasPermission("download_team_reports") || hasPermission("view_audit"), keywords: ["dashboard", "reporte ejecutivo", "insights", "matriz", "mapa de calor"] },
     { key: "carga-masiva", label: "Importación", show: hasPermission("manage_users") || hasPermission("manage_school_users") || hasPermission("manage_employees") || hasPermission("manage_roles") || hasPermission("view_audit"), keywords: ["importacion", "importación", "carga", "plantilla", "migracion"] },
     { key: "excel-sync", label: "Sincronizar Excel", show: hasPermission("manage_employees") || hasPermission("manage_users"), keywords: ["excel", "sync", "sincronizar", "sincronizacion", "sincronización", "excel online", "onedrive", "google sheets"] },
     { key: "novedades", label: "Novedades", show: true, keywords: ["novedades", "anuncios", "notificaciones"] },
@@ -360,17 +360,13 @@ export default function AppShell({
     // Personas group
     const personasKids = [
       byKey["empleados"] && { key: "empleados", label: L("Personas", "People"), icon: "personas" },
-      byKey["organigrama"] && { key: "organigrama", label: L("Organigrama", "Org Chart"), icon: "organigrama" },
+      byKey["organigrama"] && { key: "organigrama", label: L("Estructura jerárquica", "Org Chart"), icon: "organigrama" },
+      byKey["competencias"] && { key: "competencias", label: L("Competencias", "Skills"), icon: "competencias" },
       byKey["usuarios"] && { key: "usuarios", label: L("Usuarios", "Users"), icon: "usuarios" },
       isSuperAdmin && byKey["roles"] && { key: "roles", label: L("Accesos", "Access"), icon: "roles" },
     ].filter(Boolean);
     if (personasKids.length) {
       items.push({ type: "group", key: "personas-group", label: L("Personas", "People"), icon: "personas", children: personasKids });
-    }
-
-    // Habilidades standalone
-    if (byKey["competencias"]) {
-      items.push({ type: "item", key: "competencias", label: L("Habilidades", "Skills"), icon: "competencias" });
     }
 
     // Evaluación de desempeño group
@@ -385,11 +381,18 @@ export default function AppShell({
       items.push({ type: "group", key: "eval-group", label: L("Evaluaciones", "Evaluations"), icon: "evaluaciones", children: evalKids });
     }
 
-    // Standalone items: Reportes, Sync Excel (reemplaza Importación), Novedades
+    // Dashboard group: Dashboard (reporte ejecutivo) + Novedades
+    const dashboardKids = [
+      { key: "reporte-ejecutivo", es: "Dashboard", en: "Dashboard" },
+      { key: "novedades",         es: "Novedades", en: "Updates" },
+    ].filter(item => byKey[item.key]).map(item => ({ key: item.key, label: L(item.es, item.en), icon: item.key }));
+    if (dashboardKids.length) {
+      items.push({ type: "group", key: "dashboard-group", label: L("Dashboard", "Dashboard"), icon: "reporte-ejecutivo", children: dashboardKids });
+    }
+
+    // Standalone items: Sync Excel
     [
-      { key: "reporte-ejecutivo", es: "Reportes",           en: "Reports" },
-      { key: "excel-sync",        es: "Sincronizar Excel",  en: "Excel Sync" },
-      { key: "novedades",         es: "Novedades",          en: "Updates" },
+      { key: "excel-sync", es: "Sincronizar Excel", en: "Excel Sync" },
     ].forEach(item => {
       if (byKey[item.key]) items.push({ type: "item", key: item.key, label: L(item.es, item.en), icon: item.key });
     });
