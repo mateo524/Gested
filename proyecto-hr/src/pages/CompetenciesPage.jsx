@@ -82,82 +82,76 @@ function Badge({ children, variant = "default" }) {
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${cls}`}>{children}</span>;
 }
 
-const CODIGO_COLOR = { H: "bg-violet-500/15 text-violet-300", A: "bg-sky-500/15 text-sky-300", C: "bg-emerald-500/15 text-emerald-300" };
-
-function CompetencyRow({ c, active, tipoLabel, tipoBadgeCls, audienceLabel, L, onEdit, onDelete }) {
-  const descs = Array.isArray(c.descriptores) ? c.descriptores : [];
+function CompetencyCard({ c, active, tipoLabel, tipoBadgeCls, audienceLabel, metrics, L, onEdit, onDelete }) {
+  const isDocente = c.tipo === "DOCENTE";
   return (
-    <tr className="hover:bg-white/[0.02] transition border-t border-white/5">
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <p className="font-medium text-white">{c.nombre}</p>
+    <div className={`rounded-2xl border bg-[#0c1e28] p-4 ${isDocente ? "border-amber-400/30" : "border-white/10"}`}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <h4 className="font-semibold text-white">{c.nombre}</h4>
           {!active ? <Badge variant="inactive">{L("Inactiva", "Inactive")}</Badge> : null}
         </div>
-      </td>
-      <td className="px-4 py-3">
-        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${tipoBadgeCls(c.tipo)}`}>
+        <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium ${tipoBadgeCls(c.tipo)}`}>
           {tipoLabel(c.tipo)}
         </span>
-      </td>
-      <td className="px-4 py-3 max-w-xs">
-        <p className="text-[#9fb6c4] truncate text-xs">{c.descripcion || "—"}</p>
-      </td>
-      <td className="px-4 py-3 max-w-sm">
-        {descs.length > 0 ? (
-          <ul className="space-y-1">
-            {descs.map((d, i) => (
-              <li key={i} className="flex items-start gap-1.5 text-xs text-[#c7d5dc]">
-                <span className={`mt-0.5 inline-flex shrink-0 items-center rounded-full px-1.5 py-0.5 text-[9px] font-bold ${CODIGO_COLOR[d.codigo] || "bg-white/10 text-white"}`}>
-                  {d.codigo}
-                </span>
-                <span className="leading-snug">{d.texto}</span>
-              </li>
-            ))}
-          </ul>
-        ) : <span className="text-xs text-[#5e7d8e]">—</span>}
-      </td>
-      <td className="px-4 py-3 text-xs text-[#9fb6c4]">{audienceLabel(c)}</td>
-      <td className="px-4 py-3">
-        <div className="flex items-center gap-2">
-          <button type="button" onClick={() => onEdit(c)}
-            className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5">
-            {L("Editar", "Edit")}
-          </button>
-          <button type="button" onClick={() => onDelete(c)}
-            className="rounded-lg border border-rose-300/30 px-2.5 py-1 text-xs text-rose-300 transition hover:bg-rose-500/10">
-            {L("Eliminar", "Delete")}
-          </button>
+      </div>
+      <p className="mt-1 text-[10px] uppercase tracking-wide text-[#5e7d8e]">{audienceLabel(c)}</p>
+      {c.descripcion ? <p className="mt-2 text-xs text-[#9fb6c4] leading-relaxed">{c.descripcion}</p> : null}
+
+      {metrics.length > 0 ? (
+        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-[#5e7d8e]">{L("Descriptores / indicadores", "Descriptors")}</p>
+          {metrics.map((m, i) => (
+            <div key={m._id || i} className="flex items-start gap-2">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#14b8a6]/15 text-[10px] font-bold text-[#14b8a6]">{i + 1}</span>
+              <p className="text-xs leading-snug text-[#c7d5dc]">{m.nombre}</p>
+            </div>
+          ))}
         </div>
-      </td>
-    </tr>
+      ) : (
+        <p className="mt-3 border-t border-white/10 pt-3 text-xs text-[#5e7d8e]">{L("Sin descriptores cargados.", "No descriptors yet.")}</p>
+      )}
+
+      <div className="mt-4 flex items-center gap-2 border-t border-white/10 pt-3">
+        <button type="button" onClick={() => onEdit(c)}
+          className="rounded-lg border border-white/10 px-2.5 py-1 text-xs text-[#c7d5dc] transition hover:bg-white/5">
+          {L("Editar", "Edit")}
+        </button>
+        <button type="button" onClick={() => onDelete(c)}
+          className="rounded-lg border border-rose-300/30 px-2.5 py-1 text-xs text-rose-300 transition hover:bg-rose-500/10">
+          {L("Eliminar", "Delete")}
+        </button>
+      </div>
+    </div>
   );
 }
 
-function CompetencyGroup({ tipo, items, tipoLabel, tipoBadgeCls, audienceLabel, L, onEdit, onDelete }) {
+function CompetencyGroup({ tipo, items, tipoLabel, tipoBadgeCls, audienceLabel, metricsByComp, L, onEdit, onDelete }) {
   return (
-    <>
-      <tr className="border-t border-white/10 bg-white/[0.015]">
-        <td colSpan={6} className="px-4 py-2">
-          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tipoBadgeCls(tipo)}`}>
-            {tipoLabel(tipo)}
-          </span>
-          <span className="ml-2 text-[11px] text-[#5e7d8e]">{items.length}</span>
-        </td>
-      </tr>
-      {items.map(c => (
-        <CompetencyRow
-          key={c._id}
-          c={c}
-          active={c.activa !== false}
-          tipoLabel={tipoLabel}
-          tipoBadgeCls={tipoBadgeCls}
-          audienceLabel={audienceLabel}
-          L={L}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      ))}
-    </>
+    <div>
+      <div className="mb-2.5 flex items-center gap-2">
+        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide ${tipoBadgeCls(tipo)}`}>
+          {tipoLabel(tipo)}
+        </span>
+        <span className="text-[11px] text-[#5e7d8e]">{items.length}</span>
+      </div>
+      <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
+        {items.map(c => (
+          <CompetencyCard
+            key={c._id}
+            c={c}
+            active={c.activa !== false}
+            tipoLabel={tipoLabel}
+            tipoBadgeCls={tipoBadgeCls}
+            audienceLabel={audienceLabel}
+            metrics={metricsByComp.get(String(c._id)) || []}
+            L={L}
+            onEdit={onEdit}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -168,6 +162,7 @@ export default function CompetenciesPage() {
 
   const [competencies, setCompetencies] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [allMetrics, setAllMetrics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [modal, setModal] = useState({ open: false, editId: "" });
@@ -183,13 +178,15 @@ export default function CompetenciesPage() {
   const loadData = useCallback(async () => {
     try {
       setIsLoading(true); setError("");
-      const [comp, emp] = await Promise.all([
+      const [comp, emp, metrics] = await Promise.all([
         apiFetch("/competencies", { token }),
         apiFetch("/employees", { token }).catch(() => ({})),
+        apiFetch("/metrics", { token }).catch(() => []),
       ]);
       setCompetencies(Array.isArray(comp) ? comp : []);
       const empRaw = emp?.data ?? emp ?? [];
       setEmployees(Array.isArray(empRaw) ? empRaw : []);
+      setAllMetrics(Array.isArray(metrics) ? metrics : []);
     } catch (err) {
       setError(err.message);
     } finally {
@@ -232,6 +229,17 @@ export default function CompetenciesPage() {
   const departmentOptions = useMemo(() =>
     [...new Set((Array.isArray(employees) ? employees : []).map(e => String(e.area || "").trim()).filter(Boolean))].sort()
   , [employees]);
+
+  const metricsByComp = useMemo(() => {
+    const map = new Map();
+    (Array.isArray(allMetrics) ? allMetrics : []).forEach((m) => {
+      const compId = String(m.competencyId?._id || m.competencyId || "");
+      if (!compId) return;
+      if (!map.has(compId)) map.set(compId, []);
+      map.get(compId).push(m);
+    });
+    return map;
+  }, [allMetrics]);
 
   function openNew() {
     setForm(emptyForm);
@@ -397,8 +405,11 @@ export default function CompetenciesPage() {
         ) : null}
       </div>
 
-      {/* Table */}
-      <div className="rounded-2xl border border-white/10 bg-[#0c1e28] overflow-hidden">
+      {/* Mapa de competencias y descriptores */}
+      <div>
+        <h3 className="mb-1 text-base font-semibold text-white">{L("Mapa de competencias y descriptores", "Skills & descriptors map")}</h3>
+        <p className="mb-4 text-xs text-[#7f99a8]">{L("Listado de habilidades utilizadas en la evaluación, con su definición, alcance e indicadores/descriptores correspondientes.", "List of skills used in evaluation, with their definition, scope and descriptors.")}</p>
+
         {isLoading ? (
           <LoadingState compact title={L("Cargando habilidades…", "Loading skills…")} description=""/>
         ) : error ? (
@@ -415,51 +426,47 @@ export default function CompetenciesPage() {
             onAction={competencies.length === 0 ? openNew : undefined}
           />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  {[L("Habilidad", "Skill"), L("Tipo", "Type"), L("Descripción", "Description"), L("Comportamental", "Behavioral"), L("Alcance", "Scope"), L("Acciones", "Actions")].map(h => (
-                    <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#5e7d8e]">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {TIPO_OPTIONS.map(tipo => {
-                  const group = filtered.filter(c => (c.tipo || "TRANSVERSAL") === tipo);
-                  if (group.length === 0) return null;
-                  return (
-                    <CompetencyGroup
-                      key={tipo}
-                      tipo={tipo}
-                      items={group}
-                      tipoLabel={tipoLabel}
-                      tipoBadgeCls={tipoBadgeCls}
-                      audienceLabel={audienceLabel}
-                      L={L}
-                      onEdit={openEdit}
-                      onDelete={c => setConfirmState({ open: true, item: c })}
-                    />
-                  );
-                })}
-                {filtered.filter(c => !TIPO_OPTIONS.includes(c.tipo)).map(c => {
-                  const active = c.activa !== false;
-                  return (
-                    <CompetencyRow
+          <div className="space-y-6">
+            {TIPO_OPTIONS.map(tipo => {
+              const group = filtered.filter(c => (c.tipo || "TRANSVERSAL") === tipo);
+              if (group.length === 0) return null;
+              return (
+                <CompetencyGroup
+                  key={tipo}
+                  tipo={tipo}
+                  items={group}
+                  tipoLabel={tipoLabel}
+                  tipoBadgeCls={tipoBadgeCls}
+                  audienceLabel={audienceLabel}
+                  metricsByComp={metricsByComp}
+                  L={L}
+                  onEdit={openEdit}
+                  onDelete={c => setConfirmState({ open: true, item: c })}
+                />
+              );
+            })}
+            {(() => {
+              const rest = filtered.filter(c => !TIPO_OPTIONS.includes(c.tipo));
+              if (!rest.length) return null;
+              return (
+                <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fill,minmax(280px,1fr))" }}>
+                  {rest.map(c => (
+                    <CompetencyCard
                       key={c._id}
                       c={c}
-                      active={active}
+                      active={c.activa !== false}
                       tipoLabel={tipoLabel}
                       tipoBadgeCls={tipoBadgeCls}
                       audienceLabel={audienceLabel}
+                      metrics={metricsByComp.get(String(c._id)) || []}
                       L={L}
                       onEdit={openEdit}
                       onDelete={() => setConfirmState({ open: true, item: c })}
                     />
-                  );
-                })}
-              </tbody>
-            </table>
+                  ))}
+                </div>
+              );
+            })()}
           </div>
         )}
       </div>
