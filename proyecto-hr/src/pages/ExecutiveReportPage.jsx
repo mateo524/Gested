@@ -45,10 +45,11 @@ function ExecChartTooltip({ active, payload, label }) {
 }
 
 const PRIMARY_TABS = [
-  { key: "dashboard", label: "Dashboard" },
-  { key: "personas", label: "Personas" },
+  { key: "dashboard", label: "Global" },
   { key: "por-nivel", label: "Por nivel" },
-  { key: "comparativo", label: "Comparativo" },
+  { key: "por-rol", label: "Por rol" },
+  { key: "personas", label: "Personas" },
+  { key: "comparativo", label: "Matriz" },
   { key: "radar", label: "Radar" },
   { key: "recomendaciones", label: "Recomendaciones" },
   { key: "estructura", label: "Estructura" },
@@ -1364,7 +1365,7 @@ function ExecutiveReportPage() {
     localStorage.setItem("onboarding_visited_reports", "true");
   }, []);
 
-  const ANALYTICS_TABS = ["personas", "por-nivel", "comparativo", "radar", "recomendaciones", "estructura"];
+  const ANALYTICS_TABS = ["personas", "por-nivel", "por-rol", "comparativo", "radar", "recomendaciones", "estructura"];
   useEffect(() => {
     if (!ANALYTICS_TABS.includes(activeTab) || !token || !canViewExecutive) return;
     if (analyticsData || loadingAnalytics) return;
@@ -2437,6 +2438,104 @@ function ExecutiveReportPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          );
+        })()
+
+      /* ══ POR ROL ══ */
+      ) : activeTab === "por-rol" ? (
+        loadingAnalytics ? <EmptyPanel text="Cargando análisis por rol..." /> :
+        !analyticsData ? <EmptyPanel text="No se pudieron cargar los datos." /> : (() => {
+          const { personas, competencias } = analyticsData;
+          if (!personas.length) return <EmptyPanel text="Sin datos de personas." />;
+
+          const rolMap = new Map();
+          personas.forEach((p) => {
+            const rol = p.cargo || "Sin cargo";
+            if (!rolMap.has(rol)) rolMap.set(rol, []);
+            rolMap.get(rol).push(p);
+          });
+
+          const roles = [...rolMap.entries()].map(([rol, people]) => {
+            const compAvgs = {};
+            competencias.forEach(({ id, nombre }) => {
+              const vals = people.map((p) => p.compScores?.[id]?.jefe ?? p.compScores?.[id]?.auto).filter((v) => v != null);
+              if (vals.length) compAvgs[id] = { nombre, avg: vals.reduce((a, b) => a + b, 0) / vals.length };
+            });
+            const generalVals = people.map((p) => p.general).filter((v) => v != null);
+            const avgGeneral = generalVals.length ? generalVals.reduce((a, b) => a + b, 0) / generalVals.length : null;
+            return { rol, count: people.length, compAvgs, avgGeneral };
+          }).sort((a, b) => (b.avgGeneral || 0) - (a.avgGeneral || 0));
+
+          return (
+            <div className="space-y-5">
+              <div>
+                <h3 className="text-sm font-semibold text-white">Promedio de competencias por rol</h3>
+                <p className="text-xs text-[#7a9aaa]">Se usa la evaluación del jefe directo como calificación final (fallback: autoevaluación).</p>
+              </div>
+              <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))" }}>
+                {roles.map((r) => (
+                  <div key={r.rol} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-white">{r.rol}</span>
+                      <span className="text-xs text-[#7a9aaa]">{r.count} {r.count === 1 ? "persona" : "personas"}</span>
+                    </div>
+                    <div className="mt-1 text-2xl font-bold" style={{ color: perfColor(r.avgGeneral) }}>
+                      {r.avgGeneral != null ? r.avgGeneral.toFixed(1) : "—"}
+                    </div>
+                    <div className="mt-3 space-y-1.5">
+                      {Object.values(r.compAvgs).map((c) => (
+                        <div key={c.nombre} className="flex items-center gap-2">
+                          <span className="w-28 shrink-0 truncate text-[11px] text-[#9bb5c4]">{c.nombre}</span>
+                          <div className="h-1.5 flex-1 rounded-full bg-white/8 overflow-hidden">
+                            <div className="h-full rounded-full" style={{ width: `${(c.avg / 5) * 100}%`, background: perfColor(c.avg) }} />
+                          </div>
+                          <span className="w-7 shrink-0 text-right text-[11px] font-semibold text-white/80">{c.avg.toFixed(1)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <h3 className="mb-2 text-sm font-semibold text-white">Matriz rol × competencia</h3>
+                <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0f1f28]">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-white/10 text-left text-[10px] uppercase text-[#7a9aaa]">
+                        <th className="px-3 py-2">Rol</th>
+                        <th className="px-3 py-2">Personas</th>
+                        {competencias.map((c) => (
+                          <th key={c.id} className="px-3 py-2 text-center" title={c.nombre}>
+                            {c.nombre.split(" ").map((w) => w[0]).join("").slice(0, 3).toUpperCase()}
+                          </th>
+                        ))}
+                        <th className="px-3 py-2 text-center">⌀ Rol</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {roles.map((r) => (
+                        <tr key={r.rol} className="border-b border-white/5">
+                          <td className="px-3 py-2 font-medium text-white">{r.rol}</td>
+                          <td className="px-3 py-2 text-[#9bb5c4]">{r.count}</td>
+                          {competencias.map((c) => {
+                            const cell = r.compAvgs[c.id];
+                            return (
+                              <td key={c.id} className="px-3 py-2 text-center">
+                                {cell ? <ScorePill v={cell.avg} small /> : <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
+                              </td>
+                            );
+                          })}
+                          <td className="px-3 py-2 text-center font-bold" style={{ color: perfColor(r.avgGeneral) }}>
+                            {r.avgGeneral != null ? r.avgGeneral.toFixed(1) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           );
