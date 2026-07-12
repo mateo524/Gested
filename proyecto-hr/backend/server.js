@@ -121,6 +121,24 @@ function assertRuntimeConfig() {
   }
 }
 
+// En Vercel el modulo se importa dentro de una funcion serverless: no hay
+// proceso long-running que llame a start(), asi que la conexion a Mongo se
+// abre (y cachea) en el primer request en vez de al levantar un servidor.
+if (process.env.VERCEL) {
+  app.use(async (req, res, next) => {
+    try {
+      assertRuntimeConfig();
+      if (mongoose.connection.readyState !== 1) {
+        await mongoose.connect(process.env.MONGO_URI);
+      }
+      next();
+    } catch (err) {
+      console.error("Error de conexion a MongoDB (serverless):", err);
+      res.status(503).json({ mensaje: "Servicio no disponible temporalmente" });
+    }
+  });
+}
+
 app.use(cors(buildCorsOptions()));
 app.use(cookieParser());
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -379,7 +397,11 @@ async function start() {
   }
 }
 
-start();
+// En Vercel no hay proceso long-running: app.listen()/startSyncPoller() no
+// tienen sentido ahi y assertRuntimeConfig() ya se resuelve por request arriba.
+if (!process.env.VERCEL) {
+  start();
+}
 
 process.on("SIGTERM", async () => {
   console.log("SIGTERM received. Shutting down gracefully...");
