@@ -1,0 +1,19 @@
+name: Keep Vercel function warm
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'   # every 5 minutes
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping /api/health
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping app.zentor.com.ar
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 https://app.zentor.com.ar/api/health)
+          echo "health check status: $STATUS"
+          if [ "$STATUS" != "200" ]; then
+            echo "::warning::/api/health respondio $STATUS"
+          fi

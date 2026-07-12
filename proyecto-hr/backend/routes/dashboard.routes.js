@@ -126,6 +126,18 @@ export function invalidateDashboardCache(companyId) {
   cacheClearByPrefix(`dash:${companyId}:`);
 }
 
+// EvaluationScore no tiene companyId/schoolId propio (solo via evaluationId),
+// asi que se acota primero por las evaluaciones ya scopeadas por tenant en vez
+// de traer toda la coleccion multi-tenant y filtrar en JS.
+async function fetchScopedEvaluationScores(evaluationFilter) {
+  const scopedEvaluations = await Evaluation.find(evaluationFilter).select("_id").lean();
+  const evaluationIds = scopedEvaluations.map((e) => e._id);
+  if (!evaluationIds.length) return [];
+  return EvaluationScore.find({ evaluationId: { $in: evaluationIds } })
+    .populate({ path: "evaluationId", select: "companyId schoolId employeeId" })
+    .lean();
+}
+
 router.get("/summary", auth, async (req, res) => {
   const { company } = await resolveCompanyScope(req);
   const userId = req.user?.userId || req.user?._id || "anon";
@@ -489,6 +501,10 @@ router.get("/summary", auth, async (req, res) => {
 
 router.get("/ops-status", auth, async (req, res) => {
   const { company } = await resolveCompanyScope(req);
+  const cacheKey = `dash-ops:${company._id}:${req.user?.schoolId || ""}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return res.json(cached);
+
   const { baseFilter } = await buildDashboardDataScope(req, company);
   const now = new Date();
   const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -514,7 +530,7 @@ router.get("/ops-status", auth, async (req, res) => {
     process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
   );
 
-  res.json({
+  const opsPayload = {
     generatedAt: now.toISOString(),
     runtime: {
       uptimeSeconds: Math.round(process.uptime()),
@@ -534,7 +550,9 @@ router.get("/ops-status", auth, async (req, res) => {
       latestImportAt: latestImport?.createdAt || latestImport?.fechaSubida || null,
       latestImportName: latestImport?.nombreArchivo || latestImport?.nombreVisible || null,
     },
-  });
+  };
+  cacheSet(cacheKey, opsPayload, 15);
+  res.json(opsPayload);
 });
 
 router.get("/role-check", auth, async (req, res) => {
@@ -574,6 +592,11 @@ router.get("/role-check", auth, async (req, res) => {
 
 router.get("/predictions", auth, async (req, res) => {
   const { company } = await resolveCompanyScope(req);
+  const userId = req.user?.userId || req.user?._id || "anon";
+  const cacheKey = `dash-predictions:${company._id}:${req.user?.schoolId || ""}:${userId}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return res.json(cached);
+
   const { baseFilter, employeeFilter, evaluationFilter, planFilter } = await buildDashboardDataScope(req, company);
 
   const [employeesList, evaluationByEmployee, planSignalsRaw, competenciesList, metricsList, evaluationScores, evaluationsTotal, pendingEvaluations] = await Promise.all([
@@ -602,7 +625,7 @@ router.get("/predictions", auth, async (req, res) => {
     ]),
     Competency.find(baseFilter).select("_id nombre").lean(),
     Metric.find(baseFilter).select("_id competencyId").lean(),
-    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId schoolId employeeId" }).lean(),
+    fetchScopedEvaluationScores(evaluationFilter),
     Evaluation.countDocuments(evaluationFilter),
     Evaluation.countDocuments({ ...evaluationFilter, estado: { $in: ["BORRADOR", "ENVIADA"] } }),
   ]);
@@ -693,20 +716,27 @@ router.get("/predictions", auth, async (req, res) => {
     trainingRecommendations,
   });
 
-  res.json({
+  const predictionsPayload = {
     companyId: String(company._id),
     generatedAt: new Date().toISOString(),
     layer1Patterns: predictiveBase.layer1Patterns,
     layer2Predictions: predictiveBase.layer2Predictions,
     layer3Forecast,
-  });
+  };
+  cacheSet(cacheKey, predictionsPayload, 60);
+  res.json(predictionsPayload);
 });
 
 router.get("/simulate-impact", auth, async (req, res) => {
   const { company } = await resolveCompanyScope(req);
-  const { baseFilter, evaluationFilter, planFilter } = await buildDashboardDataScope(req, company);
   const competency = String(req.query.competency || "");
   const investment = String(req.query.investment || "media");
+  const userId = req.user?.userId || req.user?._id || "anon";
+  const cacheKey = `dash-simulate:${company._id}:${req.user?.schoolId || ""}:${userId}:${competency}:${investment}`;
+  const cached = cacheGet(cacheKey);
+  if (cached) return res.json(cached);
+
+  const { baseFilter, evaluationFilter, planFilter } = await buildDashboardDataScope(req, company);
 
   const [evaluationByEmployee, planSignalsRaw, competenciesList, metricsList, evaluationScores] = await Promise.all([
     Evaluation.aggregate([
@@ -733,7 +763,7 @@ router.get("/simulate-impact", auth, async (req, res) => {
     ]),
     Competency.find(baseFilter).select("_id nombre").lean(),
     Metric.find(baseFilter).select("_id competencyId").lean(),
-    EvaluationScore.find({}).populate({ path: "evaluationId", select: "companyId schoolId employeeId" }).lean(),
+    fetchScopedEvaluationScores(evaluationFilter),
   ]);
 
   const employeeIds = evaluationByEmployee.map((item) => item._id);
@@ -810,11 +840,13 @@ router.get("/simulate-impact", auth, async (req, res) => {
     investment,
   });
 
-  res.json({
+  const simulatePayload = {
     companyId: String(company._id),
     generatedAt: new Date().toISOString(),
     simulation,
-  });
+  };
+  cacheSet(cacheKey, simulatePayload, 60);
+  res.json(simulatePayload);
 });
 
 router.get("/decision-report", auth, async (req, res) => {
@@ -842,9 +874,7 @@ router.get("/decision-report", auth, async (req, res) => {
     ]),
     Competency.find(baseFilter).select("_id nombre").lean(),
     Metric.find(baseFilter).select("_id competencyId").lean(),
-    EvaluationScore.find({})
-      .populate({ path: "evaluationId", select: "companyId schoolId employeeId" })
-      .lean(),
+    fetchScopedEvaluationScores(evaluationFilter),
   ]);
 
   const employeeById = new Map(employeesList.map((item) => [String(item._id), item]));

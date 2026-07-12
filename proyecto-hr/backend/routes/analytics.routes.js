@@ -9,6 +9,7 @@ import EvaluationScore from "../models/EvaluationScore.js";
 import { auth } from "../middleware/auth.js";
 import { attachTenantScope } from "../middleware/tenantScope.js";
 import NpsResponse from "../models/NpsResponse.js";
+import { cacheGet, cacheSet } from "../utils/cache.js";
 
 const router = express.Router();
 
@@ -21,6 +22,10 @@ function requireSuperAdmin(req, res, next) {
 
 router.get("/usage", auth, requireSuperAdmin, async (req, res) => {
   try {
+    const cacheKey = "analytics-usage:global";
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
     const now = new Date();
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
@@ -170,7 +175,7 @@ router.get("/usage", auth, requireSuperAdmin, async (req, res) => {
       .sort((a, b) => b.evaluations - a.evaluations)
       .slice(0, 10);
 
-    return res.json({
+    const usagePayload = {
       ok: true,
       overview: {
         totalOrgs,
@@ -189,7 +194,9 @@ router.get("/usage", auth, requireSuperAdmin, async (req, res) => {
         reports: totalCycles, // approximation — no ExecutiveReport model
       },
       roleDistribution,
-    });
+    };
+    cacheSet(cacheKey, usagePayload, 180);
+    return res.json(usagePayload);
   } catch (error) {
     return res.status(error.status || 500).json({
       ok: false,
@@ -206,6 +213,10 @@ router.get("/anomalies", auth, attachTenantScope, async (req, res) => {
   try {
     const companyId = req.query.companyId || req.scope?.companyId;
     if (!companyId) return res.status(400).json({ ok: false, message: "companyId requerido." });
+
+    const cacheKey = `analytics-anomalies:${companyId}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
@@ -275,7 +286,9 @@ router.get("/anomalies", auth, attachTenantScope, async (req, res) => {
       }
     }
 
-    res.json({ ok: true, total: anomalies.length, anomalies });
+    const anomaliesPayload = { ok: true, total: anomalies.length, anomalies };
+    cacheSet(cacheKey, anomaliesPayload, 60);
+    res.json(anomaliesPayload);
   } catch (err) {
     res.status(500).json({ ok: false, message: err.message });
   }
