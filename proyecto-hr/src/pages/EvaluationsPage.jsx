@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 function SearchIcon({ className }) {
@@ -688,13 +689,36 @@ function CycleProgressBadge({ evaluations, cycleId }) {
 }
 
 // ─── Manager view ──────────────────────────────────────────────────────────────
+const EVALUATIONS_MANAGER_QUERY_KEY = ["evaluations-manager-data"];
+
 function ManagerView({ token, user }) {
   const { addToast } = useToast();
-  const [employees, setEmployees] = useState([]);
-  const [cycles, setCycles] = useState([]);
-  const [evaluations, setEvaluations] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const {
+    data: managerData,
+    isLoading,
+    error: queryError,
+    refetch: reloadManagerData,
+  } = useQuery({
+    queryKey: EVALUATIONS_MANAGER_QUERY_KEY,
+    queryFn: async ({ signal }) => {
+      const [empRes, cyc, evalsRes] = await Promise.all([
+        apiFetch("/employees?includeSelf=true&limit=200", { token, signal }),
+        apiFetch("/evaluation-cycles", { token, signal }),
+        apiFetch("/evaluations", { token, signal }),
+      ]);
+      return {
+        employees: empRes?.data ?? empRes ?? [],
+        cycles: Array.isArray(cyc) ? cyc : [],
+        evaluations: evalsRes?.data ?? evalsRes ?? [],
+      };
+    },
+    enabled: Boolean(token),
+  });
+  const employees = managerData?.employees ?? [];
+  const cycles = managerData?.cycles ?? [];
+  const evaluations = managerData?.evaluations ?? [];
+  const error = queryError?.message || "";
+  const loadData = useCallback(() => reloadManagerData(), [reloadManagerData]);
   const [filters, setFilters] = useState({ cicloId: "", area: "", estado: "" });
   const [searchQuery, setSearchQuery] = useState("");
   const [newModal, setNewModal] = useState(false);
@@ -733,30 +757,6 @@ function ManagerView({ token, user }) {
 
   const activeCycle = useMemo(() =>
     cycles.find(c => c.estado === "Activo" || c.estado === "Inicio") || cycles[0] || null, [cycles]);
-
-  const loadData = useCallback(async (signal) => {
-    try {
-      setIsLoading(true); setError("");
-      const [empRes, cyc, evalsRes] = await Promise.all([
-        apiFetch("/employees?includeSelf=true&limit=200", { token, signal }),
-        apiFetch("/evaluation-cycles", { token, signal }),
-        apiFetch("/evaluations", { token, signal }),
-      ]);
-      setEmployees(empRes?.data ?? empRes ?? []);
-      setCycles(Array.isArray(cyc) ? cyc : []);
-      setEvaluations(evalsRes?.data ?? evalsRes ?? []);
-    } catch (err) {
-      if (!signal?.aborted) setError(err.message);
-    } finally {
-      if (!signal?.aborted) setIsLoading(false);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    const ctrl = new AbortController();
-    loadData(ctrl.signal);
-    return () => ctrl.abort();
-  }, [loadData]);
 
   useEffect(() => {
     if (activeCycle) setForm(f => f.cycleId ? f : { ...f, cycleId: activeCycle._id });

@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ViewProvider } from "./context/ViewContext";
 import { ToastProvider } from "./context/ToastContext";
@@ -406,14 +407,27 @@ function AppContent() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
 export default function App() {
   return (
-    <AuthProvider>
-      <ToastProvider>
-        <CompactModeProvider>
-          <AppContent />
-        </CompactModeProvider>
-      </ToastProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ToastProvider>
+          <CompactModeProvider>
+            <AppContent />
+          </CompactModeProvider>
+        </ToastProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
