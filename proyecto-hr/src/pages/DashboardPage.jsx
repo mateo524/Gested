@@ -1,9 +1,10 @@
 ﻿import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import useCountUp from "../hooks/useCountUp";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 import { apiFetch, apiUrl } from "../lib/api";
-import { perfColor, PERF_COLORS, PERF_PALETTE } from "../lib/colors";
+import { perfColor, areaColor, PERF_COLORS, PERF_PALETTE, PERF_LABELS } from "../lib/colors";
 import { isAdminOrgUser, isEmployeeUser, isManagerUser, isReadOnlyUser } from "../lib/roleHelpers";
 import { useView } from "../context/ViewContext";
 import OnboardingChecklist from "../components/OnboardingChecklist";
@@ -304,6 +305,158 @@ function QuickToolsCard({ setView, isEmpleado, isLector, summary }) {
   );
 }
 
+
+function MiniStat({ value, label, tone }) {
+  const toneColor = tone === "danger" ? "#FD6668" : tone === "warning" ? "#FCC72F" : tone === "success" ? "#16A34A" : "#e2eaf0";
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0c1e28] px-4 py-3.5">
+      <p className="text-2xl font-bold leading-none" style={{ color: toneColor }}>{value}</p>
+      <p className="mt-1.5 text-[11px] text-[#7f99a8]">{label}</p>
+    </div>
+  );
+}
+
+function InicioOverview({ token, setView }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["reports-analytics", "inicio"],
+    queryFn: () => apiFetch("/reports/analytics", { token }),
+    enabled: Boolean(token),
+    staleTime: 60_000,
+  });
+
+  const personas = Array.isArray(data?.personas) ? data.personas : [];
+  const competencias = Array.isArray(data?.competencias) ? data.competencias : [];
+  const grupos = Array.isArray(data?.grupos) ? data.grupos : [];
+
+  if (isLoading && !data) {
+    return (
+      <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {[...Array(6)].map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    );
+  }
+  if (!personas.length) return null;
+
+  const finalScores = personas.map((p) => p.general).filter((v) => v != null);
+  const promedioGeneral = finalScores.length ? finalScores.reduce((a, b) => a + b, 0) / finalScores.length : 0;
+  const excepcionalCount = finalScores.filter((v) => v >= 4.5).length;
+  const atencionCount = finalScores.filter((v) => v < 2.5).length;
+  const jefaturasCount = personas.filter((p) => p.esJefatura).length;
+  const docentesCount = personas.filter((p) => p.tipoEmpleado === "DOCENTE").length;
+
+  const compAverages = competencias
+    .map(({ id, nombre }) => {
+      const vals = personas.map((p) => p.compScores?.[id]?.jefe ?? p.compScores?.[id]?.auto).filter((v) => v != null);
+      if (!vals.length) return null;
+      return { id, nombre, avg: vals.reduce((a, b) => a + b, 0) / vals.length };
+    })
+    .filter(Boolean);
+
+  const genDist = [1, 2, 3, 4, 5].map((n) => finalScores.filter((v) => Math.round(v) === n).length);
+  const maxDist = Math.max(...genDist, 1);
+
+  const recientes = personas.slice(0, 8);
+
+  return (
+    <div className="space-y-3.5">
+      <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
+        <MiniStat value={personas.length} label="Personas evaluadas" />
+        <MiniStat value={promedioGeneral.toFixed(1)} label="Promedio general" />
+        <MiniStat value={excepcionalCount} label="Nivel Excepcional ≥4.5" tone="success" />
+        <MiniStat value={atencionCount} label="Necesitan atención <2.5" tone="danger" />
+        <MiniStat value={jefaturasCount} label="Jefaturas" />
+        <MiniStat value={docentesCount} label="Docentes" />
+      </div>
+
+      <div className="grid gap-3.5 xl:grid-cols-2">
+        <section className="pf-card-premium p-5">
+          <h3 className="text-sm font-semibold text-white/95">Promedio por competencia — calificación final del jefe directo</h3>
+          <div className="mt-4 space-y-3">
+            {compAverages.map((c) => (
+              <div key={c.id} className="flex items-center gap-3">
+                <span className="w-40 shrink-0 truncate text-xs text-[#c7d5dc]">{c.nombre}</span>
+                <div className="h-2 flex-1 rounded-full bg-white/8 overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${(c.avg / 5) * 100}%`, background: "#00CEB7" }} />
+                </div>
+                <span className="w-8 shrink-0 text-right text-xs font-bold" style={{ color: perfColor(c.avg) }}>{c.avg.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="pf-card-premium p-5">
+          <h3 className="text-sm font-semibold text-white/95">Distribución general — evaluación final</h3>
+          <div className="mt-4 flex items-end justify-between gap-2" style={{ height: 90 }}>
+            {genDist.map((count, i) => {
+              const n = i + 1;
+              const h = Math.max(4, Math.round((count / maxDist) * 80));
+              return (
+                <div key={n} className="flex flex-1 flex-col items-center gap-1">
+                  <span className="text-xs font-semibold text-white/80">{count}</span>
+                  <div className="w-full rounded-t" style={{ height: h, background: PERF_COLORS[`N${n}`] }} />
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-1.5 grid grid-cols-5 gap-2 text-center text-[10px] text-[#7f99a8]">
+            {[1, 2, 3, 4, 5].map((n) => <span key={n}>N{n}<br />{PERF_LABELS[`N${n}`]}</span>)}
+          </div>
+          {grupos.length ? (
+            <div className="mt-4 space-y-2 border-t border-white/10 pt-3">
+              {grupos.map((g, i) => (
+                <div key={g.area} className="flex items-center gap-2">
+                  <span className="w-28 shrink-0 truncate text-xs" style={{ color: areaColor(g.area, i) }}>{g.area} ({g.count})</span>
+                  <div className="h-2 flex-1 rounded-full bg-white/8 overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${((g.avgScore || 0) / 5) * 100}%`, background: areaColor(g.area, i) }} />
+                  </div>
+                  <span className="w-8 shrink-0 text-right text-xs font-bold text-white/80">{g.avgScore != null ? g.avgScore.toFixed(1) : "—"}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      </div>
+
+      <section className="pf-card-premium p-5">
+        <h3 className="mb-3 text-sm font-semibold text-white/95">📋 Últimas evaluaciones registradas</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10 text-left text-[11px] uppercase tracking-wide text-[#7f99a8]">
+                <th className="py-2 pr-3">#</th>
+                <th className="py-2 pr-3">Nombre</th>
+                <th className="py-2 pr-3">Puesto</th>
+                <th className="py-2 pr-3">Área</th>
+                <th className="py-2 pr-3">Auto</th>
+                <th className="py-2 pr-3">Jefe</th>
+                <th className="py-2 pr-3">Final</th>
+              </tr>
+            </thead>
+            <tbody>
+              {recientes.map((p, i) => (
+                <tr key={p._id} className="border-b border-white/5 cursor-pointer hover:bg-white/[0.02]" onClick={() => setView?.("empleados")}>
+                  <td className="py-2 pr-3 text-[#7f99a8]">{i + 1}</td>
+                  <td className="py-2 pr-3 font-medium text-white">{p.nombre}</td>
+                  <td className="py-2 pr-3 text-[#9fb6c4]">{p.cargo}</td>
+                  <td className="py-2 pr-3 text-[#9fb6c4]">{p.area}</td>
+                  <td className="py-2 pr-3">
+                    {p.autoGeneral != null ? <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `${perfColor(p.autoGeneral)}22`, color: perfColor(p.autoGeneral) }}>{p.autoGeneral.toFixed(1)}</span> : "—"}
+                  </td>
+                  <td className="py-2 pr-3">
+                    {p.jefeGeneral != null ? <span className="rounded-full px-2 py-0.5 text-xs font-semibold" style={{ background: `${perfColor(p.jefeGeneral)}22`, color: perfColor(p.jefeGeneral) }}>{p.jefeGeneral.toFixed(1)}</span> : "—"}
+                  </td>
+                  <td className="py-2 pr-3">
+                    {p.general != null ? <span className="rounded-full px-2 py-0.5 text-xs font-bold" style={{ background: `${perfColor(p.general)}22`, color: perfColor(p.general) }}>{p.general.toFixed(2)}</span> : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const { token, activeCompanyId, user } = useAuth();
@@ -776,6 +929,8 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {!isEmpleado ? <InicioOverview token={token} setView={setView} /> : null}
 
       {(isSuperOrDirector || isRRHH || isAdminOrgUser(user)) ? <OnboardingChecklist /> : null}
 

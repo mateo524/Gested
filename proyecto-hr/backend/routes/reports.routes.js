@@ -1205,7 +1205,7 @@ router.get(
         if (schoolId) empFilter.schoolId = schoolId;
         if (department) empFilter.area = department;
         const employees = await Employee.find(empFilter)
-          .select("nombre apellido cargo area managerId")
+          .select("nombre apellido cargo area managerId tipoEmpleado")
           .lean();
 
         const empMap = new Map(employees.map((e) => [String(e._id), e]));
@@ -1357,6 +1357,7 @@ router.get(
             nombre: [emp.apellido, emp.nombre].filter(Boolean).join(", "),
             cargo: emp.cargo || "",
             area: emp.area || "Sin área",
+            tipoEmpleado: emp.tipoEmpleado || "",
             esJefatura: managerIdSet.has(empId),
             managerName: managerName || "—",
             managerId: emp.managerId ? String(emp.managerId) : null,
