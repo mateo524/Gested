@@ -4,6 +4,9 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Line,
+  LineChart,
+  Legend,
   PolarAngleAxis,
   PolarGrid,
   PolarRadiusAxis,
@@ -48,8 +51,9 @@ const PRIMARY_TABS = [
   { key: "dashboard", label: "Global" },
   { key: "por-nivel", label: "Por nivel" },
   { key: "por-rol", label: "Por rol" },
-  { key: "personas", label: "Personas" },
+  { key: "individual", label: "Individual" },
   { key: "comparativo", label: "Matriz" },
+  { key: "personas", label: "Personas" },
   { key: "radar", label: "Radar" },
   { key: "recomendaciones", label: "Recomendaciones" },
   { key: "estructura", label: "Estructura" },
@@ -1334,6 +1338,9 @@ function ExecutiveReportPage() {
   const [personaFilterArea, setPersonaFilterArea] = useState("");
   const [selectedGrafTabs, setSelectedGrafTabs] = useState(new Set([0]));
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [individualEmployeeId, setIndividualEmployeeId] = useState("");
+  const [individualData, setIndividualData] = useState(null);
+  const [loadingIndividual, setLoadingIndividual] = useState(false);
   const [overview, setOverview] = useState(null);
   const [detail, setDetail] = useState(null);
   const [loadingOverview, setLoadingOverview] = useState(true);
@@ -1365,7 +1372,7 @@ function ExecutiveReportPage() {
     localStorage.setItem("onboarding_visited_reports", "true");
   }, []);
 
-  const ANALYTICS_TABS = ["personas", "por-nivel", "por-rol", "comparativo", "radar", "recomendaciones", "estructura"];
+  const ANALYTICS_TABS = ["personas", "por-nivel", "por-rol", "individual", "comparativo", "radar", "recomendaciones", "estructura"];
   useEffect(() => {
     if (!ANALYTICS_TABS.includes(activeTab) || !token || !canViewExecutive) return;
     if (analyticsData || loadingAnalytics) return;
@@ -1378,6 +1385,22 @@ function ExecutiveReportPage() {
       .catch(() => { setAnalyticsData({ _error: true, personas: [], grupos: [], competencias: [] }); })
       .finally(() => setLoadingAnalytics(false));
   }, [activeTab, analyticsData, loadingAnalytics, token, canViewExecutive, filters.cycleId]);
+
+  // Default the "Individual" employee selector to the first person once analytics loads
+  useEffect(() => {
+    if (individualEmployeeId || !analyticsData?.personas?.length) return;
+    setIndividualEmployeeId(analyticsData.personas[0]._id);
+  }, [analyticsData, individualEmployeeId]);
+
+  useEffect(() => {
+    if (activeTab !== "individual" || !individualEmployeeId || !token) return;
+    setLoadingIndividual(true);
+    setIndividualData(null);
+    apiFetch(`/reports/employee-evolution/${individualEmployeeId}`, { token })
+      .then((d) => setIndividualData(d?.ok !== false ? d : null))
+      .catch(() => setIndividualData(null))
+      .finally(() => setLoadingIndividual(false));
+  }, [activeTab, individualEmployeeId, token]);
 
   useEffect(() => {
     if (activeTab !== "dashboard" || !token || !canViewExecutive) return;
@@ -2537,6 +2560,133 @@ function ExecutiveReportPage() {
                   </table>
                 </div>
               </div>
+            </div>
+          );
+        })()
+
+      /* ══ INDIVIDUAL ══ */
+      ) : activeTab === "individual" ? (
+        loadingAnalytics && !analyticsData ? <EmptyPanel text="Cargando personas..." /> :
+        !analyticsData?.personas?.length ? <EmptyPanel text="Sin personas evaluadas." /> : (() => {
+          const { personas, competencias } = analyticsData;
+          const selected = personas.find((p) => p._id === individualEmployeeId) || personas[0];
+          const years = individualData?.years || [];
+          const overallSeries = individualData?.overallSeries || [];
+          const seriesByComp = individualData?.seriesByComp || {};
+          const firstVal = overallSeries[0]?.value;
+          const lastVal = overallSeries[overallSeries.length - 1]?.value;
+          const delta = firstVal != null && lastVal != null ? lastVal - firstVal : null;
+          const lineColors = ["#14b8a6", "#818cf8", "#fbbf24", "#f472b6", "#38bdf8", "#a3e635"];
+
+          return (
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-3">
+                <select
+                  className="rounded-xl border border-white/15 bg-[#0F1A21] px-3 py-2 text-sm text-white"
+                  value={selected?._id || ""}
+                  onChange={(e) => { setIndividualEmployeeId(e.target.value); setIndividualData(null); }}
+                >
+                  {personas.map((p) => (
+                    <option key={p._id} value={p._id}>{p.nombre} — {p.cargo}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-[#7a9aaa]">Evolución por año · calificación final = jefe directo (fallback autoevaluación)</span>
+              </div>
+
+              {loadingIndividual ? (
+                <EmptyPanel text="Cargando evolución..." />
+              ) : !years.length ? (
+                <EmptyPanel text="Esta persona todavía no tiene evaluaciones cerradas en distintos ciclos con año registrado." />
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-white/10 bg-[#0f1f28] p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border-2 text-xl font-bold"
+                          style={{ borderColor: perfColor(lastVal), color: perfColor(lastVal) }}>
+                          {lastVal != null ? lastVal.toFixed(1) : "—"}
+                        </div>
+                        <div>
+                          <p className="text-base font-bold text-white">{selected?.nombre}</p>
+                          <p className="text-xs text-[#9bb5c4]">{selected?.cargo} · {selected?.area}</p>
+                          {delta != null ? (
+                            <p className={`mt-0.5 text-xs font-semibold ${delta >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                              Evolución {years[0]} → {years[years.length - 1]}: {delta >= 0 ? "+" : ""}{delta.toFixed(1)} puntos
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div style={{ width: 260, height: 70 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={overallSeries.map((p) => ({ year: String(p.year), value: p.value }))}>
+                            <Line type="monotone" dataKey="value" stroke="#16A34A" strokeWidth={2} dot={{ r: 3 }} />
+                            <XAxis dataKey="year" tick={{ fontSize: 10, fill: "#7a9aaa" }} axisLine={false} tickLine={false} />
+                            <YAxis domain={[1, 5]} hide />
+                            <Tooltip contentStyle={{ background: "#0f1f28", border: "1px solid rgba(255,255,255,0.1)", fontSize: 11 }} />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid gap-3" style={{ gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))" }}>
+                    {competencias.map(({ id, nombre }, idx) => {
+                      const series = (seriesByComp[id] || []).map((p) => ({ year: String(p.year), value: p.value }));
+                      const vFirst = series[0]?.value;
+                      const vLast = series[series.length - 1]?.value;
+                      const dl = vFirst != null && vLast != null ? vLast - vFirst : null;
+                      return (
+                        <div key={id} className="rounded-2xl border border-white/10 bg-[#0f1f28] p-4">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-white">{nombre}</span>
+                            {dl != null ? (
+                              <span className={`text-xs font-bold ${dl >= 0 ? "text-emerald-400" : "text-rose-400"}`}>{dl >= 0 ? "+" : ""}{dl.toFixed(1)}</span>
+                            ) : null}
+                          </div>
+                          <div style={{ height: 60 }} className="mt-2">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <LineChart data={series}>
+                                <Line type="monotone" dataKey="value" stroke={lineColors[idx % lineColors.length]} strokeWidth={2} dot={{ r: 2.5 }} connectNulls />
+                                <XAxis dataKey="year" tick={{ fontSize: 9, fill: "#7a9aaa" }} axisLine={false} tickLine={false} />
+                                <YAxis domain={[1, 5]} hide />
+                              </LineChart>
+                            </ResponsiveContainer>
+                          </div>
+                          <div className="mt-1 flex justify-between text-[10px] text-[#7a9aaa]">
+                            {series.map((p) => <span key={p.year}>{p.year} {p.value != null ? p.value.toFixed(1) : "—"}</span>)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#0f1f28]">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-white/10 text-left text-[10px] uppercase text-[#7a9aaa]">
+                          <th className="px-3 py-2">Competencia</th>
+                          {years.map((y) => <th key={y} className="px-3 py-2 text-center">{y}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {competencias.map(({ id, nombre }) => (
+                          <tr key={id} className="border-b border-white/5">
+                            <td className="px-3 py-2 font-medium text-white">{nombre}</td>
+                            {years.map((y) => {
+                              const point = (seriesByComp[id] || []).find((p) => p.year === y);
+                              return (
+                                <td key={y} className="px-3 py-2 text-center">
+                                  {point?.value != null ? <ScorePill v={point.value} small /> : <span style={{ color: "rgba(255,255,255,0.15)" }}>—</span>}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </div>
           );
         })()

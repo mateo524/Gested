@@ -1186,6 +1186,106 @@ router.get(
   }
 );
 
+// ─── Evolucion multi-anio de una persona (para la pantalla "Individuales") ───
+router.get(
+  "/employee-evolution/:employeeId",
+  auth,
+  attachTenantScope,
+  requireAnyPermission(...EXECUTIVE_PERMISSION_SET),
+  async (req, res) => {
+    try {
+      const { companyId } = await resolveCompanyScope(req);
+      const { employeeId } = req.params;
+
+      const employee = await Employee.findOne({ _id: employeeId, companyId }).select("nombre apellido cargo area managerId").lean();
+      if (!employee) return res.status(404).json({ ok: false, message: "Empleado no encontrado" });
+
+      const evaluations = await Evaluation.find({
+        companyId,
+        employeeId,
+        estado: { $in: ["REVISADA", "CERRADA"] },
+      })
+        .select("tipo cycleId resultadoFinal comentariosGenerales")
+        .populate({ path: "cycleId", select: "anio periodo" })
+        .lean();
+
+      const evaluationIds = evaluations.map((e) => e._id);
+      const scores = evaluationIds.length
+        ? await EvaluationScore.find({ evaluationId: { $in: evaluationIds } })
+            .select("evaluationId metricId nivel comentario")
+            .populate({ path: "metricId", select: "nombre competencyId", populate: { path: "competencyId", select: "nombre" } })
+            .lean()
+        : [];
+
+      const compMap = new Map();
+      scores.forEach((s) => {
+        const comp = s.metricId?.competencyId;
+        if (comp?._id) compMap.set(String(comp._id), comp.nombre);
+      });
+      const competencias = [...compMap.entries()].map(([id, nombre]) => ({ id, nombre }));
+
+      const evalById = new Map(evaluations.map((e) => [String(e._id), e]));
+
+      // year -> tipo -> compId -> {total,count}
+      const byYear = new Map();
+      scores.forEach((s) => {
+        const ev = evalById.get(String(s.evaluationId));
+        const comp = s.metricId?.competencyId;
+        if (!ev || !comp?._id || !ev.cycleId?.anio) return;
+        const year = ev.cycleId.anio;
+        const compId = String(comp._id);
+        if (!byYear.has(year)) byYear.set(year, {});
+        const yearData = byYear.get(year);
+        if (!yearData[ev.tipo]) yearData[ev.tipo] = {};
+        if (!yearData[ev.tipo][compId]) yearData[ev.tipo][compId] = { total: 0, count: 0 };
+        yearData[ev.tipo][compId].total += Number(s.nivel || 0);
+        yearData[ev.tipo][compId].count += 1;
+      });
+
+      const years = [...byYear.keys()].sort((a, b) => a - b);
+      const seriesByComp = {};
+      competencias.forEach(({ id }) => { seriesByComp[id] = []; });
+      const overallSeries = [];
+
+      years.forEach((year) => {
+        const yearData = byYear.get(year) || {};
+        const compValues = [];
+        competencias.forEach(({ id }) => {
+          const autoE = yearData.AUTOEVALUACION?.[id];
+          const jefeE = yearData.JEFATURA?.[id];
+          const autoAvg = autoE?.count ? autoE.total / autoE.count : null;
+          const jefeAvg = jefeE?.count ? jefeE.total / jefeE.count : null;
+          const final = resolveFinalScore(jefeAvg, autoAvg);
+          if (final != null) {
+            seriesByComp[id].push({ year, value: Math.round(final * 100) / 100 });
+            compValues.push(final);
+          } else {
+            seriesByComp[id].push({ year, value: null });
+          }
+        });
+        const overall = compValues.length ? compValues.reduce((a, b) => a + b, 0) / compValues.length : null;
+        overallSeries.push({ year, value: overall != null ? Math.round(overall * 100) / 100 : null });
+      });
+
+      res.json({
+        ok: true,
+        employee: {
+          _id: String(employee._id),
+          nombre: [employee.apellido, employee.nombre].filter(Boolean).join(", "),
+          cargo: employee.cargo || "",
+          area: employee.area || "",
+        },
+        years,
+        competencias,
+        overallSeries,
+        seriesByComp,
+      });
+    } catch (err) {
+      res.status(err.status || 500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
 // ─── Full analytics dataset for demo-style reports ───────────────────────────
 router.get(
   "/analytics",
