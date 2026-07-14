@@ -56,6 +56,41 @@
   parcialmente con reintentos (ver arriba), pero **la solución de fondo es
   de infraestructura**: upgradear Atlas a M10+ y/o Render a plan pago.
 
+### "solicitud tardó mucho" al confirmar — causa real (no era infra)
+- Reproduje contra producción con un archivo de 30 filas: `confirm` cortaba
+  siempre justo a los 30.0s con 503 "La solicitud tardó demasiado" —
+  `server.js` tenía un timeout global de 30s para TODAS las rutas, y
+  `confirmPersonas` procesaba las filas **una por una en serie** (varios
+  round-trips a Mongo por persona), así que el tiempo total escala
+  linealmente con la cantidad de filas.
+- Fix: `server.js` da 120s a las rutas de `/bulk-import/simple/:type/confirm`
+  y `/bulk-import/import`; `confirmPersonas` ahora procesa filas en lotes
+  concurrentes de 5 (son personas independientes; `jefe_directo` se resuelve
+  en una pasada aparte después de que todas las filas ya se crearon, así que
+  es seguro). `BulkImportPage.jsx` sube su timeout de cliente a 120s a
+  juego.
+- Reverificado en producción: mismo archivo de 30 filas, antes cortaba a
+  los 30s, ahora termina en ~25s sin error. Si el archivo real tiene muchas
+  más filas (cientos), igual va a tardar más — preguntar cuántas si vuelve
+  a pasar.
+
+### Bug aparte encontrado de paso: poller de Excel Sync (Google/OneDrive) roto
+- Mientras revisaba logs de Render aparecía cada 15 min: `Error polling
+  connection ...: No refresh token is set.` — no tiene nada que ver con
+  Personas. Causa: `ExcelSyncConnection` tiene `googleRefreshToken` /
+  `msRefreshToken` con `select: false` en el schema, y
+  `syncPoller.js#pollAllConnections` hacía `.find({status:"active"})` sin
+  pedir esos campos explícitamente — Mongoose los devolvía `undefined`
+  aunque en la DB hubiera un token real guardado. El resto del código
+  (`excelSync.routes.js`) ya los pedía bien con `.select("+...")`; solo
+  faltaba en el poller.
+- Fix en `backend/services/syncPoller.js`: agregado
+  `.select("+googleAccessToken +googleRefreshToken +msAccessToken +msRefreshToken")`.
+  Esto además significa que el auto-sync de Excel/Google Sheets/OneDrive
+  probablemente nunca funcionó automáticamente para ninguna conexión activa
+  hasta ahora (solo el primer sync manual). Vale la pena que el usuario
+  revise si tiene conexiones activas que dependían de esto.
+
 ### Verificación en vivo del fix de "not primary" (2026-07-14, más tarde)
 - Cree una cuenta de prueba directo en la DB (rol ADMIN_COLEGIO, misma
   empresa) e hice login + analyze + confirm contra
