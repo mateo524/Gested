@@ -56,6 +56,24 @@
   parcialmente con reintentos (ver arriba), pero **la solución de fondo es
   de infraestructura**: upgradear Atlas a M10+ y/o Render a plan pago.
 
+### Verificación en vivo del fix de "not primary" (2026-07-14, más tarde)
+- Cree una cuenta de prueba directo en la DB (rol ADMIN_COLEGIO, misma
+  empresa) e hice login + analyze + confirm contra
+  `https://gested-1-backend.onrender.com` real, 4 veces seguidas — las 4
+  anduvieron bien (~1.3s analyze, ~3s confirm, sin "not primary"). Cuenta
+  de prueba y registros de esas corridas ya borrados.
+- Detecté con los logs de Render que el servicio se estaba **redeployando**
+  (SIGTERM + reboot) cada pocos minutos, coincidiendo con mis pushes
+  seguidos — eso probablemente explicaba varios de los síntomas que el
+  usuario vio mientras yo iteraba en simultáneo.
+- Persistía igual la queja de "la solicitud tardó mucho": es el cold start
+  del plan free de Render (~20-50s cuando el servicio estuvo dormido >15
+  min), no algo que el código pueda arreglar. Mitigado con
+  `.github/workflows/keep-backend-awake.yml` — pinguea `/health` cada 10
+  minutos para que no llegue a dormirse. Si igual se quiere eliminar la
+  latencia de cold start por completo, la única solución real es un plan
+  pago de Render con "Always On" (decisión de costo).
+
 ### "not primary" seguía apareciendo incluso agotando los 5 reintentos
 - Causa: los reintentos anteriores repetían la escritura sobre la **misma**
   conexión de mongoose. Si esa conexión (la de Render, de larga vida) quedó
