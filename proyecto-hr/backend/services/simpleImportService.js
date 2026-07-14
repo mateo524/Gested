@@ -338,8 +338,17 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
 
   const defaultRole = roleByCode.get("EMPLEADO") || roleByCode.get("LECTOR") || roles[0];
 
-  for (const row of rows) {
-    if (!row.nombre || !row.email_laboral) { result.skipped++; continue; }
+  // Each row is an independent person, so process them in small concurrent
+  // batches instead of one-by-one — a spreadsheet with dozens of rows was
+  // taking long enough sequentially to hit the server's request timeout.
+  const CONCURRENCY = 5;
+  for (let batchStart = 0; batchStart < rows.length; batchStart += CONCURRENCY) {
+    const batch = rows.slice(batchStart, batchStart + CONCURRENCY);
+    await Promise.all(batch.map((row) => processPersonaRow(row)));
+  }
+
+  async function processPersonaRow(row) {
+    if (!row.nombre || !row.email_laboral) { result.skipped++; return; }
 
     // Resolve role
     const tipoAcceso =
@@ -353,7 +362,7 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
       || roleByCode.get(mapped.roleKey)
       || defaultRole;
 
-    if (!role || !defaultRole) { result.skipped++; continue; }
+    if (!role || !defaultRole) { result.skipped++; return; }
 
     // Upsert employee
     const empPayload = {

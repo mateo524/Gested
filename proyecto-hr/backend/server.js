@@ -184,9 +184,13 @@ app.use(
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
-// Request timeout — prevents slow-loris and hung DB connections from tying up workers
+// Request timeout — prevents slow-loris and hung DB connections from tying up workers.
+// Bulk import confirms process one DB round-trip per row sequentially, so a
+// medium-sized spreadsheet can legitimately take longer than the default.
+const LONG_RUNNING_PATHS = [/^\/bulk-import\/simple\/.+\/confirm$/, /^\/bulk-import\/import$/];
 app.use((req, res, next) => {
-  const TIMEOUT_MS = 30_000;
+  const isLongRunning = LONG_RUNNING_PATHS.some((re) => re.test(req.path));
+  const TIMEOUT_MS = isLongRunning ? 120_000 : 30_000;
   const timer = setTimeout(() => {
     if (!res.headersSent) {
       res.status(503).json({ mensaje: "La solicitud tardó demasiado. Reintentá en un momento." });

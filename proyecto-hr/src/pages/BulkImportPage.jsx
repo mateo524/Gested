@@ -356,7 +356,7 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
         token: authToken,
         body: JSON.stringify({ token: previewToken }),
         headers: { "Content-Type": "application/json", ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}) },
-        timeoutMs: 30000,
+        timeoutMs: 120000,
       });
       if (data.ok) {
         setResult(data.result);
