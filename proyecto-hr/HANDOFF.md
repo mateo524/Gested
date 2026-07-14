@@ -4,9 +4,105 @@
 > próxima sesión (u otra persona) entienda qué se hizo, por qué, y qué queda
 > pendiente, sin tener que releer todo el historial de commits.
 
-## 2026-07-14
+## 2026-07-14 (parte 2) — CAUSA RAÍZ REAL DEL "not primary": ENCONTRADA Y ARREGLADA,
+## PENDIENTE DE DEPLOY
 
-### Contexto de partida
+**Empezá por acá si estás retomando el tema de "not primary" en la importación.**
+
+### El hallazgo clave del día: la app real corre en Vercel, no en Render ni Cloud Run
+Gran parte de esta sesión se investigó "not primary" contra `gested-1-backend.onrender.com`
+(Render) y contra el servicio de Cloud Run (`zentor-backend`, deploy automático vía
+`.github/workflows/deploy-backend.yml` en la raíz real del repo). **Ninguno de los dos
+es lo que sirve `app.zentor.com.ar`.** Confirmado con certeza:
+- `app.zentor.com.ar/api/*` es una **función serverless de Vercel**
+  (`api/index.js`, que monta `backend/server.js` bajo `/api` — ver `vercel.json`).
+- Un token emitido por `app.zentor.com.ar/api/auth/login` fue **rechazado** por el
+  Cloud Run directo (401 "Token inválido") → JWT_SECRET distinto → confirma que
+  son deployments completamente separados, no el mismo backend.
+- Render y Cloud Run deployan con cada push (útil tenerlos sanos, pero no son
+  producción real). No hace falta seguir probando ahí para este tipo de bugs.
+
+### Causa raíz real, confirmada con diagnóstico en runtime
+Se agregó un endpoint temporal `GET /mongo-diag` (protegido con `auth`, en
+`backend/server.js`) que expone la topología real de la conexión de Mongo sin
+exponer credenciales. Resultado en Vercel producción:
+```json
+{"host":"ac-p10bbtv-shard-00-01.s9kg1qj.mongodb.net","type":"Single","setName":null,
+ "servers":{"ac-p10bbtv-shard-00-01...":"RSSecondary"}}
+```
+El `MONGO_URI` configurado en **Vercel** (variable de entorno separada de la de
+Render/Cloud Run/local) apuntaba en modo `Single` a **un solo nodo, y ese nodo es
+una secundaria**. Nunca descubre el replica set completo ni al primary. Por eso:
+lecturas siempre funcionan (una secundaria puede leer), escrituras **siempre**
+fallan con `NotWritablePrimary` (nunca es "a veces" — una secundaria JAMÁS puede
+escribir). Esto explica el error, por qué nunca se reproducía en local (mi
+`.env` sí tiene el `MONGO_URI` correcto en formato `mongodb+srv://...`), y por
+qué ningún fix de reintentos/timeouts/IPv4/CPU-throttling lo resolvía — ninguno
+de esos era la causa real.
+
+### Fix aplicado (guardado, PENDIENTE DE QUE SE ACTIVE)
+1. Corregido el `MONGO_URI` de Vercel (proyecto `gested-l6ej`, environment
+   Production) vía `vercel env rm/add`, usando el mismo valor
+   `mongodb+srv://performia_app:***@admin.s9kg1qj.mongodb.net/hrdb?retryWrites=true&w=majority&appName=Admin`
+   que ya funciona en `backend/.env` local.
+2. **Este cambio de env var no toma efecto hasta el próximo deploy.** Se intentó
+   redeployar (`vercel --prod`) y se chocó el límite del plan free de Vercel:
+   **100 deployments/día por cuenta** (agotado por la cantidad de iteraciones
+   de esta sesión). El usuario eligió esperar ~24hs a que se resetee en vez de
+   upgradear a Pro.
+
+### ⚠️ Próximo paso OBLIGATORIO al retomar
+1. Verificar que ya se puede deployar de nuevo: `cd ~/Dev/Gested/proyecto-hr &&
+   vercel --prod --yes` (ojo: correr desde la carpeta EXTERNA `proyecto-hr`,
+   no desde `proyecto-hr/proyecto-hr` — ver nota de estructura del repo más
+   abajo). Si vuelve a tirar el error de límite, todavía no pasaron las 24hs.
+2. Una vez deployado, volver a pegarle a `GET https://app.zentor.com.ar/api/mongo-diag`
+   (con un token de un usuario logueado) y confirmar que ahora devuelve
+   `type: "ReplicaSetWithPrimary"` y los 3 hosts del shard
+   (`ac-p10bbtv-shard-00-0[0-2]`), no solo uno.
+3. Reprobar la importación de Personas (analyze + confirm) contra
+   `app.zentor.com.ar/api` con un archivo de 100 filas — debería andar sin
+   "not primary".
+4. **Sacar el código de diagnóstico temporal** una vez confirmado:
+   - `GET /mongo-diag` en `backend/server.js` (buscar el comentario "TEMP diagnostic").
+   - El campo `diag` en las respuestas de error de
+     `backend/routes/bulkImport.routes.js` (buscar "TEMP diagnostic" /
+     `diagFromError`).
+   Ninguno de los dos es peligroso dejar (no expone credenciales), pero son
+   ruido que no debería quedar permanente.
+
+### ⚠️ Estructura del repo (importante, confundió bastante durante la sesión)
+El repo de git tiene su raíz real en `~/Dev/Gested/proyecto-hr/` (carpeta
+EXTERNA). Todo el código de la app (`backend/`, `src/`, etc.) vive DENTRO de
+una subcarpeta también llamada `proyecto-hr/` (`~/Dev/Gested/proyecto-hr/proyecto-hr/`).
+- `git`/`npm`/edición de código: correr desde la carpeta INTERNA
+  (`~/Dev/Gested/proyecto-hr/proyecto-hr/`), como se vino haciendo toda la sesión.
+- `vercel` CLI: el proyecto `gested-l6ej` tiene su Root Directory configurado
+  como `proyecto-hr` — hay que correr `vercel` desde la carpeta **EXTERNA**
+  (`~/Dev/Gested/proyecto-hr/`), si no busca una carpeta `proyecto-hr` que no
+  existe y falla, o peor, crea/deploya a un proyecto de Vercel distinto por
+  error (esto pasó una vez en la sesión — se creó y se borró un proyecto
+  llamado "proyecto-hr" por accidente, ver commit history / este documento).
+- Los workflows de GitHub Actions (`.github/workflows/*.yml`) viven en la raíz
+  EXTERNA también, no dentro de la subcarpeta `proyecto-hr/`.
+- `gh` CLI: funciona bien desde cualquiera de las dos carpetas (git-aware).
+
+### Otros hallazgos/fixes de la sesión que siguen siendo válidos
+(aunque no eran la causa raíz del "not primary", no está de más tenerlos)
+- `backend/server.js`: middleware de ping+reconexión para detectar conexión
+  stale (solo aplica al modelo de proceso persistente de Render/Cloud Run, no
+  afecta a Vercel serverless).
+- `backend/services/simpleImportService.js`: `withMongoRetry` ya NO fuerza
+  `close()+reconnect()` entre reintentos (podía cortarle la conexión a otro
+  request concurrente en un contenedor Vercel "tibio" compartido) — ahora solo
+  hace backoff y reintenta sobre la misma conexión.
+- Cloud Run: `--no-cpu-throttling` + `--memory 512Mi` en
+  `.github/workflows/deploy-backend.yml` (para que el patrón de job en
+  background de confirmPersonas/analyzePersonasFile no se congele a mitad de
+  camino en ESE deployment — sigue siendo válido si algún día se usa Cloud Run
+  de verdad, aunque hoy no es el backend real).
+
+### Contexto de partida (2026-07-14, parte 1)
 - UsersPage aparecía vacío (se investigó `resolveCompanyScope`, JWT stale,
   filtros de Mongo — el código estaba bien, no se llegó a una causa raíz
   100% confirmada en la sesión antes de pasar a otras tareas).
