@@ -67,6 +67,27 @@
   persistir ahí en vez de en memoria. Verificado end-to-end contra la DB
   real (el preview sobrevive y se borra al confirmar).
 
+### Nav: se sacó "Sincronizar Excel"
+- Personas/Habilidades ya viven en "Importación" (Carga rápida), así que el
+  ítem de nav separado "Sincronizar Excel" (`excel-sync` / `ExcelSyncPage`)
+  quedaba redundante. Se sacó del menú, del router (`src/App.jsx`), del
+  command palette y de los íconos (`src/components/AppShell.jsx`), y se
+  borró `src/pages/ExcelSyncPage.jsx`. Ojo: esto es distinto del botón
+  "Sincronizar Excel" que existe dentro de `EvaluationsPage.jsx` (export a
+  Excel/Sheets de evaluaciones) — ese no se tocó, es una feature aparte.
+
+### "not primary" seguía apareciendo justo al subir el Excel (no al confirmar)
+- El fix de "Preview expirado" (persistir el preview en Mongo) agregó una
+  escritura a la DB **en el paso de analizar**, que antes no existía. Eso
+  corrió el punto de falla más temprano en el flujo.
+- El `withMongoRetry` original (2 reintentos, 400ms de base) sumaba ~1.2s
+  de ventana total — insuficiente: una reelección real de un cluster Atlas
+  compartido puede tardar hasta ~10-12s en resolverse. Se subió a 5
+  reintentos / 1000ms de base (~15s de ventana total).
+- Si el error persiste después de este cambio, ya no es un tema de ventana
+  de reintento — ahí sí conviene mirar logs de Render directamente o
+  considerar el upgrade de infraestructura (ver más abajo).
+
 ### Pendiente / próximos pasos
 - [ ] Confirmar si el usuario quiere upgradear Atlas/Render (decisión de
       costo, no de código).
