@@ -268,20 +268,22 @@ async function runPersonasAnalyze(buffer) {
 // jobId immediately, frontend polls for the result.
 export async function analyzePersonasFile(buffer, companyId) {
   const jobToken = mkToken();
-  await SimpleImportJob.create({
-    token: jobToken,
-    type: "personas_analyze",
-    companyId,
-    status: "processing",
-    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-  });
+  await withMongoRetry(() =>
+    SimpleImportJob.create({
+      token: jobToken,
+      type: "personas_analyze",
+      companyId,
+      status: "processing",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    })
+  );
 
   runPersonasAnalyze(buffer)
     .then((result) =>
-      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result } })
+      withMongoRetry(() => SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result } }))
     )
     .catch((err) =>
-      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } })
+      withMongoRetry(() => SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } }))
     );
 
   return { ok: true, status: "processing", jobId: jobToken };
@@ -484,23 +486,25 @@ export async function confirmPersonas({ token, companyId, schoolId }) {
   if (!entry || entry.type !== "personas") return { ok: false, message: "Preview expirado. Volvé a subir el archivo." };
 
   const jobToken = mkToken();
-  await SimpleImportJob.create({
-    token: jobToken,
-    type: "personas",
-    companyId,
-    status: "processing",
-    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
-  });
+  await withMongoRetry(() =>
+    SimpleImportJob.create({
+      token: jobToken,
+      type: "personas",
+      companyId,
+      status: "processing",
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    })
+  );
 
   runPersonasImport({ token, companyId, schoolId, entry })
     // Nested under `result` to mirror the synchronous { ok, result } shape
     // confirmJerarquias/confirmHabilidades already return, so the frontend
     // can treat both paths the same way once the job is unwrapped.
     .then((importResult) =>
-      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result: { result: importResult } } })
+      withMongoRetry(() => SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result: { result: importResult } } }))
     )
     .catch((err) =>
-      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } })
+      withMongoRetry(() => SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } }))
     );
 
   return { ok: true, status: "processing", jobId: jobToken };
