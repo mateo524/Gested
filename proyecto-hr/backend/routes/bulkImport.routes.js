@@ -33,6 +33,20 @@ const upload = multer({
   limits: { fileSize: 12 * 1024 * 1024 },
 });
 
+// TEMP diagnostic: surface the full driver error shape so we can find the
+// real cause of "not primary" errors reported only from Cloud Run (never
+// reproducible locally). Remove once root-caused.
+function diagFromError(err) {
+  return {
+    name: err?.name,
+    code: err?.code,
+    codeName: err?.codeName,
+    errorLabels: err?.errorLabelSet ? [...err.errorLabelSet] : err?.errorLabels,
+    cause: err?.cause?.message,
+    stack: String(err?.stack || "").split("\n").slice(0, 6),
+  };
+}
+
 export function resolveBulkTenant(req) {
   if (req.scope?.isSuperAdmin) {
     return {
@@ -358,7 +372,7 @@ router.post(
       const result = await analyze(req.file.buffer, companyId);
       res.status(result.ok ? 200 : 422).json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, message: err.message });
+      res.status(500).json({ ok: false, message: err.message, diag: diagFromError(err) });
     }
   }
 );
@@ -394,7 +408,7 @@ router.post(
       const result = await confirmPersonas({ token, companyId, schoolId });
       res.status(result.ok ? 200 : 400).json(result);
     } catch (err) {
-      res.status(500).json({ ok: false, message: err.message });
+      res.status(500).json({ ok: false, message: err.message, diag: diagFromError(err) });
     }
   }
 );
