@@ -24,6 +24,7 @@ import {
   confirmPersonas,
   confirmJerarquias,
   confirmHabilidades,
+  getSimpleImportJobStatus,
 } from "../services/simpleImportService.js";
 
 const router = express.Router();
@@ -372,8 +373,25 @@ router.post(
     const { companyId, schoolId } = resolveBulkTenant(req);
     if (!companyId) return res.status(400).json({ ok: false, message: "No se pudo resolver la organización." });
     try {
-      const result = await confirmPersonas({ token, companyId, schoolId, req });
+      const result = await confirmPersonas({ token, companyId, schoolId });
       res.status(result.ok ? 200 : 400).json(result);
+    } catch (err) {
+      res.status(500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+router.get(
+  "/simple/personas/confirm/:jobId/status",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    const { companyId } = resolveBulkTenant(req);
+    if (!companyId) return res.status(400).json({ ok: false, message: "No se pudo resolver la organización." });
+    try {
+      const result = await getSimpleImportJobStatus({ jobId: req.params.jobId, companyId });
+      res.status(result.ok || result.status === "processing" ? 200 : 400).json(result);
     } catch (err) {
       res.status(500).json({ ok: false, message: err.message });
     }

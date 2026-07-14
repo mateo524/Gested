@@ -7,6 +7,7 @@ import Employee from "../models/Employee.js";
 import Metric from "../models/Metric.js";
 import PositionHierarchy from "../models/PositionHierarchy.js";
 import Role from "../models/Role.js";
+import SimpleImportJob from "../models/SimpleImportJob.js";
 import SimpleImportPreview from "../models/SimpleImportPreview.js";
 import User from "../models/User.js";
 import { generateTempPassword } from "../utils/password.js";
@@ -316,10 +317,7 @@ const ROLE_MAP = {
   DIRECCION:   { roleKey: "HR",        scope: "ORGANIZATION" },
 };
 
-export async function confirmPersonas({ token, companyId, schoolId, req }) {
-  const entry = await loadPreview(token);
-  if (!entry || entry.type !== "personas") return { ok: false, message: "Preview expirado. Volvé a subir el archivo." };
-
+async function runPersonasImport({ token, companyId, schoolId, entry }) {
   const rows = entry.rows;
   const result = { created: 0, updated: 0, skipped: 0, temporaryPasswords: [], errors: [] };
 
@@ -448,7 +446,44 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
   }
 
   await deletePreview(token);
-  return { ok: true, result };
+  return result;
+}
+
+// Personas can be large enough (100s of rows) that processing it all
+// sequentially-through-an-HTTP-request risks the request/proxy timeout no
+// matter how high we set it. Instead, confirm kicks off the work in the
+// background and returns immediately with a jobId; the frontend polls
+// getSimpleImportJobStatus until it's done.
+export async function confirmPersonas({ token, companyId, schoolId }) {
+  const entry = await loadPreview(token);
+  if (!entry || entry.type !== "personas") return { ok: false, message: "Preview expirado. Volvé a subir el archivo." };
+
+  const jobToken = mkToken();
+  await SimpleImportJob.create({
+    token: jobToken,
+    type: "personas",
+    companyId,
+    status: "processing",
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+  });
+
+  runPersonasImport({ token, companyId, schoolId, entry })
+    .then((result) =>
+      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result } })
+    )
+    .catch((err) =>
+      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } })
+    );
+
+  return { ok: true, status: "processing", jobId: jobToken };
+}
+
+export async function getSimpleImportJobStatus({ jobId, companyId }) {
+  const job = await SimpleImportJob.findOne({ token: jobId, companyId }).lean();
+  if (!job) return { ok: false, message: "Job de importación no encontrado." };
+  if (job.status === "processing") return { ok: true, status: "processing" };
+  if (job.status === "error") return { ok: false, status: "error", message: job.errorMessage || "Error al confirmar la importación." };
+  return { ok: true, status: "done", result: job.result };
 }
 
 export async function confirmJerarquias({ token, companyId }) {

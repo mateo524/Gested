@@ -347,6 +347,21 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
     }
   }
 
+  async function pollJobStatus(jobId) {
+    const POLL_INTERVAL_MS = 2000;
+    const MAX_ATTEMPTS = 450; // ~15 minutes
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+      const status = await apiFetch(`/bulk-import/simple/${type}/confirm/${jobId}/status`, {
+        token: authToken,
+        headers: activeCompanyId ? { "X-Company-Id": activeCompanyId } : {},
+      });
+      if (status.status === "done") return status;
+      if (status.status === "error") throw new Error(status.message || "Error al confirmar la importación.");
+    }
+    throw new Error("La importación sigue procesándose. Volvé a esta pantalla en unos minutos.");
+  }
+
   async function handleConfirm() {
     if (!previewToken) return;
     setPhase("confirming");
@@ -358,12 +373,15 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
         headers: { "Content-Type": "application/json", ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}) },
         timeoutMs: 120000,
       });
-      if (data.ok) {
-        setResult(data.result);
+
+      const final = data.status === "processing" ? await pollJobStatus(data.jobId) : data;
+
+      if (final.ok) {
+        setResult(final.result);
         setPhase("done");
         addToast({ message: `${title}: importación cargada correctamente.`, type: "success" });
       } else {
-        addToast({ message: data.message || "Error al confirmar la importación.", type: "error" });
+        addToast({ message: final.message || "Error al confirmar la importación.", type: "error" });
         setPhase("preview");
       }
     } catch (e) {
