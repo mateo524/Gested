@@ -6,12 +6,10 @@ import Employee from "../models/Employee.js";
 import Metric from "../models/Metric.js";
 import PositionHierarchy from "../models/PositionHierarchy.js";
 import Role from "../models/Role.js";
+import SimpleImportPreview from "../models/SimpleImportPreview.js";
 import User from "../models/User.js";
 import { generateTempPassword } from "../utils/password.js";
 import { syncPrimaryRoleAssignmentForUser } from "../utils/accessControl.js";
-
-// In-memory preview cache: token → { rows, type, expiresAt }
-const previewCache = new Map();
 
 function mkToken() {
   return crypto.randomBytes(20).toString("hex");
@@ -36,20 +34,26 @@ async function withMongoRetry(fn, { retries = 2, delayMs = 400 } = {}) {
   throw lastError;
 }
 
-function storePreview(type, rows) {
+// Persisted in Mongo (not in-process memory) so the preview survives a
+// process restart between "analizar" and "confirmar" — free-tier Render
+// instances can restart on redeploy or after a sleep/wake cycle, which
+// would otherwise wipe an in-memory cache and show "Preview expirado".
+async function storePreview(type, rows) {
   const token = mkToken();
-  previewCache.set(token, { type, rows, expiresAt: Date.now() + 15 * 60 * 1000 });
-  // Prune expired entries
-  for (const [k, v] of previewCache) {
-    if (v.expiresAt < Date.now()) previewCache.delete(k);
-  }
+  await withMongoRetry(() =>
+    SimpleImportPreview.create({ token, type, rows, expiresAt: new Date(Date.now() + 15 * 60 * 1000) })
+  );
   return token;
 }
 
-function loadPreview(token) {
-  const entry = previewCache.get(token);
-  if (!entry || entry.expiresAt < Date.now()) return null;
+async function loadPreview(token) {
+  const entry = await withMongoRetry(() => SimpleImportPreview.findOne({ token }).lean());
+  if (!entry || entry.expiresAt.getTime() < Date.now()) return null;
   return entry;
+}
+
+async function deletePreview(token) {
+  await SimpleImportPreview.deleteOne({ token }).catch(() => {});
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -247,7 +251,7 @@ export async function analyzePersonasFile(buffer) {
   });
 
   if (errors.length) return { ok: false, errors, rows: parsed, token: null };
-  const token = storePreview("personas", parsed);
+  const token = await storePreview("personas", parsed);
   return { ok: true, errors: [], rows: parsed, token };
 }
 
@@ -267,7 +271,7 @@ export async function analyzeJerarquiasFile(buffer) {
   });
 
   if (errors.length) return { ok: false, errors, rows: parsed, token: null };
-  const token = storePreview("jerarquias", parsed);
+  const token = await storePreview("jerarquias", parsed);
   return { ok: true, errors: [], rows: parsed, token };
 }
 
@@ -294,7 +298,7 @@ export async function analyzeHabilidadesFile(buffer) {
   });
 
   if (errors.length) return { ok: false, errors, rows: parsed, token: null };
-  const token = storePreview("habilidades", parsed);
+  const token = await storePreview("habilidades", parsed);
   return { ok: true, errors: [], rows: parsed, token };
 }
 
@@ -307,7 +311,7 @@ const ROLE_MAP = {
 };
 
 export async function confirmPersonas({ token, companyId, schoolId, req }) {
-  const entry = loadPreview(token);
+  const entry = await loadPreview(token);
   if (!entry || entry.type !== "personas") return { ok: false, message: "Preview expirado. Volvé a subir el archivo." };
 
   const rows = entry.rows;
@@ -428,12 +432,12 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
     await withMongoRetry(() => Employee.updateOne({ _id: employee._id }, { $set: { managerId: manager._id } }));
   }
 
-  previewCache.delete(token);
+  await deletePreview(token);
   return { ok: true, result };
 }
 
 export async function confirmJerarquias({ token, companyId }) {
-  const entry = loadPreview(token);
+  const entry = await loadPreview(token);
   if (!entry || entry.type !== "jerarquias") return { ok: false, message: "Preview expirado. Volvé a subir el archivo." };
 
   const rows = entry.rows;
@@ -452,12 +456,12 @@ export async function confirmJerarquias({ token, companyId }) {
     }
   }
 
-  previewCache.delete(token);
+  await deletePreview(token);
   return { ok: true, result: { created, updated } };
 }
 
 export async function confirmHabilidades({ token, companyId, schoolId }) {
-  const entry = loadPreview(token);
+  const entry = await loadPreview(token);
   if (!entry || entry.type !== "habilidades") return { ok: false, message: "Preview expirado. Volvé a subir el archivo." };
 
   const rows = entry.rows;
@@ -515,6 +519,6 @@ export async function confirmHabilidades({ token, companyId, schoolId }) {
     }
   }
 
-  previewCache.delete(token);
+  await deletePreview(token);
   return { ok: true, result: { competencias: { created: compCreated, updated: compUpdated }, descriptores: { created: descCreated, updated: descUpdated } } };
 }
