@@ -56,6 +56,24 @@
   parcialmente con reintentos (ver arriba), pero **la solución de fondo es
   de infraestructura**: upgradear Atlas a M10+ y/o Render a plan pago.
 
+### "not primary" seguía apareciendo incluso agotando los 5 reintentos
+- Causa: los reintentos anteriores repetían la escritura sobre la **misma**
+  conexión de mongoose. Si esa conexión (la de Render, de larga vida) quedó
+  con la topología cacheada apuntando a un nodo que ya no es primary, un
+  simple ping (lo que hace el middleware de `server.js`) sigue funcionando
+  igual — un ping no distingue primary de secundario — así que nunca se
+  detectaba el problema y cada reintento fallaba exactamente igual.
+- Confirmado que era específico de la conexión de Render y no del cluster:
+  reproduje el flujo completo localmente contra el mismo cluster de Atlas
+  varias veces y nunca falló.
+- Fix: `withMongoRetry` ahora hace `mongoose.connection.close()` +
+  `mongoose.connect()` entre reintentos, forzando un descubrimiento de
+  topología nuevo en vez de confiar en que la conexión existente se
+  arregle sola.
+- Si esto tampoco resuelve, el próximo paso sería revisar si el
+  `MONGO_URI` configurado en el dashboard de Render tiene algo distinto al
+  de `backend/.env` local (no lo pude comparar, no tengo acceso a Render).
+
 ### Bug propio: "Importación" desapareció del menú al sacar "Sincronizar Excel"
 - `sidebarNav` (en `AppShell.jsx`) nunca empujaba `carga-masiva` como item
   standalone — solo entraba al índice del buscador global
