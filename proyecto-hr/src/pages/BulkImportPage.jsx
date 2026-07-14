@@ -518,21 +518,12 @@ function SimpleImportSection({ authToken, activeCompanyId, addToast }) {
         <h3 className="text-lg font-semibold text-white">Carga rápida</h3>
         <p className="mt-1 text-sm text-[#93acbb]">Descargá la plantilla de cada archivo, completala y subila. Podés importar cada uno de forma independiente.</p>
       </div>
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2">
         <SimpleImportCard
           type="personas"
           title="Personas"
           description="Empleados, roles y accesos"
           icon="👤"
-          authToken={authToken}
-          activeCompanyId={activeCompanyId}
-          addToast={addToast}
-        />
-        <SimpleImportCard
-          type="jerarquias"
-          title="Jerarquías"
-          description="Puestos y tipo de acceso por cargo"
-          icon="🏢"
           authToken={authToken}
           activeCompanyId={activeCompanyId}
           addToast={addToast}
