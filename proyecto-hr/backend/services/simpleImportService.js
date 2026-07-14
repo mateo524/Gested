@@ -17,6 +17,25 @@ function mkToken() {
   return crypto.randomBytes(20).toString("hex");
 }
 
+const TRANSIENT_MONGO_ERROR = /not primary|notwritableprimary|node is recovering|connection.*(closed|timed out)/i;
+
+// Shared/free MongoDB Atlas tiers run brief primary elections during
+// automatic maintenance, which surface as transient write errors. A single
+// short-delay retry resolves these without the user having to re-upload.
+async function withMongoRetry(fn, { retries = 2, delayMs = 400 } = {}) {
+  let lastError;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      if (attempt === retries || !TRANSIENT_MONGO_ERROR.test(err?.message || "")) throw err;
+      await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
+    }
+  }
+  throw lastError;
+}
+
 function storePreview(type, rows) {
   const token = mkToken();
   previewCache.set(token, { type, rows, expiresAt: Date.now() + 15 * 60 * 1000 });
@@ -343,10 +362,10 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
 
     let emp = (row.legajo && empByLegajo.get(row.legajo)) || empByEmail.get(row.email_laboral) || null;
     if (emp) {
-      await Employee.updateOne({ _id: emp._id }, { $set: empPayload });
+      await withMongoRetry(() => Employee.updateOne({ _id: emp._id }, { $set: empPayload }));
       result.updated++;
     } else {
-      const created = await Employee.create(empPayload);
+      const created = await withMongoRetry(() => Employee.create(empPayload));
       emp = created;
       empByLegajo.set(row.legajo, emp);
       empByEmail.set(row.email_laboral, emp);
@@ -356,8 +375,8 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
     // Upsert user + role assignment
     const existingUser = userByEmail.get(row.email_laboral);
     if (existingUser) {
-      await User.updateOne({ _id: existingUser._id }, { $set: { employeeId: emp._id, roleId: role._id } });
-      await syncPrimaryRoleAssignmentForUser({
+      await withMongoRetry(() => User.updateOne({ _id: existingUser._id }, { $set: { employeeId: emp._id, roleId: role._id } }));
+      await withMongoRetry(() => syncPrimaryRoleAssignmentForUser({
         user: existingUser,
         companyId,
         employeeId: emp._id,
@@ -365,22 +384,23 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
         scope: mapped.scope,
         departmentCode: row.departamento,
         active: true,
-      });
+      }));
     } else {
       const tempPwd = generateTempPassword();
-      const newUser = await User.create({
+      const passwordHash = await bcrypt.hash(tempPwd, 10);
+      const newUser = await withMongoRetry(() => User.create({
         companyId,
         schoolId: schoolId || null,
         roleId: role._id,
         employeeId: emp._id,
         nombre: `${row.nombre} ${row.apellido}`.trim(),
         email: row.email_laboral,
-        passwordHash: await bcrypt.hash(tempPwd, 10),
+        passwordHash,
         activo: row.activo,
         isSuperAdmin: false,
         mustChangePassword: true,
-      });
-      await syncPrimaryRoleAssignmentForUser({
+      }));
+      await withMongoRetry(() => syncPrimaryRoleAssignmentForUser({
         user: newUser,
         companyId,
         employeeId: emp._id,
@@ -388,7 +408,7 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
         scope: mapped.scope,
         departmentCode: row.departamento,
         active: true,
-      });
+      }));
       userByEmail.set(row.email_laboral, newUser);
       result.temporaryPasswords.push({ email: row.email_laboral, temporaryPassword: tempPwd });
     }
@@ -405,7 +425,7 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
     const employee = (row.legajo && empByLegajo.get(row.legajo)) || empByEmail.get(row.email_laboral);
     const manager = empByFullName.get(row.jefe_directo.toLowerCase());
     if (!employee || !manager || String(manager._id) === String(employee._id)) continue;
-    await Employee.updateOne({ _id: employee._id }, { $set: { managerId: manager._id } });
+    await withMongoRetry(() => Employee.updateOne({ _id: employee._id }, { $set: { managerId: manager._id } }));
   }
 
   previewCache.delete(token);
