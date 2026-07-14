@@ -18,9 +18,10 @@ function mkToken() {
 const TRANSIENT_MONGO_ERROR = /not primary|notwritableprimary|node is recovering|connection.*(closed|timed out)/i;
 
 // Shared/free MongoDB Atlas tiers run brief primary elections during
-// automatic maintenance, which surface as transient write errors. A single
-// short-delay retry resolves these without the user having to re-upload.
-async function withMongoRetry(fn, { retries = 2, delayMs = 400 } = {}) {
+// automatic maintenance (can take up to ~10-12s to resolve), which surface
+// as transient write errors. Retry with backoff long enough to ride one out
+// instead of forcing the user to re-upload.
+async function withMongoRetry(fn, { retries = 5, delayMs = 1000 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
