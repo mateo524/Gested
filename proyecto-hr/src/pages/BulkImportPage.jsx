@@ -360,6 +360,7 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
       if (data.ok) {
         setResult(data.result);
         setPhase("done");
+        addToast({ message: `${title}: importación cargada correctamente.`, type: "success" });
       } else {
         addToast({ message: data.message || "Error al confirmar la importación.", type: "error" });
         setPhase("preview");
@@ -424,7 +425,7 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
       {/* Preview */}
       {phase === "preview" && rows.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs text-[#7f99a8]">{rows.length} {rows.length === 1 ? "registro" : "registros"} listos para importar</p>
+          <p className="text-xs text-[#7f99a8]">{rows.length} {rows.length === 1 ? "registro" : "registros"} listos para importar. Todavía no se guardaron — hacé click en "Confirmar importación" para cargarlos.</p>
           <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#12222d]">
             <table className="min-w-full text-xs">
               <thead>
