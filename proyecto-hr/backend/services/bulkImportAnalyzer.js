@@ -66,7 +66,9 @@ const HEADER_ALIASES = {
   apellido:            "last_name",
   email_laboral:       "work_email",
   puesto:              "job_title",
+  jefe_directo:        "manager_name",
   fecha_ingreso:       "hire_date",
+  fecha_nacimiento:    "birth_date",
   tipo_contrato:       "employment_status",
   activo:              "active",
   // Usuarios_y_Roles
@@ -116,9 +118,8 @@ const SHEET_COLUMN_CONFIG = {
       "first_name",
       "last_name",
       "work_email",
+      "departamento",
       "job_title",
-      "employment_status",
-      "active",
     ],
   },
   Usuarios_y_Roles: {
@@ -409,6 +410,10 @@ function validateDepartmentRows(rows, issues, summaryBySheet) {
   });
 }
 
+function fullNameKey(nombre, apellido) {
+  return normalizeText(`${nombre} ${apellido}`).toLowerCase();
+}
+
 function validateEmployeeRows(rows, issues, summaryBySheet, context) {
   summaryBySheet.Empleados.totalRows = rows.length;
   const importedDepartmentCodes = new Set(context.departments.map((item) => normalizeText(item.departamento)).filter(Boolean));
@@ -419,15 +424,18 @@ function validateEmployeeRows(rows, issues, summaryBySheet, context) {
       .filter((item) => normalizeText(item.legajo))
       .map((item) => [normalizeText(item.legajo), item])
   );
+  const knownFullNames = new Set([
+    ...rows.map((item) => fullNameKey(item.first_name, item.last_name)),
+    ...context.existingEmployees.map((item) => fullNameKey(item.nombre, item.apellido)),
+  ].filter(Boolean));
 
   rows.forEach((row) => {
     validateNoTenantColumns(row, "Empleados", issues);
     const employeeCode = normalizeText(row.legajo);
     const email = normalizeEmail(row.work_email);
     const departmentCode = normalizeText(row.departamento);
-    const employmentStatus = normalizeText(row.employment_status || row.status);
-    const active = normalizeText(row.active);
     const hireDate = parseDateValue(row.hire_date);
+    const birthDate = parseDateValue(row.birth_date);
 
     if (!employeeCode) {
       issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "legajo", message: "legajo es obligatorio" }));
@@ -462,17 +470,24 @@ function validateEmployeeRows(rows, issues, summaryBySheet, context) {
     if (!normalizeText(row.job_title)) {
       issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "job_title", message: "job_title es obligatorio" }));
     }
-    if (departmentCode && !importedDepartmentCodes.has(departmentCode)) {
+    if (!departmentCode) {
+      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "departamento", message: "departamento es obligatorio" }));
+    } else if (!importedDepartmentCodes.has(departmentCode)) {
       issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "departamento", message: `departamento no existe en la hoja Departamentos: ${departmentCode}` }));
-    }
-    if (employmentStatus && !BULK_IMPORT_CATALOGS.status.includes(employmentStatus)) {
-      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "employment_status", message: `employment_status invalido: ${employmentStatus}` }));
-    }
-    if (active && !BULK_IMPORT_CATALOGS.yesNo.includes(active)) {
-      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "active", message: `active invalido: ${active}` }));
     }
     if (normalizeText(row.hire_date) && !hireDate) {
       issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "hire_date", message: "hire_date no tiene una fecha valida" }));
+    }
+    if (normalizeText(row.birth_date) && !birthDate) {
+      issues.push(createIssue({ sheet: "Empleados", rowNumber: row._rowNumber, field: "birth_date", message: "fecha_nacimiento no tiene una fecha valida" }));
+    }
+    const managerName = normalizeText(row.manager_name);
+    if (managerName) {
+      if (fullNameKey(row.first_name, row.last_name) === managerName.toLowerCase()) {
+        issues.push(createIssue({ severity: "warning", sheet: "Empleados", rowNumber: row._rowNumber, field: "jefe_directo", message: "jefe_directo no puede ser la misma persona" }));
+      } else if (!knownFullNames.has(managerName.toLowerCase())) {
+        issues.push(createIssue({ severity: "warning", sheet: "Empleados", rowNumber: row._rowNumber, field: "jefe_directo", message: `No encontramos a "${managerName}" entre los empleados importados o existentes. Revisa que el nombre y apellido coincidan exactamente.` }));
+      }
     }
   });
 }

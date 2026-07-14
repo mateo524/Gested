@@ -116,6 +116,7 @@ function addInstructionSheet(workbook) {
     { section: "Autocompletado",   detail: "En Usuarios_y_Roles, al seleccionar el legajo en la columna A, el email_laboral (columna B) se completa solo. Completá primero toda la solapa Empleados." },
     { section: "Seguridad",        detail: "No cargues credenciales ni datos sensibles en archivos de prueba. SUPER_ADMIN y PLATFORM no se configuran desde esta plantilla." },
     { section: "Managers",         detail: "tipo_relacion: direct = jefe directo, dotted_line = jefe funcional, temporary = temporal. jefe_principal: yes/no." },
+    { section: "Jefe directo (Empleados)", detail: "En la columna jefe_directo de Empleados escribí el nombre y apellido exactos del jefe (tal cual figuran en sus propias columnas nombre/apellido). El sistema busca ese email automáticamente al confirmar la importación." },
     { section: "Habilidades",      detail: "Define el catálogo de competencias de la empresa. tipo: TRANSVERSAL, TECNICA, LIDERAZGO, PERSONALIZADA. nivel: BASICO, INTERMEDIO, AVANZADO." },
   ].forEach((row) => sheet.addRow(row));
   sheet.eachRow((row) => { row.alignment = { vertical: "top", wrapText: true }; });
@@ -154,21 +155,17 @@ function addDepartmentsSheet(workbook) {
 function addEmployeesSheet(workbook) {
   const sheet = workbook.addWorksheet("Empleados");
   applySheetStyle(sheet, [
-    { header: "legajo",         key: "employeeCode",     width: 20 },
-    { header: "nombre",         key: "firstName",        width: 20 },
-    { header: "apellido",       key: "lastName",         width: 20 },
-    { header: "email_laboral",  key: "workEmail",        width: 30 },
-    { header: "puesto",         key: "jobTitle",         width: 24 },
-    { header: "departamento",   key: "departmentCode",   width: 20 },
-    { header: "unidad_negocio", key: "businessUnit",     width: 22 },
-    { header: "region",         key: "regionCountry",    width: 20 },
-    { header: "fecha_ingreso",  key: "hireDate",         width: 16 },
-    { header: "tipo_contrato",  key: "employmentStatus", width: 18 },
-    { header: "activo",         key: "active",           width: 12 },
+    { header: "legajo",            key: "employeeCode",   width: 20 },
+    { header: "nombre",            key: "firstName",      width: 20 },
+    { header: "apellido",          key: "lastName",       width: 20 },
+    { header: "email_laboral",     key: "workEmail",      width: 30 },
+    { header: "departamento",      key: "departmentCode", width: 20 },
+    { header: "puesto",            key: "jobTitle",       width: 24 },
+    { header: "jefe_directo",      key: "managerName",    width: 26 },
+    { header: "fecha_ingreso",     key: "hireDate",       width: 16 },
+    { header: "fecha_nacimiento",  key: "birthDate",      width: 18 },
   ]);
-  rangeDropdown(sheet, 6, 2, DATA_ROWS, NR.DEP_CODIGOS);
-  listDropdown(sheet, 10, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.tipoContrato);
-  listDropdown(sheet, 11, 2, DATA_ROWS, BULK_IMPORT_CATALOGS.yesNo);
+  rangeDropdown(sheet, 5, 2, DATA_ROWS, NR.DEP_CODIGOS);
 }
 
 function addUsersRolesSheet(workbook) {

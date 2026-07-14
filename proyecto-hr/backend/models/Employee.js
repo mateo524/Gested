@@ -36,6 +36,7 @@ const EmployeeSchema = new mongoose.Schema(
       default: "DOCENTE",
     },
     fechaIngreso: { type: Date, default: null },
+    fechaNacimiento: { type: Date, default: null },
     activo: { type: Boolean, default: true },
   },
   { timestamps: true }

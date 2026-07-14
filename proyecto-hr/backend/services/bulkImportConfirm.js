@@ -35,6 +35,10 @@ function toNumber(value, fallback = null) {
   return Number.isFinite(number) ? number : fallback;
 }
 
+function fullNameKey(nombre, apellido) {
+  return normalizeText(`${nombre} ${apellido}`).toLowerCase();
+}
+
 function buildLookupKey(...parts) {
   return parts
     .map((part) => normalizeText(part).toLowerCase())
@@ -199,6 +203,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           area: importedDepartmentMap.get(normalizeText(row.departamento)) || normalizeText(row.departamento),
           activo: toBooleanWord(row.active, true),
           fechaIngreso: parseDateValue(row.hire_date),
+          fechaNacimiento: parseDateValue(row.birth_date),
         };
 
         const existing = employeeByCode.get(employeeCode) || employeeByEmail.get(email) || null;
@@ -211,6 +216,7 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           existing.legajo = employeePayload.legajo;
           existing.activo = employeePayload.activo;
           existing.fechaIngreso = employeePayload.fechaIngreso;
+          existing.fechaNacimiento = employeePayload.fechaNacimiento;
           await existing.save({ session });
           employeeByCode.set(employeeCode, existing);
           employeeByEmail.set(email, existing);
@@ -222,6 +228,26 @@ export async function confirmBulkImportJob({ req, importJobId, previewToken }) {
           employeeByEmail.set(email, employee);
           result.employees.created += 1;
         }
+      }
+
+      const employeeByFullName = new Map();
+      employeeByEmail.forEach((employee) => {
+        const key = fullNameKey(employee.nombre, employee.apellido);
+        if (key) employeeByFullName.set(key, employee);
+      });
+
+      for (const row of preview.employees || []) {
+        const managerName = normalizeText(row.manager_name);
+        if (!managerName) continue;
+        const employeeCode = normalizeText(row.legajo);
+        const email = normalizeEmail(row.work_email);
+        const employee = employeeByCode.get(employeeCode) || employeeByEmail.get(email);
+        const manager = employeeByFullName.get(managerName.toLowerCase());
+        if (!employee || !manager || String(manager._id) === String(employee._id)) {
+          continue;
+        }
+        employee.managerId = manager._id;
+        await employee.save({ session });
       }
 
       const defaultRole =
