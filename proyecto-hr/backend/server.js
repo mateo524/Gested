@@ -144,6 +144,32 @@ if (process.env.VERCEL) {
       res.status(503).json({ mensaje: "Servicio no disponible temporalmente" });
     }
   });
+} else {
+  // Cloud Run congela la instancia (y sus timers, incluido el heartbeat del
+  // driver de Mongo) entre requests cuando no hay trafico. Al despertar, la
+  // conexion abierta en start() puede seguir marcada como "connected"
+  // (readyState 1) pero apuntar a topologia vieja (p.ej. una reeleccion del
+  // replica set ocurrida mientras el proceso estaba pausado), lo que produce
+  // errores "not primary" en el primer request. Un ping activo detecta esto
+  // y fuerza una reconexion antes de servir el request.
+  app.use(async (req, res, next) => {
+    try {
+      if (mongoose.connection.readyState !== 1) {
+        await mongoose.connect(process.env.MONGO_URI);
+      } else {
+        try {
+          await mongoose.connection.db.admin().command({ ping: 1 });
+        } catch {
+          await mongoose.connection.close().catch(() => {});
+          await mongoose.connect(process.env.MONGO_URI);
+        }
+      }
+      next();
+    } catch (err) {
+      console.error("Error de reconexion a MongoDB:", err);
+      res.status(503).json({ mensaje: "Servicio no disponible temporalmente" });
+    }
+  });
 }
 
 app.use(cors(buildCorsOptions()));
