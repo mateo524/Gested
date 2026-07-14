@@ -56,6 +56,31 @@
   parcialmente con reintentos (ver arriba), pero **la solución de fondo es
   de infraestructura**: upgradear Atlas a M10+ y/o Render a plan pago.
 
+### Confirm pasado a job en background (2026-07-14, más tarde)
+- Con 150+ filas, ningún timeout fijo alcanza siempre. `confirmPersonas`
+  ahora crea un `SimpleImportJob` (modelo nuevo,
+  `backend/models/SimpleImportJob.js`, TTL 1h) y arranca el procesamiento
+  sin bloquear la respuesta — devuelve `{ok:true, status:"processing",
+  jobId}` casi al instante. Nuevo endpoint
+  `GET /bulk-import/simple/personas/confirm/:jobId/status`. El frontend
+  (`BulkImportPage.jsx`) hace polling cada 2s hasta 15 minutos.
+- Verificado en producción con 200 filas reales: confirm respondió en
+  1.7s, el job terminó bien (200 creados, 0 errores). Limpieza de datos de
+  prueba hecha.
+- Jerarquías/Habilidades quedaron síncronas (son catálogos chicos, no
+  escalan con la nómina).
+
+### El mismo mensaje de demora seguía apareciendo, pero en "analizar" no en "confirmar"
+- El usuario reportó timeout de nuevo; al preguntar en qué paso, era al
+  **subir/analizar** el archivo, no al confirmar. Ese paso nunca se tocó —
+  seguía con el timeout viejo de 30s (server.js) y 30000ms (cliente).
+- Fix: se agregó `/^\/bulk-import\/simple\/.+\/analyze$/` a
+  `LONG_RUNNING_PATHS` en `server.js` (ahora 120s como confirm), y se subió
+  el `timeoutMs` del fetch de analyze en `BulkImportPage.jsx` a 120000.
+- Sin verificar en producción todavía (recién pusheado) — si el usuario
+  reporta que sigue tardando en analizar, probar con su archivo real a
+  esa escala.
+
 ### "solicitud tardó mucho" al confirmar — causa real (no era infra)
 - Reproduje contra producción con un archivo de 30 filas: `confirm` cortaba
   siempre justo a los 30.0s con 503 "La solicitud tardó demasiado" —
