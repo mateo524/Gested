@@ -20,11 +20,13 @@ function mkToken() {
 const TRANSIENT_MONGO_ERROR = /not primary|notwritableprimary|node is recovering|connection.*(closed|timed out)/i;
 
 // Shared/free MongoDB Atlas tiers run brief primary elections during
-// automatic maintenance (can take up to ~10-12s to resolve), which surface
-// as transient write errors. Retrying on the SAME connection doesn't help if
-// the driver's cached topology still points at the wrong node (a plain ping
-// succeeds against a secondary too, so it won't self-heal) — force a real
-// reconnect between attempts so the next try gets a fresh topology.
+// automatic maintenance, which surface as transient write errors. Retry
+// with backoff on the SAME connection — do NOT force-close/reconnect here.
+// This app also runs as a Vercel serverless function (api/index.js), where a
+// warm container can be reused across concurrent invocations sharing one
+// mongoose connection; closing it to "fix" one request's error can yank the
+// connection out from under a different request that's mid-write on the
+// same container, turning a transient error into a guaranteed one.
 async function withMongoRetry(fn, { retries = 5, delayMs = 1000 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -34,8 +36,6 @@ async function withMongoRetry(fn, { retries = 5, delayMs = 1000 } = {}) {
       lastError = err;
       if (attempt === retries || !TRANSIENT_MONGO_ERROR.test(err?.message || "")) throw err;
       await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
-      await mongoose.connection.close().catch(() => {});
-      await mongoose.connect(process.env.MONGO_URI, { family: 4 }).catch(() => {});
     }
   }
   throw lastError;
