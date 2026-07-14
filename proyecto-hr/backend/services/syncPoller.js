@@ -18,7 +18,13 @@ export function stopSyncPoller(intervalId) {
 }
 
 async function pollAllConnections() {
-  const connections = await ExcelSyncConnection.find({ status: "active" });
+  // OAuth token fields are `select: false` on the schema (kept out of normal
+  // reads), so they must be requested explicitly or every refresh call sees
+  // them as undefined and fails with "No refresh token is set." even when a
+  // valid token is stored.
+  const connections = await ExcelSyncConnection.find({ status: "active" }).select(
+    "+googleAccessToken +googleRefreshToken +msAccessToken +msRefreshToken"
+  );
   const results = await Promise.allSettled(
     connections.map((connection) => pollConnection(connection))
   );
