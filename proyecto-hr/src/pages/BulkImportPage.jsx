@@ -335,7 +335,7 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
     try {
       const body = new FormData();
       body.append("file", file);
-      const data = await apiFetch(`/bulk-import/simple/${type}/analyze`, { method: "POST", token: authToken, body });
+      const data = await apiFetch(`/bulk-import/simple/${type}/analyze`, { method: "POST", token: authToken, body, timeoutMs: 30000 });
       if (!Array.isArray(data.rows)) { addToast({ message: "Respuesta inesperada del servidor.", type: "error" }); setPhase("idle"); return; }
       setRows(data.rows);
       setErrors(Array.isArray(data.errors) ? data.errors : []);
@@ -356,6 +356,7 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
         token: authToken,
         body: JSON.stringify({ token: previewToken }),
         headers: { "Content-Type": "application/json", ...(activeCompanyId ? { "X-Company-Id": activeCompanyId } : {}) },
+        timeoutMs: 30000,
       });
       if (data.ok) {
         setResult(data.result);

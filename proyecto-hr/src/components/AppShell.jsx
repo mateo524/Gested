@@ -387,6 +387,8 @@ export default function AppShell({
       items.push({ type: "group", key: "dashboard-group", label: L("Dashboard", "Dashboard"), icon: "reporte-ejecutivo", children: dashboardKids });
     }
 
+    // Importación (standalone)
+    if (byKey["carga-masiva"]) items.push({ type: "item", key: "carga-masiva", label: L("Importación", "Import"), icon: "carga-masiva" });
 
     // Plataforma group (superadmin)
     if (isSuperAdmin) {
