@@ -56,6 +56,17 @@
   parcialmente con reintentos (ver arriba), pero **la solución de fondo es
   de infraestructura**: upgradear Atlas a M10+ y/o Render a plan pago.
 
+### Fix adicional: "Preview expirado" en Carga rápida
+- Causa real: `simpleImportService.js` guardaba el preview del Excel
+  analizado en un `Map` **en memoria del proceso**. Si Render reiniciaba el
+  proceso entre el click de "analizar" y el de "confirmar" (por un redeploy
+  nuestro en simultáneo, o por el ciclo sleep/wake del free tier), el token
+  dejaba de existir aunque no hubieran pasado los 15 minutos de TTL.
+- Fix: se creó `backend/models/SimpleImportPreview.js` (colección Mongo con
+  índice TTL) y se migró `storePreview`/`loadPreview`/`deletePreview` para
+  persistir ahí en vez de en memoria. Verificado end-to-end contra la DB
+  real (el preview sobrevive y se borra al confirmar).
+
 ### Pendiente / próximos pasos
 - [ ] Confirmar si el usuario quiere upgradear Atlas/Render (decisión de
       costo, no de código).
