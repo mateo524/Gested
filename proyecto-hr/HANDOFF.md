@@ -56,6 +56,22 @@
   parcialmente con reintentos (ver arriba), pero **la solución de fondo es
   de infraestructura**: upgradear Atlas a M10+ y/o Render a plan pago.
 
+### Bug propio: "Importación" desapareció del menú al sacar "Sincronizar Excel"
+- `sidebarNav` (en `AppShell.jsx`) nunca empujaba `carga-masiva` como item
+  standalone — solo entraba al índice del buscador global
+  (`globalSearchItems`). El único item standalone real era `excel-sync`.
+  Al sacarlo, quedó sin ninguna entrada clickeable en el menú.
+- Fix: se agregó `carga-masiva` como item standalone en `sidebarNav`
+  (`src/components/AppShell.jsx`), visible directamente en el sidebar.
+
+### Timeout del cliente muy corto para el retry ampliado
+- Al subir 5 reintentos/1000ms de base en `withMongoRetry` (ver abajo), el
+  peor caso puede tardar ~15s+, más que el timeout default de `apiFetch`
+  (12s) — el usuario veía "La solicitud está demorando más de lo esperado"
+  aunque el backend hubiera terminado bien tras el reintento.
+- Fix: `BulkImportPage.jsx` ahora pasa `timeoutMs: 30000` en las llamadas a
+  `/bulk-import/simple/:type/analyze` y `/confirm`.
+
 ### Fix adicional: "Preview expirado" en Carga rápida
 - Causa real: `simpleImportService.js` guardaba el preview del Excel
   analizado en un `Map` **en memoria del proceso**. Si Render reiniciaba el
