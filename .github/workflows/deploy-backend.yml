@@ -145,6 +145,7 @@ jobs:
             --max-instances 3 \
             --memory 256Mi \
             --cpu 1 \
+            --no-cpu-throttling \
             --port 8080 \
             --env-vars-file .cloud-run-env.yaml \
             --project ${{ env.PROJECT_ID }}
