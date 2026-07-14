@@ -84,7 +84,6 @@ function dropdown(sheet, col, from, to, values) {
 const ROWS = 300;
 const TIPO_ACCESO = ["EMPLEADO", "MANDO_MEDIO", "DIRECCION"];
 const HABILIDAD_TIPO = ["TRANSVERSAL", "TECNICA", "LIDERAZGO"];
-const TIPO_CONTRATO = ["full_time", "part_time", "contractor", "intern"];
 
 // ─── Template builders ───────────────────────────────────────────────────────
 
@@ -93,29 +92,24 @@ export async function buildPersonasTemplate() {
   wb.creator = "ZENTOR";
   const ws = wb.addWorksheet("Personas");
   setupSheet(ws, [
-    { header: "legajo",         key: "legajo",         width: 18 },
-    { header: "nombre",         key: "nombre",         width: 20 },
-    { header: "apellido",       key: "apellido",       width: 20 },
-    { header: "email_laboral",  key: "email_laboral",  width: 30 },
-    { header: "puesto",         key: "puesto",         width: 24 },
-    { header: "departamento",   key: "departamento",   width: 22 },
-    { header: "rol",            key: "rol",            width: 18 },
-    { header: "unidad_negocio", key: "unidad_negocio", width: 22 },
-    { header: "region",         key: "region",         width: 18 },
-    { header: "fecha_ingreso",  key: "fecha_ingreso",  width: 16 },
-    { header: "tipo_contrato",  key: "tipo_contrato",  width: 18 },
-    { header: "activo",         key: "activo",         width: 12 },
+    { header: "legajo",           key: "legajo",           width: 18 },
+    { header: "nombre",           key: "nombre",           width: 20 },
+    { header: "apellido",         key: "apellido",         width: 20 },
+    { header: "email_laboral",    key: "email_laboral",    width: 30 },
+    { header: "puesto",           key: "puesto",           width: 24 },
+    { header: "departamento",     key: "departamento",     width: 22 },
+    { header: "rol",              key: "rol",              width: 18 },
+    { header: "jefe_directo",     key: "jefe_directo",     width: 26 },
+    { header: "fecha_ingreso",    key: "fecha_ingreso",    width: 16 },
+    { header: "fecha_nacimiento", key: "fecha_nacimiento", width: 18 },
   ]);
   dropdown(ws, 7, 2, ROWS, TIPO_ACCESO);
-  dropdown(ws, 11, 2, ROWS, TIPO_CONTRATO);
-  dropdown(ws, 12, 2, ROWS, ["yes", "no"]);
 
   // Ref sheet with catalog values
   const cat = wb.addWorksheet("Referencia");
   setupSheet(cat, [{ header: "campo", key: "campo", width: 20 }, { header: "valores válidos", key: "valores", width: 60 }]);
   cat.addRow({ campo: "rol", valores: TIPO_ACCESO.join("  |  ") });
-  cat.addRow({ campo: "tipo_contrato", valores: TIPO_CONTRATO.join("  |  ") });
-  cat.addRow({ campo: "activo", valores: "yes  |  no" });
+  cat.addRow({ campo: "jefe_directo", valores: "Nombre y apellido exactos del jefe directo (debe existir como otra fila en esta misma hoja o ya cargado en el sistema)." });
 
   return wb.xlsx.writeBuffer();
 }
@@ -210,20 +204,27 @@ export async function analyzePersonasFile(buffer) {
     if (rol && !TIPO_ACCESO.includes(rol)) lineErrors.push(`Fila ${row._rowNumber}: 'rol' debe ser EMPLEADO, MANDO_MEDIO o DIRECCION.`);
     errors.push(...lineErrors);
     parsed.push({
-      _rowNumber: row._rowNumber,
-      legajo:         norm(row.legajo),
-      nombre:         norm(row.nombre),
-      apellido:       norm(row.apellido),
-      email_laboral:  normLower(row.email_laboral),
-      puesto:         norm(row.puesto),
-      departamento:   norm(row.departamento),
-      rol:            rol || null,
-      unidad_negocio: norm(row.unidad_negocio),
-      region:         norm(row.region),
-      fecha_ingreso:  parseDate(row.fecha_ingreso),
-      tipo_contrato:  norm(row.tipo_contrato),
-      activo:         toBool(row.activo, true),
+      _rowNumber:       row._rowNumber,
+      legajo:           norm(row.legajo),
+      nombre:           norm(row.nombre),
+      apellido:         norm(row.apellido),
+      email_laboral:    normLower(row.email_laboral),
+      puesto:           norm(row.puesto),
+      departamento:     norm(row.departamento),
+      rol:              rol || null,
+      jefe_directo:     norm(row.jefe_directo),
+      fecha_ingreso:    parseDate(row.fecha_ingreso),
+      fecha_nacimiento: parseDate(row.fecha_nacimiento),
+      activo:           true,
     });
+  });
+
+  parsed.forEach((item) => {
+    if (!item.jefe_directo) return;
+    const ownKey = `${item.nombre} ${item.apellido}`.trim().toLowerCase();
+    if (item.jefe_directo.toLowerCase() === ownKey) {
+      errors.push(`Fila ${item._rowNumber}: 'jefe_directo' no puede ser la misma persona.`);
+    }
   });
 
   if (errors.length) return { ok: false, errors, rows: parsed, token: null };
@@ -337,6 +338,7 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
       area: row.departamento,
       activo: row.activo,
       fechaIngreso: row.fecha_ingreso,
+      fechaNacimiento: row.fecha_nacimiento,
     };
 
     let emp = (row.legajo && empByLegajo.get(row.legajo)) || empByEmail.get(row.email_laboral) || null;
@@ -390,6 +392,20 @@ export async function confirmPersonas({ token, companyId, schoolId, req }) {
       userByEmail.set(row.email_laboral, newUser);
       result.temporaryPasswords.push({ email: row.email_laboral, temporaryPassword: tempPwd });
     }
+  }
+
+  const empByFullName = new Map();
+  empByEmail.forEach((employee) => {
+    const key = `${employee.nombre} ${employee.apellido}`.trim().toLowerCase();
+    if (key) empByFullName.set(key, employee);
+  });
+
+  for (const row of rows) {
+    if (!row.jefe_directo) continue;
+    const employee = (row.legajo && empByLegajo.get(row.legajo)) || empByEmail.get(row.email_laboral);
+    const manager = empByFullName.get(row.jefe_directo.toLowerCase());
+    if (!employee || !manager || String(manager._id) === String(employee._id)) continue;
+    await Employee.updateOne({ _id: employee._id }, { $set: { managerId: manager._id } });
   }
 
   previewCache.delete(token);
