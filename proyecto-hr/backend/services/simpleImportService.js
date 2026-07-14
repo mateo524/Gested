@@ -216,7 +216,7 @@ function readSheet(wb, sheetName) {
   return rows;
 }
 
-export async function analyzePersonasFile(buffer) {
+async function runPersonasAnalyze(buffer) {
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.load(buffer);
   const rows = readSheet(wb, "personas") || readSheet(wb, "Personas");
@@ -260,6 +260,31 @@ export async function analyzePersonasFile(buffer) {
   if (errors.length) return { ok: false, errors, rows: parsed, token: null };
   const token = await storePreview("personas", parsed);
   return { ok: true, errors: [], rows: parsed, token };
+}
+
+// Parsing/validating a large real-world spreadsheet (plus a cold Render
+// instance) can take long enough that no fixed HTTP timeout is safe. Same
+// background-job pattern as confirmPersonas: kick off the work, return a
+// jobId immediately, frontend polls for the result.
+export async function analyzePersonasFile(buffer, companyId) {
+  const jobToken = mkToken();
+  await SimpleImportJob.create({
+    token: jobToken,
+    type: "personas_analyze",
+    companyId,
+    status: "processing",
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+  });
+
+  runPersonasAnalyze(buffer)
+    .then((result) =>
+      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result } })
+    )
+    .catch((err) =>
+      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } })
+    );
+
+  return { ok: true, status: "processing", jobId: jobToken };
 }
 
 export async function analyzeJerarquiasFile(buffer) {
@@ -468,8 +493,11 @@ export async function confirmPersonas({ token, companyId, schoolId }) {
   });
 
   runPersonasImport({ token, companyId, schoolId, entry })
-    .then((result) =>
-      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result } })
+    // Nested under `result` to mirror the synchronous { ok, result } shape
+    // confirmJerarquias/confirmHabilidades already return, so the frontend
+    // can treat both paths the same way once the job is unwrapped.
+    .then((importResult) =>
+      SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "done", result: { result: importResult } } })
     )
     .catch((err) =>
       SimpleImportJob.updateOne({ token: jobToken }, { $set: { status: "error", errorMessage: err.message } })

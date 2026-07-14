@@ -335,7 +335,10 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
     try {
       const body = new FormData();
       body.append("file", file);
-      const data = await apiFetch(`/bulk-import/simple/${type}/analyze`, { method: "POST", token: authToken, body, timeoutMs: 120000 });
+      const response = await apiFetch(`/bulk-import/simple/${type}/analyze`, { method: "POST", token: authToken, body, timeoutMs: 120000 });
+      const data = response.status === "processing"
+        ? await pollJobStatus(`/bulk-import/simple/${type}/analyze`, response.jobId)
+        : response;
       if (!Array.isArray(data.rows)) { addToast({ message: "Respuesta inesperada del servidor.", type: "error" }); setPhase("idle"); return; }
       setRows(data.rows);
       setErrors(Array.isArray(data.errors) ? data.errors : []);
@@ -347,19 +350,22 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
     }
   }
 
-  async function pollJobStatus(jobId) {
+  async function pollJobStatus(basePath, jobId) {
     const POLL_INTERVAL_MS = 2000;
     const MAX_ATTEMPTS = 450; // ~15 minutes
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-      const status = await apiFetch(`/bulk-import/simple/${type}/confirm/${jobId}/status`, {
+      const status = await apiFetch(`${basePath}/${jobId}/status`, {
         token: authToken,
         headers: activeCompanyId ? { "X-Company-Id": activeCompanyId } : {},
       });
-      if (status.status === "done") return status;
-      if (status.status === "error") throw new Error(status.message || "Error al confirmar la importación.");
+      // Re-wrap to the same { ok, ...payload } shape the synchronous path
+      // (jerarquías/habilidades, or a job that finishes before first poll)
+      // already returns, so callers don't need to care which path ran.
+      if (status.status === "done") return { ok: true, ...status.result };
+      if (status.status === "error") throw new Error(status.message || "Error al procesar el archivo.");
     }
-    throw new Error("La importación sigue procesándose. Volvé a esta pantalla en unos minutos.");
+    throw new Error("Se está tomando más tiempo del esperado. Volvé a esta pantalla en unos minutos.");
   }
 
   async function handleConfirm() {
@@ -374,7 +380,9 @@ function SimpleImportCard({ type, title, description, icon, authToken, activeCom
         timeoutMs: 120000,
       });
 
-      const final = data.status === "processing" ? await pollJobStatus(data.jobId) : data;
+      const final = data.status === "processing"
+        ? await pollJobStatus(`/bulk-import/simple/${type}/confirm`, data.jobId)
+        : data;
 
       if (final.ok) {
         setResult(final.result);

@@ -353,9 +353,27 @@ router.post(
     if (!req.file.originalname.toLowerCase().endsWith(".xlsx"))
       return res.status(400).json({ ok: false, message: "Solo se aceptan archivos .xlsx" });
 
+    const { companyId } = resolveBulkTenant(req);
     try {
-      const result = await analyze(req.file.buffer);
+      const result = await analyze(req.file.buffer, companyId);
       res.status(result.ok ? 200 : 422).json(result);
+    } catch (err) {
+      res.status(500).json({ ok: false, message: err.message });
+    }
+  }
+);
+
+router.get(
+  "/simple/:type/analyze/:jobId/status",
+  auth,
+  attachTenantScope,
+  bulkImportManageAccess,
+  async (req, res) => {
+    const { companyId } = resolveBulkTenant(req);
+    if (!companyId) return res.status(400).json({ ok: false, message: "No se pudo resolver la organización." });
+    try {
+      const result = await getSimpleImportJobStatus({ jobId: req.params.jobId, companyId });
+      res.status(result.ok || result.status === "processing" ? 200 : 400).json(result);
     } catch (err) {
       res.status(500).json({ ok: false, message: err.message });
     }
