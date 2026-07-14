@@ -136,7 +136,7 @@ if (process.env.VERCEL) {
     try {
       assertRuntimeConfig();
       if (mongoose.connection.readyState !== 1) {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URI, { family: 4 });
       }
       next();
     } catch (err) {
@@ -155,13 +155,13 @@ if (process.env.VERCEL) {
   app.use(async (req, res, next) => {
     try {
       if (mongoose.connection.readyState !== 1) {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(process.env.MONGO_URI, { family: 4 });
       } else {
         try {
           await mongoose.connection.db.admin().command({ ping: 1 });
         } catch {
           await mongoose.connection.close().catch(() => {});
-          await mongoose.connect(process.env.MONGO_URI);
+          await mongoose.connect(process.env.MONGO_URI, { family: 4 });
         }
       }
       next();
@@ -416,7 +416,7 @@ app.use((err, req, res, _next) => {
 async function start() {
   try {
     assertRuntimeConfig();
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI, { family: 4 });
     console.log("MongoDB conectado");
     await ensureIndexes();
 

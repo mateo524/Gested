@@ -35,7 +35,7 @@ async function withMongoRetry(fn, { retries = 5, delayMs = 1000 } = {}) {
       if (attempt === retries || !TRANSIENT_MONGO_ERROR.test(err?.message || "")) throw err;
       await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
       await mongoose.connection.close().catch(() => {});
-      await mongoose.connect(process.env.MONGO_URI).catch(() => {});
+      await mongoose.connect(process.env.MONGO_URI, { family: 4 }).catch(() => {});
     }
   }
   throw lastError;
