@@ -389,6 +389,32 @@ app.get("/health", (_req, res) => {
   res.status(payload.ok ? 200 : 503).json(payload);
 });
 
+// TEMP diagnostic: shows the actually-resolved Mongo connection topology at
+// runtime (host/port/replicaset, never credentials) to compare environments
+// while chasing a "not primary" bug that never reproduces locally. Gated
+// behind a logged-in user rather than left open. Remove once root-caused.
+app.get("/mongo-diag", auth, async (_req, res) => {
+  try {
+    const conn = mongoose.connection;
+    const topology = conn.getClient?.()?.topology;
+    const description = topology?.description;
+    res.json({
+      readyState: conn.readyState,
+      host: conn.host,
+      port: conn.port,
+      name: conn.name,
+      hosts: description ? [...description.servers.keys()] : null,
+      type: description?.type,
+      setName: description?.setName,
+      servers: description
+        ? Object.fromEntries([...description.servers].map(([addr, s]) => [addr, s.type]))
+        : null,
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 app.get("/", (req, res) => {
   res.send("API RRHH PRO funcionando");
 });
