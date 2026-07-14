@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import ExcelJS from "exceljs";
 import bcrypt from "bcryptjs";
+import mongoose from "mongoose";
 import Competency from "../models/Competency.js";
 import Employee from "../models/Employee.js";
 import Metric from "../models/Metric.js";
@@ -19,8 +20,10 @@ const TRANSIENT_MONGO_ERROR = /not primary|notwritableprimary|node is recovering
 
 // Shared/free MongoDB Atlas tiers run brief primary elections during
 // automatic maintenance (can take up to ~10-12s to resolve), which surface
-// as transient write errors. Retry with backoff long enough to ride one out
-// instead of forcing the user to re-upload.
+// as transient write errors. Retrying on the SAME connection doesn't help if
+// the driver's cached topology still points at the wrong node (a plain ping
+// succeeds against a secondary too, so it won't self-heal) — force a real
+// reconnect between attempts so the next try gets a fresh topology.
 async function withMongoRetry(fn, { retries = 5, delayMs = 1000 } = {}) {
   let lastError;
   for (let attempt = 0; attempt <= retries; attempt++) {
@@ -30,6 +33,8 @@ async function withMongoRetry(fn, { retries = 5, delayMs = 1000 } = {}) {
       lastError = err;
       if (attempt === retries || !TRANSIENT_MONGO_ERROR.test(err?.message || "")) throw err;
       await new Promise((resolve) => setTimeout(resolve, delayMs * (attempt + 1)));
+      await mongoose.connection.close().catch(() => {});
+      await mongoose.connect(process.env.MONGO_URI).catch(() => {});
     }
   }
   throw lastError;
