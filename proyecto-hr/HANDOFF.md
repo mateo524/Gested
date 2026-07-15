@@ -4,10 +4,27 @@
 > próxima sesión (u otra persona) entienda qué se hizo, por qué, y qué queda
 > pendiente, sin tener que releer todo el historial de commits.
 
-## 2026-07-14 (parte 2) — CAUSA RAÍZ REAL DEL "not primary": ENCONTRADA Y ARREGLADA,
-## PENDIENTE DE DEPLOY
+## 2026-07-15 — "not primary" CONFIRMADO RESUELTO ✅
 
-**Empezá por acá si estás retomando el tema de "not primary" en la importación.**
+Se pudo volver a deployar (el límite de 100 deploys/día de Vercel ya se había
+reseteado). Verificado en producción real (`app.zentor.com.ar/api`):
+- `GET /mongo-diag` (antes de sacarlo) mostró `type: "ReplicaSetWithPrimary"`
+  con los 3 hosts del shard — ya no `Single` a una sola secundaria.
+- Importación de Personas de 100 filas: `analyze` (0.8s) → `confirm` → polling
+  → **100 creados, 0 errores**, sin ningún "not primary". Datos de prueba
+  limpiados.
+- Se sacó todo el código de diagnóstico temporal (`/mongo-diag` en
+  `server.js`, el campo `diag` en `bulkImport.routes.js`) — ya no hace falta.
+
+Si vuelve a aparecer "not primary" en el futuro, NO es este mismo bug (esa
+causa específica —`MONGO_URI` de Vercel apuntando a un solo nodo secundario—
+está confirmada resuelta). Sería algo nuevo; no asumir que es la misma causa
+sin volver a verificar.
+
+## 2026-07-14 (parte 2) — Investigación que encontró la causa raíz (referencia histórica)
+
+**Quedó resuelto el 2026-07-15 (ver arriba). Lo de abajo es el registro de cómo se
+llegó a la causa, útil como referencia si algo similar vuelve a pasar.**
 
 ### El hallazgo clave del día: la app real corre en Vercel, no en Render ni Cloud Run
 Gran parte de esta sesión se investigó "not primary" contra `gested-1-backend.onrender.com`
